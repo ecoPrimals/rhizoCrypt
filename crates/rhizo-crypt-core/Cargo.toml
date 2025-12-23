@@ -11,9 +11,12 @@ authors.workspace = true
 sourdough-core = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_json.workspace = true
 thiserror = { workspace = true }
 tracing = { workspace = true }
+blake3 = "1.8.2"
+chrono = { version = "0.4.42", features = ["serde"] }
+uuid = { version = "1.19.0", features = ["v4", "serde"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util", "macros"] }
