@@ -753,7 +753,7 @@ mod tests {
     #[test]
     fn test_discovery_status_clone() {
         let status = DiscoveryStatus::Failed("error".to_string());
-        let cloned = status.clone();
+        let cloned = status;
         match cloned {
             DiscoveryStatus::Failed(msg) => assert_eq!(msg, "error"),
             _ => panic!("Clone failed"),

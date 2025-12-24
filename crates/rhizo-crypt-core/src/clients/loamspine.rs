@@ -77,19 +77,32 @@ impl Default for LoamSpineConfig {
 impl LoamSpineConfig {
     /// Create config from environment variables.
     ///
-    /// Environment variables:
-    /// - `LOAMSPINE_ADDRESS`: LoamSpine service address (fallback only)
-    /// - `LOAMSPINE_TIMEOUT_MS`: Connection timeout in milliseconds
+    /// Environment variables (priority order):
+    /// - `PERMANENT_STORAGE_ENDPOINT` or `STORAGE_PERMANENT_COMMIT_ENDPOINT`: Permanent storage capability endpoint (preferred)
+    /// - `LOAMSPINE_ADDRESS`: Legacy fallback (deprecated, emits warning)
+    /// - `PERMANENT_STORAGE_TIMEOUT_MS`: Connection timeout in milliseconds
+    /// - `LOAMSPINE_TIMEOUT_MS`: Legacy timeout (deprecated)
     #[must_use]
     pub fn from_env() -> Self {
+        use crate::safe_env::CapabilityEnv;
         let mut config = Self::default();
 
-        if let Ok(addr) = std::env::var("LOAMSPINE_ADDRESS") {
+        // Use capability-based endpoint (with backward compatibility)
+        if let Some(addr) = CapabilityEnv::permanent_commit_endpoint() {
             config.fallback_address = Some(Cow::Owned(addr));
         }
 
-        if let Ok(timeout) = std::env::var("LOAMSPINE_TIMEOUT_MS") {
+        // Timeout: prefer capability-based name
+        if let Ok(timeout) = std::env::var("PERMANENT_STORAGE_TIMEOUT_MS") {
             if let Ok(ms) = timeout.parse() {
+                config.timeout_ms = ms;
+            }
+        } else if let Ok(timeout) = std::env::var("LOAMSPINE_TIMEOUT_MS") {
+            if let Ok(ms) = timeout.parse() {
+                tracing::warn!(
+                    "Using deprecated LOAMSPINE_TIMEOUT_MS. \
+                     Please migrate to PERMANENT_STORAGE_TIMEOUT_MS."
+                );
                 config.timeout_ms = ms;
             }
         }

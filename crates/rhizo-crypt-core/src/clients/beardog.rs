@@ -76,19 +76,32 @@ impl Default for BearDogConfig {
 impl BearDogConfig {
     /// Create config from environment variables.
     ///
-    /// Environment variables:
-    /// - `BEARDOG_ADDRESS`: BearDog service address (fallback only)
-    /// - `BEARDOG_TIMEOUT_MS`: Connection timeout in milliseconds
+    /// Environment variables (priority order):
+    /// - `SIGNING_ENDPOINT` or `CRYPTO_SIGNING_ENDPOINT`: Signing capability endpoint (preferred)
+    /// - `BEARDOG_ADDRESS`: Legacy fallback (deprecated, emits warning)
+    /// - `SIGNING_TIMEOUT_MS`: Connection timeout in milliseconds
+    /// - `BEARDOG_TIMEOUT_MS`: Legacy timeout (deprecated)
     #[must_use]
     pub fn from_env() -> Self {
+        use crate::safe_env::CapabilityEnv;
         let mut config = Self::default();
 
-        if let Ok(addr) = std::env::var("BEARDOG_ADDRESS") {
+        // Use capability-based endpoint (with backward compatibility)
+        if let Some(addr) = CapabilityEnv::signing_endpoint() {
             config.fallback_address = Some(Cow::Owned(addr));
         }
 
-        if let Ok(timeout) = std::env::var("BEARDOG_TIMEOUT_MS") {
+        // Timeout: prefer capability-based name
+        if let Ok(timeout) = std::env::var("SIGNING_TIMEOUT_MS") {
             if let Ok(ms) = timeout.parse() {
+                config.timeout_ms = ms;
+            }
+        } else if let Ok(timeout) = std::env::var("BEARDOG_TIMEOUT_MS") {
+            if let Ok(ms) = timeout.parse() {
+                tracing::warn!(
+                    "Using deprecated BEARDOG_TIMEOUT_MS. \
+                     Please migrate to SIGNING_TIMEOUT_MS."
+                );
                 config.timeout_ms = ms;
             }
         }

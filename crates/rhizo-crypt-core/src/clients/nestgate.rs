@@ -81,26 +81,49 @@ impl Default for NestGateConfig {
 impl NestGateConfig {
     /// Create config from environment variables.
     ///
-    /// Environment variables:
-    /// - `NESTGATE_ADDRESS`: NestGate service address (fallback only)
-    /// - `NESTGATE_MAX_PAYLOAD`: Maximum payload size in MB
-    /// - `NESTGATE_TIMEOUT_MS`: Connection timeout in milliseconds
+    /// Environment variables (priority order):
+    /// - `PAYLOAD_STORAGE_ENDPOINT` or `PAYLOAD_ENDPOINT`: Payload storage capability endpoint (preferred)
+    /// - `NESTGATE_ADDRESS`: Legacy fallback (deprecated, emits warning)
+    /// - `PAYLOAD_MAX_SIZE_MB`: Maximum payload size in MB
+    /// - `NESTGATE_MAX_PAYLOAD`: Legacy max size (deprecated)
+    /// - `PAYLOAD_TIMEOUT_MS`: Connection timeout in milliseconds
+    /// - `NESTGATE_TIMEOUT_MS`: Legacy timeout (deprecated)
     #[must_use]
     pub fn from_env() -> Self {
+        use crate::safe_env::CapabilityEnv;
         let mut config = Self::default();
 
-        if let Ok(addr) = std::env::var("NESTGATE_ADDRESS") {
+        // Use capability-based endpoint (with backward compatibility)
+        if let Some(addr) = CapabilityEnv::payload_storage_endpoint() {
             config.fallback_address = Some(Cow::Owned(addr));
         }
 
-        if let Ok(max) = std::env::var("NESTGATE_MAX_PAYLOAD") {
+        // Max payload size: prefer capability-based name
+        if let Ok(max) = std::env::var("PAYLOAD_MAX_SIZE_MB") {
             if let Ok(mb) = max.parse::<usize>() {
+                config.max_payload_size = mb * 1024 * 1024;
+            }
+        } else if let Ok(max) = std::env::var("NESTGATE_MAX_PAYLOAD") {
+            if let Ok(mb) = max.parse::<usize>() {
+                tracing::warn!(
+                    "Using deprecated NESTGATE_MAX_PAYLOAD. \
+                     Please migrate to PAYLOAD_MAX_SIZE_MB."
+                );
                 config.max_payload_size = mb * 1024 * 1024;
             }
         }
 
-        if let Ok(timeout) = std::env::var("NESTGATE_TIMEOUT_MS") {
+        // Timeout: prefer capability-based name
+        if let Ok(timeout) = std::env::var("PAYLOAD_TIMEOUT_MS") {
             if let Ok(ms) = timeout.parse() {
+                config.timeout_ms = ms;
+            }
+        } else if let Ok(timeout) = std::env::var("NESTGATE_TIMEOUT_MS") {
+            if let Ok(ms) = timeout.parse() {
+                tracing::warn!(
+                    "Using deprecated NESTGATE_TIMEOUT_MS. \
+                     Please migrate to PAYLOAD_TIMEOUT_MS."
+                );
                 config.timeout_ms = ms;
             }
         }
