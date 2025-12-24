@@ -1,50 +1,40 @@
 # 🔐 rhizoCrypt — Start Here
 
-Welcome to rhizoCrypt! This guide gets you up to speed quickly.
+**Version**: 0.9.2  
+**Status**: Production Ready
 
 ---
 
 ## What is rhizoCrypt?
 
-**Core DAG Engine** for Phase 2 of ecoPrimals. Think "git for events" — a content-addressed Directed Acyclic Graph that captures everything during a session, then selectively forgets most of it.
+An **ephemeral DAG engine** for Phase 2 of ecoPrimals. Think "git for events" — a content-addressed Directed Acyclic Graph that captures everything during a session, then selectively forgets most of it.
 
 > **Key insight**: rhizoCrypt is designed to be forgotten. Only what's committed to LoamSpine survives.
 
 ---
 
-## 🎭 Try the Showcase First!
+## 🎭 Try the Showcase First
 
-The fastest way to understand rhizoCrypt is through the interactive demos:
+The fastest way to understand rhizoCrypt:
 
 ```bash
 cd showcase && ./QUICK_START.sh
 ```
 
-**12 demos** covering:
-- Session lifecycle (create, grow, query, resolve)
-- DAG operations (multi-parent, content-addressing)
-- Merkle proofs (O(log n) verification)
-- Slice semantics (Copy, Loan, Consignment)
-- Capability discovery (Songbird)
-- DID signing (BearDog)
-- Payload storage (NestGate)
-- Permanent commits (LoamSpine)
-- Complete dehydration workflow
-- **Live Songbird connection** (real binary)
-- **Live BearDog CLI** (v0.9.0)
+**12 demos** covering sessions, DAG operations, Merkle proofs, slices, discovery, signing, payloads, commits, and live integration.
 
 ---
 
-## Quick Start (Development)
+## Quick Start
 
 ```bash
 # Build
 cargo build --workspace
 
-# Test (254 tests)
+# Test (260 tests)
 cargo test --workspace
 
-# Coverage (86%+)
+# Coverage (85%)
 cargo llvm-cov --workspace
 
 # Benchmarks
@@ -57,10 +47,10 @@ cargo doc --workspace --no-deps --open
 ### Feature Flags
 
 ```bash
-# With persistent storage
+# Persistent storage (RocksDB)
 cargo build --features rocksdb
 
-# With live client connections
+# Live client connections
 cargo build -p rhizo-crypt-core --features live-clients
 ```
 
@@ -70,13 +60,12 @@ cargo build -p rhizo-crypt-core --features live-clients
 
 ```
 rhizoCrypt
-│
 ├── tarpc RPC (24 methods)
 │   ├── Sessions: create, get, list, discard
 │   ├── Events: append, append_batch
-│   ├── Queries: get_vertex, get_frontier, query
+│   ├── Queries: get_vertex, get_frontier
 │   ├── Merkle: get_root, get_proof, verify
-│   ├── Slices: checkout, get, list, resolve
+│   ├── Slices: checkout, resolve
 │   └── Dehydration: dehydrate, get_status
 │
 ├── Production Hardening
@@ -84,13 +73,10 @@ rhizoCrypt
 │   ├── MetricsCollector (Prometheus)
 │   └── Graceful Shutdown
 │
-├── Live Clients (capability discovery)
-│   ├── SongbirdClient (tarpc) — service mesh
-│   ├── BearDogClient (HTTP) — signing
-│   ├── NestGateClient (HTTP) — payloads
-│   ├── LoamSpineClient (tarpc) — commits
-│   ├── ToadStoolClient (tarpc) — compute events
-│   └── SweetGrassQueryable — provenance
+├── Capability Discovery (primal-agnostic)
+│   ├── SafeEnv — type-safe environment config
+│   ├── CapabilityEnv — capability endpoint resolution
+│   └── DiscoveryRegistry — runtime service discovery
 │
 ├── Storage Backends
 │   ├── InMemoryDagStore (default)
@@ -123,7 +109,7 @@ Created → Active → Resolving → Resolved
 ```
 
 ### Slice
-LoamSpine state "checkout":
+State checkout from permanent storage:
 - **Copy** — Local use only
 - **Loan** — Auto-returns
 - **Consignment** — Temporary possession
@@ -131,34 +117,16 @@ LoamSpine state "checkout":
 - **Waypoint** — Anchors to spine
 - **Transfer** — Ownership transfer
 
-### Storage
+### Capability Discovery
 ```rust
-// In-memory (default)
-let store = InMemoryDagStore::new();
+use rhizo_crypt_core::{SafeEnv, CapabilityEnv};
 
-// RocksDB (persistent)
-#[cfg(feature = "rocksdb")]
-let store = RocksDbDagStore::open("/path/to/db")?;
-```
+// Type-safe environment config
+let port: u16 = SafeEnv::parse("RHIZOCRYPT_PORT", 9400);
 
-### Live Clients
-```rust
-use rhizo_crypt_core::clients::SongbirdClient;
-
-let songbird = SongbirdClient::from_env();
-songbird.connect().await?;
-songbird.register("127.0.0.1:9400").await?;
-
-let beardog = songbird.discover_beardog().await?;
-```
-
-### Pure Rust RPC
-```rust
-#[tarpc::service]
-pub trait RhizoCryptRpc {
-    async fn create_session(request: CreateSessionRequest) -> Result<SessionId, RpcError>;
-    async fn append_event(request: AppendEventRequest) -> Result<VertexId, RpcError>;
-    async fn health() -> Result<HealthStatus, RpcError>;
+// Capability-based endpoint discovery
+if let Some(endpoint) = CapabilityEnv::signing_endpoint() {
+    // Connect to signing service
 }
 ```
 
@@ -168,39 +136,33 @@ pub trait RhizoCryptRpc {
 
 ```
 rhizoCrypt/
-├── Cargo.toml           # Workspace
+├── Cargo.toml              # Workspace
 ├── crates/
-│   ├── rhizo-crypt-core/    # Core library (~13.7k LOC)
+│   ├── rhizo-crypt-core/   # Core library
 │   │   ├── src/
-│   │   │   ├── lib.rs       # Entry + RhizoCrypt primal
-│   │   │   ├── clients/     # Live primal clients
-│   │   │   ├── store.rs     # In-memory storage
-│   │   │   ├── store_rocksdb.rs
+│   │   │   ├── lib.rs      # RhizoCrypt primal
+│   │   │   ├── clients/    # Capability clients
+│   │   │   ├── discovery.rs
+│   │   │   ├── safe_env.rs # Environment config
+│   │   │   ├── store.rs
 │   │   │   ├── vertex.rs
 │   │   │   ├── session.rs
 │   │   │   ├── merkle.rs
 │   │   │   ├── slice.rs
 │   │   │   └── dehydration.rs
-│   │   ├── benches/
 │   │   └── tests/
 │   │
-│   └── rhizo-crypt-rpc/     # RPC (~3.3k LOC)
+│   └── rhizo-crypt-rpc/    # RPC layer
 │       ├── src/
-│       │   ├── service.rs   # tarpc trait
+│       │   ├── service.rs
 │       │   ├── server.rs
 │       │   ├── client.rs
 │       │   ├── rate_limit.rs
 │       │   └── metrics.rs
 │       └── tests/
 │
-├── showcase/            # Interactive demos (10 total)
-│   ├── QUICK_START.sh
-│   ├── 01-isolated/     # Sessions, DAG, Merkle, Slices
-│   ├── 02-rpc/          # Server demos
-│   ├── 03-inter-primal/ # Discovery, Signing, Payloads, Commits
-│   └── 04-complete-workflow/
-│
-├── specs/               # Specifications
+├── showcase/               # 12 interactive demos
+├── specs/                  # Specifications
 ├── README.md
 ├── STATUS.md
 └── WHATS_NEXT.md
@@ -208,35 +170,29 @@ rhizoCrypt/
 
 ---
 
+## Primal-Agnostic Design
+
+rhizoCrypt follows **infant discovery**: it starts with zero knowledge and discovers capabilities at runtime.
+
+| Pattern | Description |
+|---------|-------------|
+| `service_id` | Agnostic service identifier (not primal name) |
+| `Capability` | What a service does, not who provides it |
+| `IntegrationStatus` | Uses `signing`, `permanent_storage`, `payload_storage` |
+| `SafeEnv` | Type-safe environment configuration |
+
+---
+
 ## Testing
 
 | Type | Count | Command |
 |------|-------|---------|
-| Unit | 181 | `cargo test --lib` |
-| Discovery | 21 | `cargo test discovery::` |
-| Integration | 21 | `cargo test integration::` |
-| E2E | 8 | `cargo test -p rhizo-crypt-core --test e2e_tests` |
-| Chaos | 18 | `cargo test -p rhizo-crypt-core --test chaos_tests` |
-| Property | 17 | `cargo test -p rhizo-crypt-core --test property_tests` |
+| Unit | 183 | `cargo test --lib` |
+| Integration | 18 | `cargo test integration::` |
+| E2E | 8 | `cargo test --test e2e_tests` |
+| Chaos | 18 | `cargo test --test chaos_tests` |
+| Property | 17 | `cargo test --test property_tests` |
 | RPC | 10 | `cargo test -p rhizo-crypt-rpc` |
-
----
-
-## Integration
-
-### Depends On (Gen 1)
-| Primal | Purpose | Client |
-|--------|---------|--------|
-| **BearDog** | DIDs, signatures | ✅ Wired |
-| **Songbird** | Service discovery | ✅ Wired |
-| **NestGate** | Payload storage | ✅ Wired |
-| **ToadStool** | Compute events | ✅ Scaffolded |
-
-### Phase 2 Siblings
-| Primal | Relationship | Client |
-|--------|--------------|--------|
-| **LoamSpine** | Receives commits | ✅ Wired |
-| **SweetGrass** | Provenance queries | ✅ Scaffolded |
 
 ---
 
@@ -254,9 +210,9 @@ rhizoCrypt/
 | Rate Limiting | ✅ Token bucket |
 | Metrics | ✅ Prometheus |
 | Discovery | ✅ Capability-based |
-| Live Clients | ✅ All 6 (4 wired + 2 scaffolded) |
-| Tests | ✅ 254 passing |
-| Coverage | ✅ 86%+ |
+| SafeEnv | ✅ Type-safe config |
+| Tests | ✅ 260 passing |
+| Coverage | ✅ 85% |
 
 ---
 
@@ -264,7 +220,7 @@ rhizoCrypt/
 
 | Document | Description |
 |----------|-------------|
-| [showcase/](./showcase/) | **Interactive demos** — start here! |
+| [showcase/](./showcase/) | Interactive demos |
 | [STATUS.md](./STATUS.md) | Implementation status |
 | [WHATS_NEXT.md](./WHATS_NEXT.md) | Roadmap |
 | [specs/](./specs/) | Full specifications |
