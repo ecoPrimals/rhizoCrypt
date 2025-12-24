@@ -426,6 +426,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_parse_deployment_id_hex() {
         let hex_str = "deadbeef00000000deadbeef00000000";
         let task_id = parse_deployment_id(hex_str);
@@ -434,6 +435,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_deployment_status_serde() {
         let json = r#""running""#;
         let status: DeploymentStatus = serde_json::from_str(json).unwrap();
@@ -441,6 +443,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_health_status_serde() {
         let json = r#"{"status":"healthy","service":"toadstool-byob-server","version":"0.1.0","message":"Ready"}"#;
         let health: HealthStatus = serde_json::from_str(json).unwrap();
@@ -449,6 +452,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_resource_usage_serde() {
         let json = r#"{"cpu_usage":0.5,"memory_bytes":1048576,"network_tx_bytes":1024,"network_rx_bytes":2048}"#;
         let usage: ResourceUsage = serde_json::from_str(json).unwrap();
