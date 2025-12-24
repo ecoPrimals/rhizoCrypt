@@ -234,19 +234,32 @@ impl Default for ToadStoolConfig {
 impl ToadStoolConfig {
     /// Create config from environment variables.
     ///
-    /// Environment variables:
-    /// - `TOADSTOOL_ADDRESS`: ToadStool service address (fallback only)
-    /// - `TOADSTOOL_TIMEOUT_MS`: Connection timeout in milliseconds
+    /// Environment variables (priority order):
+    /// - `COMPUTE_ENDPOINT` or `COMPUTE_ORCHESTRATION_ENDPOINT`: Compute capability endpoint (preferred)
+    /// - `TOADSTOOL_ADDRESS`: Legacy fallback (deprecated, emits warning)
+    /// - `COMPUTE_TIMEOUT_MS`: Connection timeout in milliseconds
+    /// - `TOADSTOOL_TIMEOUT_MS`: Legacy timeout (deprecated)
     #[must_use]
     pub fn from_env() -> Self {
+        use crate::safe_env::CapabilityEnv;
         let mut config = Self::default();
 
-        if let Ok(addr) = std::env::var("TOADSTOOL_ADDRESS") {
+        // Use capability-based endpoint (with backward compatibility)
+        if let Some(addr) = CapabilityEnv::compute_endpoint() {
             config.fallback_address = Some(Cow::Owned(addr));
         }
 
-        if let Ok(timeout) = std::env::var("TOADSTOOL_TIMEOUT_MS") {
+        // Timeout: prefer capability-based name
+        if let Ok(timeout) = std::env::var("COMPUTE_TIMEOUT_MS") {
             if let Ok(ms) = timeout.parse() {
+                config.timeout_ms = ms;
+            }
+        } else if let Ok(timeout) = std::env::var("TOADSTOOL_TIMEOUT_MS") {
+            if let Ok(ms) = timeout.parse() {
+                tracing::warn!(
+                    "Using deprecated TOADSTOOL_TIMEOUT_MS. \
+                     Please migrate to COMPUTE_TIMEOUT_MS."
+                );
                 config.timeout_ms = ms;
             }
         }

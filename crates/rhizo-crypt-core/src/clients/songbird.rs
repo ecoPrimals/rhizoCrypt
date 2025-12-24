@@ -112,20 +112,22 @@ impl SongbirdConfig {
     /// Create config from environment variables.
     ///
     /// Environment variables (checked in order):
-    /// - `SONGBIRD_ADDRESS`: Primary orchestrator address
+    /// - `DISCOVERY_ENDPOINT` or `DISCOVERY_SERVICE_ENDPOINT`: Discovery capability endpoint (preferred)
+    /// - `SONGBIRD_ADDRESS`: Legacy orchestrator address (acceptable - Songbird is the universal adapter)
     /// - `SONGBIRD_HOST` + `SONGBIRD_PORT`: Alternative host/port specification
     /// - `RHIZOCRYPT_SERVICE_NAME`: Service name for registration
     ///
     /// ## Production Requirement
     ///
-    /// In production, `SONGBIRD_ADDRESS` MUST be set. The development fallback
+    /// In production, `DISCOVERY_ENDPOINT` or `SONGBIRD_ADDRESS` MUST be set. The development fallback
     /// (`localhost:8091`) is only available when `RHIZOCRYPT_ENV=development`.
     #[must_use]
     pub fn from_env() -> Self {
+        use crate::safe_env::CapabilityEnv;
         let mut config = Self::new();
 
-        // Primary: Check for full address
-        if let Ok(addr) = std::env::var("SONGBIRD_ADDRESS") {
+        // Primary: Check for capability-based endpoint
+        if let Some(addr) = CapabilityEnv::discovery_endpoint() {
             config.address = Cow::Owned(addr);
         } else if let (Ok(host), Ok(port)) =
             (std::env::var("SONGBIRD_HOST"), std::env::var("SONGBIRD_PORT"))

@@ -161,48 +161,159 @@ impl SafeEnv {
 /// Provides standardized environment variable names for each capability.
 pub struct CapabilityEnv;
 
+#[allow(clippy::manual_inspect)] // We need to return the value, not just inspect it
 impl CapabilityEnv {
     /// Get the endpoint for signing capability.
+    ///
+    /// Priority order:
+    /// 1. `CRYPTO_SIGNING_ENDPOINT` (preferred, capability-based)
+    /// 2. `SIGNING_ENDPOINT` (short form, capability-based)
+    /// 3. `BEARDOG_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn signing_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("CRYPTO_SIGNING").or_else(|| SafeEnv::get_endpoint("SIGNING"))
+        SafeEnv::get_endpoint("CRYPTO_SIGNING")
+            .or_else(|| SafeEnv::get_endpoint("SIGNING"))
+            .or_else(|| {
+                std::env::var("BEARDOG_ADDRESS").ok().map(|addr| {
+                    tracing::warn!(
+                        "Using deprecated BEARDOG_ADDRESS environment variable. \
+                         Please migrate to SIGNING_ENDPOINT or CRYPTO_SIGNING_ENDPOINT \
+                         for capability-based configuration."
+                    );
+                    addr
+                })
+            })
     }
 
     /// Get the endpoint for DID verification capability.
+    ///
+    /// Priority order:
+    /// 1. `DID_VERIFICATION_ENDPOINT` (preferred, capability-based)
+    /// 2. `DID_ENDPOINT` (short form, capability-based)
+    /// 3. `BEARDOG_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn did_verification_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("DID_VERIFICATION").or_else(|| SafeEnv::get_endpoint("DID"))
+        SafeEnv::get_endpoint("DID_VERIFICATION")
+            .or_else(|| SafeEnv::get_endpoint("DID"))
+            .or_else(|| {
+                std::env::var("BEARDOG_ADDRESS").ok().map(|addr| {
+                    tracing::warn!(
+                        "Using deprecated BEARDOG_ADDRESS for DID verification. \
+                         Please migrate to DID_ENDPOINT for capability-based configuration."
+                    );
+                    addr
+                })
+            })
     }
 
     /// Get the endpoint for payload storage capability.
+    ///
+    /// Priority order:
+    /// 1. `PAYLOAD_STORAGE_ENDPOINT` (preferred, capability-based)
+    /// 2. `PAYLOAD_ENDPOINT` (short form, capability-based)
+    /// 3. `NESTGATE_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn payload_storage_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("PAYLOAD_STORAGE").or_else(|| SafeEnv::get_endpoint("PAYLOAD"))
+        SafeEnv::get_endpoint("PAYLOAD_STORAGE")
+            .or_else(|| SafeEnv::get_endpoint("PAYLOAD"))
+            .or_else(|| {
+                std::env::var("NESTGATE_ADDRESS").ok().map(|addr| {
+                    tracing::warn!(
+                        "Using deprecated NESTGATE_ADDRESS environment variable. \
+                         Please migrate to PAYLOAD_STORAGE_ENDPOINT \
+                         for capability-based configuration."
+                    );
+                    addr
+                })
+            })
     }
 
     /// Get the endpoint for permanent commit capability.
+    ///
+    /// Priority order:
+    /// 1. `STORAGE_PERMANENT_COMMIT_ENDPOINT` (preferred, capability-based)
+    /// 2. `PERMANENT_STORAGE_ENDPOINT` (short form, capability-based)
+    /// 3. `LOAMSPINE_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn permanent_commit_endpoint() -> Option<String> {
         SafeEnv::get_endpoint("STORAGE_PERMANENT_COMMIT")
             .or_else(|| SafeEnv::get_endpoint("PERMANENT_STORAGE"))
+            .or_else(|| {
+                std::env::var("LOAMSPINE_ADDRESS").ok().map(|addr| {
+                    tracing::warn!(
+                        "Using deprecated LOAMSPINE_ADDRESS environment variable. \
+                         Please migrate to PERMANENT_STORAGE_ENDPOINT \
+                         for capability-based configuration."
+                    );
+                    addr
+                })
+            })
     }
 
     /// Get the endpoint for compute orchestration capability.
+    ///
+    /// Priority order:
+    /// 1. `COMPUTE_ORCHESTRATION_ENDPOINT` (preferred, capability-based)
+    /// 2. `COMPUTE_ENDPOINT` (short form, capability-based)
+    /// 3. `TOADSTOOL_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn compute_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("COMPUTE_ORCHESTRATION").or_else(|| SafeEnv::get_endpoint("COMPUTE"))
+        SafeEnv::get_endpoint("COMPUTE_ORCHESTRATION")
+            .or_else(|| SafeEnv::get_endpoint("COMPUTE"))
+            .or_else(|| {
+                std::env::var("TOADSTOOL_ADDRESS").ok().map(|addr| {
+                    tracing::warn!(
+                        "Using deprecated TOADSTOOL_ADDRESS environment variable. \
+                         Please migrate to COMPUTE_ENDPOINT \
+                         for capability-based configuration."
+                    );
+                    addr
+                })
+            })
     }
 
     /// Get the endpoint for provenance query capability.
+    ///
+    /// Priority order:
+    /// 1. `PROVENANCE_QUERY_ENDPOINT` (preferred, capability-based)
+    /// 2. `PROVENANCE_ENDPOINT` (short form, capability-based)
+    /// 3. `SWEETGRASS_PUSH_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn provenance_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("PROVENANCE_QUERY").or_else(|| SafeEnv::get_endpoint("PROVENANCE"))
+        SafeEnv::get_endpoint("PROVENANCE_QUERY")
+            .or_else(|| SafeEnv::get_endpoint("PROVENANCE"))
+            .or_else(|| {
+                std::env::var("SWEETGRASS_PUSH_ADDRESS").ok().map(|addr| {
+                    tracing::warn!(
+                        "Using deprecated SWEETGRASS_PUSH_ADDRESS environment variable. \
+                         Please migrate to PROVENANCE_ENDPOINT \
+                         for capability-based configuration."
+                    );
+                    addr
+                })
+            })
     }
 
     /// Get the endpoint for service discovery capability.
+    ///
+    /// Priority order:
+    /// 1. `DISCOVERY_SERVICE_ENDPOINT` (preferred, capability-based)
+    /// 2. `DISCOVERY_ENDPOINT` (short form, capability-based)
+    /// 3. `SONGBIRD_ADDRESS` (legacy, acceptable - Songbird is the universal adapter)
     #[must_use]
     pub fn discovery_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("DISCOVERY_SERVICE").or_else(|| SafeEnv::get_endpoint("DISCOVERY"))
+        SafeEnv::get_endpoint("DISCOVERY_SERVICE")
+            .or_else(|| SafeEnv::get_endpoint("DISCOVERY"))
+            .or_else(|| {
+                // Songbird is special - it's the universal adapter, so this is less critical
+                std::env::var("SONGBIRD_ADDRESS").ok().map(|addr| {
+                    tracing::info!(
+                        "Using SONGBIRD_ADDRESS for discovery. \
+                         Consider migrating to DISCOVERY_ENDPOINT for consistency."
+                    );
+                    addr
+                })
+            })
     }
 }
 

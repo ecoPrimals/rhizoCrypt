@@ -158,19 +158,32 @@ impl Default for SweetGrassConfig {
 impl SweetGrassConfig {
     /// Create config from environment variables.
     ///
-    /// Environment variables:
-    /// - `SWEETGRASS_ADDRESS`: SweetGrass push notification address
-    /// - `SWEETGRASS_TIMEOUT_MS`: Query timeout in milliseconds
+    /// Environment variables (priority order):
+    /// - `PROVENANCE_ENDPOINT` or `PROVENANCE_QUERY_ENDPOINT`: Provenance capability endpoint (preferred)
+    /// - `SWEETGRASS_ADDRESS` or `SWEETGRASS_PUSH_ADDRESS`: Legacy fallback (deprecated, emits warning)
+    /// - `PROVENANCE_TIMEOUT_MS`: Query timeout in milliseconds
+    /// - `SWEETGRASS_TIMEOUT_MS`: Legacy timeout (deprecated)
     #[must_use]
     pub fn from_env() -> Self {
+        use crate::safe_env::CapabilityEnv;
         let mut config = Self::default();
 
-        if let Ok(addr) = std::env::var("SWEETGRASS_ADDRESS") {
+        // Use capability-based endpoint (with backward compatibility)
+        if let Some(addr) = CapabilityEnv::provenance_endpoint() {
             config.push_address = Some(Cow::Owned(addr));
         }
 
-        if let Ok(timeout) = std::env::var("SWEETGRASS_TIMEOUT_MS") {
+        // Timeout: prefer capability-based name
+        if let Ok(timeout) = std::env::var("PROVENANCE_TIMEOUT_MS") {
             if let Ok(ms) = timeout.parse() {
+                config.timeout_ms = ms;
+            }
+        } else if let Ok(timeout) = std::env::var("SWEETGRASS_TIMEOUT_MS") {
+            if let Ok(ms) = timeout.parse() {
+                tracing::warn!(
+                    "Using deprecated SWEETGRASS_TIMEOUT_MS. \
+                     Please migrate to PROVENANCE_TIMEOUT_MS."
+                );
                 config.timeout_ms = ms;
             }
         }
