@@ -224,7 +224,7 @@ mod tests {
     use crate::types::{SessionId, VertexId};
     use crate::vertex::VertexBuilder;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_beardog_client() {
         let client = MockBearDogClient::permissive();
 
@@ -237,7 +237,7 @@ mod tests {
         assert!(client.verify_signature(b"test", &signature, &did).await.unwrap());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_beardog_strict() {
         let client = MockBearDogClient::strict();
 
@@ -245,7 +245,7 @@ mod tests {
         assert!(!client.verify_did(&did).await.unwrap());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_loamspine_client() {
         let client = MockLoamSpineClient::new();
 
@@ -266,7 +266,7 @@ mod tests {
         assert!(client.verify_commit(&commit_ref).await.unwrap());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_nestgate_client() {
         let client = MockNestGateClient::new();
 
@@ -279,7 +279,7 @@ mod tests {
         assert_eq!(retrieved, Some(data));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_beardog_sign_vertex() {
         let client = MockBearDogClient::permissive();
         let did = Did::new("did:key:test");
@@ -290,7 +290,7 @@ mod tests {
         assert!(!signature.as_bytes().is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_beardog_verify_vertex_signature() {
         let permissive_client = MockBearDogClient::permissive();
         let strict_client = MockBearDogClient::strict();
@@ -301,7 +301,7 @@ mod tests {
         assert!(!strict_client.verify_vertex_signature(&vertex).await.unwrap());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_beardog_request_attestation() {
         let client = MockBearDogClient::permissive();
         let attester = Did::new("did:key:attester");
@@ -319,7 +319,7 @@ mod tests {
         assert!(attestation.verified);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_loamspine_get_commit() {
         let client = MockLoamSpineClient::new();
 
@@ -334,7 +334,7 @@ mod tests {
         assert!(result.is_none());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_loamspine_checkout_resolve_slice() {
         let client = MockLoamSpineClient::new();
         let holder = Did::new("did:key:holder");
@@ -359,7 +359,7 @@ mod tests {
         assert!(client.resolve_slice(&slice, &outcome).await.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_loamspine_clone() {
         let client1 = MockLoamSpineClient::new();
 
@@ -380,7 +380,7 @@ mod tests {
         assert_eq!(ref2.index, 1); // continues from cloned state
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_nestgate_payload_not_found() {
         let client = MockNestGateClient::new();
 

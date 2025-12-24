@@ -9,9 +9,10 @@ use rhizo_crypt_rpc::{
     AppendEventRequest, CreateSessionRequest, QueryRequest, RpcClient, RpcServer,
 };
 use std::sync::Arc;
-use std::time::Duration;
 
 /// Helper to create a test server and client pair.
+///
+/// Uses retry logic instead of sleep to wait for server readiness.
 async fn setup_server_client(
     port: u16,
 ) -> (Arc<RhizoCrypt>, RpcClient, tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>)
@@ -28,16 +29,26 @@ async fn setup_server_client(
 
     let server_handle = tokio::spawn(async move { server.serve().await });
 
-    // Give server time to start
-    tokio::time::sleep(Duration::from_millis(150)).await;
-
-    let client = RpcClient::connect(addr).await.expect("client should connect");
+    // Retry connection until server is ready (no sleep, pure async retry)
+    let client = async {
+        for attempt in 0..50 {
+            if let Ok(client) = RpcClient::connect(addr).await {
+                return Ok(client);
+            }
+            if attempt < 49 {
+                tokio::task::yield_now().await;
+            }
+        }
+        Err("Failed to connect to server after retries")
+    }
+    .await
+    .expect("client should connect");
 
     (primal, client, server_handle)
 }
 
 /// Test basic RPC server startup and client connection.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_server_client_connection() {
     // Create and start primal
     let mut config = RhizoCryptConfig::default();
@@ -53,11 +64,20 @@ async fn test_rpc_server_client_connection() {
     // Start server in background
     let server_handle = tokio::spawn(async move { server.serve().await });
 
-    // Give server time to start
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    // Connect client
-    let client = RpcClient::connect(addr).await.expect("client should connect");
+    // Retry connection until server is ready
+    let client = async {
+        for attempt in 0..50 {
+            if let Ok(client) = RpcClient::connect(addr).await {
+                return Ok(client);
+            }
+            if attempt < 49 {
+                tokio::task::yield_now().await;
+            }
+        }
+        Err("Failed to connect")
+    }
+    .await
+    .expect("client should connect");
 
     // Check health
     let health = client.health().await.expect("should get health");
@@ -86,7 +106,7 @@ async fn test_rpc_server_client_connection() {
 }
 
 /// Test session creation and vertex append via RPC.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_vertex_operations() {
     // Setup with unique port
     let mut config = RhizoCryptConfig::default();
@@ -102,10 +122,20 @@ async fn test_rpc_vertex_operations() {
 
     let server_handle = tokio::spawn(async move { server.serve().await });
 
-    // Give server time to bind
-    tokio::time::sleep(Duration::from_millis(200)).await;
-
-    let client = RpcClient::connect(addr).await.expect("client should connect");
+    // Retry connection
+    let client = async {
+        for attempt in 0..50 {
+            if let Ok(client) = RpcClient::connect(addr).await {
+                return Ok(client);
+            }
+            if attempt < 49 {
+                tokio::task::yield_now().await;
+            }
+        }
+        Err("Failed to connect")
+    }
+    .await
+    .expect("client should connect");
 
     // Create session
     let request = CreateSessionRequest {
@@ -142,7 +172,7 @@ async fn test_rpc_vertex_operations() {
 }
 
 /// Test RPC health and metrics endpoints.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_health_metrics() {
     let mut config = RhizoCryptConfig::default();
     config.rpc.port = 19503;
@@ -156,9 +186,20 @@ async fn test_rpc_health_metrics() {
 
     let server_handle = tokio::spawn(async move { server.serve().await });
 
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    let client = RpcClient::connect(addr).await.expect("client should connect");
+    // Retry connection
+    let client = async {
+        for attempt in 0..50 {
+            if let Ok(client) = RpcClient::connect(addr).await {
+                return Ok(client);
+            }
+            if attempt < 49 {
+                tokio::task::yield_now().await;
+            }
+        }
+        Err("Failed to connect")
+    }
+    .await
+    .expect("client should connect");
 
     // Check health
     let health = client.health().await.expect("should get health");
@@ -188,7 +229,7 @@ async fn test_rpc_health_metrics() {
 }
 
 /// Test session discard via RPC.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_discard_session() {
     let (_primal, client, server_handle) = setup_server_client(19604).await;
 
@@ -217,7 +258,7 @@ async fn test_rpc_discard_session() {
 }
 
 /// Test batch append via RPC.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_batch_append() {
     let (_primal, client, server_handle) = setup_server_client(19605).await;
 
@@ -256,7 +297,7 @@ async fn test_rpc_batch_append() {
 }
 
 /// Test query vertices with filters via RPC.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_query_vertices() {
     let (_primal, client, server_handle) = setup_server_client(19606).await;
 
@@ -323,7 +364,7 @@ async fn test_rpc_query_vertices() {
 }
 
 /// Test genesis and children via RPC.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_genesis_and_children() {
     let (_primal, client, server_handle) = setup_server_client(19607).await;
 
@@ -380,7 +421,7 @@ async fn test_rpc_genesis_and_children() {
 }
 
 /// Test Merkle operations via RPC.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_merkle_operations() {
     let (_primal, client, server_handle) = setup_server_client(19608).await;
 
@@ -424,7 +465,7 @@ async fn test_rpc_merkle_operations() {
 }
 
 /// Test slice operations via RPC.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_slice_operations() {
     use rhizo_crypt_core::SliceMode;
     use rhizo_crypt_rpc::CheckoutSliceRequest;
@@ -455,7 +496,7 @@ async fn test_rpc_slice_operations() {
 }
 
 /// Test dehydration operations via RPC.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_dehydration() {
     use rhizo_crypt_core::DehydrationStatus;
 

@@ -470,7 +470,7 @@ mod tests {
     use crate::event::EventType;
     use crate::vertex::VertexBuilder;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_in_memory_dag_store() {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
@@ -494,7 +494,7 @@ mod tests {
         assert_eq!(store.session_count().await, 1);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_dag_store_genesis_and_frontier() {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
@@ -534,7 +534,7 @@ mod tests {
         assert!(genesis.contains(&v1_id));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_dag_store_children() {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
@@ -559,7 +559,7 @@ mod tests {
         assert_eq!(children.len(), 3);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_in_memory_payload_store() {
         let store = InMemoryPayloadStore::new();
 
@@ -576,7 +576,7 @@ mod tests {
         assert!(!store.exists(&payload_ref).await.unwrap());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_dag_store_delete_session() {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
@@ -595,7 +595,7 @@ mod tests {
         assert_eq!(store.session_count().await, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_dag_store_health_and_stats() {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
@@ -621,7 +621,7 @@ mod tests {
         assert!(stats.write_ops >= 3);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_dag_store_update_frontier() {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
@@ -641,7 +641,7 @@ mod tests {
         assert!(!frontier.contains(&v1_id));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_payload_store_health_and_stats() {
         let store = InMemoryPayloadStore::new();
 

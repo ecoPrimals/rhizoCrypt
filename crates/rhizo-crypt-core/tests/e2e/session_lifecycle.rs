@@ -10,7 +10,7 @@ use rhizo_crypt_core::{
 };
 
 /// Test basic session creation and cleanup.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_session_create_and_discard() {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
@@ -34,7 +34,7 @@ async fn test_session_create_and_discard() {
 }
 
 /// Test appending vertices to a session.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_session_vertex_append() {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
@@ -61,7 +61,7 @@ async fn test_session_vertex_append() {
 }
 
 /// Test multiple sessions concurrently.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_multiple_sessions() {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
@@ -85,7 +85,7 @@ async fn test_multiple_sessions() {
 }
 
 /// Test session max limit.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_session_limit() {
     let config = RhizoCryptConfig {
         max_sessions: 2,

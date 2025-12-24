@@ -510,7 +510,7 @@ mod tests {
         assert!(status.any_unavailable());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_factory() {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
         let factory = ClientFactory::new(Arc::clone(&registry));
@@ -526,7 +526,7 @@ mod tests {
         assert!(factory.storage_endpoint().await.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_factory_with_services() {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
         let factory = ClientFactory::new(Arc::clone(&registry));
@@ -572,7 +572,7 @@ mod tests {
         assert_eq!(storage_addr.port(), 9002);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_factory_integration_status() {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
         let factory = ClientFactory::new(Arc::clone(&registry));

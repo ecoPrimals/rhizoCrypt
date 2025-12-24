@@ -469,14 +469,14 @@ mod tests {
         assert_eq!(query.limit, Some(100));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notifier_creation() {
         let config = SweetGrassConfig::default();
         let notifier = SweetGrassNotifier::new(config);
         assert_eq!(notifier.state().await, ClientState::Disconnected);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notify_without_connection() {
         let notifier = SweetGrassNotifier::new(SweetGrassConfig::default());
         // Should succeed silently when not connected

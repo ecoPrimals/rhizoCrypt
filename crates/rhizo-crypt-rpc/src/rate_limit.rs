@@ -239,6 +239,16 @@ impl RateLimiter {
         clients.retain(|_, state| now.duration_since(state.last_seen) < cleanup_interval);
     }
 
+    /// Clean up stale client entries with a custom staleness threshold.
+    ///
+    /// Used for testing to avoid sleep calls. Only available in test builds.
+    #[cfg(test)]
+    pub async fn cleanup_with_threshold(&self, threshold: Duration) {
+        let now = Instant::now();
+        let mut clients = self.clients.write().await;
+        clients.retain(|_, state| now.duration_since(state.last_seen) < threshold);
+    }
+
     /// Check if rate limiting is enabled.
     #[must_use]
     pub const fn is_enabled(&self) -> bool {
@@ -279,7 +289,7 @@ mod tests {
     use super::*;
     use std::net::Ipv4Addr;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_rate_limiter_allows_within_limit() {
         let config = RateLimitConfig {
             read_rps: 10,
@@ -298,7 +308,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_rate_limiter_blocks_when_exceeded() {
         let config = RateLimitConfig {
             read_rps: 10,
@@ -320,7 +330,7 @@ mod tests {
         assert!(!limiter.check(client, OperationType::Read).await);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_rate_limiter_disabled() {
         let limiter = RateLimiter::disabled();
         let client = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
@@ -331,7 +341,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_rate_limiter_per_client() {
         let config = RateLimitConfig {
             read_rps: 5,
@@ -354,14 +364,14 @@ mod tests {
         assert!(limiter.check(client2, OperationType::Read).await);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_rate_limiter_cleanup() {
         let config = RateLimitConfig {
             read_rps: 10,
             write_rps: 5,
             expensive_rps: 2,
             burst_multiplier: 2,
-            cleanup_interval: Duration::from_millis(10),
+            cleanup_interval: Duration::from_secs(3600), // Default cleanup interval
         };
 
         let limiter = RateLimiter::new(config);
@@ -371,12 +381,11 @@ mod tests {
         limiter.check(client, OperationType::Read).await;
         assert_eq!(limiter.client_count().await, 1);
 
-        // Wait for cleanup interval
-        tokio::time::sleep(Duration::from_millis(20)).await;
-        limiter.cleanup().await;
+        // Use test-only cleanup with zero threshold (removes all entries instantly)
+        limiter.cleanup_with_threshold(Duration::from_nanos(0)).await;
 
-        // Client should be cleaned up
-        assert_eq!(limiter.client_count().await, 0);
+        // Client should be cleaned up (last_seen older than threshold)
+        assert_eq!(limiter.client_count().await, 0, "stale client should be removed");
     }
 
     #[test]

@@ -391,7 +391,7 @@ mod tests {
         assert_eq!(Capability::custom("myapp:feature").to_string(), "custom:myapp:feature");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_registry_self_knowledge() {
         let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -399,7 +399,7 @@ mod tests {
         assert!(!registry.is_available(&Capability::DidVerification).await);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_registry_registration() {
         let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -416,7 +416,7 @@ mod tests {
         assert!(!registry.is_available(&Capability::PayloadStorage).await);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_provider() {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
         let provider = ClientProvider::new(Arc::clone(&registry));
@@ -437,7 +437,7 @@ mod tests {
         assert!(provider.beardog_endpoint().await.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_provider_loamspine() {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
         let provider = ClientProvider::new(Arc::clone(&registry));
@@ -459,7 +459,7 @@ mod tests {
         assert!(provider.loamspine_endpoint().await.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_provider_nestgate() {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
         let provider = ClientProvider::new(Arc::clone(&registry));
@@ -500,7 +500,7 @@ mod tests {
         assert_eq!(Capability::Attribution.to_string(), "provenance:attribution");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_registry_discover() {
         let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -523,7 +523,7 @@ mod tests {
         assert!(status.first_endpoint().is_some());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_registry_get_endpoint() {
         let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -582,7 +582,7 @@ mod tests {
         assert!(available.first_endpoint().is_some());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_registry_local_name() {
         let registry = DiscoveryRegistry::new("myPrimal");
         assert_eq!(registry.local_name(), "myPrimal");
@@ -593,7 +593,7 @@ mod tests {
         assert_eq!(registry2.local_name(), "dynamicPrimal");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_registry_set_discovery_source() {
         let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -608,7 +608,7 @@ mod tests {
         assert!(!status.is_available());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_registry_all_endpoints() {
         let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -637,7 +637,7 @@ mod tests {
         assert!(all.len() >= 2);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_registry_multiple_endpoints_for_capability() {
         let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -667,7 +667,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_provider_toadstool() {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
         let _provider = ClientProvider::new(Arc::clone(&registry));
@@ -691,7 +691,7 @@ mod tests {
         assert_eq!(endpoint.unwrap().service_id.as_ref(), "toadStool");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_provider_sweetgrass() {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
 

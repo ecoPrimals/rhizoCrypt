@@ -9,7 +9,7 @@ use rhizo_crypt_core::{
 };
 
 /// Test handling of non-existent session.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_nonexistent_session() {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
@@ -28,7 +28,7 @@ async fn test_nonexistent_session() {
 }
 
 /// Test operations on stopped primal.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_operations_on_stopped_primal() {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
@@ -48,7 +48,7 @@ async fn test_operations_on_stopped_primal() {
 }
 
 /// Test double start/stop.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_double_start_stop() {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
@@ -69,7 +69,7 @@ async fn test_double_start_stop() {
 }
 
 /// Test session creation at limit boundary.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_session_limit_boundary() {
     let config = RhizoCryptConfig {
         max_sessions: 5,

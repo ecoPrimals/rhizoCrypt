@@ -1,0 +1,22 @@
+2025-12-24T19:20:30.009210Z  INFO songbird_rendezvous: 🌍 Starting Songbird Rendezvous Server
+2025-12-24T19:20:30.009251Z  INFO songbird_rendezvous:    Privacy-First Internet Federation
+2025-12-24T19:20:30.009255Z  INFO songbird_rendezvous::registry: 📋 Initializing session registry
+2025-12-24T19:20:30.009292Z  INFO songbird_rendezvous::registry: 🧹 Starting session cleanup loop (every 30s)
+2025-12-24T19:20:30.009404Z  INFO songbird_rendezvous: 🚀 Listening on 0.0.0.0:8888
+2025-12-24T19:20:30.009409Z  INFO songbird_rendezvous:    Endpoints:
+2025-12-24T19:20:30.009411Z  INFO songbird_rendezvous:       POST /api/v1/register - Register node presence
+2025-12-24T19:20:30.009414Z  INFO songbird_rendezvous:       POST /api/v1/query    - Query for peers
+2025-12-24T19:20:30.009416Z  INFO songbird_rendezvous:       POST /api/v1/connect  - Request connection
+2025-12-24T19:20:30.009419Z  INFO songbird_rendezvous:       WS   /ws/:session_id  - Real-time coordination
+2025-12-24T19:21:13.200208Z  INFO songbird_rendezvous::registry: ✅ Registered session: ef94b360 (node: d5cb263f, caps: ["dag_engine", "merkle_proofs", "ephemeral_sessions"])
+2025-12-24T19:21:13.200262Z  INFO songbird_rendezvous::api: ✅ Registered session: ef94b360
+2025-12-24T19:21:43.220390Z  INFO songbird_rendezvous::registry: ✅ Registered session: ef94b360 (node: d5cb263f, caps: ["dag_engine", "merkle_proofs", "ephemeral_sessions"])
+2025-12-24T19:21:43.220443Z  INFO songbird_rendezvous::api: ✅ Registered session: ef94b360
+2025-12-24T19:22:13.189709Z  INFO songbird_rendezvous::registry: ✅ Registered session: ef94b360 (node: d5cb263f, caps: ["dag_engine", "merkle_proofs", "ephemeral_sessions"])
+2025-12-24T19:22:13.189831Z  INFO songbird_rendezvous::api: ✅ Registered session: ef94b360
+2025-12-24T19:22:43.216088Z  INFO songbird_rendezvous::registry: ✅ Registered session: ccd86230 (node: 12759ffa, caps: ["test"])
+2025-12-24T19:22:43.216152Z  INFO songbird_rendezvous::api: ✅ Registered session: ccd86230
+2025-12-24T19:23:30.011027Z  INFO songbird_rendezvous::registry: 🧹 Cleaned up 1 expired sessions
+2025-12-24T19:23:30.011103Z  INFO songbird_rendezvous::registry: 📊 Registry stats: 1 sessions, 1 nodes, 1 active
+2025-12-24T19:24:00.010380Z  INFO songbird_rendezvous::registry: 🧹 Cleaned up 1 expired sessions
+2025-12-24T19:24:00.010462Z  INFO songbird_rendezvous::registry: 📊 Registry stats: 0 sessions, 0 nodes, 0 active

@@ -722,7 +722,7 @@ mod tests {
         assert!(client.discovery.is_some());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_initial_state() {
         let client = BearDogClient::with_defaults();
         assert_eq!(client.state().await, BearDogState::Disconnected);
@@ -730,7 +730,7 @@ mod tests {
         assert!(client.endpoint().await.is_none());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_sign_without_connection() {
         let client = BearDogClient::with_defaults();
         let result = client
@@ -744,7 +744,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_discovery_fallback_error() {
         let client = BearDogClient::new(BearDogConfig::default());
         // No discovery, no fallback - should fail
@@ -752,7 +752,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_cache_operations() {
         let client = BearDogClient::with_defaults();
 
@@ -768,7 +768,7 @@ mod tests {
         assert_eq!(client.cache_size().await, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_deterministic_sign_verify() {
         let client = BearDogClient::with_defaults();
         *client.state.write().await = BearDogState::Connected;

@@ -122,7 +122,8 @@ proptest! {
     #[test]
     fn prop_timestamp_monotonic(_dummy: u8) {
         let t1 = Timestamp::now();
-        std::thread::sleep(std::time::Duration::from_nanos(1));
+        // Small operation to ensure some time passes
+        let _ = t1.as_nanos();
         let t2 = Timestamp::now();
         prop_assert!(t2.as_nanos() >= t1.as_nanos());
     }

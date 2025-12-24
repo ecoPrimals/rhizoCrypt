@@ -694,14 +694,14 @@ mod tests {
         assert!(client.discovery.is_some());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_initial_state() {
         let client = NestGateClient::with_defaults();
         assert_eq!(client.state().await, NestGateState::Disconnected);
         assert!(!client.is_connected().await);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_store_without_connection() {
         let client = NestGateClient::with_defaults();
         let result = client
@@ -715,14 +715,14 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_discovery_fallback_error() {
         let client = NestGateClient::new(NestGateConfig::default());
         let result = client.connect().await;
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_store_with_mock_connection() {
         let client = NestGateClient::with_defaults();
 
@@ -746,7 +746,7 @@ mod tests {
         assert_eq!(client.cache_size().await, 1);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_payload_too_large() {
         let config = NestGateConfig {
             max_payload_size: 10, // 10 bytes max
@@ -768,7 +768,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_cache_operations() {
         let client = NestGateClient::with_defaults();
         *client.state.write().await = NestGateState::Connected;
@@ -789,7 +789,7 @@ mod tests {
         assert_eq!(client.cache_size().await, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_retrieve_without_connection() {
         let client = NestGateClient::with_defaults();
         let payload_ref = crate::types::PayloadRef::from_bytes(b"test");
@@ -797,7 +797,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_retrieve_pending_integration() {
         let client = NestGateClient::with_defaults();
         *client.state.write().await = NestGateState::Connected;
@@ -820,7 +820,7 @@ mod tests {
         assert!(err_msg.contains("pending live integration"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_exists_without_connection() {
         let client = NestGateClient::with_defaults();
         let payload_ref = crate::types::PayloadRef::from_bytes(b"test");
@@ -828,7 +828,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_exists_with_mock_connection() {
         let client = NestGateClient::with_defaults();
         *client.state.write().await = NestGateState::Connected;
@@ -838,7 +838,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_delete_without_connection() {
         let client = NestGateClient::with_defaults();
         let payload_ref = crate::types::PayloadRef::from_bytes(b"test");
@@ -846,7 +846,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_delete_with_mock_connection() {
         let client = NestGateClient::with_defaults();
         *client.state.write().await = NestGateState::Connected;
@@ -856,7 +856,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_store_with_compression() {
         let client = NestGateClient::with_defaults();
         *client.state.write().await = NestGateState::Connected;
@@ -872,7 +872,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_endpoint_tracking() {
         let client = NestGateClient::with_defaults();
         assert!(client.endpoint().await.is_none());

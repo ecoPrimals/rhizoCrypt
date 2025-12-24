@@ -662,6 +662,14 @@ impl PrimalLifecycle for RhizoCrypt {
             });
         }
 
+        // Validate storage backend configuration
+        if self.config.storage.backend == StorageBackend::Lmdb {
+            return Err(PrimalError::StartupFailed(
+                "LMDB storage backend is not yet implemented. Please use Memory or RocksDb."
+                    .to_string(),
+            ));
+        }
+
         self.state = PrimalState::Starting;
         tracing::info!(primal = %self.config.name, "starting");
 
@@ -739,7 +747,7 @@ impl PrimalHealth for RhizoCrypt {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_rhizocrypt_lifecycle() {
         let config = RhizoCryptConfig::default();
         let mut primal = RhizoCrypt::new(config);
@@ -757,7 +765,7 @@ mod tests {
         assert_eq!(primal.state(), PrimalState::Stopped);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_rhizocrypt_stores() {
         let config = RhizoCryptConfig::default();
         let mut primal = RhizoCrypt::new(config);
@@ -775,7 +783,7 @@ mod tests {
         assert_eq!(payload_store.payload_count().await, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_rhizocrypt_invalid_transitions() {
         let config = RhizoCryptConfig::default();
         let mut primal = RhizoCrypt::new(config);
