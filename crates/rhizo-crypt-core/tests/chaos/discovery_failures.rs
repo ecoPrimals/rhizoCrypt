@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 /// Test discovery with no registered services.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discovery_no_services() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -29,7 +29,7 @@ async fn test_discovery_no_services() {
 }
 
 /// Test discovery fallback when discovery source is not set.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discovery_no_source() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -39,7 +39,7 @@ async fn test_discovery_no_source() {
 }
 
 /// Test client provider graceful degradation.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_client_provider_unavailable() {
     let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
     let provider = ClientProvider::new(Arc::clone(&registry));
@@ -62,7 +62,7 @@ async fn test_client_provider_unavailable() {
 }
 
 /// Test client factory graceful degradation.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_client_factory_unavailable() {
     let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
     let factory = ClientFactory::new(Arc::clone(&registry));
@@ -83,7 +83,7 @@ async fn test_client_factory_unavailable() {
 }
 
 /// Test partial service availability.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_partial_service_availability() {
     let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
     let factory = ClientFactory::new(Arc::clone(&registry));
@@ -114,7 +114,7 @@ async fn test_partial_service_availability() {
 }
 
 /// Test service registration and deregistration.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_service_lifecycle() {
     let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
 
@@ -149,7 +149,7 @@ async fn test_service_lifecycle() {
 }
 
 /// Test discovery with multiple endpoints for same capability.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_multiple_providers() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -179,7 +179,7 @@ async fn test_multiple_providers() {
 }
 
 /// Test integration status variations.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_integration_status_variations() {
     // All healthy
     let mut status = IntegrationStatus::new();
@@ -210,7 +210,7 @@ async fn test_integration_status_variations() {
 }
 
 /// Test discovery source setting.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discovery_source() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
@@ -225,7 +225,7 @@ async fn test_discovery_source() {
 }
 
 /// Test custom capability.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_custom_capability() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 

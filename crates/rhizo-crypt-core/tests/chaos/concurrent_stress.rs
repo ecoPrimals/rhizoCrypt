@@ -12,7 +12,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// Test concurrent session creation.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_concurrent_session_creation() {
     let config = RhizoCryptConfig::default();
     let primal = Arc::new(RwLock::new(RhizoCrypt::new(config)));
@@ -62,7 +62,7 @@ async fn test_concurrent_session_creation() {
 }
 
 /// Test concurrent vertex appends to same session.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_concurrent_vertex_appends() {
     let config = RhizoCryptConfig::default();
     let primal = Arc::new(RwLock::new(RhizoCrypt::new(config)));
@@ -122,7 +122,7 @@ async fn test_concurrent_vertex_appends() {
 }
 
 /// Test high-throughput vertex appends.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_high_throughput_appends() {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);

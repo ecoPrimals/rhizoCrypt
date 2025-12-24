@@ -1,0 +1,30 @@
+# Documentation Cleanup Summary
+
+## Duplicates to Remove:
+- ROOT_DOCS_INDEX.md (replaced by DOCS_INDEX.md)
+- FINAL_EXECUTION_SUMMARY_DEC_24_2025.md (duplicate of EXECUTION_COMPLETE)
+
+## Keep (Core):
+- README.md (main entry)
+- DOCS_INDEX.md (NEW - navigation hub)
+- START_HERE.md (developer onboarding)
+- STATUS.md (implementation status)
+- WHATS_NEXT.md (roadmap)
+- ENV_VARS.md (configuration)
+- CHANGELOG.md (version history)
+
+## Keep (Audit - Dec 24):
+- AUDIT_SUMMARY_DEC_24_2025.md (key findings)
+- COMPREHENSIVE_AUDIT_REPORT_DEC_24_2025.md (full details)
+- AUDIT_COMPLETE_DEC_24_2025.md (executive summary)
+
+## Keep (Session - Dec 24):
+- FINAL_SESSION_REPORT_DEC_24_2025.md (complete session)
+- SESSION_SUMMARY_DEC_24_2025.md (quick overview)
+- PROGRESS_UPDATE_DEC_24_2025.md (what's next)
+- EXECUTION_COMPLETE_DEC_24_2025.md (execution details)
+
+## Keep (Planning - Dec 24):
+- SHOWCASE_ENHANCEMENT_PLAN_DEC_24_2025.md (strategy)
+- SHOWCASE_ACTION_PLAN_DEC_24_2025.md (actions)
+- SHOWCASE_STATUS_DEC_24_2025.md (progress)

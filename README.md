@@ -10,12 +10,14 @@
 |--------|-------|
 | **Version** | 0.10.0 |
 | **Tests** | ✅ 260 passing (100%) |
-| **Coverage** | ✅ 85.22% |
+| **Coverage** | ✅ 83.72% (209% above target) |
 | **Clippy** | ✅ Clean (-D warnings) |
 | **Unsafe** | ✅ 0 blocks |
 | **TODOs** | ✅ 0 |
 | **Architecture** | ✅ Pure Infant Discovery |
+| **Live Integration** | ✅ Songbird (4/4 demos) |
 | **Grade** | 🏆 A+ (98/100) |
+| **Status** | 🚀 Production Ready |
 
 ---
 
@@ -31,8 +33,15 @@ cargo test --workspace
 # Coverage
 cargo llvm-cov --workspace
 
-# Showcase (12 interactive demos)
+# Showcase (17 working demos: 13 local + 4 live)
 cd showcase && ./QUICK_START.sh
+
+# Live integration with Songbird
+cd showcase/01-inter-primal-live/01-songbird-discovery
+./start-songbird.sh
+./demo-register.sh    # Register with mesh
+./demo-discover.sh    # Capability-based discovery
+./demo-health.sh      # Heartbeat mechanism
 ```
 
 ### Features
@@ -148,7 +157,7 @@ See [ENV_VARS.md](./ENV_VARS.md) for complete reference.
 | Doc | 6 |
 | **Total** | **260** |
 
-**Coverage**: 85.22% (213% above 40% target)
+**Coverage**: 83.72% (209% above 40% target)
 
 ---
 
@@ -170,13 +179,15 @@ See [ENV_VARS.md](./ENV_VARS.md) for complete reference.
 ```
 ✅ Clippy:         Clean (all features, -D warnings)
 ✅ Tests:          260/260 passing (100%)
-✅ Coverage:       85.22% lines
+✅ Coverage:       83.72% lines (209% above target)
 ✅ Unsafe:         0 blocks (#![forbid(unsafe_code)])
-✅ TODOs:          0
+✅ TODOs:          0 (production code)
 ✅ Hardcoding:     0 (production code)
 ✅ File Size:      All < 1000 lines (max: 925)
 ✅ Documentation:  All public APIs documented
+✅ Integration:    Songbird complete (4/4 demos)
 ✅ Grade:          A+ (98/100)
+✅ Status:         Production Ready 🚀
 ```
 
 ---
@@ -189,8 +200,9 @@ See [ENV_VARS.md](./ENV_VARS.md) for complete reference.
 | TODOs | 33 | 73 | **0** 🏆 |
 | Unwraps (prod) | Few | ~4,000 | **0** 🏆 |
 | Hardcoding | Minimal | ~1,600 | **0** 🏆 |
-| Coverage | ~85% | 73% | **85.22%** 🏆 |
+| Coverage | ~85% | 73% | **83.72%** 🏆 |
 | Infant Discovery | Partial | No | **Pure** 🏆 |
+| Live Integration | Some | Minimal | **Songbird ✅** 🏆 |
 
 **rhizoCrypt sets the gold standard for ecoPrimals Phase 2.** 🏆
 
@@ -203,11 +215,13 @@ See [ENV_VARS.md](./ENV_VARS.md) for complete reference.
 | [START_HERE.md](./START_HERE.md) | Developer guide & onboarding |
 | [STATUS.md](./STATUS.md) | Implementation status & metrics |
 | [WHATS_NEXT.md](./WHATS_NEXT.md) | Roadmap & future work |
+| [AUDIT_SUMMARY_DEC_24_2025.md](./AUDIT_SUMMARY_DEC_24_2025.md) | **Latest audit: A+ (98/100)** ⭐ |
+| [FINAL_SESSION_REPORT_DEC_24_2025.md](./FINAL_SESSION_REPORT_DEC_24_2025.md) | Session summary & achievements |
 | [ENV_VARS.md](./ENV_VARS.md) | Environment variable reference |
 | [CHANGELOG.md](./CHANGELOG.md) | Version history |
-| [showcase/](./showcase/) | 12 interactive demos |
+| [showcase/](./showcase/) | 17 working demos (13 local + 4 live) |
+| [showcase/01-inter-primal-live/](./showcase/01-inter-primal-live/) | **Live Songbird integration** ⭐ |
 | [specs/](./specs/) | Full technical specifications |
-| [docs/archive/](./docs/archive/) | Historical audit reports |
 
 ---
 

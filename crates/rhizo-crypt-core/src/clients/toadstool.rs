@@ -572,14 +572,14 @@ mod tests {
         assert!(completed.is_terminal());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_creation() {
         let config = ToadStoolConfig::default();
         let client = ToadStoolClient::new(config);
         assert_eq!(client.state().await, ClientState::Disconnected);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_subscribe_without_connection() {
         let client = ToadStoolClient::new(ToadStoolConfig::default());
         let result = client.subscribe_task(TaskId::now()).await;

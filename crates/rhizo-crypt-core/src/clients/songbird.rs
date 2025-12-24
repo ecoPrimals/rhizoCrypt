@@ -810,7 +810,7 @@ mod tests {
         assert!(client.config.is_configured());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_initial_state() {
         let config = SongbirdConfig::with_address("127.0.0.1:8091");
         let client = SongbirdClient::new(config);
@@ -818,7 +818,7 @@ mod tests {
         assert!(!client.is_connected().await);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_discover_without_connection() {
         let config = SongbirdConfig::with_address("127.0.0.1:8091");
         let client = SongbirdClient::new(config);
@@ -826,7 +826,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_register_without_connection() {
         let config = SongbirdConfig::with_address("127.0.0.1:8091");
         let client = SongbirdClient::new(config);
@@ -834,7 +834,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_connect_without_config_fails() {
         let config = SongbirdConfig::new();
         let client = SongbirdClient::new(config);
@@ -844,7 +844,7 @@ mod tests {
         assert!(err_msg.contains("not configured"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_cache_operations() {
         let config = SongbirdConfig::with_address("127.0.0.1:8091");
         let client = SongbirdClient::new(config);
@@ -888,7 +888,7 @@ mod tests {
         assert!(!service.has_capability("storage"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_populate_registry() {
         let config = SongbirdConfig::with_address("127.0.0.1:8091");
         let client = SongbirdClient::new(config);

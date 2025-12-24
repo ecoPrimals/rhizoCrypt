@@ -535,7 +535,7 @@ mod tests {
         (store, dir)
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_put_and_get_vertex() {
         let (store, _dir) = create_test_store();
         let session_id = SessionId::now();
@@ -553,7 +553,7 @@ mod tests {
         assert_eq!(retrieved_vertex.id(), vertex_id);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_genesis_and_frontier() {
         let (store, _dir) = create_test_store();
         let session_id = SessionId::now();
@@ -595,7 +595,7 @@ mod tests {
         assert!(genesis.contains(&v1_id));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_children() {
         let (store, _dir) = create_test_store();
         let session_id = SessionId::now();
@@ -620,7 +620,7 @@ mod tests {
         assert_eq!(children.len(), 3);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_delete_session() {
         let (store, _dir) = create_test_store();
         let session_id = SessionId::now();
@@ -638,7 +638,7 @@ mod tests {
         assert_eq!(store.count_vertices(session_id).await.unwrap(), 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_health_and_stats() {
         let (store, _dir) = create_test_store();
         let session_id = SessionId::now();
@@ -657,7 +657,7 @@ mod tests {
         assert!(stats.write_ops >= 3);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_persistence() {
         let dir = TempDir::new().expect("Failed to create temp dir");
         let session_id = SessionId::now();

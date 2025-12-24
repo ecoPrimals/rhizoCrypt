@@ -10,7 +10,7 @@ use rhizo_crypt_core::{
 };
 
 /// Test DAG frontier tracking.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_dag_frontier() {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
@@ -50,7 +50,7 @@ async fn test_dag_frontier() {
 }
 
 /// Test DAG with multiple branches.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_dag_branching() {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
@@ -106,7 +106,7 @@ async fn test_dag_branching() {
 }
 
 /// Test DAG children retrieval.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_dag_children() {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);

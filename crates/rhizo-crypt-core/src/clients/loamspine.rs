@@ -637,14 +637,14 @@ mod tests {
         assert!(client.discovery.is_some());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_initial_state() {
         let client = LoamSpineClient::with_defaults();
         assert_eq!(client.state().await, LoamSpineState::Disconnected);
         assert!(!client.is_connected().await);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_commit_without_connection() {
         let client = LoamSpineClient::with_defaults();
 
@@ -660,14 +660,14 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_discovery_fallback_error() {
         let client = LoamSpineClient::new(LoamSpineConfig::default());
         let result = client.connect().await;
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_commit_with_mock_connection() {
         let client = LoamSpineClient::with_defaults();
 
@@ -705,14 +705,14 @@ mod tests {
         assert!(json.contains("Committed"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_get_commit_without_connection() {
         let client = LoamSpineClient::with_defaults();
         let result = client.get_commit("nonexistent-commit").await;
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_get_commit_pending_integration() {
         let client = LoamSpineClient::with_defaults();
         *client.state.write().await = LoamSpineState::Connected;
@@ -724,14 +724,14 @@ mod tests {
         assert!(err_msg.contains("pending live integration"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_get_commit_status_without_connection() {
         let client = LoamSpineClient::with_defaults();
         let result = client.get_commit_status("nonexistent-commit").await;
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_get_commit_status_with_mock_connection() {
         let client = LoamSpineClient::with_defaults();
         *client.state.write().await = LoamSpineState::Connected;
@@ -742,7 +742,7 @@ mod tests {
         assert_eq!(result.unwrap(), CommitStatus::Pending);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_commit_session_convenience() {
         let client = LoamSpineClient::with_defaults();
         *client.state.write().await = LoamSpineState::Connected;
@@ -754,7 +754,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_endpoint_tracking() {
         let client = LoamSpineClient::with_defaults();
         assert!(client.endpoint().await.is_none());

@@ -103,7 +103,7 @@ impl Drop for TestHarness {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_harness_lifecycle() {
         let config = TestConfig::default();
         let harness = TestHarness::new(config);
