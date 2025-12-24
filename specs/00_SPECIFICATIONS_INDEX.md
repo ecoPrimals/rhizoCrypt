@@ -1,7 +1,7 @@
 # 🔐 RhizoCrypt — Specifications Index
 
 **Last Updated**: December 22, 2025  
-**Version**: 0.2.0  
+**Version**: 0.3.0  
 **Status**: Active Development
 
 ---
@@ -9,6 +9,31 @@
 ## Overview
 
 This directory contains the complete specification suite for RhizoCrypt, the ephemeral DAG engine of the ecoPrimals Phase 2 infrastructure. RhizoCrypt provides the "working memory" layer where complex, branching operations occur before resolving to permanent state in LoamSpine.
+
+---
+
+## 🌿 Core Principles
+
+### Pure Rust
+RhizoCrypt follows the ecoPrimals commitment to **pure Rust**:
+- No protobuf, no external code generation
+- **tarpc** for RPC — compile-time type safety via Rust traits
+- Lean into the Rust compiler, not external tooling
+- Zero `unsafe` blocks
+
+### Primal Sovereignty
+Every primal in the ecosystem maintains:
+- **Data sovereignty** — Users own their data
+- **Consent-based operations** — Agents act only with explicit consent
+- **Cryptographic provenance** — All operations are auditable
+- **Minimal trust** — Verify, don't trust
+
+### Human Dignity
+RhizoCrypt respects human dignity by:
+- **Ephemeral by default** — Data is forgotten unless explicitly committed
+- **Selective permanence** — Only what matters is preserved
+- **No surveillance** — Working memory is not a record
+- **User control** — Sessions are owned by their creators
 
 ---
 
@@ -28,7 +53,7 @@ This directory contains the complete specification suite for RhizoCrypt, the eph
 |----------|---------|--------|
 | [SLICE_SEMANTICS.md](./SLICE_SEMANTICS.md) | Slice modes, resolution routing, waypoints | ✅ Complete |
 | [DEHYDRATION_PROTOCOL.md](./DEHYDRATION_PROTOCOL.md) | DAG → LoamSpine commit protocol | ✅ Complete |
-| [API_SPECIFICATION.md](./API_SPECIFICATION.md) | gRPC & REST API definitions | ✅ Complete |
+| [API_SPECIFICATION.md](./API_SPECIFICATION.md) | tarpc & REST API definitions | ✅ Complete |
 
 ### Integration Specifications
 
@@ -84,7 +109,7 @@ For new developers, we recommend this reading order:
 2. **[DATA_MODEL.md](./DATA_MODEL.md)** — Learn the core data structures
 3. **[SLICE_SEMANTICS.md](./SLICE_SEMANTICS.md)** — Understand the Rhizo-Loam layering
 4. **[DEHYDRATION_PROTOCOL.md](./DEHYDRATION_PROTOCOL.md)** — Learn how DAGs commit to permanence
-5. **[API_SPECIFICATION.md](./API_SPECIFICATION.md)** — See the external interfaces
+5. **[API_SPECIFICATION.md](./API_SPECIFICATION.md)** — See the external interfaces (pure Rust tarpc)
 6. **[INTEGRATION_SPECIFICATION.md](./INTEGRATION_SPECIFICATION.md)** — Understand primal interactions
 7. **[RHIZOCRYPT_SPECIFICATION.md](./RHIZOCRYPT_SPECIFICATION.md)** — Full reference (read as needed)
 
@@ -101,6 +126,22 @@ For new developers, we recommend this reading order:
 | **Resolution** | When a DAG concludes: COMMIT, ROLLBACK, or WAYPOINT |
 | **Frontier** | The tips of the DAG (vertices with no children) |
 | **Merkle Root** | Cryptographic summary of entire session for proofs |
+| **tarpc** | Pure Rust RPC via traits — no protobuf |
+
+---
+
+## 🛡️ Sovereignty Guarantees
+
+RhizoCrypt provides these sovereignty guarantees:
+
+| Guarantee | Implementation |
+|-----------|----------------|
+| **Data ownership** | Session creator owns all vertices |
+| **Consent tracking** | Agent DIDs recorded on every event |
+| **Audit trail** | Full DAG preserved until resolution |
+| **Selective forget** | Only dehydrated summaries persist |
+| **Cryptographic proof** | Merkle proofs verify inclusion |
+| **No vendor lock-in** | Pure Rust, no external dependencies |
 
 ---
 
@@ -113,4 +154,3 @@ See [../WHATS_NEXT.md](../WHATS_NEXT.md) for the development roadmap.
 ---
 
 *RhizoCrypt: The memory that knows when to forget.*
-

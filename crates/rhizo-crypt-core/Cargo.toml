@@ -6,14 +6,51 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
+readme = "README.md"
+keywords = ["dag", "merkle", "ecoPrimals", "rhizocrypt", "ephemeral"]
+categories = ["data-structures", "cryptography"]
+
+[features]
+default = []
+# Enable test utilities (mock clients, etc.) for integration testing
+test-utils = []
+# Enable RocksDB persistent storage backend
+rocksdb = ["dep:rocksdb"]
+# Enable live client connections to sibling primals
+# - tarpc for Songbird, LoamSpine
+# - HTTP (reqwest) for BearDog, NestGate
+live-clients = ["dep:tarpc", "dep:futures-util", "dep:bincode", "dep:reqwest", "dep:base64"]
+
+[lints]
+workspace = true
 
 [dependencies]
-sourdough-core = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+ciborium = { workspace = true }
+bytes = { workspace = true }
+blake3 = { workspace = true }
+uuid = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+hashbrown = { workspace = true }
+lru = "0.12"
+# Optional storage backends
+rocksdb = { version = "0.22", optional = true }
+# Optional live client connections
+tarpc = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }
+bincode = { version = "1.3", optional = true }
+reqwest = { version = "0.12", features = ["json"], optional = true }
+base64 = { version = "0.22", optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util", "macros"] }
+bincode = "1.3"
+proptest = "1.5"
+criterion = { workspace = true }
+
+[[bench]]
+name = "dag_benchmarks"
+harness = false

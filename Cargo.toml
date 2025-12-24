@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/rhizo-crypt-core",
+    "crates/rhizo-crypt-rpc",
 ]
 
 [workspace.package]
@@ -12,16 +13,24 @@ repository = "https://github.com/ecoPrimals/rhizoCrypt"
 authors = ["ecoPrimals Project"]
 
 [workspace.dependencies]
-# SourDough core traits
-sourdough-core = { path = "../sourDough/crates/sourdough-core" }
-
 # Async runtime
-tokio = { version = "1.40", features = ["full"] }
+tokio = { version = "1.46", features = ["full"] }
+async-trait = "0.1"
+futures-util = "0.3"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
+ciborium = "0.2"
+bytes = "1.5"
+bincode = "1.3"
+
+# Cryptography
+blake3 = "1.5"
+
+# Identifiers
+uuid = { version = "1.0", features = ["v7", "serde"] }
 
 # Error handling
 thiserror = "2.0"
@@ -30,3 +39,62 @@ anyhow = "1.0"
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Collections
+hashbrown = { version = "0.14", features = ["serde"] }
+
+# Pure Rust RPC (tarpc) - compile-time type safety, no protobuf
+tarpc = { version = "0.34", features = ["full"] }
+
+# HTTP (axum for REST endpoints)
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors"] }
+hyper = { version = "1.0", features = ["full"] }
+http-body-util = "0.1"
+
+# Concurrency
+parking_lot = "0.12"
+
+# Benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+# Allow some pedantic lints that are too noisy
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+doc_markdown = "allow"
+# Nursery lint has known issues with async code
+significant_drop_tightening = "allow"
+# Multiple crate versions caused by transitive dependencies (not actionable)
+multiple_crate_versions = "allow"
+
+# Production code quality
+unwrap_used = "warn"
+expect_used = "warn"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+debug = true
+opt-level = 0
+
+[profile.bench]
+opt-level = 3
+debug = false
+lto = true
+codegen-units = 1

@@ -1,0 +1,46 @@
+[package]
+name = "rhizo-crypt-rpc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Pure Rust RPC layer for rhizoCrypt using tarpc"
+readme = "../rhizo-crypt-core/README.md"
+keywords = ["dag", "rpc", "tarpc", "distributed", "ephemeral"]
+categories = ["network-programming", "asynchronous", "cryptography"]
+
+[dependencies]
+# Core library
+rhizo-crypt-core = { path = "../rhizo-crypt-core" }
+
+# Async
+tokio.workspace = true
+async-trait.workspace = true
+futures-util.workspace = true
+
+# Pure Rust RPC - compile-time type safety
+tarpc.workspace = true
+
+# Serialization (for tarpc transport)
+serde.workspace = true
+serde_json.workspace = true
+bincode.workspace = true
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Concurrency
+parking_lot.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true
+

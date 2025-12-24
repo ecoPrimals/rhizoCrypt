@@ -1,0 +1,34 @@
+//! Common test utilities and helpers for rhizoCrypt E2E and chaos testing.
+//!
+//! This module provides shared infrastructure for integration testing across
+//! all test suites.
+
+#![allow(dead_code)] // Test utilities may not all be used yet
+
+pub mod harness;
+
+pub use harness::{TestConfig, TestHarness};
+
+/// Chaos testing configuration.
+#[derive(Debug, Clone)]
+pub struct ChaosConfig {
+    /// Network latency to inject (ms).
+    pub network_latency_ms: Option<u64>,
+    /// Failure injection rate (0.0-1.0).
+    pub failure_rate: f64,
+    /// Whether to inject random failures.
+    pub inject_failures: bool,
+    /// Maximum concurrent operations before throttling.
+    pub max_concurrent_ops: usize,
+}
+
+impl Default for ChaosConfig {
+    fn default() -> Self {
+        Self {
+            network_latency_ms: None,
+            failure_rate: 0.1,
+            inject_failures: false,
+            max_concurrent_ops: 100,
+        }
+    }
+}
