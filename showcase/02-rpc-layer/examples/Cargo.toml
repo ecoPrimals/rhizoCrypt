@@ -1,0 +1,32 @@
+[package]
+name = "rhizocrypt-rpc-examples"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "basic-client"
+path = "basic-client.rs"
+
+[[bin]]
+name = "batch-operations"
+path = "batch-operations.rs"
+
+[[bin]]
+name = "merkle-proofs"
+path = "merkle-proofs.rs"
+
+[[bin]]
+name = "query-filtering"
+path = "query-filtering.rs"
+
+[[bin]]
+name = "error-handling"
+path = "error-handling.rs"
+
+[dependencies]
+rhizo-crypt-rpc = { path = "../../../crates/rhizo-crypt-rpc" }
+rhizo-crypt-core = { path = "../../../crates/rhizo-crypt-core" }
+tokio = { version = "1.46", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+

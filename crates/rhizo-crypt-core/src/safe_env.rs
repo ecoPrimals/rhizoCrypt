@@ -193,9 +193,8 @@ impl CapabilityEnv {
     /// 3. `BEARDOG_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn did_verification_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("DID_VERIFICATION")
-            .or_else(|| SafeEnv::get_endpoint("DID"))
-            .or_else(|| {
+        SafeEnv::get_endpoint("DID_VERIFICATION").or_else(|| SafeEnv::get_endpoint("DID")).or_else(
+            || {
                 std::env::var("BEARDOG_ADDRESS").ok().map(|addr| {
                     tracing::warn!(
                         "Using deprecated BEARDOG_ADDRESS for DID verification. \
@@ -203,7 +202,8 @@ impl CapabilityEnv {
                     );
                     addr
                 })
-            })
+            },
+        )
     }
 
     /// Get the endpoint for payload storage capability.
