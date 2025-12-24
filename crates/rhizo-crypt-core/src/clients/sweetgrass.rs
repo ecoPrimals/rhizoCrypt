@@ -1,0 +1,473 @@
+//! SweetGrass Client - Provenance Query Interface
+//!
+//! Provides rhizoCrypt data to SweetGrass for:
+//! - Provenance chain queries
+//! - Agent contribution tracking
+//! - Data lineage resolution
+//!
+//! ## Discovery-Based Architecture
+//!
+//! SweetGrass queries rhizoCrypt (we are the provider, not the client).
+//! This module defines the queryable interface that SweetGrass can call.
+//!
+//! ```text
+//! SweetGrass                   Songbird                    rhizoCrypt
+//!     │                            │                            │
+//!     │──discover(dag-engine)─────▶│                            │
+//!     │◀──ServiceEndpoint──────────│                            │
+//!     │                            │                            │
+//!     │────────query_provenance()───────────────────────────────▶│
+//!     │◀───────ProvenanceChain──────────────────────────────────│
+//! ```
+
+use std::borrow::Cow;
+use std::collections::HashSet;
+use std::net::SocketAddr;
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
+use tracing::{debug, info, warn};
+
+use crate::discovery::{Capability, DiscoveryRegistry};
+use crate::error::{Result, RhizoCryptError};
+use crate::types::{Did, PayloadRef, SessionId, Timestamp, VertexId};
+
+/// Reference to a vertex for external queries.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct VertexRef {
+    /// Session containing the vertex.
+    pub session_id: SessionId,
+    /// Vertex identifier.
+    pub vertex_id: VertexId,
+    /// Event type.
+    pub event_type: String,
+    /// Agent DID (if any).
+    pub agent: Option<Did>,
+    /// Creation timestamp.
+    pub timestamp: Timestamp,
+    /// Payload reference (if any).
+    pub payload_ref: Option<PayloadRef>,
+}
+
+/// Provenance chain for tracking data lineage.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct ProvenanceChain {
+    /// Vertices in the chain (ordered by causality).
+    pub vertices: Vec<VertexRef>,
+    /// Agents involved.
+    pub agents: HashSet<String>,
+    /// Data hashes referenced.
+    pub data_hashes: HashSet<[u8; 32]>,
+}
+
+impl ProvenanceChain {
+    /// Create a new empty chain.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a vertex to the chain.
+    pub fn add_vertex(&mut self, vertex: VertexRef) {
+        if let Some(ref agent) = vertex.agent {
+            self.agents.insert(agent.as_str().to_string());
+        }
+        if let Some(ref payload) = vertex.payload_ref {
+            self.data_hashes.insert(payload.hash);
+        }
+        self.vertices.push(vertex);
+    }
+
+    /// Get the number of vertices in the chain.
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.vertices.len()
+    }
+
+    /// Check if the chain is empty.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.vertices.is_empty()
+    }
+}
+
+/// Agent contribution to a session.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AgentContribution {
+    /// Agent DID.
+    pub agent: Did,
+    /// Number of events created.
+    pub event_count: u64,
+    /// Types of events created.
+    pub event_types: Vec<String>,
+    /// First event timestamp.
+    pub first_event: Timestamp,
+    /// Last event timestamp.
+    pub last_event: Timestamp,
+}
+
+/// Session attribution information for SweetGrass.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SessionAttribution {
+    /// Session identifier.
+    pub session_id: SessionId,
+    /// Session type.
+    pub session_type: String,
+    /// Agent contributions.
+    pub agents: Vec<AgentContribution>,
+    /// Input data hashes.
+    pub data_inputs: Vec<[u8; 32]>,
+    /// Output data hashes.
+    pub data_outputs: Vec<[u8; 32]>,
+    /// Merkle root of the session.
+    pub merkle_root: [u8; 32],
+}
+
+/// Configuration for SweetGrass queryable interface.
+#[derive(Debug, Clone)]
+pub struct SweetGrassConfig {
+    /// SweetGrass service address (for push notifications).
+    pub push_address: Option<Cow<'static, str>>,
+
+    /// Query timeout in milliseconds.
+    pub timeout_ms: u64,
+
+    /// Maximum results per query.
+    pub max_results: usize,
+
+    /// Enable query caching.
+    pub cache_enabled: bool,
+
+    /// Cache TTL in seconds.
+    pub cache_ttl_secs: u64,
+}
+
+impl Default for SweetGrassConfig {
+    fn default() -> Self {
+        Self {
+            push_address: None,
+            timeout_ms: 5000,
+            max_results: 1000,
+            cache_enabled: true,
+            cache_ttl_secs: 300,
+        }
+    }
+}
+
+impl SweetGrassConfig {
+    /// Create config from environment variables.
+    ///
+    /// Environment variables:
+    /// - `SWEETGRASS_ADDRESS`: SweetGrass push notification address
+    /// - `SWEETGRASS_TIMEOUT_MS`: Query timeout in milliseconds
+    #[must_use]
+    pub fn from_env() -> Self {
+        let mut config = Self::default();
+
+        if let Ok(addr) = std::env::var("SWEETGRASS_ADDRESS") {
+            config.push_address = Some(Cow::Owned(addr));
+        }
+
+        if let Ok(timeout) = std::env::var("SWEETGRASS_TIMEOUT_MS") {
+            if let Ok(ms) = timeout.parse() {
+                config.timeout_ms = ms;
+            }
+        }
+
+        config
+    }
+
+    /// Create config with a specific push address.
+    #[must_use]
+    pub fn with_push_address(address: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            push_address: Some(address.into()),
+            ..Self::default()
+        }
+    }
+}
+
+/// Query parameters for vertex searches.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct VertexQuery {
+    /// Filter by agent.
+    pub agent: Option<Did>,
+    /// Filter by event types.
+    pub event_types: Option<Vec<String>>,
+    /// Filter by session.
+    pub session_id: Option<SessionId>,
+    /// Filter by time range start.
+    pub after: Option<Timestamp>,
+    /// Filter by time range end.
+    pub before: Option<Timestamp>,
+    /// Filter by payload hash.
+    pub payload_hash: Option<[u8; 32]>,
+    /// Maximum results.
+    pub limit: Option<usize>,
+}
+
+impl VertexQuery {
+    /// Create a new empty query.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Filter by agent.
+    #[must_use]
+    pub fn with_agent(mut self, agent: Did) -> Self {
+        self.agent = Some(agent);
+        self
+    }
+
+    /// Filter by event types.
+    #[must_use]
+    pub fn with_event_types(mut self, types: Vec<String>) -> Self {
+        self.event_types = Some(types);
+        self
+    }
+
+    /// Filter by session.
+    #[must_use]
+    pub const fn with_session(mut self, session_id: SessionId) -> Self {
+        self.session_id = Some(session_id);
+        self
+    }
+
+    /// Set maximum results.
+    #[must_use]
+    pub const fn with_limit(mut self, limit: usize) -> Self {
+        self.limit = Some(limit);
+        self
+    }
+}
+
+/// SweetGrass queryable interface.
+///
+/// This is the interface that SweetGrass uses to query rhizoCrypt
+/// for provenance and attribution information.
+///
+/// ## Usage
+///
+/// ```rust,ignore
+/// use rhizo_crypt_core::clients::SweetGrassQueryable;
+///
+/// // rhizoCrypt implements this trait
+/// let vertices = queryable.get_vertices_for_data(data_hash).await?;
+/// let chain = queryable.get_provenance_chain(vertex_id).await?;
+/// ```
+pub trait SweetGrassQueryable: Send + Sync {
+    /// Get all vertices related to a data hash.
+    fn get_vertices_for_data(
+        &self,
+        data_hash: [u8; 32],
+    ) -> impl std::future::Future<Output = Result<Vec<VertexRef>>> + Send;
+
+    /// Get provenance chain for a vertex.
+    fn get_provenance_chain(
+        &self,
+        vertex_id: VertexId,
+    ) -> impl std::future::Future<Output = Result<ProvenanceChain>> + Send;
+
+    /// Query vertices by parameters.
+    fn query_vertices(
+        &self,
+        query: VertexQuery,
+    ) -> impl std::future::Future<Output = Result<Vec<VertexRef>>> + Send;
+
+    /// Get session attribution for SweetGrass.
+    fn get_session_attribution(
+        &self,
+        session_id: SessionId,
+    ) -> impl std::future::Future<Output = Result<SessionAttribution>> + Send;
+}
+
+/// Client state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ClientState {
+    /// Not connected.
+    #[default]
+    Disconnected,
+    /// Connected and ready.
+    Connected,
+}
+
+/// SweetGrass notifier for push updates.
+///
+/// Used to notify SweetGrass when new provenance data is available.
+pub struct SweetGrassNotifier {
+    /// Client configuration.
+    pub config: SweetGrassConfig,
+
+    /// Discovery registry.
+    registry: Option<Arc<DiscoveryRegistry>>,
+
+    /// Current state.
+    state: Arc<RwLock<ClientState>>,
+
+    /// Connected endpoint.
+    endpoint: Arc<RwLock<Option<SocketAddr>>>,
+}
+
+impl SweetGrassNotifier {
+    /// Create a new notifier with the given configuration.
+    #[must_use]
+    pub fn new(config: SweetGrassConfig) -> Self {
+        Self {
+            config,
+            registry: None,
+            state: Arc::new(RwLock::new(ClientState::Disconnected)),
+            endpoint: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    /// Create a notifier with discovery support.
+    #[must_use]
+    pub fn with_discovery(registry: Arc<DiscoveryRegistry>) -> Self {
+        Self {
+            config: SweetGrassConfig::from_env(),
+            registry: Some(registry),
+            state: Arc::new(RwLock::new(ClientState::Disconnected)),
+            endpoint: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    /// Get the current state.
+    pub async fn state(&self) -> ClientState {
+        *self.state.read().await
+    }
+
+    /// Connect to SweetGrass for push notifications.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if connection fails.
+    pub async fn connect(&self) -> Result<()> {
+        // Try discovery first
+        if let Some(registry) = &self.registry {
+            if let Some(endpoint) = registry.get_endpoint(&Capability::ProvenanceQuery).await {
+                info!(address = %endpoint.addr, "Discovered SweetGrass via registry");
+                *self.endpoint.write().await = Some(endpoint.addr);
+                *self.state.write().await = ClientState::Connected;
+                return Ok(());
+            }
+        }
+
+        // Fall back to configured address
+        if let Some(ref addr) = self.config.push_address {
+            let socket_addr: SocketAddr = addr.parse().map_err(|e| {
+                RhizoCryptError::integration(format!("Invalid SweetGrass address '{addr}': {e}"))
+            })?;
+
+            debug!(address = %socket_addr, "Connecting to SweetGrass");
+            *self.endpoint.write().await = Some(socket_addr);
+            *self.state.write().await = ClientState::Connected;
+            return Ok(());
+        }
+
+        // SweetGrass is optional - we can operate without it
+        warn!("No SweetGrass address available. Push notifications disabled.");
+        Ok(())
+    }
+
+    /// Notify SweetGrass of a new session commit.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if notification fails.
+    pub async fn notify_session_commit(&self, session_id: SessionId) -> Result<()> {
+        if *self.state.read().await != ClientState::Connected {
+            // Silently ignore if not connected - SweetGrass is optional
+            return Ok(());
+        }
+
+        debug!(%session_id, "Notifying SweetGrass of session commit");
+
+        // Scaffolded mode: log but don't send
+        // With live-clients feature, this would send the notification
+
+        Ok(())
+    }
+
+    /// Notify SweetGrass of a new provenance chain.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if notification fails.
+    pub async fn notify_provenance(&self, chain: &ProvenanceChain) -> Result<()> {
+        if *self.state.read().await != ClientState::Connected {
+            return Ok(());
+        }
+
+        debug!(vertices = chain.len(), "Notifying SweetGrass of provenance update");
+
+        Ok(())
+    }
+
+    /// Get the current endpoint.
+    pub async fn endpoint(&self) -> Option<SocketAddr> {
+        *self.endpoint.read().await
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_default() {
+        let config = SweetGrassConfig::default();
+        assert!(config.push_address.is_none());
+        assert_eq!(config.timeout_ms, 5000);
+        assert!(config.cache_enabled);
+    }
+
+    #[test]
+    fn test_config_with_push_address() {
+        let config = SweetGrassConfig::with_push_address("127.0.0.1:9900");
+        assert_eq!(config.push_address.as_deref(), Some("127.0.0.1:9900"));
+    }
+
+    #[test]
+    fn test_provenance_chain() {
+        let mut chain = ProvenanceChain::new();
+        assert!(chain.is_empty());
+
+        chain.add_vertex(VertexRef {
+            session_id: SessionId::now(),
+            vertex_id: VertexId::from_bytes(b"test-vertex"),
+            event_type: "test".to_string(),
+            agent: Some(Did::new("did:key:test")),
+            timestamp: Timestamp::now(),
+            payload_ref: None,
+        });
+
+        assert_eq!(chain.len(), 1);
+        assert!(chain.agents.contains("did:key:test"));
+    }
+
+    #[test]
+    fn test_vertex_query_builder() {
+        let query = VertexQuery::new().with_agent(Did::new("did:key:test")).with_limit(100);
+
+        assert!(query.agent.is_some());
+        assert_eq!(query.limit, Some(100));
+    }
+
+    #[tokio::test]
+    async fn test_notifier_creation() {
+        let config = SweetGrassConfig::default();
+        let notifier = SweetGrassNotifier::new(config);
+        assert_eq!(notifier.state().await, ClientState::Disconnected);
+    }
+
+    #[tokio::test]
+    async fn test_notify_without_connection() {
+        let notifier = SweetGrassNotifier::new(SweetGrassConfig::default());
+        // Should succeed silently when not connected
+        let result = notifier.notify_session_commit(SessionId::now()).await;
+        assert!(result.is_ok());
+    }
+}

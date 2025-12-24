@@ -1,10 +1,31 @@
 # RhizoCrypt — Ephemeral Data Graph Specification
 
-**Version:** 0.2.0 (Draft)  
+**Version:** 0.3.0  
 **Status:** Architectural Specification  
 **Author:** ecoPrimals Project  
 **Date:** December 2025  
 **License:** AGPL-3.0  
+
+---
+
+## Core Standards
+
+### Pure Rust
+RhizoCrypt follows the ecoPrimals commitment to pure Rust:
+- **No protobuf** — tarpc for RPC with compile-time type safety
+- **No unsafe** — `#![forbid(unsafe_code)]` enforced
+- **Lean into rustc** — The compiler is our ally
+
+### Primal Sovereignty
+- **Data ownership** — Session creator owns all vertices
+- **Consent-based** — Agent DIDs recorded on every event
+- **Cryptographic audit** — Full DAG preserved until resolution
+- **Selective forgetting** — Only dehydrated summaries persist
+
+### Human Dignity
+- **Ephemeral by default** — Working memory, not surveillance
+- **User control** — Sessions owned by creators
+- **No vendor lock-in** — Pure Rust, open protocols
 
 ---
 
@@ -992,38 +1013,57 @@ pub enum ComputeEvent {
 
 ## 7. API Specification
 
-### 7.1 gRPC Service Definition
+### 7.1 Pure Rust RPC (tarpc)
 
-```protobuf
-syntax = "proto3";
+RhizoCrypt uses **tarpc** for RPC — no protobuf, no external code generation. The Rust compiler provides all type safety:
 
-package rhizocrypt.v1;
-
-service RhizoCrypt {
+```rust
+/// RhizoCrypt RPC service.
+/// 
+/// The `#[tarpc::service]` macro generates client and server code
+/// from this Rust trait. All types are checked at compile time.
+#[tarpc::service]
+pub trait RhizoCryptRpc {
     // Session management
-    rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
-    rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
-    rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
-    rpc ResolveSession(ResolveSessionRequest) returns (ResolveSessionResponse);
+    async fn create_session(request: CreateSessionRequest) -> Result<SessionId, RpcError>;
+    async fn get_session(session_id: SessionId) -> Result<SessionInfo, RpcError>;
+    async fn list_sessions() -> Result<Vec<SessionInfo>, RpcError>;
+    async fn discard_session(session_id: SessionId) -> Result<(), RpcError>;
     
     // Event operations
-    rpc AppendEvent(AppendEventRequest) returns (AppendEventResponse);
-    rpc AppendEventBatch(AppendEventBatchRequest) returns (AppendEventBatchResponse);
-    rpc SubscribeEvents(SubscribeEventsRequest) returns (stream RhizoVertex);
+    async fn append_event(request: AppendEventRequest) -> Result<VertexId, RpcError>;
+    async fn append_batch(requests: Vec<AppendEventRequest>) -> Result<Vec<VertexId>, RpcError>;
     
     // Query operations
-    rpc GetVertex(GetVertexRequest) returns (GetVertexResponse);
-    rpc GetVertices(GetVerticesRequest) returns (GetVerticesResponse);
-    rpc TraverseDAG(TraverseDAGRequest) returns (stream RhizoVertex);
+    async fn get_vertex(session_id: SessionId, vertex_id: VertexId) -> Result<Vertex, RpcError>;
+    async fn get_frontier(session_id: SessionId) -> Result<Vec<VertexId>, RpcError>;
+    async fn query_vertices(request: QueryRequest) -> Result<Vec<Vertex>, RpcError>;
+    
+    // Merkle operations
+    async fn get_merkle_root(session_id: SessionId) -> Result<MerkleRoot, RpcError>;
+    async fn get_merkle_proof(session_id: SessionId, vertex_id: VertexId) -> Result<MerkleProof, RpcError>;
+    
+    // Slice operations
+    async fn checkout_slice(request: CheckoutSliceRequest) -> Result<SliceId, RpcError>;
+    async fn resolve_slice(slice_id: SliceId, session_id: SessionId) -> Result<(), RpcError>;
     
     // Dehydration
-    rpc ComputeMerkleRoot(ComputeMerkleRootRequest) returns (ComputeMerkleRootResponse);
-    rpc GenerateProof(GenerateProofRequest) returns (GenerateProofResponse);
-    rpc Dehydrate(DehydrateRequest) returns (DehydrateResponse);
+    async fn dehydrate(session_id: SessionId) -> Result<MerkleRoot, RpcError>;
+    
+    // Health
+    async fn health() -> Result<HealthStatus, RpcError>;
 }
 ```
 
-### 7.2 REST API (via Songbird UPA)
+**Why tarpc?**
+- **Compile-time safety** — All types checked by rustc
+- **No codegen** — No `.proto` files, no `protoc`
+- **Pure Rust** — Matches ecoPrimals standards
+- **Zero overhead** — Direct struct serialization
+
+See [API_SPECIFICATION.md](./API_SPECIFICATION.md) for full details.
+
+### 7.2 REST API (Optional, via Songbird UPA)
 
 ```yaml
 openapi: 3.0.0
