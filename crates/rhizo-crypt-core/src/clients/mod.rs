@@ -23,6 +23,7 @@
 pub mod beardog;
 pub mod nestgate;
 pub mod songbird;
+pub mod songbird_types;
 
 // Phase 2 sibling clients
 pub mod loamspine;
@@ -45,6 +46,7 @@ pub mod toadstool_http;
 pub use beardog::{BearDogClient, BearDogConfig};
 pub use nestgate::{NestGateClient, NestGateConfig};
 pub use songbird::{SongbirdClient, SongbirdConfig};
+pub use songbird_types::{ClientState, FederationStatus, RegistrationResult, ServiceInfo};
 
 // Phase 2 exports
 pub use loamspine::{LoamSpineClient, LoamSpineConfig};

@@ -40,9 +40,14 @@ use tracing::{debug, error, info, warn};
 use crate::discovery::{Capability, DiscoveryRegistry, ServiceEndpoint};
 use crate::error::{Result, RhizoCryptError};
 
+// Import types from songbird_types module
+use super::super::songbird_types::{
+    ClientState, FederationStatus, RegistrationResult, ServiceInfo,
+};
+
 // Import tarpc types when live-clients feature is enabled
 #[cfg(feature = "live-clients")]
-use super::songbird_rpc::{RpcServiceRegistration, SongbirdRpcClient};
+use super::super::songbird_rpc::{RpcServiceRegistration, SongbirdRpcClient};
 
 /// Configuration for Songbird client.
 ///
@@ -174,85 +179,6 @@ impl SongbirdConfig {
     }
 }
 
-/// Service information returned by discovery.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceInfo {
-    /// Service identifier.
-    pub id: String,
-
-    /// Service name.
-    pub name: String,
-
-    /// Service endpoint address.
-    pub endpoint: String,
-
-    /// Service capabilities.
-    pub capabilities: Vec<String>,
-
-    /// Service status.
-    pub status: String,
-
-    /// Optional metadata.
-    #[serde(default)]
-    pub metadata: HashMap<String, String>,
-}
-
-impl ServiceInfo {
-    /// Check if this service provides a specific capability.
-    #[must_use]
-    pub fn has_capability(&self, cap: &str) -> bool {
-        self.capabilities.iter().any(|c| c == cap)
-    }
-}
-
-/// Registration result from Songbird.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegistrationResult {
-    /// Whether registration succeeded.
-    pub success: bool,
-
-    /// Registration message.
-    pub message: String,
-
-    /// Assigned service ID (if successful).
-    pub service_id: Option<String>,
-}
-
-/// Federation status from Songbird.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FederationStatus {
-    /// Total registered services.
-    pub total_services: usize,
-
-    /// Total federation peers.
-    pub total_peers: usize,
-
-    /// Orchestrator uptime in seconds.
-    pub uptime_seconds: u64,
-
-    /// Orchestrator version.
-    pub version: String,
-}
-
-/// Client state for connection management.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ClientState {
-    /// Not connected.
-    Disconnected,
-
-    /// Connecting to orchestrator.
-    Connecting,
-
-    /// Connected and ready.
-    Connected,
-
-    /// Registered with mesh.
-    Registered,
-
-    /// Connection failed.
-    Failed,
-}
-
 /// Songbird client for service mesh integration.
 ///
 /// Provides capability-based discovery and service registration
@@ -268,9 +194,17 @@ pub enum ClientState {
 /// client.connect().await?;
 /// client.register("127.0.0.1:9400").await?;
 ///
+/// // Start heartbeat to maintain registration (60s TTL)
+/// let heartbeat_handle = client.start_heartbeat().await?;
+///
 /// // Discover other primals
 /// let beardog = client.discover_beardog().await?;
 /// ```
+///
+/// ## Heartbeat Mechanism
+///
+/// Songbird registrations expire after 60 seconds. The heartbeat task
+/// automatically refreshes the registration every 45 seconds to prevent expiry.
 ///
 /// ## Live Client Feature
 ///
@@ -286,6 +220,10 @@ pub struct SongbirdClient {
     /// tarpc client (when live-clients feature is enabled).
     #[cfg(feature = "live-clients")]
     tarpc_client: Arc<RwLock<Option<SongbirdRpcClient>>>,
+    /// Our registered endpoint (for heartbeat refreshes).
+    our_endpoint: Arc<RwLock<Option<String>>>,
+    /// Heartbeat task handle (if running).
+    heartbeat_handle: Arc<RwLock<Option<tokio::task::JoinHandle<()>>>>,
 }
 
 impl SongbirdClient {
@@ -300,6 +238,8 @@ impl SongbirdClient {
             resolved_endpoint: Arc::new(RwLock::new(None)),
             #[cfg(feature = "live-clients")]
             tarpc_client: Arc::new(RwLock::new(None)),
+            our_endpoint: Arc::new(RwLock::new(None)),
+            heartbeat_handle: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -533,11 +473,134 @@ impl SongbirdClient {
             if let Some(ref id) = result.service_id {
                 *self.service_id.write().await = Some(id.clone());
                 *self.state.write().await = ClientState::Registered;
+                *self.our_endpoint.write().await = Some(our_endpoint.to_string());
                 info!(service_id = %id, "Registered with Songbird mesh");
             }
         }
 
         Ok(result)
+    }
+
+    /// Start heartbeat task to maintain registration.
+    ///
+    /// Songbird registrations expire after 60 seconds. This task refreshes
+    /// the registration every 45 seconds to prevent expiry.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RhizoCryptError::Integration` if:
+    /// - Not registered with Songbird
+    /// - Heartbeat task already running
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let client = SongbirdClient::from_env();
+    /// client.connect().await?;
+    /// client.register("127.0.0.1:9400").await?;
+    ///
+    /// // Start heartbeat (refreshes every 45s)
+    /// let handle = client.start_heartbeat().await?;
+    ///
+    /// // Later, stop heartbeat
+    /// client.stop_heartbeat().await;
+    /// ```
+    pub async fn start_heartbeat(&self) -> Result<()> {
+        // Check if already running
+        {
+            let handle_guard = self.heartbeat_handle.read().await;
+            if handle_guard.is_some() {
+                return Err(RhizoCryptError::integration(
+                    "Heartbeat already running - call stop_heartbeat() first",
+                ));
+            }
+        }
+
+        // Check if registered
+        if *self.state.read().await != ClientState::Registered {
+            return Err(RhizoCryptError::integration("Not registered - call register() first"));
+        }
+
+        // Clone self for the async task
+        let client = Self {
+            config: self.config.clone(),
+            state: Arc::clone(&self.state),
+            service_id: Arc::clone(&self.service_id),
+            discovered_services: Arc::clone(&self.discovered_services),
+            resolved_endpoint: Arc::clone(&self.resolved_endpoint),
+            #[cfg(feature = "live-clients")]
+            tarpc_client: Arc::clone(&self.tarpc_client),
+            our_endpoint: Arc::clone(&self.our_endpoint),
+            heartbeat_handle: Arc::clone(&self.heartbeat_handle),
+        };
+
+        // Spawn heartbeat task
+        let handle = tokio::spawn(async move {
+            info!("Heartbeat task started (45s interval)");
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(45)).await;
+
+                // Check if still registered
+                if *client.state.read().await != ClientState::Registered {
+                    warn!("No longer registered, stopping heartbeat");
+                    break;
+                }
+
+                // Refresh registration
+                if let Err(e) = client.refresh_registration().await {
+                    error!(error = %e, "Failed to refresh registration");
+                    // Continue trying - don't stop heartbeat on single failure
+                }
+            }
+            info!("Heartbeat task stopped");
+        });
+
+        *self.heartbeat_handle.write().await = Some(handle);
+        info!("Heartbeat started successfully");
+        Ok(())
+    }
+
+    /// Stop the heartbeat task.
+    ///
+    /// This method is graceful - it's safe to call even if no heartbeat is running.
+    pub async fn stop_heartbeat(&self) {
+        let mut handle_guard = self.heartbeat_handle.write().await;
+        if let Some(handle) = handle_guard.take() {
+            handle.abort();
+            info!("Heartbeat task stopped");
+        }
+    }
+
+    /// Refresh the registration (called by heartbeat task).
+    ///
+    /// Re-registers with Songbird to extend the TTL.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RhizoCryptError::Integration` if:
+    /// - Not registered
+    /// - No endpoint saved
+    /// - Re-registration fails
+    async fn refresh_registration(&self) -> Result<()> {
+        let endpoint_guard = self.our_endpoint.read().await;
+        let endpoint = endpoint_guard.as_ref().ok_or_else(|| {
+            RhizoCryptError::integration("No endpoint saved - cannot refresh registration")
+        })?;
+
+        debug!(endpoint = %endpoint, "Refreshing Songbird registration");
+
+        // Re-register (same as initial registration)
+        let result = self.register(endpoint).await?;
+
+        if result.success {
+            debug!("Registration refreshed successfully");
+            Ok(())
+        } else {
+            Err(RhizoCryptError::integration(format!(
+                "Registration refresh failed: {}",
+                result.message
+            )))
+        }
     }
 
     /// Discover services by capability.
@@ -772,6 +835,22 @@ impl SongbirdClient {
     }
 }
 
+impl Clone for SongbirdClient {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            state: Arc::clone(&self.state),
+            service_id: Arc::clone(&self.service_id),
+            discovered_services: Arc::clone(&self.discovered_services),
+            resolved_endpoint: Arc::clone(&self.resolved_endpoint),
+            #[cfg(feature = "live-clients")]
+            tarpc_client: Arc::clone(&self.tarpc_client),
+            our_endpoint: Arc::clone(&self.our_endpoint),
+            heartbeat_handle: Arc::clone(&self.heartbeat_handle),
+        }
+    }
+}
+
 /// Service registration request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ServiceRegistration {
@@ -781,145 +860,7 @@ struct ServiceRegistration {
     metadata: HashMap<String, String>,
 }
 
+// Tests are in tests.rs (as a sibling module with access to private fields)
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_config_new_unconfigured() {
-        let config = SongbirdConfig::new();
-        assert!(config.address.is_empty());
-        assert!(!config.is_configured());
-        assert_eq!(config.service_name, "rhizoCrypt");
-        assert!(!config.capabilities.is_empty());
-    }
-
-    #[test]
-    fn test_config_with_address() {
-        let config = SongbirdConfig::with_address("192.168.1.100:8091");
-        assert_eq!(config.address, "192.168.1.100:8091");
-        assert!(config.is_configured());
-    }
-
-    #[test]
-    fn test_client_creation() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
-        assert!(client.config.auto_reconnect);
-        assert!(client.config.is_configured());
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_client_initial_state() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
-        assert_eq!(client.state().await, ClientState::Disconnected);
-        assert!(!client.is_connected().await);
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_discover_without_connection() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
-        let result = client.discover("signing").await;
-        assert!(result.is_err());
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_register_without_connection() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
-        let result = client.register("127.0.0.1:9400").await;
-        assert!(result.is_err());
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_connect_without_config_fails() {
-        let config = SongbirdConfig::new();
-        let client = SongbirdClient::new(config);
-        let result = client.connect().await;
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("not configured"));
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_cache_operations() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
-
-        // Manually set connected for cache test
-        *client.state.write().await = ClientState::Connected;
-
-        let services = vec![ServiceInfo {
-            id: "test-1".to_string(),
-            name: "test-beardog".to_string(),
-            endpoint: "127.0.0.1:9000".to_string(),
-            capabilities: vec!["signing".to_string()],
-            status: "healthy".to_string(),
-            metadata: HashMap::new(),
-        }];
-
-        client.cache_discovery("signing", services.clone()).await;
-
-        let cached = client.discover("signing").await.unwrap();
-        assert_eq!(cached.len(), 1);
-        assert_eq!(cached[0].name, "test-beardog");
-
-        client.clear_cache().await;
-        let empty = client.discover("signing").await.unwrap();
-        assert!(empty.is_empty());
-    }
-
-    #[test]
-    fn test_service_info_has_capability() {
-        let service = ServiceInfo {
-            id: "test".to_string(),
-            name: "test".to_string(),
-            endpoint: "127.0.0.1:9000".to_string(),
-            capabilities: vec!["signing".to_string(), "did".to_string()],
-            status: "healthy".to_string(),
-            metadata: HashMap::new(),
-        };
-
-        assert!(service.has_capability("signing"));
-        assert!(service.has_capability("did"));
-        assert!(!service.has_capability("storage"));
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_populate_registry() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
-        *client.state.write().await = ClientState::Connected;
-
-        // Add cached services
-        client
-            .cache_discovery(
-                "signing",
-                vec![ServiceInfo {
-                    id: "bd-1".to_string(),
-                    name: "beardog-main".to_string(),
-                    endpoint: "127.0.0.1:9500".to_string(),
-                    capabilities: vec!["signing".to_string()],
-                    status: "healthy".to_string(),
-                    metadata: HashMap::new(),
-                }],
-            )
-            .await;
-
-        let registry = DiscoveryRegistry::new("rhizoCrypt");
-        client.populate_registry(&registry).await.unwrap();
-
-        assert!(registry.is_available(&Capability::Signing).await);
-    }
-
-    #[test]
-    fn test_from_env_respects_variables() {
-        // Test with_address is explicit
-        let config = SongbirdConfig::with_address("10.0.0.1:9999");
-        assert_eq!(config.address, "10.0.0.1:9999");
-        assert!(config.is_configured());
-    }
-}
+#[path = "tests.rs"]
+mod tests;

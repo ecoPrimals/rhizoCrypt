@@ -1,301 +1,371 @@
-# 🔐 rhizoCrypt — Start Here
+# 🚀 Start Here: rhizoCrypt
 
-**Version**: 0.10.0  
-**Status**: ✅ Production Ready  
-**Grade**: 🏆 A+ (98/100)
+**Welcome to rhizoCrypt** — the ephemeral DAG engine for the ecoPrimals ecosystem!
 
 ---
 
-## What is rhizoCrypt?
+## 🎯 What is rhizoCrypt?
 
-An **ephemeral DAG engine** for Phase 2 of ecoPrimals. Think "git for events" — a content-addressed Directed Acyclic Graph that captures everything during a session, then selectively forgets most of it.
+rhizoCrypt is **working memory** for sovereign data:
 
-> **Key insight**: rhizoCrypt is designed to be forgotten. Only what's committed to LoamSpine survives.
+- **Ephemeral by default** — Forgets unless you explicitly commit
+- **DAG-based** — Directed acyclic graph for causality
+- **Cryptographically proven** — Merkle trees for integrity
+- **Pure Rust** — Zero C/C++ dependencies, zero unsafe code
+
+Think of it as:
+- **Git** for events (not files)
+- **Redis** for graphs (not key-value)
+- **Ephemeral** by design (not permanent)
 
 ---
 
-## 🎭 Try the Showcase First
+## 🏃 Quick Start (5 minutes)
 
-The fastest way to understand rhizoCrypt:
+### 1. Build
 
 ```bash
-cd showcase && ./QUICK_START.sh
-```
-
-**12 demos** covering sessions, DAG operations, Merkle proofs, slices, discovery, signing, payloads, commits, and live integration.
-
----
-
-## Quick Start
-
-```bash
-# Build
+# Clone and build
 cargo build --workspace
 
-# Test (260 tests, 100% passing)
+# Run tests
 cargo test --workspace
-
-# Coverage (85.22%)
-cargo llvm-cov --workspace
-
-# Benchmarks
-cargo bench -p rhizo-crypt-core
-
-# Docs
-cargo doc --workspace --no-deps --open
 ```
 
-### Feature Flags
+### 2. Try Your First Demo
 
 ```bash
-# Persistent storage (RocksDB)
-cargo build --features rocksdb
+cd showcase/00-local-primal/01-hello-rhizocrypt
+./demo-first-session.sh
+```
 
-# Live client connections (actual RPC calls)
-cargo build -p rhizo-crypt-core --features live-clients
+This shows you:
+- Creating a session
+- Adding vertices to the DAG
+- Querying the graph
+- Computing Merkle proofs
 
-# Test utilities (mocks for testing)
-cargo build -p rhizo-crypt-core --features test-utils
+### 3. Explore More
+
+```bash
+# Session lifecycle
+cd ../04-sessions
+./demo-session-lifecycle.sh
+
+# Multi-agent collaboration
+cd ../../01-inter-primal-live/02-beardog-signing
+./demo-multi-agent.sh
 ```
 
 ---
 
-## Architecture
+## 📚 Learning Path
 
+### Level 1: Basics (30 minutes)
+
+**Goal**: Understand core concepts
+
+1. **Hello rhizoCrypt** (3 demos)
+   ```bash
+   cd showcase/00-local-primal/01-hello-rhizocrypt
+   ./demo-first-session.sh
+   ./demo-first-vertex.sh
+   ./demo-query-dag.sh
+   ```
+
+2. **Read**: [specs/RHIZOCRYPT_SPECIFICATION.md](specs/RHIZOCRYPT_SPECIFICATION.md)
+
+**You'll learn**:
+- What is a session?
+- What is a vertex?
+- How does the DAG work?
+
+---
+
+### Level 2: DAG Engine (45 minutes)
+
+**Goal**: Master DAG operations
+
+1. **DAG Engine** (4 demos)
+   ```bash
+   cd showcase/00-local-primal/02-dag-engine
+   ./demo-genesis.sh        # Roots of the DAG
+   ./demo-frontier.sh       # Tips of the DAG
+   ./demo-multi-parent.sh   # Branching and merging
+   ./demo-topological-sort.sh  # Causality ordering
+   ```
+
+2. **Read**: [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md)
+
+**You'll learn**:
+- Genesis vertices (roots)
+- Frontier vertices (tips)
+- Parent-child relationships
+- Topological ordering
+
+---
+
+### Level 3: Cryptography (45 minutes)
+
+**Goal**: Understand integrity proofs
+
+1. **Merkle Proofs** (4 demos)
+   ```bash
+   cd showcase/00-local-primal/03-merkle-proofs
+   ./demo-content-addressing.sh  # Blake3 hashing
+   ./demo-merkle-tree.sh         # Tree construction
+   ./demo-merkle-proof.sh        # Proof generation
+   ./demo-tamper-detection.sh    # Integrity verification
+   ```
+
+2. **Read**: [specs/DEHYDRATION_PROTOCOL.md](specs/DEHYDRATION_PROTOCOL.md)
+
+**You'll learn**:
+- Content addressing (Blake3)
+- Merkle tree construction
+- Proof generation and verification
+- Tamper detection
+
+---
+
+### Level 4: Sessions (60 minutes)
+
+**Goal**: Master session lifecycle
+
+1. **Sessions** (4 demos)
+   ```bash
+   cd showcase/00-local-primal/04-sessions
+   ./demo-session-lifecycle.sh      # Full lifecycle
+   ./demo-ephemeral-persistent.sh   # Session types
+   ./demo-slices.sh                 # Checkout semantics
+   ./demo-dehydration.sh            # Commit protocol
+   ```
+
+2. **Read**: [specs/SLICE_SEMANTICS.md](specs/SLICE_SEMANTICS.md)
+
+**You'll learn**:
+- Session lifecycle (Create → Grow → Resolve → Expire)
+- Ephemeral vs persistent sessions
+- Slice checkout from permanent storage
+- Dehydration (commit to LoamSpine)
+
+---
+
+### Level 5: Integration (90 minutes)
+
+**Goal**: Connect with Phase 1 primals
+
+1. **Songbird (Discovery)**
+   ```bash
+   cd showcase/01-inter-primal-live/01-songbird-discovery
+   ./start-songbird.sh
+   ./demo-register.sh
+   ./demo-discover.sh
+   ./demo-health.sh
+   ```
+
+2. **BearDog (Signing)**
+   ```bash
+   cd ../02-beardog-signing
+   ./demo-hsm-discover.sh
+   ./demo-generate-keys.sh
+   ./demo-sign-vertex.sh
+   ./demo-multi-agent.sh
+   ```
+
+**You'll learn**:
+- Capability-based discovery
+- Service registration
+- DID management
+- Cryptographic signatures
+- Multi-agent collaboration
+
+---
+
+## 🛠️ Development
+
+### Running Tests
+
+```bash
+# All tests (228)
+cargo test --workspace
+
+# Specific crate
+cargo test -p rhizo-crypt-core
+
+# With coverage
+cargo llvm-cov --workspace --summary-only
+
+# Watch mode
+cargo watch -x test
 ```
-rhizoCrypt
-├── tarpc RPC (24 methods)
-│   ├── Sessions: create, get, list, discard
-│   ├── Events: append, append_batch
-│   ├── Queries: get_vertex, get_frontier
-│   ├── Merkle: get_root, get_proof, verify
-│   ├── Slices: checkout, resolve
-│   └── Dehydration: dehydrate, get_status
-│
-├── Production Hardening
-│   ├── RateLimiter (token bucket)
-│   ├── MetricsCollector (Prometheus)
-│   └── Graceful Shutdown
-│
-├── Pure Infant Discovery (primal-agnostic)
-│   ├── SafeEnv — type-safe environment config
-│   ├── CapabilityEnv — capability endpoint resolution
-│   └── DiscoveryRegistry — runtime service discovery
-│
-├── Storage Backends
-│   ├── InMemoryDagStore (default)
-│   └── RocksDbDagStore (--features rocksdb)
-│
-└── Core Engine
-    ├── Vertices (content-addressed events)
-    ├── Sessions (scoped DAGs)
-    ├── Merkle Trees (proofs)
-    ├── Slices (6 modes)
-    └── Dehydration (→ LoamSpine)
+
+### Code Quality
+
+```bash
+# Lint
+cargo clippy --workspace -- -D warnings
+
+# Format
+cargo fmt --all
+
+# Check formatting
+cargo fmt --check
+```
+
+### Benchmarks
+
+```bash
+cargo bench -p rhizo-crypt-core
 ```
 
 ---
 
-## Key Concepts
+## 📖 Documentation
 
-### Vertex
-Content-addressed DAG node:
-- Blake3 hash as ID
-- Parent links (multi-parent DAG)
-- Event type (25+ types)
-- Optional DID signature
-- Metadata support
+### Essential Reading
+
+1. **[README.md](README.md)** - Project overview
+2. **[STATUS.md](STATUS.md)** - Current status and metrics
+3. **[specs/RHIZOCRYPT_SPECIFICATION.md](specs/RHIZOCRYPT_SPECIFICATION.md)** - Core specification
+
+### Specifications
+
+- [ARCHITECTURE.md](specs/ARCHITECTURE.md) - System design
+- [DATA_MODEL.md](specs/DATA_MODEL.md) - Data structures
+- [DEHYDRATION_PROTOCOL.md](specs/DEHYDRATION_PROTOCOL.md) - Commit protocol
+- [SLICE_SEMANTICS.md](specs/SLICE_SEMANTICS.md) - Checkout semantics
+- [STORAGE_BACKENDS.md](specs/STORAGE_BACKENDS.md) - Storage options
+
+### Showcase
+
+- [showcase/README.md](showcase/README.md) - Demo overview
+- [showcase/00_SHOWCASE_INDEX.md](showcase/00_SHOWCASE_INDEX.md) - Full index
+
+---
+
+## 🎯 Common Tasks
+
+### Create a Session
 
 ```rust
-use rhizo_crypt_core::{Vertex, VertexBuilder, EventType};
+use rhizo_crypt_core::*;
 
-let vertex = VertexBuilder::new(EventType::DataCreated)
-    .with_payload(payload_ref)
-    .with_agent(did)
-    .with_metadata("key", "value")
-    .build()?;
+let config = RhizoCryptConfig::default();
+let mut primal = RhizoCrypt::new(config);
+primal.start().await?;
+
+let session = SessionBuilder::new(SessionType::General)
+    .with_name("my-session")
+    .build();
+
+let session_id = primal.create_session(session).await?;
 ```
 
-### Session
-Scoped DAG with lifecycle:
-```
-Created → Active → Resolving → Resolved
-                            ↘ Rolled Back
-```
-
-### Slice
-State checkout from permanent storage:
-- **Copy** — Local use only
-- **Loan** — Auto-returns
-- **Consignment** — Temporary possession
-- **Escrow** — Multi-party agreement
-- **Waypoint** — Anchors to spine
-- **Transfer** — Ownership transfer
-
-### Pure Infant Discovery
-
-rhizoCrypt starts with **zero knowledge** and discovers capabilities at runtime:
+### Add a Vertex
 
 ```rust
-use rhizo_crypt_core::{SafeEnv, CapabilityEnv};
+let vertex = VertexBuilder::new(EventType::DataCreate { 
+    schema: Some("my-data".to_string()) 
+})
+    .with_payload(PayloadRef::from_bytes(b"Hello!"))
+    .with_metadata("author", "alice")
+    .build();
 
-// ❌ Old Pattern: Hardcoded primal names
-// let addr = env::var("BEARDOG_ADDRESS")?;
-
-// ✅ New Pattern: Capability-based discovery
-if let Some(endpoint) = CapabilityEnv::signing_endpoint() {
-    // Connect to signing capability (not "BearDog")
-    // Could be ANY service that provides crypto:signing
-}
-
-// Type-safe environment config with fallbacks
-let port: u16 = SafeEnv::parse("RHIZOCRYPT_PORT", 9400);
-let timeout_ms: u64 = SafeEnv::parse("SIGNING_TIMEOUT_MS", 5000);
+let vertex_id = primal.append_vertex(session_id, vertex).await?;
 ```
 
-**Key Principles**:
-1. No hardcoded primal names
-2. No hardcoded addresses or ports
-3. Discover by capability, not identity
-4. Swap implementations without code changes
+### Compute Merkle Root
 
-See [ENV_VARS.md](./ENV_VARS.md) for complete environment variable reference.
-
----
-
-## Project Structure
-
+```rust
+let merkle_root = primal.compute_merkle_root(session_id).await?;
+println!("Merkle root: {}", merkle_root);
 ```
-rhizoCrypt/
-├── Cargo.toml              # Workspace
-├── crates/
-│   ├── rhizo-crypt-core/   # Core library (~14,800 lines)
-│   │   ├── src/
-│   │   │   ├── lib.rs      # RhizoCrypt primal
-│   │   │   ├── clients/    # Capability clients
-│   │   │   │   ├── beardog.rs       # crypto:signing
-│   │   │   │   ├── nestgate.rs      # payload:storage
-│   │   │   │   ├── loamspine.rs     # storage:permanent:commit
-│   │   │   │   ├── toadstool.rs     # compute:orchestration
-│   │   │   │   ├── sweetgrass.rs    # provenance:query
-│   │   │   │   └── songbird.rs      # discovery:service
-│   │   │   ├── discovery.rs # Capability discovery
-│   │   │   ├── safe_env.rs  # Type-safe env config
-│   │   │   ├── store.rs     # DAG storage
-│   │   │   ├── vertex.rs    # Content-addressed vertices
-│   │   │   ├── session.rs   # Session lifecycle
-│   │   │   ├── merkle.rs    # Merkle trees & proofs
-│   │   │   ├── slice.rs     # State checkouts
-│   │   │   └── dehydration.rs # Commit protocol
-│   │   ├── tests/
-│   │   │   ├── e2e/         # End-to-end tests
-│   │   │   ├── chaos/       # Chaos/fault tests
-│   │   │   └── property_tests.rs
-│   │   └── benches/
-│   │
-│   └── rhizo-crypt-rpc/    # RPC layer (~3,500 lines)
-│       ├── src/
-│       │   ├── service.rs   # 24 RPC methods
-│       │   ├── server.rs    # tarpc server
-│       │   ├── client.rs    # tarpc client
-│       │   ├── rate_limit.rs # Token bucket
-│       │   └── metrics.rs   # Prometheus metrics
-│       └── tests/
-│
-├── showcase/               # 12 interactive demos
-├── specs/                  # Technical specifications
-├── docs/
-│   └── archive/           # Historical audit reports
-├── README.md              # Project overview
-├── STATUS.md              # Current status & metrics
-├── START_HERE.md          # This file
-├── WHATS_NEXT.md          # Roadmap
-├── ENV_VARS.md            # Environment variable reference
-└── CHANGELOG.md           # Version history
+
+### Dehydrate Session
+
+```rust
+let merkle_root = primal.dehydrate(session_id).await?;
+// This would send the summary to LoamSpine in production
 ```
 
 ---
 
-## Testing
+## 🤔 FAQ
 
-| Type | Count | Command |
-|------|-------|---------|
-| Unit | 183 | `cargo test --lib` |
-| Integration | 18 | `cargo test integration::` |
-| E2E | 8 | `cargo test --test e2e_tests` |
-| Chaos | 18 | `cargo test --test chaos_tests` |
-| Property | 17 | `cargo test --test property_tests` |
-| RPC | 10 | `cargo test -p rhizo-crypt-rpc` |
-| Doc | 6 | `cargo test --doc` |
-| **Total** | **260** | `cargo test --workspace` |
+### What makes rhizoCrypt "ephemeral"?
 
-**Coverage**: 85.22% (213% above 40% target) 🏆
+Sessions are forgotten by default. Only explicit dehydration creates permanence. This is the "Philosophy of Forgetting" — privacy through ephemerality.
 
----
+### Why DAG instead of blockchain?
 
-## Current Status
+DAGs allow:
+- Concurrent operations (no single chain)
+- Flexible causality (multiple parents)
+- Efficient merging (no conflicts)
+- Local-first operation (no consensus)
 
-| Aspect | Status |
-|--------|--------|
-| Core Types | ✅ Complete |
-| Sessions | ✅ Complete |
-| Storage | ✅ InMemory + RocksDB |
-| Merkle Trees | ✅ Complete |
-| Slices | ✅ Complete |
-| Dehydration | ✅ Complete |
-| tarpc RPC | ✅ 24 methods |
-| Rate Limiting | ✅ Token bucket |
-| Metrics | ✅ Prometheus |
-| Discovery | ✅ Capability-based |
-| SafeEnv | ✅ Type-safe config |
-| Tests | ✅ 260 passing (100%) |
-| Coverage | ✅ 85.22% |
-| Unsafe Code | ✅ 0 blocks |
-| TODOs | ✅ 0 |
-| Hardcoding | ✅ 0 |
-| Grade | 🏆 A+ (98/100) |
+### What is "dehydration"?
 
----
+Dehydration is committing ephemeral DAG results to permanent storage (LoamSpine). Think of it as:
+- Git commit (but for events)
+- Database transaction (but for graphs)
+- Checkpoint (but cryptographically proven)
 
-## Quality Highlights
+### How does it integrate with other primals?
 
-```
-✅ Zero unsafe code (#![forbid(unsafe_code)])
-✅ Zero TODOs or FIXMEs
-✅ Zero production unwraps
-✅ Zero hardcoded addresses or primal names
-✅ 85.22% test coverage (213% above target)
-✅ All files < 1000 lines (max: 925)
-✅ Clean clippy (-D warnings)
-✅ All public APIs documented
-✅ Pure infant discovery architecture
-✅ Exceeds all Phase 1 primals in quality
-```
+rhizoCrypt uses **capability-based discovery**:
+1. Register with Songbird (discovery service)
+2. Query for capabilities (e.g., "signing", "storage")
+3. Connect to discovered services
+4. No hardcoded addresses!
+
+### Is it production-ready?
+
+**Yes!** 
+- ✅ 228 tests passing
+- ✅ 64% test coverage
+- ✅ Zero clippy warnings
+- ✅ Zero unsafe code
+- ✅ 100% Pure Rust
+- ✅ 25 working demos
 
 ---
 
-## Further Reading
+## 🚀 Next Steps
 
-| Document | Description |
-|----------|-------------|
-| [showcase/](./showcase/) | Interactive demos (start here!) |
-| [STATUS.md](./STATUS.md) | Implementation status & metrics |
-| [WHATS_NEXT.md](./WHATS_NEXT.md) | Roadmap & future work |
-| [ENV_VARS.md](./ENV_VARS.md) | Environment variable reference |
-| [CHANGELOG.md](./CHANGELOG.md) | Version history |
-| [specs/](./specs/) | Full technical specifications |
-| [docs/archive/](./docs/archive/) | Historical audit reports |
+### For Users
+
+1. Run the showcase demos
+2. Read the specifications
+3. Try the integration demos
+4. Explore the codebase
+
+### For Developers
+
+1. Read [STATUS.md](STATUS.md) for current priorities
+2. Check [showcase/01-inter-primal-live/GAPS_DISCOVERED.md](showcase/01-inter-primal-live/GAPS_DISCOVERED.md) for known issues
+3. Pick a task from the roadmap
+4. Submit a PR!
+
+### For Integrators
+
+1. Review [specs/INTEGRATION_SPECIFICATION.md](specs/INTEGRATION_SPECIFICATION.md)
+2. Try the inter-primal demos
+3. Check the RPC API documentation
+4. Build your integration!
 
 ---
 
-## Getting Help
+## 📞 Getting Help
 
-1. **Start with the showcase**: `cd showcase && ./QUICK_START.sh`
-2. **Read the specs**: `specs/RHIZOCRYPT_SPECIFICATION.md`
-3. **Browse the code docs**: `cargo doc --workspace --no-deps --open`
-4. **Check STATUS.md**: For current implementation status
-5. **Review ENV_VARS.md**: For configuration options
+- **Documentation**: See `specs/` directory
+- **Examples**: See `showcase/` directory
+- **Issues**: Document in `GAPS_DISCOVERED.md`
+- **Code**: Read the well-commented source
 
 ---
 
-*rhizoCrypt: The memory that knows when to forget.*
+**Welcome to rhizoCrypt!** 🔐🌱
+
+*Ephemeral working memory for the sovereign data ecosystem*

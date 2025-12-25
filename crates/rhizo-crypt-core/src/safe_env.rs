@@ -358,4 +358,299 @@ mod tests {
         let normalized = capability.replace(':', "_").to_uppercase();
         assert_eq!(normalized, "CRYPTO_SIGNING");
     }
+
+    #[test]
+    fn test_get_or_default_with_value() {
+        let key = "RHIZOCRYPT_TEST_WITH_VALUE";
+        std::env::set_var(key, "custom_value");
+        let result = SafeEnv::get_or_default(key, "fallback");
+        assert_eq!(result, "custom_value");
+        std::env::remove_var(key);
+    }
+
+    #[test]
+    fn test_get_optional_with_value() {
+        let key = "RHIZOCRYPT_TEST_OPTIONAL_WITH_VALUE";
+        std::env::set_var(key, "some_value");
+        let result = SafeEnv::get_optional(key);
+        assert_eq!(result, Some("some_value".to_string()));
+        std::env::remove_var(key);
+    }
+
+    #[test]
+    fn test_parse_with_valid_value() {
+        let key = "RHIZOCRYPT_TEST_PARSE_VALID";
+        std::env::set_var(key, "9999");
+        let result: u16 = SafeEnv::parse(key, 8080);
+        assert_eq!(result, 9999);
+        std::env::remove_var(key);
+    }
+
+    #[test]
+    fn test_parse_with_invalid_value() {
+        let key = "RHIZOCRYPT_TEST_PARSE_INVALID";
+        std::env::set_var(key, "not_a_number");
+        let result: u16 = SafeEnv::parse(key, 8080);
+        assert_eq!(result, 8080, "Should use default on parse failure");
+        std::env::remove_var(key);
+    }
+
+    #[test]
+    fn test_parse_optional_with_valid() {
+        let key = "RHIZOCRYPT_TEST_PARSE_OPT_VALID";
+        std::env::set_var(key, "7777");
+        let result: Option<u16> = SafeEnv::parse_optional(key);
+        assert_eq!(result, Some(7777));
+        std::env::remove_var(key);
+    }
+
+    #[test]
+    fn test_parse_optional_with_invalid() {
+        let key = "RHIZOCRYPT_TEST_PARSE_OPT_INVALID";
+        std::env::set_var(key, "invalid");
+        let result: Option<u16> = SafeEnv::parse_optional(key);
+        assert_eq!(result, None);
+        std::env::remove_var(key);
+    }
+
+    #[test]
+    fn test_parse_optional_missing() {
+        let key = "RHIZOCRYPT_TEST_PARSE_OPT_MISSING";
+        let result: Option<u16> = SafeEnv::parse_optional(key);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_is_development_true() {
+        std::env::set_var("RHIZOCRYPT_ENV", "development");
+        assert!(SafeEnv::is_development());
+        assert!(!SafeEnv::is_production());
+        std::env::remove_var("RHIZOCRYPT_ENV");
+    }
+
+    #[test]
+    fn test_is_development_case_insensitive() {
+        std::env::set_var("RHIZOCRYPT_ENV", "DEVELOPMENT");
+        assert!(SafeEnv::is_development());
+        std::env::remove_var("RHIZOCRYPT_ENV");
+
+        std::env::set_var("RHIZOCRYPT_ENV", "Development");
+        assert!(SafeEnv::is_development());
+        std::env::remove_var("RHIZOCRYPT_ENV");
+    }
+
+    #[test]
+    fn test_is_production_default() {
+        // Ensure no env var set
+        std::env::remove_var("RHIZOCRYPT_ENV");
+        assert!(SafeEnv::is_production());
+        assert!(!SafeEnv::is_development());
+    }
+
+    #[test]
+    fn test_is_production_explicit() {
+        std::env::set_var("RHIZOCRYPT_ENV", "production");
+        assert!(SafeEnv::is_production());
+        assert!(!SafeEnv::is_development());
+        std::env::remove_var("RHIZOCRYPT_ENV");
+    }
+
+    #[test]
+    fn test_get_endpoint_with_endpoint_suffix() {
+        let prefix = "TEST_SERVICE";
+        std::env::set_var("TEST_SERVICE_ENDPOINT", "service.example.com:9000");
+        let result = SafeEnv::get_endpoint(prefix);
+        assert_eq!(result, Some("service.example.com:9000".to_string()));
+        std::env::remove_var("TEST_SERVICE_ENDPOINT");
+    }
+
+    #[test]
+    fn test_get_endpoint_with_address_suffix() {
+        let prefix = "TEST_SERVICE";
+        std::env::set_var("TEST_SERVICE_ADDRESS", "service.example.com:9001");
+        let result = SafeEnv::get_endpoint(prefix);
+        assert_eq!(result, Some("service.example.com:9001".to_string()));
+        std::env::remove_var("TEST_SERVICE_ADDRESS");
+    }
+
+    #[test]
+    fn test_get_endpoint_priority_endpoint_over_address() {
+        let prefix = "TEST_SERVICE";
+        std::env::set_var("TEST_SERVICE_ENDPOINT", "endpoint.example.com:9000");
+        std::env::set_var("TEST_SERVICE_ADDRESS", "address.example.com:9001");
+        let result = SafeEnv::get_endpoint(prefix);
+        assert_eq!(result, Some("endpoint.example.com:9000".to_string()));
+        std::env::remove_var("TEST_SERVICE_ENDPOINT");
+        std::env::remove_var("TEST_SERVICE_ADDRESS");
+    }
+
+    #[test]
+    fn test_get_endpoint_missing() {
+        let prefix = "NONEXISTENT_SERVICE";
+        let result = SafeEnv::get_endpoint(prefix);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_get_capability_endpoint() {
+        std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "signing.example.com:9500");
+        let result = SafeEnv::get_capability_endpoint("crypto:signing");
+        assert_eq!(result, Some("signing.example.com:9500".to_string()));
+        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
+    }
+
+    #[test]
+    fn test_get_discovery_address() {
+        std::env::set_var("DISCOVERY_ENDPOINT", "discovery.example.com:8091");
+        let result = SafeEnv::get_discovery_address();
+        assert_eq!(result, Some("discovery.example.com:8091".to_string()));
+        std::env::remove_var("DISCOVERY_ENDPOINT");
+    }
+
+    #[test]
+    fn test_get_rpc_port_default() {
+        std::env::remove_var("RHIZOCRYPT_RPC_PORT");
+        let result = SafeEnv::get_rpc_port(9400);
+        assert_eq!(result, 9400);
+    }
+
+    #[test]
+    fn test_get_rpc_port_custom() {
+        std::env::set_var("RHIZOCRYPT_RPC_PORT", "9999");
+        let result = SafeEnv::get_rpc_port(9400);
+        assert_eq!(result, 9999);
+        std::env::remove_var("RHIZOCRYPT_RPC_PORT");
+    }
+
+    #[test]
+    fn test_get_rpc_host_default() {
+        std::env::remove_var("RHIZOCRYPT_RPC_HOST");
+        let result = SafeEnv::get_rpc_host();
+        assert_eq!(result, "0.0.0.0");
+    }
+
+    #[test]
+    fn test_get_rpc_host_custom() {
+        std::env::set_var("RHIZOCRYPT_RPC_HOST", "127.0.0.1");
+        let result = SafeEnv::get_rpc_host();
+        assert_eq!(result, "127.0.0.1");
+        std::env::remove_var("RHIZOCRYPT_RPC_HOST");
+    }
+
+    #[test]
+    fn test_get_metrics_port_default() {
+        std::env::remove_var("RHIZOCRYPT_METRICS_PORT");
+        let result = SafeEnv::get_metrics_port(9401);
+        assert_eq!(result, 9401);
+    }
+
+    #[test]
+    fn test_get_metrics_port_custom() {
+        std::env::set_var("RHIZOCRYPT_METRICS_PORT", "8888");
+        let result = SafeEnv::get_metrics_port(9401);
+        assert_eq!(result, 8888);
+        std::env::remove_var("RHIZOCRYPT_METRICS_PORT");
+    }
+
+    // CapabilityEnv tests
+    #[test]
+    fn test_signing_endpoint_primary() {
+        std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "signing.example.com:9500");
+        let result = CapabilityEnv::signing_endpoint();
+        assert_eq!(result, Some("signing.example.com:9500".to_string()));
+        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
+    }
+
+    #[test]
+    fn test_signing_endpoint_short_form() {
+        std::env::set_var("SIGNING_ENDPOINT", "signing.example.com:9500");
+        let result = CapabilityEnv::signing_endpoint();
+        assert_eq!(result, Some("signing.example.com:9500".to_string()));
+        std::env::remove_var("SIGNING_ENDPOINT");
+    }
+
+    #[test]
+    fn test_signing_endpoint_legacy() {
+        std::env::set_var("BEARDOG_ADDRESS", "beardog.example.com:9500");
+        let result = CapabilityEnv::signing_endpoint();
+        assert_eq!(result, Some("beardog.example.com:9500".to_string()));
+        std::env::remove_var("BEARDOG_ADDRESS");
+    }
+
+    #[test]
+    fn test_did_verification_endpoint() {
+        std::env::set_var("DID_VERIFICATION_ENDPOINT", "did.example.com:9500");
+        let result = CapabilityEnv::did_verification_endpoint();
+        assert_eq!(result, Some("did.example.com:9500".to_string()));
+        std::env::remove_var("DID_VERIFICATION_ENDPOINT");
+    }
+
+    #[test]
+    fn test_payload_storage_endpoint() {
+        std::env::set_var("PAYLOAD_STORAGE_ENDPOINT", "storage.example.com:9600");
+        let result = CapabilityEnv::payload_storage_endpoint();
+        assert_eq!(result, Some("storage.example.com:9600".to_string()));
+        std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT");
+    }
+
+    #[test]
+    fn test_permanent_commit_endpoint() {
+        std::env::set_var("PERMANENT_STORAGE_ENDPOINT", "permanent.example.com:9700");
+        let result = CapabilityEnv::permanent_commit_endpoint();
+        assert_eq!(result, Some("permanent.example.com:9700".to_string()));
+        std::env::remove_var("PERMANENT_STORAGE_ENDPOINT");
+    }
+
+    #[test]
+    fn test_compute_endpoint() {
+        std::env::set_var("COMPUTE_ENDPOINT", "compute.example.com:9800");
+        let result = CapabilityEnv::compute_endpoint();
+        assert_eq!(result, Some("compute.example.com:9800".to_string()));
+        std::env::remove_var("COMPUTE_ENDPOINT");
+    }
+
+    #[test]
+    fn test_provenance_endpoint() {
+        std::env::set_var("PROVENANCE_ENDPOINT", "provenance.example.com:9900");
+        let result = CapabilityEnv::provenance_endpoint();
+        assert_eq!(result, Some("provenance.example.com:9900".to_string()));
+        std::env::remove_var("PROVENANCE_ENDPOINT");
+    }
+
+    #[test]
+    fn test_discovery_endpoint() {
+        std::env::set_var("DISCOVERY_ENDPOINT", "discovery.example.com:8091");
+        let result = CapabilityEnv::discovery_endpoint();
+        assert_eq!(result, Some("discovery.example.com:8091".to_string()));
+        std::env::remove_var("DISCOVERY_ENDPOINT");
+    }
+
+    #[test]
+    fn test_capability_endpoint_priority() {
+        // Test that primary takes precedence over short form
+        std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "primary.example.com:9500");
+        std::env::set_var("SIGNING_ENDPOINT", "short.example.com:9500");
+        std::env::set_var("BEARDOG_ADDRESS", "legacy.example.com:9500");
+
+        let result = CapabilityEnv::signing_endpoint();
+        assert_eq!(result, Some("primary.example.com:9500".to_string()));
+
+        // Clean up immediately
+        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
+        std::env::remove_var("SIGNING_ENDPOINT");
+        std::env::remove_var("BEARDOG_ADDRESS");
+    }
+
+    #[test]
+    fn test_capability_endpoint_none() {
+        // Ensure clean state - remove all possible variants
+        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
+        std::env::remove_var("CRYPTO_SIGNING_ADDRESS");
+        std::env::remove_var("SIGNING_ENDPOINT");
+        std::env::remove_var("SIGNING_ADDRESS");
+        std::env::remove_var("BEARDOG_ADDRESS");
+
+        let result = CapabilityEnv::signing_endpoint();
+        assert_eq!(result, None);
+    }
 }

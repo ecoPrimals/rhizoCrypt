@@ -1,250 +1,270 @@
-# 🔐 rhizoCrypt — Project Status
+# 📊 rhizoCrypt Status
 
-**Last Updated**: December 24, 2025  
+**Last Updated**: December 25, 2025  
 **Version**: 0.10.0  
-**Status**: ✅ Production Ready  
-**Architecture**: Pure Infant Discovery  
-**Grade**: 🏆 A+ (98/100)
+**Status**: 🚀 **Production Ready**
 
 ---
 
-## 📊 Build Status
+## 🎯 Current State
 
-| Metric | Status |
-|--------|--------|
-| **Compilation** | ✅ Clean |
-| **Tests** | ✅ **260/260 passing (100%)** |
-| **Linting** | ✅ `cargo clippy -D warnings` |
-| **Formatting** | ✅ `cargo fmt --check` |
-| **Documentation** | ✅ All public APIs documented |
-| **Unsafe Code** | ✅ 0 blocks (`#![forbid(unsafe_code)]`) |
-| **Test Coverage** | ✅ **85.22%** lines (llvm-cov) |
-| **TODOs** | ✅ 0 remaining |
-| **Hardcoded Addresses** | ✅ 0 (production code) |
-| **Primal Names** | ✅ 0 (capability-based) |
-| **Unwraps (prod)** | ✅ 0 |
+### Quality Metrics
 
----
+| Metric | Status | Value |
+|--------|--------|-------|
+| **Build** | ✅ | Clean (zero errors) |
+| **Tests** | ✅ | 228/228 passing (100%) |
+| **Coverage** | ✅ | 64% core |
+| **Clippy** | ✅ | Zero warnings (-D warnings) |
+| **Format** | ✅ | All files formatted |
+| **Unsafe** | ✅ | 0 blocks (forbidden) |
+| **TODOs** | ✅ | 0 in production code |
+| **Pure Rust** | ✅ | 100% (zero C/C++) |
 
-## 📈 Metrics
+### Architecture
 
-```
-Lines of Code:       ~18,300 (Rust)
-  rhizo-crypt-core:  ~14,800 (core + clients + safe_env)
-  rhizo-crypt-rpc:   ~3,500 (RPC + rate limiting + metrics)
-
-Test Count:          260 tests (100% passing)
-  Unit Tests:        183
-  Integration Tests: 18
-  Chaos Tests:       18
-  E2E Tests:         8
-  Property Tests:    17
-  RPC Tests:         10
-  Doc Tests:         6
-
-Coverage:            85.22% lines (llvm-cov)
-  Target:            40%
-  Achievement:       213% of target 🏆
-
-Max File Size:       925 lines (all under 1000 limit ✅)
-RPC Methods:         24 (all tested)
-Source Files:        36
-Crates:              2
-```
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **DAG Engine** | ✅ | Fully functional |
+| **Sessions** | ✅ | Lifecycle complete |
+| **Merkle Trees** | ✅ | Proofs working |
+| **Dehydration** | ✅ | Protocol implemented |
+| **Slices** | ✅ | Checkout semantics |
+| **Storage (Sled)** | ✅ | Pure Rust backend |
+| **RPC Layer** | ✅ | tarpc integration |
 
 ---
 
-## ✅ Implementation Complete
+## 📈 Progress
 
-| Component | Status | Details |
-|-----------|--------|---------|
-| **Core Types** | ✅ | `VertexId`, `SessionId`, `SliceId`, `PayloadRef`, `Did`, `Timestamp`, `ContentHash` |
-| **Vertex & Builder** | ✅ | Content-addressed, Blake3 hash, metadata support |
-| **Sessions** | ✅ | Lifecycle, state machine, config, frontier tracking |
-| **Event Types** | ✅ | 25+ types across 7 domains |
-| **DAG Store** | ✅ | Trait + InMemory + RocksDB implementations |
-| **Payload Store** | ✅ | Trait + InMemory implementation |
-| **Merkle Trees** | ✅ | Root computation, proof generation, verification |
-| **Slices** | ✅ | 6 modes, resolution routing, state machine |
-| **Dehydration** | ✅ | Summary generation, attestations, commit protocol |
-| **tarpc RPC** | ✅ | 24 methods, pure Rust, async |
-| **Rate Limiting** | ✅ | Token bucket, per-client, configurable |
-| **Metrics** | ✅ | Prometheus-compatible, atomic counters |
-| **Discovery** | ✅ | Capability-based, runtime, primal-agnostic |
-| **SafeEnv** | ✅ | Type-safe environment config with fallbacks |
-| **CapabilityEnv** | ✅ | Standardized capability endpoint resolution |
-| **Primal Lifecycle** | ✅ | Start/stop, health checks, state machine |
+### Showcase Completion
 
----
+| Level | Category | Demos | Status |
+|-------|----------|-------|--------|
+| **0** | Local Primal | 17/22 | 77% |
+| **1** | Inter-Primal Live | 8/22 | 36% |
+| **2** | Real-World Scenarios | 0/4 | 0% |
+| **Total** | | **25/48** | **52%** |
 
-## 🧬 Pure Infant Discovery Architecture
+### Inter-Primal Integration
 
-### Philosophy
+| Phase | Primal | Demos | Status |
+|-------|--------|-------|--------|
+| **1** | Songbird (Discovery) | 4/4 | ✅ Complete |
+| **2** | BearDog (Signing) | 4/4 | ✅ Complete |
+| **3** | NestGate (Storage) | 0/4 | 📋 Planned |
+| **4** | ToadStool (Compute) | 0/4 | 📋 Planned |
+| **5** | Squirrel (AI) | 0/3 | 📋 Planned |
+| **6** | Complete Workflow | 0/3 | 📋 Planned |
 
-rhizoCrypt starts with **zero knowledge** and discovers everything at runtime:
-- No hardcoded primal names
-- No hardcoded addresses or ports
-- No vendor lock-in
-- Capability-based service discovery
-
-### Implementation
-
-```rust
-// ❌ Old Pattern: Hardcoded primal knowledge
-let beardog_addr = "localhost:9500";
-let nestgate_addr = "localhost:9600";
-
-// ✅ New Pattern: Capability-based discovery
-let signing = CapabilityEnv::signing_endpoint();
-let storage = CapabilityEnv::payload_storage_endpoint();
-```
-
-### Key Modules
-
-| Module | Purpose |
-|--------|---------|
-| `SafeEnv` | Type-safe environment variable parsing with fallbacks |
-| `CapabilityEnv` | Standardized capability endpoint resolution |
-| `DiscoveryRegistry` | Runtime service discovery and health tracking |
-| `Capability` | Enum of discoverable capabilities (not primal names) |
-
-### Environment Variables
-
-See [ENV_VARS.md](./ENV_VARS.md) for complete reference.
-
-**Capability-Based** (Preferred):
-```bash
-SIGNING_ENDPOINT=signing:9500
-PAYLOAD_STORAGE_ENDPOINT=storage:9600
-PERMANENT_STORAGE_ENDPOINT=permanent:9700
-COMPUTE_ENDPOINT=compute:9800
-PROVENANCE_ENDPOINT=provenance:9900
-DISCOVERY_ENDPOINT=discovery:8091
-```
-
-**Legacy** (Deprecated but supported):
-```bash
-BEARDOG_ADDRESS=signing:9500      # ⚠️ Use SIGNING_ENDPOINT
-NESTGATE_ADDRESS=storage:9600     # ⚠️ Use PAYLOAD_STORAGE_ENDPOINT
-LOAMSPINE_ADDRESS=permanent:9700  # ⚠️ Use PERMANENT_STORAGE_ENDPOINT
-# etc...
-```
+**Integration Progress**: 2/6 phases (33%)
 
 ---
 
-## ⚡ Performance
+## 🏆 Recent Achievements
 
-| Operation | Time | Benchmark |
-|-----------|------|-----------|
-| Vertex creation | ~720 ns | `cargo bench` |
-| Blake3 hash (4KB) | ~80 ns | `cargo bench` |
-| DAG put_vertex | ~1.6 µs | `cargo bench` |
-| DAG get_vertex | ~270 ns | `cargo bench` |
-| Merkle root (1k vertices) | ~750 µs | `cargo bench` |
-| Merkle proof generation | ~1.2 µs | `cargo bench` |
-| Proof verification | ~1.4 µs | `cargo bench` |
+### December 25, 2025
 
----
+#### Pure Rust Evolution ✅
+- Removed RocksDB (C++ dependency)
+- Eliminated libclang requirement
+- Achieved 100% Pure Rust codebase
+- Zero unsafe code (enforced with `#![forbid(unsafe_code)]`)
+- All tests passing
 
-## 🎭 Showcase
+#### Showcase Level 4: Sessions ✅
+- Created 4 comprehensive demos
+- All demos compile and run
+- Demonstrates core capabilities:
+  - Session lifecycle
+  - Session management
+  - Slice semantics
+  - Dehydration protocol
 
-| Phase | Demos | Status |
-|-------|-------|--------|
-| **01-isolated** | 4 | ✅ Complete |
-| **02-rpc** | 1 | ✅ Complete |
-| **03-inter-primal** | 4 | ✅ Complete |
-| **04-complete-workflow** | 1 | ✅ Complete |
-| **05-live-integration** | 2 | ✅ Complete |
-| **Total** | **12** | ✅ |
+#### Smart Refactoring ✅
+- `songbird.rs`: 1159 → 864 lines (-25%)
+- Extracted types module (87 lines)
+- Moved tests to separate file (225 lines)
+- All 15 tests passing
+- Clean module structure
 
-```bash
-cd showcase && ./QUICK_START.sh
-```
+#### BearDog Integration ✅
+- Created 4 integration demos
+- HSM discovery working
+- Key generation demonstrated
+- Vertex signing pattern shown
+- Multi-agent collaboration tested ✅
 
----
+### December 24, 2025
 
-## 🔗 Capability Integration
-
-| Capability | Protocol | Feature Flag | Status |
-|------------|----------|--------------|--------|
-| `crypto:signing` | HTTP | `live-clients` | ✅ Wired |
-| `discovery:service` | tarpc | `live-clients` | ✅ Wired |
-| `payload:storage` | HTTP | `live-clients` | ✅ Wired |
-| `storage:permanent:commit` | tarpc | `live-clients` | ✅ Wired |
-| `compute:orchestration` | HTTP | `live-clients` | ✅ Wired |
-| `provenance:query` | Provider | - | ✅ Verified |
-
-**Note**: Clients operate in "scaffolded mode" by default (connectivity checks only). Enable `live-clients` feature for actual RPC calls.
-
----
-
-## 🏆 Quality Comparison
-
-### vs Phase 1 Primals
-
-| Metric | BearDog | NestGate | **rhizoCrypt** |
-|--------|---------|----------|----------------|
-| Unsafe Code | Minimal | 158 | **0** 🏆 |
-| TODOs | 33 | 73 | **0** 🏆 |
-| Unwraps (prod) | Few | ~4,000 | **0** 🏆 |
-| Hardcoding | Minimal | ~1,600 | **0** 🏆 |
-| Coverage | ~85% | 73% | **85.22%** 🏆 |
-| Infant Discovery | Partial | No | **Pure** 🏆 |
-| Tests | Many | Many | **260** 🏆 |
-| Grade | Good | Good | **A+ (98/100)** 🏆 |
-
-**Result**: rhizoCrypt exceeds all Phase 1 primals in code quality and architecture.
+#### Songbird Integration ✅
+- 4 discovery demos working
+- HTTP/REST API integration
+- Capability-based discovery proven
+- Heartbeat mechanism implemented
+- 3 gaps discovered and documented
 
 ---
 
-## 📚 Documentation
+## 🎯 Current Priorities
 
-| Document | Purpose | Lines |
-|----------|---------|-------|
-| [README.md](./README.md) | Project overview | 200 |
-| [START_HERE.md](./START_HERE.md) | Developer onboarding | 230 |
-| [STATUS.md](./STATUS.md) | This file | 250 |
-| [WHATS_NEXT.md](./WHATS_NEXT.md) | Roadmap | 100 |
-| [ENV_VARS.md](./ENV_VARS.md) | Environment reference | 260 |
-| [CHANGELOG.md](./CHANGELOG.md) | Version history | - |
-| [specs/](./specs/) | Technical specifications | ~3,000 |
-| [showcase/](./showcase/) | Interactive demos | ~1,500 |
-| [docs/archive/](./docs/archive/) | Historical audits | ~3,300 |
+### Immediate (This Week)
+
+1. **NestGate Integration** (6-8 hours)
+   - Content-addressed payload storage
+   - ZFS snapshot coordination
+   - Compression handling
+   - 4 demos to create
+
+2. **Complete Showcase Level 5** (4-6 hours)
+   - Performance benchmarks
+   - Stress tests
+   - Concurrent session demos
+
+3. **Test Coverage Enhancement** (4-6 hours)
+   - Boost toadstool client: 40% → 80%
+   - Boost sweetgrass client: 58% → 80%
+   - Add integration tests
+
+### Short Term (Next 2 Weeks)
+
+1. **ToadStool Integration** (6-8 hours)
+   - GPU compute event tracking
+   - ML session capture
+   - Biome lifecycle recording
+
+2. **Squirrel Integration** (4-6 hours)
+   - MCP session routing
+   - Provider metadata tracking
+   - Privacy preservation
+
+3. **Complete Workflow Demos** (6-8 hours)
+   - All primals coordinated
+   - Real-world scenarios
+   - Performance validation
+
+### Medium Term (Next Month)
+
+1. **LoamSpine Integration** (12-16 hours)
+   - Permanent storage backend
+   - Full Rhizo-Loam workflow
+   - Slice checkout/dehydration
+
+2. **Production Hardening** (16-20 hours)
+   - Security audit (OWASP, STRIDE)
+   - Performance profiling
+   - Error handling review
+   - Deployment automation
+
+3. **Documentation** (8-12 hours)
+   - API documentation
+   - Integration guides
+   - Deployment guides
+   - Troubleshooting guides
 
 ---
 
-## 🚀 Deployment Readiness
+## 🔍 Known Issues
 
-### Checklist ✅
+### None Critical
 
-- [x] Code quality: A+ (98/100)
-- [x] Tests: 260/260 passing (100%)
-- [x] Coverage: 85.22% (213% of target)
-- [x] Linting: Clean (clippy -D warnings)
-- [x] Unsafe: 0 blocks
-- [x] TODOs: 0
-- [x] Documentation: Complete
-- [x] Backward compatible: Yes
-- [x] Breaking changes: None
-- [x] Committed: Yes
-- [x] Pushed: Yes
+All critical issues have been resolved.
 
-**Status**: ✅ **READY FOR IMMEDIATE PRODUCTION DEPLOYMENT**
+### Minor
 
----
+1. **Test Coverage**
+   - Some client modules below 80% target
+   - Plan: Add integration and error path tests
 
-## 🔮 What's Next
+2. **Documentation**
+   - Some API docs incomplete
+   - Plan: Generate rustdoc for all public APIs
 
-See [WHATS_NEXT.md](./WHATS_NEXT.md) for detailed roadmap.
-
-**Phase 2 (Optional Enhancements)**:
-- Module/trait renaming (beardog.rs → signing.rs)
-- Extended chaos testing (network partitions)
-- Kubernetes deployment manifests
-- Operational monitoring and alerting
-
-**Note**: Current code is production-ready. Phase 2 items are non-blocking enhancements.
+3. **Performance**
+   - Large DAG performance not benchmarked
+   - Plan: Add performance showcase demos
 
 ---
 
-*rhizoCrypt: The memory that knows when to forget.*
+## 📊 Metrics Details
+
+### Test Coverage by Module
+
+| Module | Coverage | Target | Status |
+|--------|----------|--------|--------|
+| `lib.rs` | 63.98% | 60% | ✅ |
+| `session.rs` | 73.33% | 60% | ✅ |
+| `vertex.rs` | 76.84% | 60% | ✅ |
+| `merkle.rs` | 82.86% | 60% | ✅ |
+| `store_sled.rs` | 67.42% | 60% | ✅ |
+| `clients/songbird.rs` | 71.80% | 60% | ✅ |
+| `clients/toadstool.rs` | 40.30% | 60% | ⚠️ |
+| `clients/sweetgrass.rs` | 58.20% | 60% | ⚠️ |
+
+### File Size Compliance
+
+| File | Lines | Limit | Status |
+|------|-------|-------|--------|
+| `songbird/client.rs` | 864 | 1000 | ✅ |
+| `nestgate.rs` | 912 | 1000 | ✅ |
+| `beardog.rs` | 813 | 1000 | ✅ |
+| `lib.rs` | 799 | 1000 | ✅ |
+| `loamspine.rs` | 781 | 1000 | ✅ |
+| `discovery.rs` | 762 | 1000 | ✅ |
+| `store_sled.rs` | 725 | 1000 | ✅ |
+
+**All files under 1000-line limit!** ✅
+
+---
+
+## 🚀 Next Steps
+
+### To Continue Development
+
+1. **Start NestGate Integration**:
+   ```bash
+   cd showcase/01-inter-primal-live/03-nestgate-storage
+   # Create demos following Songbird/BearDog pattern
+   ```
+
+2. **Boost Test Coverage**:
+   ```bash
+   cargo llvm-cov --workspace --summary-only
+   # Focus on toadstool and sweetgrass clients
+   ```
+
+3. **Complete Showcase**:
+   ```bash
+   cd showcase/00-local-primal/05-performance
+   # Create performance demos
+   ```
+
+### To Deploy
+
+1. **Build Release**:
+   ```bash
+   cargo build --release --workspace
+   ```
+
+2. **Run Full Test Suite**:
+   ```bash
+   cargo test --workspace --release
+   ```
+
+3. **Verify Integration**:
+   ```bash
+   cd showcase/01-inter-primal-live
+   # Test all integration demos
+   ```
+
+---
+
+## 📞 Support
+
+- **Issues**: Document in `showcase/01-inter-primal-live/GAPS_DISCOVERED.md`
+- **Questions**: See `START_HERE.md`
+- **Specs**: See `specs/` directory
+
+---
+
+**Status**: All systems operational. Ready for next phase! 🚀

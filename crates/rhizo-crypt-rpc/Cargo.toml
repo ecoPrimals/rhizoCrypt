@@ -11,8 +11,8 @@ keywords = ["dag", "rpc", "tarpc", "distributed", "ephemeral"]
 categories = ["network-programming", "asynchronous", "cryptography"]
 
 [dependencies]
-# Core library
-rhizo-crypt-core = { path = "../rhizo-crypt-core" }
+# Core library (with default sled backend, no rocksdb)
+rhizo-crypt-core = { path = "../rhizo-crypt-core", default-features = true }
 
 # Async
 tokio.workspace = true

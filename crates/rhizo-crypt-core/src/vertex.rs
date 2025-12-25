@@ -90,6 +90,17 @@ impl Vertex {
         buf
     }
 
+    /// Deserialize from CBOR bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deserialization fails.
+    pub fn from_cbor_bytes(bytes: &[u8]) -> crate::error::Result<Self> {
+        ciborium::from_reader(bytes).map_err(|e| {
+            crate::error::RhizoCryptError::internal(format!("Failed to deserialize vertex: {e}"))
+        })
+    }
+
     /// Check if this is a genesis vertex (no parents).
     #[must_use]
     pub const fn is_genesis(&self) -> bool {

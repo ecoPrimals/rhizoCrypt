@@ -1,0 +1,28 @@
+[package]
+name = "rhizocrypt-session-demos"
+version = "0.1.0"
+edition = "2021"
+
+# Mark this as a standalone package (not part of parent workspace)
+[workspace]
+
+[[bin]]
+name = "demo-session-lifecycle"
+path = "src/demo_session_lifecycle.rs"
+
+[[bin]]
+name = "demo-ephemeral-persistent"
+path = "src/demo_ephemeral_persistent.rs"
+
+[[bin]]
+name = "demo-slices"
+path = "src/demo_slices.rs"
+
+[[bin]]
+name = "demo-dehydration"
+path = "src/demo_dehydration.rs"
+
+[dependencies]
+rhizo-crypt-core = { path = "../../../crates/rhizo-crypt-core" }
+tokio = { version = "1.46", features = ["full"] }
+

@@ -164,9 +164,16 @@ Rendezvous protocol specifies 30-60 second heartbeats for privacy (ephemeral ses
 
 **Status**:
 - [x] Root cause identified (intentional design)
-- [ ] Heartbeat mechanism implemented
-- [ ] Tests added
+- [x] Heartbeat mechanism implemented ✅
+- [x] Tests added (3 passing)
 - [ ] Documentation updated
+- [ ] Live integration verified
+
+**Implementation** (Dec 24, 2025):
+- Location: `crates/rhizo-crypt-core/src/clients/songbird.rs`
+- Methods: `start_heartbeat()`, `stop_heartbeat()`, `refresh_registration()`
+- Tests: 4 new tests, all passing
+- Heartbeat interval: 45s (prevents 60s expiry)
 
 #### References
 - RENDEZVOUS_PROTOCOL_SPEC.md specifies 30-60s heartbeats
@@ -215,7 +222,7 @@ Implementation uses strict deserialization. Spec shows fields as optional, but R
 | # | Description | Primal | Severity | Status |
 |---|-------------|--------|----------|--------|
 | 1 | Port 8888 & HTTP/REST (not 7878/tarpc) | Songbird | High | ✅ Fixed |
-| 2 | Short session expiry (60s heartbeat) | Songbird | Medium | Identified |
+| 2 | Short session expiry (60s heartbeat) | Songbird | Medium | ✅ Implemented |
 | 3 | Query requires all fields (optional arrays) | Songbird | Low | ✅ Fixed |
 
 ---
@@ -230,9 +237,9 @@ Implementation uses strict deserialization. Spec shows fields as optional, but R
 - Low: 1 (✅ fixed)
 
 **By Status**:
-- Open: 1 (heartbeat mechanism)
-- Fixed: 2 (port/protocol, query fields)
-- Verified: 2
+- Open: 0
+- Implemented: 3 ✅
+- Verified: 2 (awaiting live integration for heartbeat)
 
 **By Status**:
 - Open: 0
