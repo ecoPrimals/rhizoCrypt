@@ -1,323 +1,249 @@
-# 📚 rhizoCrypt Documentation
+# 📚 rhizoCrypt Documentation Index
 
-**Version**: 0.10.1  
-**Status**: Production Ready  
-**Last Updated**: December 24, 2025
+**Last Updated**: December 25, 2025
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
-**New to rhizoCrypt?** Start here:
-
-1. **[START_HERE.md](START_HERE.md)** — Developer onboarding & quick start
-2. **[README.md](README.md)** — Project overview & features
-3. **[STATUS.md](STATUS.md)** — Current implementation status
-
----
-
-## 📖 Core Documentation
-
-### Essential Reading
+### Essential Documents
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| **[README.md](README.md)** | Project overview, features, quick start | Everyone |
-| **[START_HERE.md](START_HERE.md)** | Developer guide & onboarding | New developers |
-| **[STATUS.md](STATUS.md)** | Implementation status & metrics | Team & stakeholders |
-| **[WHATS_NEXT.md](WHATS_NEXT.md)** | Roadmap & future plans | Team & contributors |
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history & changes | Everyone |
-| **[ENV_VARS.md](ENV_VARS.md)** | Environment variable reference | Operators & developers |
+| **[README.md](README.md)** | Project overview, quick start | Everyone |
+| **[START_HERE.md](START_HERE.md)** | New user onboarding, learning path | New users |
+| **[STATUS.md](STATUS.md)** | Current status, metrics, priorities | Developers |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history, changes | All |
 
 ---
 
-## 🔧 Technical Specifications
+## 📖 Specifications
 
-Located in `specs/`:
+### Core Specs
+
+Located in `specs/` directory:
 
 | Specification | Description |
 |---------------|-------------|
-| **[RHIZOCRYPT_SPECIFICATION.md](specs/RHIZOCRYPT_SPECIFICATION.md)** | Master specification |
-| **[ARCHITECTURE.md](specs/ARCHITECTURE.md)** | High-level architecture |
-| **[DATA_MODEL.md](specs/DATA_MODEL.md)** | Data structures & types |
-| **[SLICE_SEMANTICS.md](specs/SLICE_SEMANTICS.md)** | Slice modes & resolution |
-| **[DEHYDRATION_PROTOCOL.md](specs/DEHYDRATION_PROTOCOL.md)** | Commit protocol |
-| **[API_SPECIFICATION.md](specs/API_SPECIFICATION.md)** | tarpc & REST APIs |
-| **[INTEGRATION_SPECIFICATION.md](specs/INTEGRATION_SPECIFICATION.md)** | Primal integration |
-| **[STORAGE_BACKENDS.md](specs/STORAGE_BACKENDS.md)** | Storage implementations |
+| **[RHIZOCRYPT_SPECIFICATION.md](specs/RHIZOCRYPT_SPECIFICATION.md)** | Complete system specification |
+| **[ARCHITECTURE.md](specs/ARCHITECTURE.md)** | System design and components |
+| **[DATA_MODEL.md](specs/DATA_MODEL.md)** | Data structures and types |
+| **[API_SPECIFICATION.md](specs/API_SPECIFICATION.md)** | Public API reference |
 
-**Full index**: [specs/00_SPECIFICATIONS_INDEX.md](specs/00_SPECIFICATIONS_INDEX.md)
+### Protocol Specs
 
----
-
-## 🎓 Learning Path
-
-### For New Developers
-
-1. Read **[START_HERE.md](START_HERE.md)** — Get oriented
-2. Read **[README.md](README.md)** — Understand features
-3. Run showcase demos — `cd showcase && ./QUICK_START.sh`
-4. Read **[ARCHITECTURE.md](specs/ARCHITECTURE.md)** — Understand design
-5. Explore **[API_SPECIFICATION.md](specs/API_SPECIFICATION.md)** — Learn APIs
-
-### For Integration Partners
-
-1. Read **[INTEGRATION_SPECIFICATION.md](specs/INTEGRATION_SPECIFICATION.md)**
-2. Review **[ENV_VARS.md](ENV_VARS.md)** — Configure endpoints
-3. Run live integration demos — `cd showcase/01-inter-primal-live/`
-4. Check **[API_SPECIFICATION.md](specs/API_SPECIFICATION.md)** — API contracts
-
-### For Operators
-
-1. Read **[ENV_VARS.md](ENV_VARS.md)** — Configuration reference
-2. Review **[STATUS.md](STATUS.md)** — Current capabilities
-3. Check operational runbooks (coming soon)
-4. Review monitoring dashboards (coming soon)
+| Specification | Description |
+|---------------|-------------|
+| **[DEHYDRATION_PROTOCOL.md](specs/DEHYDRATION_PROTOCOL.md)** | Commit protocol to permanent storage |
+| **[SLICE_SEMANTICS.md](specs/SLICE_SEMANTICS.md)** | Checkout semantics from permanent storage |
+| **[STORAGE_BACKENDS.md](specs/STORAGE_BACKENDS.md)** | Storage backend options |
+| **[INTEGRATION_SPECIFICATION.md](specs/INTEGRATION_SPECIFICATION.md)** | Inter-primal integration |
 
 ---
 
-## 🎭 Interactive Demos
+## 🎪 Showcase & Demos
 
-Located in `showcase/`:
+### Showcase Index
 
-### Local Demos (No Dependencies)
-- **00-local-primal/** — Core rhizoCrypt features (13 demos)
-  - Hello rhizoCrypt
-  - DAG engine
-  - Merkle proofs
-  - Sessions
-  - Performance benchmarks
-  - Advanced patterns
+| Document | Description |
+|----------|-------------|
+| **[showcase/README.md](showcase/README.md)** | Showcase overview |
+| **[showcase/00_SHOWCASE_INDEX.md](showcase/00_SHOWCASE_INDEX.md)** | Complete demo index |
+| **[showcase/00-local-primal/STATUS.md](showcase/00-local-primal/STATUS.md)** | Local demo status |
 
-### RPC Layer
-- **02-rpc-layer/** — tarpc RPC examples (5 examples)
+### Demo Categories
 
-### Inter-Primal Integration
-- **03-inter-primal/** — Integration patterns (4 demos)
+1. **Local Primal Demos** (`showcase/00-local-primal/`)
+   - Level 1: Hello rhizoCrypt (3 demos)
+   - Level 2: DAG Engine (4 demos)
+   - Level 3: Merkle Proofs (4 demos)
+   - Level 4: Sessions (4 demos) ✨
+   - Level 5: Performance (4 demos)
+   - Level 6: Advanced Patterns (3 demos)
 
-### Live Integration (Phase 1 Primals)
-- **01-inter-primal-live/** — Real Phase 1 connections
-  - ✅ **Songbird** — Discovery service (4 demos working)
-  - 🔄 BearDog — Signing service (in progress)
-  - 🔄 NestGate — Payload storage (in progress)
-  - 🔄 ToadStool — Compute events (in progress)
-
-**Start exploring**: `cd showcase && ./QUICK_START.sh`
-
----
-
-## 📊 Current Status
-
-**Grade**: 🏆 **A+ (98/100)**  
-**Status**: ✅ **Production Ready**
-
-### Metrics
-```
-Tests:              260/260 passing (100%)
-Coverage:           83.72% (209% above target)
-Unsafe Code:        0 blocks
-Technical Debt:     0 (TODOs)
-Max File Size:      925 lines (all < 1000)
-Hardcoding:         0 (production code)
-```
-
-### Quality Standards
-- ✅ Zero unsafe code
-- ✅ Zero technical debt
-- ✅ Fully async/concurrent
-- ✅ Zero blocking operations
-- ✅ Clean linting (pedantic + nursery)
-- ✅ Comprehensive documentation
-- ✅ Production-grade architecture
-
-See **[STATUS.md](STATUS.md)** for detailed status.
+2. **Inter-Primal Integration** (`showcase/01-inter-primal-live/`)
+   - Phase 1: Songbird (Discovery) - 4 demos ✅
+   - Phase 2: BearDog (Signing) - 4 demos ✅
+   - Phase 3: NestGate (Storage) - 4 demos 📋
+   - Phase 4: ToadStool (Compute) - 4 demos 📋
+   - Phase 5: Squirrel (AI) - 3 demos 📋
+   - Phase 6: Complete Workflow - 3 demos 📋
 
 ---
 
-## 🏗️ Architecture
+## 🛠️ Development
 
-rhizoCrypt implements **Pure Infant Discovery**:
-- Zero compile-time knowledge of other primals
-- Capability-based service discovery
-- Runtime endpoint resolution
-- No hardcoded addresses or primal names
+### Configuration
 
-### Core Components
-- **Vertex** — Content-addressed events (Blake3)
-- **Session** — Scoped DAG with lifecycle
-- **Slice** — Checkout from permanent storage
-- **Dehydration** — Commit to LoamSpine
-- **Discovery** — Runtime capability resolution
+| Document | Description |
+|----------|-------------|
+| **[ENV_VARS.md](ENV_VARS.md)** | Environment variables reference |
+| **[Cargo.toml](Cargo.toml)** | Workspace configuration |
+| **[rustfmt.toml](rustfmt.toml)** | Code formatting rules |
 
-See **[ARCHITECTURE.md](specs/ARCHITECTURE.md)** for details.
+### Crate Documentation
 
----
+| Crate | Location | Description |
+|-------|----------|-------------|
+| **rhizo-crypt-core** | `crates/rhizo-crypt-core/` | Core DAG engine |
+| **rhizo-crypt-rpc** | `crates/rhizo-crypt-rpc/` | RPC layer (tarpc) |
 
-## 🔗 Integration
-
-### Capability Discovery
-
-rhizoCrypt discovers services by **capability**, not primal name:
-
-| Capability | Environment Variable | Purpose |
-|------------|---------------------|---------|
-| `crypto:signing` | `SIGNING_ENDPOINT` | DID signing |
-| `discovery:service` | `DISCOVERY_ENDPOINT` | Service discovery |
-| `payload:storage` | `PAYLOAD_STORAGE_ENDPOINT` | Content storage |
-| `storage:permanent:commit` | `PERMANENT_STORAGE_ENDPOINT` | Immutable commits |
-| `compute:orchestration` | `COMPUTE_ENDPOINT` | Task scheduling |
-| `provenance:query` | `PROVENANCE_ENDPOINT` | Attribution |
-
-See **[ENV_VARS.md](ENV_VARS.md)** for complete reference.
-
----
-
-## 🧪 Testing
-
-### Test Types
-
-| Type | Count | Purpose |
-|------|-------|---------|
-| Unit | 183 | Core logic |
-| Integration | 18 | Component interaction |
-| E2E | 8 | Complete workflows |
-| Chaos | 18 | Failure scenarios |
-| Property | 17 | Invariant validation |
-| RPC | 10 | RPC layer |
-| Doc | 6 | Documentation examples |
-| **Total** | **260** | **All passing** |
-
-### Running Tests
-
+Generate API docs:
 ```bash
-# All tests
-cargo test --workspace
-
-# With coverage
-cargo llvm-cov --workspace
-
-# Specific test suite
-cargo test --test e2e_tests
-cargo test --test chaos_tests
-
-# Benchmarks
-cargo bench --workspace
+cargo doc --workspace --no-deps --open
 ```
 
 ---
 
-## 📦 Crates
+## 📋 Planning & Status
 
-| Crate | Purpose | Lines |
-|-------|---------|-------|
-| `rhizo-crypt-core` | DAG engine, sessions, storage | ~14,800 |
-| `rhizo-crypt-rpc` | tarpc RPC, rate limiting, metrics | ~3,500 |
+### Current Status
 
-**Total**: ~18,300 lines of Rust
+| Document | Description |
+|----------|-------------|
+| **[STATUS.md](STATUS.md)** | Current metrics, progress, priorities |
+| **[WHATS_NEXT.md](WHATS_NEXT.md)** | Roadmap and next steps |
 
----
+### Integration Status
 
-## 🎯 Roadmap
-
-See **[WHATS_NEXT.md](WHATS_NEXT.md)** for detailed roadmap.
-
-### Short-Term (This Quarter)
-- Expand live integration demos
-- Kubernetes deployment manifests
-- Operational runbooks
-- Performance profiling (optional)
-
-### Medium-Term (Next Quarter)
-- Extended chaos testing
-- LMDB backend implementation
-- Advanced monitoring
-- Production operations guide
-
-### Long-Term (2026)
-- Multi-region support
-- Advanced performance optimizations
-- Distributed tracing
-- Service mesh integration
+| Document | Description |
+|----------|-------------|
+| **[showcase/01-inter-primal-live/README.md](showcase/01-inter-primal-live/README.md)** | Integration overview |
+| **[showcase/01-inter-primal-live/GAPS_DISCOVERED.md](showcase/01-inter-primal-live/GAPS_DISCOVERED.md)** | Integration gaps and fixes |
 
 ---
 
-## 📜 Archive
+## 📦 Archives
 
-Historical documentation and session reports are archived in `docs/archive/`:
+### Session Documentation
 
-- **2025-12-24-evolution-session/** — Modern async Rust evolution
-  - Comprehensive code audit (A+ grade)
-  - Deep debt resolution
-  - Sleep call elimination
-  - Concurrent testing implementation
+Historical development session documents (fossil record):
 
----
+| Archive | Contents |
+|---------|----------|
+| **[../archive/rhizoCrypt/2025-12-25-session-docs/](../archive/rhizoCrypt/2025-12-25-session-docs/)** | Dec 24-25 session docs |
+| **[../archive/rhizoCrypt/2025-12-24-evolution-session/](../archive/rhizoCrypt/2025-12-24-evolution-session/)** | Dec 24 evolution session |
+| **[../archive/rhizoCrypt/pure-rust-migration/](../archive/rhizoCrypt/pure-rust-migration/)** | Pure Rust migration artifacts |
 
-## 🆘 Getting Help
+### Key Archived Documents
 
-### Documentation Issues
-- Check this index first
-- Review the specific document
-- See examples in `showcase/`
-
-### Technical Questions
-- Review specifications in `specs/`
-- Check API documentation: `cargo doc --open`
-- Run showcase examples
-
-### Integration Help
-- See `INTEGRATION_SPECIFICATION.md`
-- Review `ENV_VARS.md`
-- Check live integration demos
-- Review capability discovery patterns
-
-### Bugs or Issues
-- Check test suite: `cargo test`
-- Review STATUS.md for known issues
-- Check git history for recent changes
+- Pure Rust Evolution reports
+- Comprehensive audit reports
+- Refactoring completion reports
+- Showcase planning documents
+- Session summaries
 
 ---
 
-## 🤝 Contributing
+## 🔍 Finding Documentation
 
-### Code Standards
-- Zero unsafe code (`#![forbid(unsafe_code)]`)
-- All tests pass (260/260)
-- Coverage > 40% (currently 83.72%)
-- All files < 1000 lines
-- Clean clippy (pedantic + nursery)
-- Consistent formatting (`cargo fmt`)
+### By Topic
 
-### Before Submitting
-1. Run `cargo test --workspace`
-2. Run `cargo clippy --workspace --all-features`
-3. Run `cargo fmt --all`
-4. Update documentation if needed
-5. Add tests for new features
+**Getting Started**:
+- [START_HERE.md](START_HERE.md) - New user guide
+- [showcase/00-local-primal/00_START_HERE.md](showcase/00-local-primal/00_START_HERE.md) - Demo quick start
+
+**Core Concepts**:
+- [specs/RHIZOCRYPT_SPECIFICATION.md](specs/RHIZOCRYPT_SPECIFICATION.md) - Full specification
+- [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md) - System design
+
+**API Reference**:
+- [specs/API_SPECIFICATION.md](specs/API_SPECIFICATION.md) - Public API
+- `cargo doc --open` - Generated API docs
+
+**Integration**:
+- [specs/INTEGRATION_SPECIFICATION.md](specs/INTEGRATION_SPECIFICATION.md) - Integration guide
+- [showcase/01-inter-primal-live/README.md](showcase/01-inter-primal-live/README.md) - Live integration
+
+**Development**:
+- [STATUS.md](STATUS.md) - Current status
+- [CHANGELOG.md](CHANGELOG.md) - Version history
+- [ENV_VARS.md](ENV_VARS.md) - Configuration
+
+### By Audience
+
+**New Users**:
+1. [START_HERE.md](START_HERE.md)
+2. [README.md](README.md)
+3. [showcase/README.md](showcase/README.md)
+
+**Developers**:
+1. [STATUS.md](STATUS.md)
+2. [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md)
+3. [specs/API_SPECIFICATION.md](specs/API_SPECIFICATION.md)
+
+**Integrators**:
+1. [specs/INTEGRATION_SPECIFICATION.md](specs/INTEGRATION_SPECIFICATION.md)
+2. [showcase/01-inter-primal-live/README.md](showcase/01-inter-primal-live/README.md)
+3. [showcase/01-inter-primal-live/GAPS_DISCOVERED.md](showcase/01-inter-primal-live/GAPS_DISCOVERED.md)
+
+**Contributors**:
+1. [STATUS.md](STATUS.md)
+2. [WHATS_NEXT.md](WHATS_NEXT.md)
+3. [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-## 📄 License
+## 📊 Documentation Status
 
-AGPL-3.0
-
----
-
-## 🏆 Quality Achievement
-
-rhizoCrypt has achieved **Gold Standard** status for ecoPrimals Phase 2:
-
-- 🏆 Zero unsafe code
-- 🏆 Zero technical debt
-- 🏆 100% test pass rate
-- 🏆 83.72% coverage
-- 🏆 Fully async & concurrent
-- 🏆 Pure infant discovery
-- 🏆 Production ready
-
-**Grade**: A+ (98/100)
+| Category | Status | Notes |
+|----------|--------|-------|
+| **Getting Started** | ✅ | Complete and up-to-date |
+| **Specifications** | ✅ | Core specs complete |
+| **API Docs** | ⚠️ | Rustdoc needs expansion |
+| **Showcase** | ✅ | 25/48 demos (52%) |
+| **Integration** | 🔄 | 2/6 phases complete |
+| **Archives** | ✅ | Well organized |
 
 ---
 
-*Last updated: December 24, 2025*  
-*For questions or updates, see [START_HERE.md](START_HERE.md)*
+## 🔗 External Resources
+
+### ecoPrimals Ecosystem
+
+- **Phase 1 Primals**: `../../phase1/`
+  - Songbird (Discovery)
+  - BearDog (Identity)
+  - NestGate (Storage)
+  - ToadStool (Compute)
+  - Squirrel (AI)
+
+### Binaries
+
+- **Phase 1 Binaries**: `../bins/`
+  - Used for live integration demos
+
+---
+
+## 📝 Contributing to Documentation
+
+### Adding New Docs
+
+1. **Specifications**: Add to `specs/` directory
+2. **Demos**: Add to appropriate `showcase/` subdirectory
+3. **Archives**: Place in `docs/archive/` with date prefix
+
+### Updating Docs
+
+1. Update the document
+2. Update `CHANGELOG.md` if significant
+3. Update this index if new document added
+4. Update `STATUS.md` if status changed
+
+### Documentation Standards
+
+- Use markdown format
+- Include date in headers
+- Link to related documents
+- Keep README.md current
+- Archive old session docs
+
+---
+
+**Last Updated**: December 25, 2025  
+**Documentation Version**: 1.0.0  
+**rhizoCrypt Version**: 0.10.0
+
+---
+
+*For questions about documentation, see [START_HERE.md](START_HERE.md)*

@@ -105,7 +105,7 @@ pub struct StorageConfig {
     /// Storage backend type.
     pub backend: StorageBackend,
 
-    /// Path for persistent storage (RocksDB, LMDB).
+    /// Path for persistent storage (Sled).
     pub path: Option<String>,
 
     /// Maximum size in bytes for in-memory storage.
@@ -129,10 +129,10 @@ pub enum StorageBackend {
     #[default]
     Memory,
 
-    /// RocksDB storage (persistent, good general purpose).
-    RocksDb,
+    /// Sled storage (100% Pure Rust, persistent, ACID, lock-free).
+    Sled,
 
-    /// LMDB storage (persistent, memory-mapped).
+    /// LMDB storage (persistent, memory-mapped) - Future consideration.
     Lmdb,
 }
 

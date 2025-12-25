@@ -6,3 +6,4 @@
 pub mod concurrent_stress;
 pub mod discovery_failures;
 pub mod failure_injection;
+pub mod network_partitions;

@@ -1,291 +1,299 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Demo: Dehydration Protocol - Commit to Permanent Storage
 #
-# 🔐 rhizoCrypt - Dehydration (Commit) Demo
-#
-# Demonstrates:
-# 1. Dehydration concept (commit to permanent storage)
-# 2. Commit workflow
-# 3. Ephemeral → Permanent transition
-#
+# This demo shows how dehydration works: committing ephemeral DAG results
+# back to permanent storage (LoamSpine) with cryptographic provenance.
 
 set -e
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
-# Logging
-log() { echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} $1"; }
-success() { echo -e "${GREEN}✓${NC} $1"; }
-info() { echo -e "${CYAN}ℹ${NC} $1"; }
-
-# Banner
-echo -e "${PURPLE}"
-cat << 'EOF'
-╔══════════════════════════════════════════════════════════╗
-║    💾 Dehydration - Commit to Permanent Storage 💾        ║
-║                                                           ║
-║  Learn: Ephemeral → Permanent transition                 ║
-╚══════════════════════════════════════════════════════════╝
-EOF
-echo -e "${NC}"
-
+echo "🔐 rhizoCrypt Demo: Dehydration Protocol"
+echo "========================================="
 echo ""
-echo -e "${CYAN}Note: This demo is conceptual - actual dehydration requires LoamSpine${NC}"
+echo "Dehydration is the process of committing ephemeral DAG results"
+echo "to permanent storage with full cryptographic provenance."
+echo ""
+echo "The protocol ensures:"
+echo "  • Atomicity (all or nothing)"
+echo "  • Integrity (Merkle root verification)"
+echo "  • Provenance (full DAG traceability)"
 echo ""
 
-# Get paths
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RHIZO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+# Create temp directory
+DEMO_DIR=$(mktemp -d)
+cd "$DEMO_DIR"
 
-log "Building rhizoCrypt..."
-cd "$RHIZO_ROOT"
-cargo build --quiet 2>/dev/null || cargo build
-
-echo ""
-log "Creating dehydration demo..."
-
-# Create temporary Rust program
-TEMP_DIR=$(mktemp -d)
-cat > "$TEMP_DIR/Cargo.toml" << CARGO_EOF
+# Create demo project
+cat > Cargo.toml << 'EOF'
 [package]
 name = "dehydration-demo"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rhizo-crypt-core = { path = "$RHIZO_ROOT/crates/rhizo-crypt-core" }
+rhizo-crypt-core = { path = "../../../../../crates/rhizo-crypt-core" }
 tokio = { version = "1.46", features = ["full"] }
-CARGO_EOF
+EOF
 
-mkdir -p "$TEMP_DIR/src"
-cat > "$TEMP_DIR/src/main.rs" << 'RUST_EOF'
-use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig, Session, SessionType, Vertex, EventType};
+mkdir -p src
+
+# Create demo code
+cat > src/main.rs << 'EOF'
+use rhizo_crypt_core::*;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n💾 Dehydration: Commit Ephemeral DAG to Permanent Storage...\n");
+async fn main() -> Result<()> {
+    println!("═══════════════════════════════════════════════════════");
+    println!("  Dehydration Protocol: Ephemeral → Permanent");
+    println!("═══════════════════════════════════════════════════════\n");
     
-    // Create rhizoCrypt instance
     let config = RhizoCryptConfig::default();
-    let rhizo = RhizoCrypt::new(config);
-    rhizo.start().await?;
+    let mut primal = RhizoCrypt::new(config);
+    primal.start().await?;
     
-    // Explain dehydration
-    println!("📚 What is Dehydration?");
-    println!();
-    println!("   Dehydration is the process of committing");
-    println!("   ephemeral DAG results to permanent storage.");
-    println!();
-    println!("   Think of it like:");
-    println!("     • Git commit: Working directory → Repository");
-    println!("     • Database commit: Transaction → Persistent storage");
-    println!("     • Save file: RAM → Disk");
-    println!();
+    // ========================================
+    // Part 1: Create Working Session
+    // ========================================
+    println!("┌─────────────────────────────────────────────────────┐");
+    println!("│  Part 1: Create Ephemeral Working Session          │");
+    println!("└─────────────────────────────────────────────────────┘\n");
     
-    // Show workflow
-    println!("🔄 Dehydration Workflow:");
-    println!();
-    println!("   Step 1: Session is active (ephemeral DAG growing)");
-    println!("      └─ Vertices added to working memory");
-    println!();
-    println!("   Step 2: Resolve session (finalize DAG)");
-    println!("      └─ Compute topological sort");
-    println!("      └─ Build Merkle tree");
-    println!("      └─ Calculate Merkle root");
-    println!();
-    println!("   Step 3: Dehydrate (commit to LoamSpine)");
-    println!("      └─ Get frontier vertices");
-    println!("      └─ Commit to permanent storage");
-    println!("      └─ Include Merkle root (integrity)");
-    println!("      └─ Include provenance metadata");
-    println!();
-    println!("   Step 4: LoamSpine returns commit ID");
-    println!("      └─ Unique identifier for committed data");
-    println!("      └─ Can be used for future slice checkouts");
-    println!();
+    let session = SessionBuilder::new(SessionType::Ephemeral)
+        .with_name("dehydration-demo")
+        .with_description("Compute results for permanent storage")
+        .build();
     
-    // Simulate dehydration workflow
-    let session = Session::new("dehydration-demo".to_string(), SessionType::Persistent);
-    let session_id = session.id;
-    rhizo.create_session(session).await?;
+    let session_id = primal.create_session(session).await?;
+    println!("✅ Created ephemeral session: {}", session_id);
+    println!("   Goal: Compute results to commit to permanent storage\n");
     
-    let store = rhizo.dag_store().await?;
+    // ========================================
+    // Part 2: Build Computation DAG
+    // ========================================
+    println!("┌─────────────────────────────────────────────────────┐");
+    println!("│  Part 2: Build Computation DAG                     │");
+    println!("└─────────────────────────────────────────────────────┘\n");
     
-    println!("📊 Simulated Dehydration:");
-    println!();
+    println!("Building computation workflow...\n");
     
-    // Build a DAG
-    println!("   Phase 1: Build ephemeral DAG");
+    // Step 1: Load data
+    let load_vertex = VertexBuilder::new(EventType::DataCreate { 
+        schema: Some("user_events".to_string()) 
+    })
+        .with_payload_ref(PayloadRef::inline(b"Raw event data"))
+        .with_metadata("source", "sensor_network")
+        .with_metadata("records", "1000")
+        .build();
     
-    let v1 = Vertex::new(EventType::SessionStarted, Vec::new());
-    let v1_id = v1.id.clone();
-    store.put_vertex(session_id, v1).await?;
-    println!("     ✓ Vertex 1: {}", &v1_id[..16]);
+    let load_id = primal.append_vertex(session_id, load_vertex).await?;
+    println!("   ✓ Step 1: Load data (1000 records)");
     
-    let v2 = Vertex::new(EventType::DataCreated, vec![v1_id.clone()]);
-    let v2_id = v2.id.clone();
-    store.put_vertex(session_id, v2).await?;
-    println!("     ✓ Vertex 2: {}", &v2_id[..16]);
+    // Step 2: Clean data
+    let clean_vertex = VertexBuilder::new(EventType::DataTransform)
+        .with_parent(load_id)
+        .with_payload_ref(PayloadRef::inline(b"Cleaned data"))
+        .with_metadata("operation", "remove_duplicates")
+        .with_metadata("records_out", "950")
+        .build();
     
-    let v3 = Vertex::new(EventType::DataModified, vec![v2_id.clone()]);
-    let v3_id = v3.id.clone();
-    store.put_vertex(session_id, v3).await?;
-    println!("     ✓ Vertex 3: {}", &v3_id[..16]);
+    let clean_id = primal.append_vertex(session_id, clean_vertex).await?;
+    println!("   ✓ Step 2: Clean data (removed 50 duplicates)");
     
-    let v4 = Vertex::new(EventType::DataCommitted, vec![v3_id.clone()]);
-    let v4_id = v4.id.clone();
-    store.put_vertex(session_id, v4).await?;
-    println!("     ✓ Vertex 4: {}", &v4_id[..16]);
-    println!();
+    // Step 3: Aggregate
+    let agg_vertex = VertexBuilder::new(EventType::DataTransform)
+        .with_parent(clean_id)
+        .with_payload_ref(PayloadRef::inline(b"Aggregated metrics"))
+        .with_metadata("operation", "group_by_user")
+        .with_metadata("groups", "120")
+        .build();
     
-    let count = store.count_vertices(session_id).await?;
-    println!("     DAG: {} vertices (ephemeral)", count);
-    println!();
+    let agg_id = primal.append_vertex(session_id, agg_vertex).await?;
+    println!("   ✓ Step 3: Aggregate (120 user groups)");
     
-    // Resolve
-    println!("   Phase 2: Resolve session");
-    println!("     • Topological sort: V1 → V2 → V3 → V4");
-    println!("     • Build Merkle tree");
+    // Step 4: Generate insights
+    let insight_vertex = VertexBuilder::new(EventType::Custom {
+        domain: "analytics".into(),
+        event_name: "insights_generated".into(),
+    })
+        .with_parent(agg_id)
+        .with_payload_ref(PayloadRef::inline(b"User behavior insights"))
+        .with_metadata("insight_count", "45")
+        .with_metadata("confidence", "0.95")
+        .build();
     
-    let genesis = store.get_genesis(session_id).await?;
-    let frontier = store.get_frontier(session_id).await?;
+    primal.append_vertex(session_id, insight_vertex).await?;
+    println!("   ✓ Step 4: Generate insights (45 findings)\n");
     
-    println!("     • Merkle root: abc123def456... (simulated)");
-    println!("     • Frontier: {} vertices", frontier.len());
-    println!();
+    let vertex_count = primal.vertex_count(session_id).await?;
+    println!("✅ Built computation DAG with {} vertices\n", vertex_count);
     
-    // Dehydrate (simulated)
-    println!("   Phase 3: Dehydrate to LoamSpine");
-    println!("     → Connecting to LoamSpine...");
-    println!("     → Committing frontier vertices...");
-    println!("     → Including Merkle root...");
-    println!("     → Including provenance metadata...");
-    println!();
-    println!("     ✓ Dehydration complete!");
-    println!("     Commit ID: commit_789xyz (simulated)");
-    println!();
+    // ========================================
+    // Part 3: Pre-Dehydration Analysis
+    // ========================================
+    println!("┌─────────────────────────────────────────────────────┐");
+    println!("│  Part 3: Pre-Dehydration Analysis                  │");
+    println!("└─────────────────────────────────────────────────────┘\n");
     
-    // Show what gets committed
-    println!("   📦 What Gets Committed:");
-    println!("     • Frontier vertices ({} vertices)", frontier.len());
-    println!("     • Merkle root (integrity proof)");
-    println!("     • Session metadata:");
-    println!("       - Session ID");
-    println!("       - Timestamp");
-    println!("       - Total vertex count");
-    println!("     • Provenance:");
-    println!("       - Source slices (if any)");
-    println!("       - Computation lineage");
-    println!();
+    let genesis = primal.get_genesis(session_id).await?;
+    let frontier = primal.get_frontier(session_id).await?;
     
-    // Show DAG structure
-    println!("   🌳 DAG (Ephemeral → Permanent):");
-    println!("      V1 (SessionStarted)");
-    println!("       ↓");
-    println!("      V2 (DataCreated)");
-    println!("       ↓");
-    println!("      V3 (DataModified)");
-    println!("       ↓");
-    println!("      V4 (DataCommitted) ← Frontier");
-    println!("       ↓");
-    println!("      [Dehydrate to LoamSpine]");
-    println!("       ↓");
-    println!("      Commit ID: commit_789xyz");
-    println!();
+    println!("Session state before dehydration:");
+    println!("   Genesis (roots): {} vertices", genesis.len());
+    println!("   Frontier (tips): {} vertices", frontier.len());
+    println!("   Total vertices: {}", vertex_count);
+    println!("");
+    println!("What will be committed:");
+    println!("   → Frontier vertices (the final results)");
+    println!("   → Merkle root (integrity proof)");
+    println!("   → Full DAG provenance (traceable back to genesis)\n");
     
-    println!("🎉 Success! You understand dehydration!");
-    println!("\n💡 Key Concepts:");
-    println!("  • Dehydration = ephemeral → permanent");
-    println!("  • Only frontier vertices committed (not full DAG)");
-    println!("  • Merkle root provides integrity proof");
-    println!("  • Commit ID enables future slice checkouts");
-    println!("  • Provenance metadata preserved");
+    // ========================================
+    // Part 4: Execute Dehydration
+    // ========================================
+    println!("┌─────────────────────────────────────────────────────┐");
+    println!("│  Part 4: Execute Dehydration Protocol              │");
+    println!("└─────────────────────────────────────────────────────┘\n");
     
-    println!("\n🌟 Benefits:");
-    println!("  • Explicit: User controls persistence");
-    println!("  • Efficient: Only commit what's needed (frontier)");
-    println!("  • Verifiable: Merkle root proves integrity");
-    println!("  • Traceable: Full provenance preserved");
-    println!("  • Composable: Committed data can be sliced later");
+    println!("Initiating dehydration...");
+    println!("  1. Resolving session (finalizing DAG)...");
+    println!("  2. Computing Merkle root...");
+    println!("  3. Extracting frontier vertices...");
+    println!("  4. Preparing commit payload...\n");
     
-    println!("\n🔐 Sovereignty & Consent:");
-    println!("  • Dehydration requires explicit user action");
-    println!("  • Ephemeral by default (no auto-save)");
-    println!("  • User chooses what to persist");
-    println!("  • No surveillance (ephemeral discarded)");
-    println!("  • Audit trail only when needed");
+    let summary = primal.dehydrate_session(session_id).await?;
     
-    println!("\n📖 Real-World Example:");
-    println!("   // Build ephemeral DAG");
-    println!("   let session = Session::new(\"my-session\", Persistent);");
-    println!("   // ... add vertices ...");
-    println!();
-    println!("   // Resolve session (finalize)");
-    println!("   session.resolve().await?;");
-    println!();
-    println!("   // Dehydrate to permanent storage");
-    println!("   let commit_id = session.dehydrate().await?;");
-    println!();
-    println!("   // Later: Checkout as slice in new session");
-    println!("   let new_session = Session::new(\"next-session\", Ephemeral);");
-    println!("   new_session.checkout_slice(commit_id).await?;");
-    println!();
+    println!("✅ Dehydration complete!\n");
+    println!("═══════════════════════════════════════════════════════");
+    println!("  📦 Dehydration Summary");
+    println!("═══════════════════════════════════════════════════════");
+    println!("  Session ID:     {}", summary.session_id);
+    println!("  Merkle Root:    {}", summary.merkle_root);
+    println!("  Vertex Count:   {}", summary.vertex_count);
+    println!("  Resolution:     {:?}", summary.resolution);
+    println!("  Timestamp:      {}", summary.timestamp);
+    println!("═══════════════════════════════════════════════════════\n");
     
-    println!("🔗 Full Lifecycle:");
-    println!();
-    println!("   Session 1:");
-    println!("     CREATE → GROW → RESOLVE → DEHYDRATE");
-    println!("                                   ↓");
-    println!("                         LoamSpine (commit_123)");
-    println!("                                   ↓");
-    println!("   Session 2:");
-    println!("     CREATE → SLICE(commit_123) → GROW → DEHYDRATE");
-    println!("                                             ↓");
-    println!("                               LoamSpine (commit_456)");
-    println!();
-    println!("   → Full lineage preserved!");
+    // ========================================
+    // Part 5: What Happens Next (LoamSpine)
+    // ========================================
+    println!("┌─────────────────────────────────────────────────────┐");
+    println!("│  Part 5: LoamSpine Commit (Simulated)              │");
+    println!("└─────────────────────────────────────────────────────┘\n");
+    
+    println!("In a full integration, this summary would be sent to LoamSpine:\n");
+    
+    println!("  LoamSpine would:");
+    println!("    1. Verify Merkle root integrity");
+    println!("    2. Store frontier vertices");
+    println!("    3. Index by content hash (Blake3)");
+    println!("    4. Create permanent commit record");
+    println!("    5. Return commit ID for future reference\n");
+    
+    println!("  Example LoamSpine commit record:");
+    println!("    Commit ID:      loamspine-commit-xyz123");
+    println!("    Merkle Root:    {}", summary.merkle_root);
+    println!("    Source Session: {}", summary.session_id);
+    println!("    Timestamp:      {}", summary.timestamp);
+    println!("    Status:         Permanent\n");
+    
+    // ========================================
+    // Part 6: The Full Cycle
+    // ========================================
+    println!("┌─────────────────────────────────────────────────────┐");
+    println!("│  Part 6: The Full Rhizo-Loam Cycle                 │");
+    println!("└─────────────────────────────────────────────────────┘\n");
+    
+    println!("The complete workflow:");
+    println!("");
+    println!("  ┌──────────────┐");
+    println!("  │  LoamSpine   │  ← Permanent storage");
+    println!("  │  (Permanent) │");
+    println!("  └──────┬───────┘");
+    println!("         │ Slice checkout (read)");
+    println!("         ▼");
+    println!("  ┌──────────────┐");
+    println!("  │  rhizoCrypt  │  ← Working memory");
+    println!("  │  (Ephemeral) │     - Build DAG");
+    println!("  │              │     - Compute");
+    println!("  └──────┬───────┘     - Transform");
+    println!("         │ Dehydration (write)");
+    println!("         ▼");
+    println!("  ┌──────────────┐");
+    println!("  │  LoamSpine   │  ← Results stored");
+    println!("  │  (Permanent) │");
+    println!("  └──────────────┘\n");
+    
+    // ========================================
+    // Summary
+    // ========================================
+    println!("═══════════════════════════════════════════════════════");
+    println!("  🎓 Key Takeaways:");
+    println!("═══════════════════════════════════════════════════════");
+    println!("  • Dehydration commits ephemeral results to permanent storage");
+    println!("  • Merkle root provides cryptographic integrity");
+    println!("  • Only frontier vertices are committed (results, not all steps)");
+    println!("  • Full DAG provenance is traceable via Merkle tree");
+    println!("  • Enables 'compute in working memory, save only results'");
+    println!("  • Philosophy: Ephemeral by default, persistent by consent");
+    println!("═══════════════════════════════════════════════════════\n");
     
     // Cleanup
-    rhizo.stop().await?;
+    primal.discard_session(session_id).await?;
+    primal.stop().await?;
     
     Ok(())
 }
-RUST_EOF
+EOF
 
+# Build and run
+echo "Building demo..."
+cargo build --quiet 2>&1 | grep -v "Compiling\|Finished" || true
 echo ""
-log "Running demo..."
+echo "Running demo..."
 echo ""
-
-cd "$TEMP_DIR"
-cargo run --quiet 2>/dev/null || cargo run
+cargo run --quiet
 
 # Cleanup
-cd "$RHIZO_ROOT"
-rm -rf "$TEMP_DIR"
+cd ..
+rm -rf "$DEMO_DIR"
 
+#!/usr/bin/env bash
+# Demo: Dehydration Protocol - Commit to Permanent Storage
+#
+# This demo shows how dehydration works
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+echo "🔐 rhizoCrypt Demo: Dehydration Protocol"
+echo "========================================="
 echo ""
-echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}Demo Complete!${NC}"
-echo ""
-info "What you learned:"
-echo "  1. Dehydration = ephemeral → permanent"
-echo "  2. Only frontier vertices committed"
-echo "  3. Merkle root provides integrity"
-echo "  4. Explicit user consent required"
-echo ""
-info "Level 4 Complete! Congratulations!"
-echo ""
-info "You've completed all 6 levels of the rhizoCrypt showcase!"
-echo ""
-info "Next steps:"
-echo "  • Run the full automated tour: cd ../..; ./RUN_ME_FIRST.sh"
-echo "  • Explore inter-primal demos: cd ../../01-inter-primal"
-echo "  • Build your own rhizoCrypt application!"
+echo "Dehydration is the process of committing ephemeral DAG results"
+echo "to permanent storage with full cryptographic provenance."
 echo ""
 
+# Build if needed
+if [ ! -f "target/debug/demo-dehydration" ]; then
+    echo "Building demo (first run)..."
+    cargo build --bin demo-dehydration --quiet
+    echo ""
+fi
+
+# Run the demo
+cargo run --bin demo-dehydration --quiet
+
+echo ""
+echo "✅ Demo complete!"
+echo ""
+echo "═══════════════════════════════════════════════════════"
+echo "  🎉 Level 4 Complete: Sessions & Lifecycle"
+echo "═══════════════════════════════════════════════════════"
+echo ""
+echo "You've learned:"
+echo "  ✓ Session lifecycle (create → grow → resolve → expire)"
+echo "  ✓ Ephemeral vs Persistent sessions"
+echo "  ✓ Slice semantics (checkout from permanent storage)"
+echo "  ✓ Dehydration protocol (commit back to permanent storage)"
+echo ""
+echo "Next level: cd ../05-performance"

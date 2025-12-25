@@ -70,8 +70,8 @@ pub mod types;
 pub mod vertex;
 
 // Optional storage backends
-#[cfg(feature = "rocksdb")]
-pub mod store_rocksdb;
+#[cfg(feature = "sled")]
+pub mod store_sled;
 
 // Re-exports for convenience
 pub use config::{
@@ -112,8 +112,8 @@ pub use slice::{
 pub use store::{
     DagStore, InMemoryDagStore, InMemoryPayloadStore, PayloadStore, StorageHealth, StorageStats,
 };
-#[cfg(feature = "rocksdb")]
-pub use store_rocksdb::RocksDbDagStore;
+#[cfg(feature = "sled")]
+pub use store_sled::SledDagStore;
 pub use types::{ContentHash, Did, PayloadRef, SessionId, Signature, SliceId, Timestamp, VertexId};
 pub use vertex::{MetadataValue, Vertex, VertexBuilder};
 
@@ -665,7 +665,7 @@ impl PrimalLifecycle for RhizoCrypt {
         // Validate storage backend configuration
         if self.config.storage.backend == StorageBackend::Lmdb {
             return Err(PrimalError::StartupFailed(
-                "LMDB storage backend is not yet implemented. Please use Memory or RocksDb."
+                "LMDB storage backend is not yet implemented. Please use Memory (or Sled with feature flag)."
                     .to_string(),
             ));
         }
