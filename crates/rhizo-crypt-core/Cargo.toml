@@ -18,8 +18,8 @@ test-utils = []
 sled = ["dep:sled"]
 # Enable live client connections to sibling primals
 # - tarpc for Songbird, LoamSpine
-# - HTTP (reqwest) for BearDog, NestGate
-live-clients = ["dep:tarpc", "dep:futures-util", "dep:bincode", "dep:reqwest", "dep:base64"]
+# - HTTP (reqwest) is now always available for capability clients
+live-clients = ["dep:tarpc", "dep:futures-util", "dep:bincode", "dep:base64"]
 
 [lints]
 workspace = true
@@ -36,13 +36,16 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 hashbrown = { workspace = true }
 lru = "0.12"
+async-trait = { workspace = true }
+parking_lot = { workspace = true }
 # Optional storage backends
 sled = { version = "0.34.7", optional = true }
+# HTTP client for adapters (always available)
+reqwest = { version = "0.12", features = ["json"] }
 # Optional live client connections
 tarpc = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }
 bincode = { version = "1.3", optional = true }
-reqwest = { version = "0.12", features = ["json"], optional = true }
 base64 = { version = "0.22", optional = true }
 
 [dev-dependencies]

@@ -87,15 +87,26 @@ pub use discovery::{
 pub use error::{Result, RhizoCryptError};
 pub use event::EventType;
 pub use integration::{
-    BearDogClient, ClientFactory, IntegrationStatus, LoamSpineClient, NestGateClient, ServiceStatus,
+    ClientFactory, IntegrationStatus, ServiceStatus,
 };
 pub use safe_env::{CapabilityEnv, SafeEnv};
 
-// Client modules
-pub use clients::sweetgrass::{
-    AgentContribution, ProvenanceChain, SessionAttribution, SweetGrassQueryable, VertexRef,
+// NEW: Capability-based clients (vendor-agnostic)
+pub use clients::capabilities::{
+    ComputeClient, PermanentStorageClient, ProvenanceClient, SigningClient, StorageClient,
 };
-pub use clients::toadstool::{ComputeEvent, TaskId, ToadStoolClient, ToadStoolConfig};
+
+// DEPRECATED: Legacy primal-specific clients
+#[allow(deprecated)]
+pub use clients::{
+    BearDogClient, LoamSpineClient, NestGateClient, SweetGrassQueryable, ToadStoolClient,
+};
+
+// Legacy client modules (for re-exports)
+pub use clients::legacy::sweetgrass::{
+    AgentContribution, ProvenanceChain, SessionAttribution, VertexRef,
+};
+pub use clients::legacy::toadstool::{ComputeEvent, TaskId, ToadStoolConfig};
 
 // Test utilities - only available with test-utils feature or in tests
 #[cfg(any(test, feature = "test-utils"))]

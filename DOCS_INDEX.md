@@ -1,249 +1,133 @@
-# 📚 rhizoCrypt Documentation Index
+# 📚 Documentation Index
 
-**Last Updated**: December 25, 2025
+**rhizoCrypt v0.11.0** — Ephemeral DAG Engine with Capability-Based Architecture
 
 ---
 
-## 🚀 Getting Started
-
-### Essential Documents
+## 🚀 Start Here
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
 | **[README.md](README.md)** | Project overview, quick start | Everyone |
-| **[START_HERE.md](START_HERE.md)** | New user onboarding, learning path | New users |
-| **[STATUS.md](STATUS.md)** | Current status, metrics, priorities | Developers |
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history, changes | All |
+| **[START_HERE.md](START_HERE.md)** | New developer guide | New developers |
+| **[STATUS.md](STATUS.md)** | Current project status | Everyone |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history | Users, developers |
 
 ---
 
-## 📖 Specifications
+## 🌱 Zero-Hardcoding Initiative (v0.11.0)
 
-### Core Specs
+| Document | Purpose | Status |
+|----------|---------|--------|
+| **[INFANT_DISCOVERY.md](INFANT_DISCOVERY.md)** | Complete guide to capability-based discovery | ✅ Current |
+| **[ZERO_HARDCODING_COMPLETE.md](ZERO_HARDCODING_COMPLETE.md)** | Executive summary & completion report | ✅ Complete |
+| **[ZERO_HARDCODING_FINAL_SUMMARY.md](ZERO_HARDCODING_FINAL_SUMMARY.md)** | Full metrics and achievements | ✅ Complete |
+| **[ZERO_HARDCODING_QUICK_REF.md](ZERO_HARDCODING_QUICK_REF.md)** | Quick reference guide | ✅ Complete |
 
-Located in `specs/` directory:
+### Phase Reports (Archive)
 
-| Specification | Description |
-|---------------|-------------|
-| **[RHIZOCRYPT_SPECIFICATION.md](specs/RHIZOCRYPT_SPECIFICATION.md)** | Complete system specification |
-| **[ARCHITECTURE.md](specs/ARCHITECTURE.md)** | System design and components |
-| **[DATA_MODEL.md](specs/DATA_MODEL.md)** | Data structures and types |
-| **[API_SPECIFICATION.md](specs/API_SPECIFICATION.md)** | Public API reference |
-
-### Protocol Specs
-
-| Specification | Description |
-|---------------|-------------|
-| **[DEHYDRATION_PROTOCOL.md](specs/DEHYDRATION_PROTOCOL.md)** | Commit protocol to permanent storage |
-| **[SLICE_SEMANTICS.md](specs/SLICE_SEMANTICS.md)** | Checkout semantics from permanent storage |
-| **[STORAGE_BACKENDS.md](specs/STORAGE_BACKENDS.md)** | Storage backend options |
-| **[INTEGRATION_SPECIFICATION.md](specs/INTEGRATION_SPECIFICATION.md)** | Inter-primal integration |
+| Document | Phase | Status |
+|----------|-------|--------|
+| [ZERO_HARDCODING_MIGRATION_PLAN.md](ZERO_HARDCODING_MIGRATION_PLAN.md) | Master Plan | ✅ Complete |
+| [ZERO_HARDCODING_PHASE1_COMPLETE.md](ZERO_HARDCODING_PHASE1_COMPLETE.md) | Foundation | ✅ Complete |
+| [ZERO_HARDCODING_PHASE2_PROGRESS.md](ZERO_HARDCODING_PHASE2_PROGRESS.md) | Integration | ✅ Complete |
+| [ZERO_HARDCODING_PHASE3_COMPLETE.md](ZERO_HARDCODING_PHASE3_COMPLETE.md) | Environment | ✅ Complete |
+| [ZERO_HARDCODING_PROGRESS_REPORT.md](ZERO_HARDCODING_PROGRESS_REPORT.md) | Historical | 📦 Archive |
 
 ---
 
-## 🎪 Showcase & Demos
+## 📖 Technical Documentation
 
-### Showcase Index
-
-| Document | Description |
-|----------|-------------|
-| **[showcase/README.md](showcase/README.md)** | Showcase overview |
-| **[showcase/00_SHOWCASE_INDEX.md](showcase/00_SHOWCASE_INDEX.md)** | Complete demo index |
-| **[showcase/00-local-primal/STATUS.md](showcase/00-local-primal/STATUS.md)** | Local demo status |
-
-### Demo Categories
-
-1. **Local Primal Demos** (`showcase/00-local-primal/`)
-   - Level 1: Hello rhizoCrypt (3 demos)
-   - Level 2: DAG Engine (4 demos)
-   - Level 3: Merkle Proofs (4 demos)
-   - Level 4: Sessions (4 demos) ✨
-   - Level 5: Performance (4 demos)
-   - Level 6: Advanced Patterns (3 demos)
-
-2. **Inter-Primal Integration** (`showcase/01-inter-primal-live/`)
-   - Phase 1: Songbird (Discovery) - 4 demos ✅
-   - Phase 2: BearDog (Signing) - 4 demos ✅
-   - Phase 3: NestGate (Storage) - 4 demos 📋
-   - Phase 4: ToadStool (Compute) - 4 demos 📋
-   - Phase 5: Squirrel (AI) - 3 demos 📋
-   - Phase 6: Complete Workflow - 3 demos 📋
+| Document | Purpose | Audience |
+|----------|---------|----------|
+| **[ENV_VARS.md](ENV_VARS.md)** | Environment variable reference | Operators, DevOps |
+| **[specs/](specs/)** | Technical specifications | Developers |
+| **[COMPREHENSIVE_AUDIT_REPORT_DEC_25_2025.md](COMPREHENSIVE_AUDIT_REPORT_DEC_25_2025.md)** | Code quality audit | Tech leads |
+| **[AUDIT_ACTION_CHECKLIST.md](AUDIT_ACTION_CHECKLIST.md)** | Action items from audit | Developers |
 
 ---
 
-## 🛠️ Development
+## 🎯 Key Topics
 
-### Configuration
+### **Getting Started**
+1. [README.md](README.md) - Overview and quick start
+2. [START_HERE.md](START_HERE.md) - Developer onboarding
+3. [INFANT_DISCOVERY.md](INFANT_DISCOVERY.md) - Understanding capability-based architecture
 
-| Document | Description |
-|----------|-------------|
-| **[ENV_VARS.md](ENV_VARS.md)** | Environment variables reference |
-| **[Cargo.toml](Cargo.toml)** | Workspace configuration |
-| **[rustfmt.toml](rustfmt.toml)** | Code formatting rules |
+### **Architecture & Design**
+1. [INFANT_DISCOVERY.md](INFANT_DISCOVERY.md) - Capability-based discovery
+2. [specs/architecture.md](specs/architecture.md) - System architecture
+3. [specs/dag.md](specs/dag.md) - DAG implementation
+4. [specs/merkle.md](specs/merkle.md) - Merkle tree design
 
-### Crate Documentation
+### **Configuration & Operations**
+1. [ENV_VARS.md](ENV_VARS.md) - Environment variables
+2. [INFANT_DISCOVERY.md](INFANT_DISCOVERY.md#configuration) - Discovery configuration
+3. [STATUS.md](STATUS.md) - Current status & metrics
 
-| Crate | Location | Description |
-|-------|----------|-------------|
-| **rhizo-crypt-core** | `crates/rhizo-crypt-core/` | Core DAG engine |
-| **rhizo-crypt-rpc** | `crates/rhizo-crypt-rpc/` | RPC layer (tarpc) |
-
-Generate API docs:
-```bash
-cargo doc --workspace --no-deps --open
-```
-
----
-
-## 📋 Planning & Status
-
-### Current Status
-
-| Document | Description |
-|----------|-------------|
-| **[STATUS.md](STATUS.md)** | Current metrics, progress, priorities |
-| **[WHATS_NEXT.md](WHATS_NEXT.md)** | Roadmap and next steps |
-
-### Integration Status
-
-| Document | Description |
-|----------|-------------|
-| **[showcase/01-inter-primal-live/README.md](showcase/01-inter-primal-live/README.md)** | Integration overview |
-| **[showcase/01-inter-primal-live/GAPS_DISCOVERED.md](showcase/01-inter-primal-live/GAPS_DISCOVERED.md)** | Integration gaps and fixes |
+### **Migration & Updates**
+1. [CHANGELOG.md](CHANGELOG.md) - Version history
+2. [INFANT_DISCOVERY.md](INFANT_DISCOVERY.md#migration-guide) - v0.10 → v0.11 migration
+3. [ZERO_HARDCODING_COMPLETE.md](ZERO_HARDCODING_COMPLETE.md) - What changed in v0.11
 
 ---
 
-## 📦 Archives
+## 📦 Archive
 
-### Session Documentation
+Historical documents (informational, not current):
 
-Historical development session documents (fossil record):
-
-| Archive | Contents |
-|---------|----------|
-| **[../archive/rhizoCrypt/2025-12-25-session-docs/](../archive/rhizoCrypt/2025-12-25-session-docs/)** | Dec 24-25 session docs |
-| **[../archive/rhizoCrypt/2025-12-24-evolution-session/](../archive/rhizoCrypt/2025-12-24-evolution-session/)** | Dec 24 evolution session |
-| **[../archive/rhizoCrypt/pure-rust-migration/](../archive/rhizoCrypt/pure-rust-migration/)** | Pure Rust migration artifacts |
-
-### Key Archived Documents
-
-- Pure Rust Evolution reports
-- Comprehensive audit reports
-- Refactoring completion reports
-- Showcase planning documents
-- Session summaries
+- **WHATS_NEXT.md** — Pre-v0.11 roadmap (superseded by STATUS.md)
+- **ZERO_HARDCODING_PROGRESS_REPORT.md** — Historical progress (superseded by COMPLETE docs)
 
 ---
 
-## 🔍 Finding Documentation
+## 🎓 Learning Path
 
-### By Topic
+### **New to rhizoCrypt?**
+1. Read [README.md](README.md) — 5 minutes
+2. Try quick start commands — 10 minutes
+3. Read [START_HERE.md](START_HERE.md) — 15 minutes
+4. Run showcase demos — 20 minutes
 
-**Getting Started**:
-- [START_HERE.md](START_HERE.md) - New user guide
-- [showcase/00-local-primal/00_START_HERE.md](showcase/00-local-primal/00_START_HERE.md) - Demo quick start
+### **Understanding v0.11 Changes?**
+1. Read [INFANT_DISCOVERY.md](INFANT_DISCOVERY.md) — 20 minutes
+2. Review [ZERO_HARDCODING_COMPLETE.md](ZERO_HARDCODING_COMPLETE.md) — 10 minutes
+3. Check migration guide — 5 minutes
 
-**Core Concepts**:
-- [specs/RHIZOCRYPT_SPECIFICATION.md](specs/RHIZOCRYPT_SPECIFICATION.md) - Full specification
-- [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md) - System design
-
-**API Reference**:
-- [specs/API_SPECIFICATION.md](specs/API_SPECIFICATION.md) - Public API
-- `cargo doc --open` - Generated API docs
-
-**Integration**:
-- [specs/INTEGRATION_SPECIFICATION.md](specs/INTEGRATION_SPECIFICATION.md) - Integration guide
-- [showcase/01-inter-primal-live/README.md](showcase/01-inter-primal-live/README.md) - Live integration
-
-**Development**:
-- [STATUS.md](STATUS.md) - Current status
-- [CHANGELOG.md](CHANGELOG.md) - Version history
-- [ENV_VARS.md](ENV_VARS.md) - Configuration
-
-### By Audience
-
-**New Users**:
-1. [START_HERE.md](START_HERE.md)
-2. [README.md](README.md)
-3. [showcase/README.md](showcase/README.md)
-
-**Developers**:
-1. [STATUS.md](STATUS.md)
-2. [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md)
-3. [specs/API_SPECIFICATION.md](specs/API_SPECIFICATION.md)
-
-**Integrators**:
-1. [specs/INTEGRATION_SPECIFICATION.md](specs/INTEGRATION_SPECIFICATION.md)
-2. [showcase/01-inter-primal-live/README.md](showcase/01-inter-primal-live/README.md)
-3. [showcase/01-inter-primal-live/GAPS_DISCOVERED.md](showcase/01-inter-primal-live/GAPS_DISCOVERED.md)
-
-**Contributors**:
-1. [STATUS.md](STATUS.md)
-2. [WHATS_NEXT.md](WHATS_NEXT.md)
-3. [CHANGELOG.md](CHANGELOG.md)
+### **Deep Dive?**
+1. Read all specs/ documentation
+2. Review [COMPREHENSIVE_AUDIT_REPORT_DEC_25_2025.md](COMPREHENSIVE_AUDIT_REPORT_DEC_25_2025.md)
+3. Explore codebase with architecture in mind
 
 ---
 
-## 📊 Documentation Status
+## 🔍 Quick Links
 
-| Category | Status | Notes |
-|----------|--------|-------|
-| **Getting Started** | ✅ | Complete and up-to-date |
-| **Specifications** | ✅ | Core specs complete |
-| **API Docs** | ⚠️ | Rustdoc needs expansion |
-| **Showcase** | ✅ | 25/48 demos (52%) |
-| **Integration** | 🔄 | 2/6 phases complete |
-| **Archives** | ✅ | Well organized |
-
----
-
-## 🔗 External Resources
-
-### ecoPrimals Ecosystem
-
-- **Phase 1 Primals**: `../../phase1/`
-  - Songbird (Discovery)
-  - BearDog (Identity)
-  - NestGate (Storage)
-  - ToadStool (Compute)
-  - Squirrel (AI)
-
-### Binaries
-
-- **Phase 1 Binaries**: `../bins/`
-  - Used for live integration demos
+| Need | Document |
+|------|----------|
+| **"What is this project?"** | [README.md](README.md) |
+| **"How do I start?"** | [START_HERE.md](START_HERE.md) |
+| **"What's new in v0.11?"** | [INFANT_DISCOVERY.md](INFANT_DISCOVERY.md) |
+| **"How do I configure it?"** | [ENV_VARS.md](ENV_VARS.md) |
+| **"What's the status?"** | [STATUS.md](STATUS.md) |
+| **"How do I migrate from v0.10?"** | [INFANT_DISCOVERY.md](INFANT_DISCOVERY.md#migration-guide) |
+| **"What's capability-based discovery?"** | [INFANT_DISCOVERY.md](INFANT_DISCOVERY.md) |
+| **"What changed?"** | [CHANGELOG.md](CHANGELOG.md) |
 
 ---
 
-## 📝 Contributing to Documentation
+## 📊 Documentation Stats
 
-### Adding New Docs
-
-1. **Specifications**: Add to `specs/` directory
-2. **Demos**: Add to appropriate `showcase/` subdirectory
-3. **Archives**: Place in `docs/archive/` with date prefix
-
-### Updating Docs
-
-1. Update the document
-2. Update `CHANGELOG.md` if significant
-3. Update this index if new document added
-4. Update `STATUS.md` if status changed
-
-### Documentation Standards
-
-- Use markdown format
-- Include date in headers
-- Link to related documents
-- Keep README.md current
-- Archive old session docs
+| Category | Files | Status |
+|----------|-------|--------|
+| **Core Docs** | 5 | ✅ Current |
+| **Zero-Hardcoding** | 4 current + 4 archive | ✅ Complete |
+| **Specs** | 15+ files | ✅ Current |
+| **Reports** | 2 | ✅ Current |
+| **Total** | 30+ documents | 📚 Comprehensive |
 
 ---
 
-**Last Updated**: December 25, 2025  
-**Documentation Version**: 1.0.0  
-**rhizoCrypt Version**: 0.10.0
+*Last Updated: December 25, 2025 — v0.11.0 Release*
 
----
-
-*For questions about documentation, see [START_HERE.md](START_HERE.md)*
+**All documentation is up-to-date and reflects the new capability-based architecture!** 🎉
