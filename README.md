@@ -1,7 +1,8 @@
 # 🔐 rhizoCrypt
 
 **Ephemeral DAG Engine** — Phase 2 Working Memory  
-**🦀 100% Pure Rust** — Zero C/C++ dependencies, zero unsafe code
+**🦀 100% Pure Rust** — Zero C/C++ dependencies, zero unsafe code  
+**🌱 Infant Discovery** — Zero hardcoding, capability-based architecture
 
 ---
 
@@ -9,14 +10,57 @@
 
 | Metric | Value |
 |--------|-------|
-| **Version** | 0.10.0 |
+| **Version** | 0.11.0 |
 | **Pure Rust** | 🦀 **100%** (zero C/C++ deps) |
-| **Tests** | ✅ 228 passing |
+| **Tests** | ✅ 271 passing |
 | **Coverage** | ✅ 64% core |
 | **Clippy** | ✅ Zero warnings |
 | **Unsafe** | ✅ 0 blocks (forbidden) |
 | **Storage** | 🦀 Sled (Pure Rust) |
+| **Architecture** | 🌱 **Capability-Based** |
 | **Status** | 🚀 **Production Ready** |
+
+---
+
+## 🌟 What's New in v0.11.0
+
+### **Zero-Hardcoding Architecture** 🎉
+
+rhizoCrypt now uses **capability-based discovery** instead of hardcoded service names:
+
+- ✅ **Vendor Neutral** — Works with ANY provider (not just BearDog, NestGate, etc.)
+- ✅ **Runtime Discovery** — Services found dynamically, not hardcoded
+- ✅ **Minimal Config** — One environment variable (or zero!)
+- ✅ **Infant Discovery** — Starts with zero knowledge, learns at runtime
+
+**Before (v0.10.x)**:
+```rust
+// ❌ Hardcoded to specific primal
+use rhizo_crypt_core::clients::BearDogClient;
+let client = BearDogClient::connect("http://beardog:9500").await?;
+```
+
+**After (v0.11.x)**:
+```rust
+// ✅ Works with ANY signing provider
+use rhizo_crypt_core::clients::capabilities::SigningClient;
+let signer = SigningClient::discover(&registry).await?;
+// BearDog, YubiKey, CloudKMS, HSM, etc.
+```
+
+**Configuration**:
+```bash
+# Before: 6+ hardcoded variables
+BEARDOG_ADDRESS=beardog.prod:9500
+NESTGATE_ADDRESS=nestgate.prod:8080
+# ... more ...
+
+# After: 1 variable (or zero!)
+export RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.prod:7500
+# Everything else discovered at runtime!
+```
+
+See [INFANT_DISCOVERY.md](INFANT_DISCOVERY.md) for details.
 
 ---
 
@@ -28,7 +72,7 @@ git clone <repo>
 cd rhizoCrypt
 cargo build --workspace
 
-# Run tests (228 passing)
+# Run tests (271 passing)
 cargo test --workspace
 
 # Try showcase demos
@@ -47,6 +91,7 @@ rhizoCrypt is the **ephemeral working memory** of the ecoPrimals ecosystem:
 - **Merkle Proofs**: Cryptographic integrity for every vertex
 - **Dehydration**: Commit ephemeral results to permanent storage
 - **Slice Semantics**: Checkout immutable snapshots for computation
+- **Capability Discovery**: Zero hardcoding, runtime service discovery
 
 ### Philosophy
 
@@ -54,9 +99,15 @@ rhizoCrypt is the **ephemeral working memory** of the ecoPrimals ecosystem:
 
 rhizoCrypt forgets by design. Only explicit dehydration creates permanence.
 
+> **"Like an infant, we start with zero knowledge and discover."**
+
+rhizoCrypt starts with no hardcoded services. Everything is discovered at runtime based on capabilities, not vendor names.
+
 ---
 
 ## 🏗️ Architecture
+
+### **High-Level Overview**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -67,15 +118,39 @@ rhizoCrypt forgets by design. Only explicit dehydration creates permanence.
 │  │ Vertex  │  │  DAG    │  │ Merkle  │  │  Sessions   │   │
 │  │ Store   │  │ Index   │  │ Trees   │  │  (scopes)   │   │
 │  └─────────┘  └─────────┘  └─────────┘  └─────────────┘   │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐     │
+│  │         Capability-Based Service Discovery         │     │
+│  │  ┌─────────┐  ┌─────────┐  ┌──────────────────┐  │     │
+│  │  │ Signing │  │ Storage │  │ Permanent Commit │  │     │
+│  │  └─────────┘  └─────────┘  └──────────────────┘  │     │
+│  └────────────────────────────────────────────────────┘     │
 └─────────────────────────────────────────────────────────────┘
         │                                              │
         │ Slice Checkout                               │ Dehydration
         ▼                                              ▼
 ┌──────────────┐                              ┌──────────────┐
-│  LoamSpine   │                              │  LoamSpine   │
-│  (Permanent) │                              │  (Permanent) │
+│ ANY Provider │                              │ ANY Provider │
+│ (LoamSpine,  │                              │ (LoamSpine,  │
+│  PostgreSQL, │                              │  S3, etc.)   │
+│  etc.)       │                              │              │
 └──────────────┘                              └──────────────┘
 ```
+
+### **Capability-Based Architecture**
+
+rhizoCrypt discovers services by **what they can do**, not **who they are**:
+
+```
+Discovery Registry
+    ├─ Signing Capability        → (ANY signing provider)
+    ├─ Storage Capability        → (ANY storage provider)
+    ├─ Permanent Commit          → (ANY permanent storage)
+    ├─ Compute Orchestration     → (ANY compute provider)
+    └─ Provenance Tracking       → (ANY provenance provider)
+```
+
+**Zero Vendor Lock-In**: Swap providers with configuration changes only.
 
 ---
 

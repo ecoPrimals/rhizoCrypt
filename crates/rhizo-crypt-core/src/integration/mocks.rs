@@ -391,3 +391,197 @@ mod tests {
         assert!(client.get_payload(&fake_ref).await.unwrap().is_none());
     }
 }
+
+// ============================================================================
+// NEW: Capability-Based Mock Adapters
+// ============================================================================
+
+/// Mock protocol adapter for testing capability clients.
+///
+/// This adapter simulates ANY provider by returning predefined responses.
+/// Use with capability clients for testing without real services.
+///
+/// ## Example
+///
+/// ```rust,ignore
+/// use rhizo_crypt_core::integration::mocks::MockProtocolAdapter;
+/// use rhizo_crypt_core::clients::capabilities::SigningClient;
+///
+/// // Create mock adapter
+/// let adapter = MockProtocolAdapter::permissive();
+///
+/// // Use with capability client (bypass discovery)
+/// let client = SigningClient::with_adapter(adapter);
+/// let sig = client.sign(data, &did).await?;
+/// ```
+#[derive(Debug, Clone)]
+pub struct MockProtocolAdapter {
+    /// Responses to return for each method
+    responses: Arc<RwLock<HashMap<String, String>>>,
+    /// Whether to succeed or fail all calls
+    permissive: bool,
+}
+
+impl MockProtocolAdapter {
+    /// Create a new mock adapter that returns success for all calls.
+    #[must_use]
+    pub fn permissive() -> Self {
+        Self {
+            responses: Arc::new(RwLock::new(HashMap::new())),
+            permissive: true,
+        }
+    }
+
+    /// Create a new mock adapter that fails all calls.
+    #[must_use]
+    pub fn strict() -> Self {
+        Self {
+            responses: Arc::new(RwLock::new(HashMap::new())),
+            permissive: false,
+        }
+    }
+
+    /// Set a response for a specific method.
+    ///
+    /// The response should be JSON-serializable.
+    pub async fn set_response<T: serde::Serialize>(&self, method: &str, response: T) -> Result<()> {
+        let json = serde_json::to_string(&response)
+            .map_err(|e| crate::error::RhizoCryptError::integration(format!("Mock serialization failed: {}", e)))?;
+        
+        let mut responses = self.responses.write().await;
+        responses.insert(method.to_string(), json);
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
+    fn protocol(&self) -> &str {
+        "mock"
+    }
+
+    async fn call_json(&self, method: &str, _args: String) -> Result<String> {
+        if !self.permissive {
+            return Err(crate::error::RhizoCryptError::integration("Mock adapter is in strict mode"));
+        }
+
+        // Check for pre-configured response
+        let responses = self.responses.read().await;
+        if let Some(response) = responses.get(method) {
+            return Ok(response.clone());
+        }
+
+        // Return default responses based on method
+        match method {
+            "verify_did" => Ok("true".to_string()),
+            "sign" => Ok(r#"{"bytes":[222,173,190,239]}"#.to_string()),
+            "verify_signature" => Ok("true".to_string()),
+            "put_payload" => Ok(r#"{"hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"size":0}"#.to_string()),
+            "get_payload" => Ok("null".to_string()),
+            "payload_exists" => Ok("false".to_string()),
+            _ => Err(crate::error::RhizoCryptError::integration(format!("Mock adapter: unknown method '{}'", method))),
+        }
+    }
+
+    async fn call_oneway_json(&self, method: &str, _args: String) -> Result<()> {
+        if !self.permissive {
+            return Err(crate::error::RhizoCryptError::integration("Mock adapter is in strict mode"));
+        }
+
+        // One-way calls always succeed in permissive mode
+        tracing::debug!("Mock adapter: one-way call to '{}'", method);
+        Ok(())
+    }
+
+    async fn is_healthy(&self) -> bool {
+        self.permissive
+    }
+
+    fn endpoint(&self) -> &str {
+        "mock://test"
+    }
+}
+
+/// Factory for creating mock capability clients.
+///
+/// Provides a convenient way to create pre-configured mock clients for testing
+/// without needing a real discovery registry.
+///
+/// ## Example
+///
+/// ```rust,ignore
+/// use rhizo_crypt_core::integration::mocks::MockCapabilityFactory;
+///
+/// let factory = MockCapabilityFactory::permissive();
+/// let signer = factory.signing_client();
+/// let storage = factory.storage_client();
+///
+/// // Use in tests
+/// let sig = signer.sign(data, &did).await?;
+/// ```
+#[derive(Debug, Clone)]
+pub struct MockCapabilityFactory {
+    adapter: Arc<MockProtocolAdapter>,
+}
+
+impl MockCapabilityFactory {
+    /// Create a factory that returns permissive mock clients.
+    #[must_use]
+    pub fn permissive() -> Self {
+        Self {
+            adapter: Arc::new(MockProtocolAdapter::permissive()),
+        }
+    }
+
+    /// Create a factory that returns strict mock clients.
+    #[must_use]
+    pub fn strict() -> Self {
+        Self {
+            adapter: Arc::new(MockProtocolAdapter::strict()),
+        }
+    }
+
+    /// Get the underlying mock adapter for configuration.
+    #[must_use]
+    pub fn adapter(&self) -> Arc<MockProtocolAdapter> {
+        Arc::clone(&self.adapter)
+    }
+}
+
+#[cfg(test)]
+mod capability_mock_tests {
+    use super::*;
+    use crate::clients::adapters::ProtocolAdapter;
+
+    #[tokio::test]
+    async fn test_mock_protocol_adapter_permissive() {
+        let adapter = MockProtocolAdapter::permissive();
+        
+        // Should return default responses
+        let result = adapter.call_json("verify_did", "{}".to_string()).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "true");
+    }
+
+    #[tokio::test]
+    async fn test_mock_protocol_adapter_strict() {
+        let adapter = MockProtocolAdapter::strict();
+        
+        // Should fail all calls
+        let result = adapter.call_json("verify_did", "{}".to_string()).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_mock_protocol_adapter_custom_response() {
+        let adapter = MockProtocolAdapter::permissive();
+        
+        // Set custom response
+        adapter.set_response("my_method", "custom_response").await.unwrap();
+        
+        // Should return custom response
+        let result = adapter.call_json("my_method", "{}".to_string()).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), r#""custom_response""#);
+    }
+}

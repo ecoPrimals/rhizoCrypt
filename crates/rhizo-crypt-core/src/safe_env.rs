@@ -131,10 +131,19 @@ impl SafeEnv {
 
     /// Get the discovery service address.
     ///
-    /// Checks `DISCOVERY_ENDPOINT`, `DISCOVERY_ADDRESS`, and falls back to None.
+    /// This is the ONLY address that may be hardcoded (as a last resort).
+    /// All other services are discovered through this endpoint.
+    ///
+    /// Priority order:
+    /// 1. `RHIZOCRYPT_DISCOVERY_ADAPTER` (recommended, new standard)
+    /// 2. `DISCOVERY_ENDPOINT` (capability-based)
+    /// 3. `DISCOVERY_ADDRESS` (capability-based)
+    /// 4. None (infant discovery: primal starts with zero knowledge)
     #[must_use]
     pub fn get_discovery_address() -> Option<String> {
-        Self::get_endpoint("DISCOVERY")
+        std::env::var("RHIZOCRYPT_DISCOVERY_ADAPTER")
+            .ok()
+            .or_else(|| Self::get_endpoint("DISCOVERY"))
     }
 
     /// Get the RPC port, with environment override.
@@ -159,6 +168,35 @@ impl SafeEnv {
 /// Capability-specific environment configuration.
 ///
 /// Provides standardized environment variable names for each capability.
+///
+/// ## Naming Convention
+///
+/// Capability-based variables follow this pattern:
+/// - **Preferred**: `<CAPABILITY>_ENDPOINT` (e.g., `SIGNING_ENDPOINT`)
+/// - **Alternative**: `<CATEGORY>_<CAPABILITY>_ENDPOINT` (e.g., `CRYPTO_SIGNING_ENDPOINT`)
+/// - **Legacy**: `<PRIMAL>_ADDRESS` (e.g., `BEARDOG_ADDRESS`) - deprecated
+///
+/// ## Infant Discovery
+///
+/// In production, primals should discover capabilities at runtime via the
+/// universal adapter (`RHIZOCRYPT_DISCOVERY_ADAPTER`). Environment variables
+/// are **hints** for development or testing, not requirements.
+///
+/// ## Migration Path
+///
+/// Old (hardcoded):
+/// ```bash
+/// BEARDOG_ADDRESS=beardog.local:9500
+/// NESTGATE_ADDRESS=nestgate.local:8080
+/// ```
+///
+/// New (capability-based):
+/// ```bash
+/// RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500  # Only this is needed!
+/// # OR for development:
+/// SIGNING_ENDPOINT=http://localhost:9500
+/// PAYLOAD_STORAGE_ENDPOINT=http://localhost:8080
+/// ```
 pub struct CapabilityEnv;
 
 #[allow(clippy::manual_inspect)] // We need to return the value, not just inspect it
@@ -296,24 +334,78 @@ impl CapabilityEnv {
 
     /// Get the endpoint for service discovery capability.
     ///
+    /// This is the **universal adapter** - the ONLY service that may need
+    /// an environment variable in production. All other services are discovered
+    /// through this adapter.
+    ///
     /// Priority order:
-    /// 1. `DISCOVERY_SERVICE_ENDPOINT` (preferred, capability-based)
-    /// 2. `DISCOVERY_ENDPOINT` (short form, capability-based)
-    /// 3. `SONGBIRD_ADDRESS` (legacy, acceptable - Songbird is the universal adapter)
+    /// 1. `RHIZOCRYPT_DISCOVERY_ADAPTER` (recommended, new standard)
+    /// 2. `DISCOVERY_SERVICE_ENDPOINT` (capability-based)
+    /// 3. `DISCOVERY_ENDPOINT` (short form, capability-based)
+    /// 4. `SONGBIRD_ADDRESS` (legacy, acceptable - Songbird is the universal adapter)
+    ///
+    /// ## Infant Discovery
+    ///
+    /// If this returns `None`, the primal starts with **zero knowledge** and
+    /// must bootstrap through other means (multicast, DHT, etc.).
     #[must_use]
     pub fn discovery_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("DISCOVERY_SERVICE")
+        std::env::var("RHIZOCRYPT_DISCOVERY_ADAPTER")
+            .ok()
+            .or_else(|| SafeEnv::get_endpoint("DISCOVERY_SERVICE"))
             .or_else(|| SafeEnv::get_endpoint("DISCOVERY"))
             .or_else(|| {
-                // Songbird is special - it's the universal adapter, so this is less critical
+                // Songbird is special - it's the universal adapter
                 std::env::var("SONGBIRD_ADDRESS").ok().map(|addr| {
                     tracing::info!(
                         "Using SONGBIRD_ADDRESS for discovery. \
-                         Consider migrating to DISCOVERY_ENDPOINT for consistency."
+                         Consider migrating to RHIZOCRYPT_DISCOVERY_ADAPTER for consistency."
                     );
                     addr
                 })
             })
+    }
+
+    /// Get all configured capability endpoints.
+    ///
+    /// Returns a map of capability name to endpoint address.
+    /// Useful for debugging and configuration validation.
+    #[must_use]
+    pub fn all_capability_endpoints() -> std::collections::HashMap<&'static str, String> {
+        let mut map = std::collections::HashMap::new();
+
+        if let Some(ep) = Self::signing_endpoint() {
+            map.insert("signing", ep);
+        }
+        if let Some(ep) = Self::did_verification_endpoint() {
+            map.insert("did_verification", ep);
+        }
+        if let Some(ep) = Self::payload_storage_endpoint() {
+            map.insert("payload_storage", ep);
+        }
+        if let Some(ep) = Self::permanent_commit_endpoint() {
+            map.insert("permanent_commit", ep);
+        }
+        if let Some(ep) = Self::compute_endpoint() {
+            map.insert("compute", ep);
+        }
+        if let Some(ep) = Self::provenance_endpoint() {
+            map.insert("provenance", ep);
+        }
+        if let Some(ep) = Self::discovery_endpoint() {
+            map.insert("discovery", ep);
+        }
+
+        map
+    }
+
+    /// Check if infant discovery mode is enabled.
+    ///
+    /// Returns `true` if NO capability endpoints are configured,
+    /// meaning the primal must discover everything at runtime.
+    #[must_use]
+    pub fn is_infant_discovery_mode() -> bool {
+        Self::all_capability_endpoints().is_empty()
     }
 }
 

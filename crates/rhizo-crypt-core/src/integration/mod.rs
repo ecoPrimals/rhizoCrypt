@@ -1,28 +1,31 @@
-//! Integration traits for external primals.
+//! Integration traits for external services.
 //!
-//! This module defines the client interfaces for integrating with
-//! BearDog (identity/signing), LoamSpine (permanent storage), and NestGate (payloads).
+//! This module provides integration interfaces for connecting with external
+//! services in the ecosystem.
+//!
+//! ## Architecture Evolution
+//!
+//! ### ✅ NEW: Capability-Based Integration (Recommended)
+//!
+//! Use generic capability clients that work with ANY provider:
+//!
+//! ```rust,ignore
+//! use rhizo_crypt_core::clients::capabilities::{SigningClient, StorageClient};
+//!
+//! // Discover ANY signing provider
+//! let signer = SigningClient::discover(&registry).await?;
+//! let signature = signer.sign(data, &did).await?;
+//! ```
+//!
+//! ### ⚠️ LEGACY: Primal-Specific Traits (Deprecated)
+//!
+//! These traits are vendor-specific and create lock-in. Use capability clients instead.
 //!
 //! ## Design Philosophy
 //!
-//! - **Traits define capabilities** — What operations are available
-//! - **Discovery provides endpoints** — Where to find implementations
-//! - **Mocks are test-only** — Production uses runtime-discovered clients
-//!
-//! ## Usage
-//!
-//! ```rust,ignore
-//! // In production: Use discovery to find BearDog
-//! let provider = ClientFactory::new(registry);
-//! if provider.has_beardog().await {
-//!     let endpoint = provider.beardog_endpoint().await?;
-//!     // Connect to endpoint.addr via tarpc
-//! }
-//!
-//! // In tests: Use mock implementations
-//! #[cfg(test)]
-//! let client = mocks::MockBearDogClient::permissive();
-//! ```
+//! - **Capabilities over vendors** — Request what you need, not who provides it
+//! - **Discovery at runtime** — Services found dynamically, not hardcoded
+//! - **Mocks for testing** — Generic mocks that work with all providers
 
 use crate::dehydration::{Attestation, DehydrationSummary};
 use crate::discovery::{Capability, DiscoveryRegistry};
@@ -40,9 +43,13 @@ use std::sync::Arc;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod mocks;
 
-// Re-export mocks for test convenience
+// Re-export legacy mocks for backward compatibility
 #[cfg(any(test, feature = "test-utils"))]
 pub use mocks::{MockBearDogClient, MockLoamSpineClient, MockNestGateClient};
+
+// Re-export new capability-based mocks
+#[cfg(any(test, feature = "test-utils"))]
+pub use mocks::{MockCapabilityFactory, MockProtocolAdapter};
 
 // ============================================================================
 // BearDog Integration (Identity & Signing)
