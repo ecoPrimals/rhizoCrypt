@@ -54,12 +54,13 @@
 #![allow(clippy::multiple_crate_versions)]
 #![allow(clippy::significant_drop_tightening)]
 
+use rhizo_crypt_core::clients::songbird::{SongbirdClient, SongbirdConfig};
 use rhizo_crypt_core::safe_env::SafeEnv;
 use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig};
 use rhizo_crypt_rpc::server::RpcServer;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -91,10 +92,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Optional: Register with discovery service (Songbird)
     if let Some(discovery_addr) = SafeEnv::get_discovery_address() {
         info!("🔍 Discovery service available at: {}", discovery_addr);
-        info!("🌱 Infant discovery mode: rhizoCrypt will be discoverable");
-        // TODO: Implement registration when Songbird client is ready
-        // let songbird = SongbirdClient::connect(&discovery_addr).await?;
-        // songbird.register_service(ServiceInfo { ... }).await?;
+        info!("🌱 Infant discovery mode: registering with Songbird...");
+
+        match register_with_songbird(discovery_addr.clone(), addr).await {
+            Ok(()) => {
+                info!("✅ Successfully registered with Songbird at {}", discovery_addr);
+                info!("🌱 rhizoCrypt is now discoverable by other primals");
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to register with Songbird: {}", e);
+                warn!("⚠️  Continuing in standalone mode (not discoverable)");
+            }
+        }
     } else {
         info!("🌱 No discovery service configured (standalone mode)");
     }
@@ -115,6 +124,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e.into())
         }
     }
+}
+
+/// Register rhizoCrypt service with Songbird discovery.
+async fn register_with_songbird(
+    songbird_addr: String,
+    our_addr: SocketAddr,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Create Songbird client with owned string
+    let mut config = SongbirdConfig::new();
+    config.address = std::borrow::Cow::Owned(songbird_addr.clone());
+    let client = SongbirdClient::new(config);
+
+    // Register our service
+    let our_endpoint = format!("http://{}", our_addr);
+    client.register(&our_endpoint).await?;
+
+    // Start heartbeat to maintain registration
+    let _ = client.start_heartbeat().await;
+
+    info!("🔄 Heartbeat started - maintaining registration with Songbird");
+
+    Ok(())
 }
 
 fn print_banner(addr: SocketAddr, port: u16) {

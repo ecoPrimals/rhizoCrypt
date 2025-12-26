@@ -51,7 +51,7 @@ async fn test_concurrent_session_creation() {
     // Verify count
     {
         let p = primal.read().await;
-        assert_eq!(p.session_count().await, 10);
+        assert_eq!(p.session_count(), 10);
     }
 
     // Stop primal
@@ -111,7 +111,7 @@ async fn test_concurrent_vertex_appends() {
     // Verify vertex count
     {
         let p = primal.read().await;
-        assert_eq!(p.total_vertex_count().await, 20);
+        assert_eq!(p.total_vertex_count(), 20);
     }
 
     // Stop primal
@@ -145,7 +145,7 @@ async fn test_high_throughput_appends() {
     let elapsed = start.elapsed();
 
     // Verify count
-    assert_eq!(primal.total_vertex_count().await, 1000);
+    assert_eq!(primal.total_vertex_count(), 1000);
 
     // Log throughput
     let ops_per_sec = 1000.0 / elapsed.as_secs_f64();

@@ -313,14 +313,13 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         let session = self
             .primal
             .get_session(session_id)
-            .await
             .map_err(|e| RpcError::SessionNotFound(e.to_string()))?;
 
         Ok(session_to_info(&session))
     }
 
     async fn list_sessions(self, _: tarpc::context::Context) -> Result<Vec<SessionInfo>, RpcError> {
-        let sessions = self.primal.list_sessions().await;
+        let sessions = self.primal.list_sessions();
         Ok(sessions.iter().map(session_to_info).collect())
     }
 
@@ -406,7 +405,6 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         let session = self
             .primal
             .get_session(session_id)
-            .await
             .map_err(|e| RpcError::SessionNotFound(e.to_string()))?;
         Ok(session.frontier.into_iter().collect())
     }
@@ -419,7 +417,6 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         let session = self
             .primal
             .get_session(session_id)
-            .await
             .map_err(|e| RpcError::SessionNotFound(e.to_string()))?;
         Ok(session.genesis.into_iter().collect())
     }
@@ -486,7 +483,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
 
         // For now, we'll attempt to look up any matching vertex
         // In production, this would need session context
-        let sessions = self.primal.list_sessions().await;
+        let sessions = self.primal.list_sessions();
         for session in sessions {
             if let Ok(vertex) = self.primal.get_vertex(session.id, proof.vertex_id).await {
                 return Ok(proof.verify(&vertex));
@@ -529,14 +526,14 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         slice_id: SliceId,
     ) -> Result<rhizo_crypt_core::Slice, RpcError> {
-        self.primal.get_slice(slice_id).await.map_err(|e| RpcError::SliceNotFound(e.to_string()))
+        self.primal.get_slice(slice_id).map_err(|e| RpcError::SliceNotFound(e.to_string()))
     }
 
     async fn list_slices(
         self,
         _: tarpc::context::Context,
     ) -> Result<Vec<rhizo_crypt_core::Slice>, RpcError> {
-        Ok(self.primal.list_slices().await)
+        Ok(self.primal.list_slices())
     }
 
     async fn resolve_slice(
@@ -573,8 +570,8 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         use rhizo_crypt_core::PrimalLifecycle;
 
         let state = self.primal.state();
-        let session_count = self.primal.session_count().await;
-        let vertex_count = self.primal.total_vertex_count().await;
+        let session_count = self.primal.session_count();
+        let vertex_count = self.primal.total_vertex_count();
 
         Ok(HealthStatus {
             healthy: state.is_running(),

@@ -17,7 +17,7 @@ async fn test_nonexistent_session() {
 
     // Try to get a non-existent session
     let fake_id = SessionId::now();
-    let result = primal.get_session(fake_id).await;
+    let result = primal.get_session(fake_id);
     assert!(result.is_err());
 
     // Try to discard a non-existent session
@@ -91,7 +91,7 @@ async fn test_session_limit_boundary() {
     assert!(primal.create_session(session).await.is_err());
 
     // Discard one
-    let sessions = primal.list_sessions().await;
+    let sessions = primal.list_sessions();
     let first_id = sessions[0].id;
     primal.discard_session(first_id).await.expect("should discard session");
 

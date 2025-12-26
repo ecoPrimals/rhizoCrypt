@@ -1,0 +1,161 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rhizocrypt
+  labels:
+    app.kubernetes.io/name: rhizocrypt
+    app.kubernetes.io/part-of: ecoprimals
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rhizocrypt-config
+  namespace: rhizocrypt
+data:
+  RHIZOCRYPT_HOST: "0.0.0.0"
+  RHIZOCRYPT_PORT: "9400"
+  RHIZOCRYPT_LOG_LEVEL: "info"
+  RUST_LOG: "rhizocrypt=info,rhizo_crypt_core=info"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rhizocrypt-service
+  namespace: rhizocrypt
+  labels:
+    app: rhizocrypt
+spec:
+  selector:
+    app: rhizocrypt
+  ports:
+    - name: rpc
+      protocol: TCP
+      port: 9400
+      targetPort: 9400
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rhizocrypt
+  namespace: rhizocrypt
+  labels:
+    app: rhizocrypt
+    version: v0.12.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rhizocrypt
+  template:
+    metadata:
+      labels:
+        app: rhizocrypt
+        version: v0.12.0
+    spec:
+      serviceAccountName: rhizocrypt
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: rhizocrypt
+        image: rhizocrypt:0.12.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: rpc
+          containerPort: 9400
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: rhizocrypt-config
+        env:
+        - name: RHIZOCRYPT_DISCOVERY_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: songbird-config
+              key: SONGBIRD_ADDRESS
+              optional: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - /app/rhizocrypt-service
+            - --health
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /app/rhizocrypt-service
+            - --health
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rhizocrypt
+  namespace: rhizocrypt
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rhizocrypt-pdb
+  namespace: rhizocrypt
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: rhizocrypt
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rhizocrypt-hpa
+  namespace: rhizocrypt
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rhizocrypt
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+

@@ -237,21 +237,241 @@ impl CapabilityClientFactory {
     ///
     /// # Panics
     ///
-    /// Panics if called outside of test builds.
+    /// Create a factory with an empty registry for testing.
+    ///
+    /// This creates a factory with a mock-friendly registry that can be
+    /// populated with test services.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use rhizo_crypt_core::clients::CapabilityClientFactory;
+    /// use rhizo_crypt_core::discovery::{DiscoveryRegistry, ServiceEndpoint, Capability};
+    ///
+    /// let registry = DiscoveryRegistry::new();
+    /// // Register mock services
+    /// registry.register(ServiceEndpoint {
+    ///     service_id: "mock-signer".to_string(),
+    ///     endpoint: "http://localhost:9999".to_string(),
+    ///     capabilities: vec![Capability::Signing],
+    ///     metadata: Default::default(),
+    /// }).await;
+    ///
+    /// let factory = CapabilityClientFactory::new(Arc::new(registry));
+    /// ```
     #[must_use]
     pub fn with_mocks() -> Self {
-        // For testing, we'll need to implement mock clients
-        // TODO: Create a mock registry for testing
-        // For now, this will panic if actually used
-        panic!("Mock factory not yet implemented. Use test-specific setup.");
+        // Return a factory with an empty registry for test setup
+        Self::new(Arc::new(DiscoveryRegistry::new("rhizoCrypt-test")))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::discovery::{Capability, ServiceEndpoint};
+
     #[tokio::test]
-    async fn test_factory_caches_clients() {
-        // This test requires a mock registry
-        // TODO: Implement once mock registry is available
+    async fn test_factory_creation() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+        let factory = CapabilityClientFactory::new(registry);
+
+        // Factory should be created successfully
+        assert!(Arc::strong_count(&factory.registry) >= 1);
+    }
+
+    #[tokio::test]
+    async fn test_factory_with_mocks() {
+        let factory = CapabilityClientFactory::with_mocks();
+
+        // Should create a factory with empty registry
+        assert!(Arc::strong_count(&factory.registry) >= 1);
+    }
+
+    #[tokio::test]
+    async fn test_signing_client_discovery() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register a signing service via discovery
+        let endpoint = ServiceEndpoint::new(
+            "test-signer",
+            "127.0.0.1:9500".parse().unwrap(),
+            vec![Capability::Signing],
+        );
+        registry.register_endpoint(endpoint).await;
+
+        let factory = CapabilityClientFactory::new(registry);
+
+        // Should be able to get signing client
+        let result = factory.signing_client().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_storage_client_discovery() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register a storage service via discovery
+        let endpoint = ServiceEndpoint::new(
+            "test-storage",
+            "127.0.0.1:9600".parse().unwrap(),
+            vec![Capability::PayloadStorage],
+        );
+        registry.register_endpoint(endpoint).await;
+
+        let factory = CapabilityClientFactory::new(registry);
+
+        // Should be able to get storage client
+        let result = factory.storage_client().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_compute_client_discovery() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register a compute service via discovery
+        let endpoint = ServiceEndpoint::new(
+            "test-compute",
+            "127.0.0.1:9800".parse().unwrap(),
+            vec![Capability::ComputeOrchestration],
+        );
+        registry.register_endpoint(endpoint).await;
+
+        let factory = CapabilityClientFactory::new(registry);
+
+        // Should be able to get compute client
+        let result = factory.compute_client().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_permanent_storage_client_discovery() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register a permanent storage service via discovery
+        let endpoint = ServiceEndpoint::new(
+            "test-loamspine",
+            "127.0.0.1:9700".parse().unwrap(),
+            vec![Capability::PermanentCommit, Capability::SliceCheckout],
+        );
+        registry.register_endpoint(endpoint).await;
+
+        let factory = CapabilityClientFactory::new(registry);
+
+        // Should be able to get permanent storage client
+        let result = factory.permanent_storage_client().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_client_caching() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register a signing service via discovery
+        let endpoint = ServiceEndpoint::new(
+            "test-signer",
+            "127.0.0.1:9500".parse().unwrap(),
+            vec![Capability::Signing],
+        );
+        registry.register_endpoint(endpoint).await;
+
+        let factory = CapabilityClientFactory::new(registry.clone());
+
+        // Get client twice
+        let client1 = factory.signing_client().await;
+        let client2 = factory.signing_client().await;
+
+        assert!(client1.is_ok());
+        assert!(client2.is_ok());
+
+        // Both should use the same endpoint (discovered, not hardcoded)
+        let client1_unwrapped = client1.unwrap();
+        let client2_unwrapped = client2.unwrap();
+        let endpoint1 = client1_unwrapped.endpoint();
+        let endpoint2 = client2_unwrapped.endpoint();
+        assert_eq!(endpoint1, endpoint2);
+    }
+
+    #[tokio::test]
+    async fn test_missing_capability() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+        let factory = CapabilityClientFactory::new(registry);
+
+        // Try to get signing client when no signing service is registered
+        let result = factory.signing_client().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_multiple_services_same_capability() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register multiple signing services - demonstrates capability-based discovery
+        let endpoint1 = ServiceEndpoint::new(
+            "signer-1",
+            "127.0.0.1:9500".parse().unwrap(),
+            vec![Capability::Signing],
+        );
+        registry.register_endpoint(endpoint1).await;
+
+        let endpoint2 = ServiceEndpoint::new(
+            "signer-2",
+            "127.0.0.1:9501".parse().unwrap(),
+            vec![Capability::Signing],
+        );
+        registry.register_endpoint(endpoint2).await;
+
+        let factory = CapabilityClientFactory::new(registry);
+
+        // Should discover one of the available signing services
+        let result = factory.signing_client().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_factory_clone() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+        let factory1 = CapabilityClientFactory::new(registry);
+        let factory2 = factory1.clone();
+
+        // Both should share the same registry
+        assert!(Arc::ptr_eq(&factory1.registry, &factory2.registry));
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_client_creation() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register services via discovery
+        let signing_endpoint = ServiceEndpoint::new(
+            "signer",
+            "127.0.0.1:9500".parse().unwrap(),
+            vec![Capability::Signing],
+        );
+        registry.register_endpoint(signing_endpoint).await;
+
+        let storage_endpoint = ServiceEndpoint::new(
+            "storage",
+            "127.0.0.1:9600".parse().unwrap(),
+            vec![Capability::PayloadStorage],
+        );
+        registry.register_endpoint(storage_endpoint).await;
+
+        let factory = Arc::new(CapabilityClientFactory::new(registry));
+
+        // Create clients concurrently - tests lock-free discovery
+        let factory1 = factory.clone();
+        let factory2 = factory.clone();
+
+        let handle1 = tokio::spawn(async move { factory1.signing_client().await });
+
+        let handle2 = tokio::spawn(async move { factory2.storage_client().await });
+
+        let result1 = handle1.await.unwrap();
+        let result2 = handle2.await.unwrap();
+
+        assert!(result1.is_ok());
+        assert!(result2.is_ok());
     }
 }

@@ -2,7 +2,13 @@
 //!
 //! Tests system behavior under network failures and partitions.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::explicit_auto_deref, clippy::field_reassign_with_default, clippy::similar_names)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::explicit_auto_deref,
+    clippy::field_reassign_with_default,
+    clippy::similar_names
+)]
 
 use rhizo_crypt_core::{
     EventType, PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, SessionBuilder, SessionType,
@@ -134,7 +140,7 @@ async fn test_network_instability_concurrent_operations() {
     // System should still be functional
     {
         let p = primal.read().await;
-        let count = p.session_count().await;
+        let count = p.session_count();
         assert_eq!(count, 5, "All sessions should still exist");
     }
 }
@@ -202,11 +208,11 @@ async fn test_network_reconnection_after_outage() {
     primal.start().await.expect("primal should restart");
 
     // Verify state preserved (sessions persist through stop/start)
-    let count = primal.session_count().await;
+    let count = primal.session_count();
     assert_eq!(count, 1, "Sessions should persist through restart");
 
     // Can still access the session
-    let result = primal.get_session(session_id).await;
+    let result = primal.get_session(session_id);
     assert!(result.is_ok(), "Should be able to access session after restart");
 
     // Can create new sessions
@@ -215,7 +221,7 @@ async fn test_network_reconnection_after_outage() {
     assert!(result.is_ok(), "Should work after reconnection");
 
     // Should now have 2 sessions
-    assert_eq!(primal.session_count().await, 2);
+    assert_eq!(primal.session_count(), 2);
 }
 
 /// Test cascading failures (one failure leading to others).

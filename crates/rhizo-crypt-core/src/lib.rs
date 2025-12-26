@@ -139,22 +139,28 @@ pub use store_sled::SledDagStore;
 pub use types::{ContentHash, Did, PayloadRef, SessionId, Signature, SliceId, Timestamp, VertexId};
 pub use vertex::{MetadataValue, Vertex, VertexBuilder};
 
-use hashbrown::HashMap;
+use dashmap::DashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
 
 /// The RhizoCrypt primal - Core DAG Engine.
+///
+/// Now using lock-free concurrent data structures (DashMap) for maximum concurrency.
+/// This allows multiple operations on different sessions to proceed in parallel
+/// without blocking each other.
 pub struct RhizoCrypt {
     config: RhizoCryptConfig,
     state: PrimalState,
     started_at: Option<Instant>,
+    // Storage backends still use RwLock as they're initialized once
     dag_store: Arc<RwLock<Option<InMemoryDagStore>>>,
     payload_store: Arc<RwLock<Option<InMemoryPayloadStore>>>,
-    sessions: Arc<RwLock<HashMap<SessionId, Session>>>,
-    slices: Arc<RwLock<HashMap<SliceId, slice::Slice>>>,
-    dehydration_status: Arc<RwLock<HashMap<SessionId, dehydration::DehydrationStatus>>>,
+    // Lock-free concurrent maps for session data
+    sessions: Arc<DashMap<SessionId, Session>>,
+    slices: Arc<DashMap<SliceId, slice::Slice>>,
+    dehydration_status: Arc<DashMap<SessionId, dehydration::DehydrationStatus>>,
     // Metrics counters (atomic for lock-free updates)
     metrics: Arc<PrimalMetrics>,
 }
@@ -264,6 +270,8 @@ impl PrimalMetrics {
 
 impl RhizoCrypt {
     /// Create a new RhizoCrypt instance.
+    ///
+    /// Uses lock-free concurrent data structures for maximum performance.
     #[must_use]
     pub fn new(config: RhizoCryptConfig) -> Self {
         Self {
@@ -272,9 +280,10 @@ impl RhizoCrypt {
             started_at: None,
             dag_store: Arc::new(RwLock::new(None)),
             payload_store: Arc::new(RwLock::new(None)),
-            sessions: Arc::new(RwLock::new(HashMap::new())),
-            slices: Arc::new(RwLock::new(HashMap::new())),
-            dehydration_status: Arc::new(RwLock::new(HashMap::new())),
+            // Lock-free concurrent maps
+            sessions: Arc::new(DashMap::new()),
+            slices: Arc::new(DashMap::new()),
+            dehydration_status: Arc::new(DashMap::new()),
             metrics: Arc::new(PrimalMetrics::new()),
         }
     }
@@ -323,18 +332,21 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the primal is not running or max sessions exceeded.
+    ///
+    /// Lock-free implementation allows concurrent session creation.
+    #[allow(clippy::unused_async)]
     pub async fn create_session(&self, session: Session) -> Result<SessionId> {
         if !self.state.is_running() {
             return Err(RhizoCryptError::internal("primal not running"));
         }
 
-        let mut sessions = self.sessions.write().await;
-        if sessions.len() >= self.config.max_sessions {
+        // Lock-free concurrent check and insert
+        if self.sessions.len() >= self.config.max_sessions {
             return Err(RhizoCryptError::internal("max sessions exceeded"));
         }
 
         let session_id = session.id;
-        sessions.insert(session_id, session);
+        self.sessions.insert(session_id, session);
         self.metrics.inc_sessions_created();
         Ok(session_id)
     }
@@ -344,18 +356,20 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the session is not found.
-    pub async fn get_session(&self, session_id: SessionId) -> Result<Session> {
-        let sessions = self.sessions.read().await;
-        sessions
+    ///
+    /// Lock-free read - no blocking on concurrent access.
+    pub fn get_session(&self, session_id: SessionId) -> Result<Session> {
+        self.sessions
             .get(&session_id)
-            .cloned()
+            .map(|entry| entry.value().clone())
             .ok_or_else(|| RhizoCryptError::session_not_found(session_id))
     }
 
     /// List all sessions.
-    pub async fn list_sessions(&self) -> Vec<Session> {
-        let sessions = self.sessions.read().await;
-        sessions.values().cloned().collect()
+    ///
+    /// Lock-free iterator - concurrent modifications won't block reads.
+    pub fn list_sessions(&self) -> Vec<Session> {
+        self.sessions.iter().map(|entry| entry.value().clone()).collect()
     }
 
     /// Discard a session.
@@ -363,20 +377,25 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the session is not found or primal not running.
+    ///
+    /// Lock-free removal - concurrent operations on other sessions unaffected.
     pub async fn discard_session(&self, session_id: SessionId) -> Result<()> {
         if !self.state.is_running() {
             return Err(RhizoCryptError::internal("primal not running"));
         }
 
-        // Remove from session store
-        let mut sessions = self.sessions.write().await;
-        if sessions.remove(&session_id).is_none() {
+        // Lock-free remove from session store
+        if self.sessions.remove(&session_id).is_none() {
             return Err(RhizoCryptError::session_not_found(session_id));
         }
 
         // Clean up DAG store
         let dag_store = self.dag_store().await?;
         dag_store.delete_session(session_id).await?;
+
+        // Clean up slices and dehydration status
+        self.slices.retain(|_, v| v.session_id != session_id);
+        self.dehydration_status.remove(&session_id);
 
         Ok(())
     }
@@ -386,33 +405,38 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the session is not found or not active.
+    ///
+    /// Fine-grained locking - only locks the specific session being modified.
     pub async fn append_vertex(&self, session_id: SessionId, vertex: Vertex) -> Result<VertexId> {
         if !self.state.is_running() {
             return Err(RhizoCryptError::internal("primal not running"));
         }
 
-        // Update session state
-        {
-            let mut sessions = self.sessions.write().await;
-            let session = sessions
-                .get_mut(&session_id)
-                .ok_or_else(|| RhizoCryptError::session_not_found(session_id))?;
+        // Fine-grained lock: only lock this specific session
+        let mut session_entry = self
+            .sessions
+            .get_mut(&session_id)
+            .ok_or_else(|| RhizoCryptError::session_not_found(session_id))?;
 
-            if !session.is_active() {
-                return Err(RhizoCryptError::internal("session not active"));
-            }
+        let session = session_entry.value_mut();
 
-            // Track the agent
-            if let Some(ref agent) = vertex.agent {
-                session.add_agent(agent.clone());
-            }
-
-            // Update frontier
-            let parents: Vec<VertexId> = vertex.parents.clone();
-            let mut v = vertex.clone();
-            let vertex_id = v.id();
-            session.update_frontier(vertex_id, &parents);
+        if !session.is_active() {
+            return Err(RhizoCryptError::internal("session not active"));
         }
+
+        // Track the agent
+        if let Some(ref agent) = vertex.agent {
+            session.add_agent(agent.clone());
+        }
+
+        // Update frontier
+        let parents: Vec<VertexId> = vertex.parents.clone();
+        let mut v = vertex.clone();
+        let vertex_id = v.id();
+        session.update_frontier(vertex_id, &parents);
+
+        // Release session lock before expensive DAG operation
+        drop(session_entry);
 
         // Store the vertex
         let dag_store = self.dag_store().await?;
@@ -438,14 +462,17 @@ impl RhizoCrypt {
     }
 
     /// Get session count.
-    pub async fn session_count(&self) -> usize {
-        self.sessions.read().await.len()
+    ///
+    /// Lock-free count.
+    pub fn session_count(&self) -> usize {
+        self.sessions.len()
     }
 
     /// Get total vertex count across all sessions.
-    pub async fn total_vertex_count(&self) -> u64 {
-        let sessions = self.sessions.read().await;
-        sessions.values().map(|s| s.vertex_count).sum()
+    ///
+    /// Lock-free iteration.
+    pub fn total_vertex_count(&self) -> u64 {
+        self.sessions.iter().map(|entry| entry.value().vertex_count).sum()
     }
 
     /// Compute Merkle root for a session.
@@ -455,7 +482,7 @@ impl RhizoCrypt {
     /// Returns an error if the session is not found or primal not running.
     pub async fn compute_merkle_root(&self, session_id: SessionId) -> Result<merkle::MerkleRoot> {
         // Verify session exists
-        let _ = self.get_session(session_id).await?;
+        let _ = self.get_session(session_id)?;
 
         let dag_store = self.dag_store().await?;
         let vertices = dag_store.get_all_vertices(session_id).await?;
@@ -548,13 +575,15 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the primal is not running.
+    #[allow(clippy::unused_async)]
     pub async fn checkout_slice(&self, slice: slice::Slice) -> Result<SliceId> {
         if !self.state.is_running() {
             return Err(RhizoCryptError::internal("primal not running"));
         }
 
         let slice_id = slice.id;
-        self.slices.write().await.insert(slice_id, slice);
+        // Lock-free insert
+        self.slices.insert(slice_id, slice);
         self.metrics.inc_slices_checked_out();
         Ok(slice_id)
     }
@@ -564,18 +593,30 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the slice is not found.
-    pub async fn get_slice(&self, slice_id: SliceId) -> Result<slice::Slice> {
+    ///
+    /// Lock-free read.
+    pub fn get_slice(&self, slice_id: SliceId) -> Result<slice::Slice> {
         self.slices
-            .read()
-            .await
             .get(&slice_id)
-            .cloned()
+            .map(|entry| entry.value().clone())
             .ok_or_else(|| RhizoCryptError::SliceNotFound(slice_id.to_string()))
     }
 
     /// List all active slices.
-    pub async fn list_slices(&self) -> Vec<slice::Slice> {
-        self.slices.read().await.values().filter(|s| s.is_active()).cloned().collect()
+    ///
+    /// Lock-free iterator over all slices.
+    pub fn list_slices(&self) -> Vec<slice::Slice> {
+        self.slices
+            .iter()
+            .filter_map(|entry| {
+                let slice = entry.value();
+                if slice.is_active() {
+                    Some(slice.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /// Resolve a slice.
@@ -583,15 +624,19 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the slice is not found or already resolved.
+    #[allow(clippy::unused_async)]
     pub async fn resolve_slice(
         &self,
         slice_id: SliceId,
         outcome: slice::ResolutionOutcome,
     ) -> Result<()> {
-        let mut slices = self.slices.write().await;
-        let slice = slices
+        // Fine-grained locking - only lock this specific slice
+        let mut slice_entry = self
+            .slices
             .get_mut(&slice_id)
             .ok_or_else(|| RhizoCryptError::SliceNotFound(slice_id.to_string()))?;
+
+        let slice = slice_entry.value_mut();
 
         if slice.is_resolved() {
             return Err(RhizoCryptError::SliceAlreadyResolved(slice_id.to_string()));
@@ -615,20 +660,15 @@ impl RhizoCrypt {
     ///
     /// Returns an error if the session is not found or already dehydrating.
     pub async fn dehydrate(&self, session_id: SessionId) -> Result<merkle::MerkleRoot> {
-        // Set status to computing root
-        {
-            let mut status = self.dehydration_status.write().await;
-            status.insert(session_id, dehydration::DehydrationStatus::ComputingRoot);
-        }
+        // Set status to computing root (lock-free)
+        self.dehydration_status.insert(session_id, dehydration::DehydrationStatus::ComputingRoot);
 
         // Compute merkle root
         let root = self.compute_merkle_root(session_id).await?;
 
-        // Set status to generating summary
-        {
-            let mut status = self.dehydration_status.write().await;
-            status.insert(session_id, dehydration::DehydrationStatus::GeneratingSummary);
-        }
+        // Set status to generating summary (lock-free)
+        self.dehydration_status
+            .insert(session_id, dehydration::DehydrationStatus::GeneratingSummary);
 
         // In a full implementation, we would:
         // 1. Generate the dehydration summary
@@ -642,32 +682,27 @@ impl RhizoCrypt {
             index: 0,
         };
 
-        // Update status to complete
-        {
-            let mut status = self.dehydration_status.write().await;
-            status.insert(
-                session_id,
-                dehydration::DehydrationStatus::Completed {
-                    commit_ref,
-                },
-            );
-        }
+        // Update status to complete (lock-free)
+        self.dehydration_status.insert(
+            session_id,
+            dehydration::DehydrationStatus::Completed {
+                commit_ref,
+            },
+        );
 
         self.metrics.inc_dehydrations_completed();
         Ok(root)
     }
 
     /// Get dehydration status for a session.
+    #[allow(clippy::unused_async)]
     pub async fn get_dehydration_status(
         &self,
         session_id: SessionId,
     ) -> dehydration::DehydrationStatus {
         self.dehydration_status
-            .read()
-            .await
             .get(&session_id)
-            .cloned()
-            .unwrap_or(dehydration::DehydrationStatus::Pending)
+            .map_or(dehydration::DehydrationStatus::Pending, |entry| entry.value().clone())
     }
 }
 

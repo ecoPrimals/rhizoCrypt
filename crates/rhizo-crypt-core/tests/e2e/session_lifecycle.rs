@@ -21,14 +21,14 @@ async fn test_session_create_and_discard() {
     let session_id = primal.create_session(session).await.expect("should create session");
 
     // Verify session exists
-    let retrieved = primal.get_session(session_id).await.expect("should get session");
+    let retrieved = primal.get_session(session_id).expect("should get session");
     assert_eq!(retrieved.name, Some("test-session".to_string()));
 
     // Discard the session
     primal.discard_session(session_id).await.expect("should discard session");
 
     // Verify session is gone
-    assert!(primal.get_session(session_id).await.is_err());
+    assert!(primal.get_session(session_id).is_err());
 
     primal.stop().await.expect("primal should stop");
 }
@@ -54,7 +54,7 @@ async fn test_session_vertex_append() {
     assert_eq!(retrieved.event_type, EventType::SessionStart);
 
     // Check session vertex count
-    let session = primal.get_session(session_id).await.expect("should get session");
+    let session = primal.get_session(session_id).expect("should get session");
     assert_eq!(session.vertex_count, 1);
 
     primal.stop().await.expect("primal should stop");
@@ -75,11 +75,11 @@ async fn test_multiple_sessions() {
     }
 
     // Verify all exist
-    let sessions = primal.list_sessions().await;
+    let sessions = primal.list_sessions();
     assert_eq!(sessions.len(), 5);
 
     // Verify count
-    assert_eq!(primal.session_count().await, 5);
+    assert_eq!(primal.session_count(), 5);
 
     primal.stop().await.expect("primal should stop");
 }

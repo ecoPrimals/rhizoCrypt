@@ -1,457 +1,291 @@
-# 🔐 rhizoCrypt Local Primal Showcase
+# 🔐 Level 0: Local Primal - START HERE
 
-**Welcome!** This showcase demonstrates what **rhizoCrypt can do by itself** - using **REAL execution with actual API calls** (no mocks!).
+**Goal**: Master rhizoCrypt standalone capabilities with zero dependencies
 
-**Status**: ✅ **Production Ready** (A+ grade, 98/100)  
-**Philosophy**: Local-first - Master standalone capabilities before ecosystem integration  
-**Date**: December 24, 2025
-
----
-
-## 🎯 What is rhizoCrypt?
-
-**rhizoCrypt** is an **ephemeral DAG engine** - the "memory that knows when to forget":
-
-- ✅ **Content-Addressed DAG** - Blake3 hashing, multi-parent graphs
-- ✅ **Session Lifecycle** - Create → Grow → Resolve → Forget
-- ✅ **Merkle Proofs** - Cryptographic integrity verification
-- ✅ **Slice Semantics** - 6 modes for state management
-- ✅ **Selective Permanence** - Only commits survive (via LoamSpine)
-- ✅ **Pure Infant Discovery** - Zero hardcoded primal names
-
-**Key Insight**: Unlike traditional storage that preserves everything, rhizoCrypt embraces **selective forgetting**. Most data is temporary. Only what matters is committed to permanent storage.
+**Time**: ~30 minutes  
+**Prerequisites**: Rust installed  
+**Dependencies**: None - runs completely local
 
 ---
 
-## 🚀 QUICK START (5 Minutes)
+## 🎯 What You'll Learn
 
-### Prerequisites
+By the end of Level 0, you'll understand:
+
+✅ **Session Lifecycle** - Create → Grow → Resolve → Dehydrate  
+✅ **Content-Addressed DAG** - Blake3 hashing, multi-parent vertices  
+✅ **Merkle Proofs** - Cryptographic integrity and tamper detection  
+✅ **Slice Semantics** - 6 checkout modes for flexible data access  
+✅ **Performance** - Sub-microsecond operations  
+✅ **Real-World Scenarios** - Tangible use cases
+
+---
+
+## 🚀 Quick Start
+
+### Fastest Path (Guided Tour)
 ```bash
-# Ensure you're in the rhizoCrypt root
-cd /path/to/ecoPrimals/phase2/rhizoCrypt
-
-# Build rhizoCrypt
-cargo build --workspace --release
-```
-
-### Run the Automated Tour
-```bash
-# 60-minute guided tour of all capabilities
-cd showcase/00-local-primal
 ./RUN_ME_FIRST.sh
 ```
+This runs all demos in sequence with explanations.
 
-### Or Run Individual Demos
+### Self-Guided Path
+Run demos in order:
 ```bash
-# Start with the simplest demo
-cd 01-hello-rhizocrypt
-./demo-first-session.sh          # 2 minutes
-
-# Progress through the levels
-cd ../02-dag-engine
-./demo-multi-parent.sh           # 5 minutes
-
-cd ../03-merkle-proofs
-./demo-simple-proof.sh           # 5 minutes
+cd 01-hello-rhizocrypt && ./demo-first-session.sh
+cd ../02-dag-engine && ./demo-genesis.sh
+# ... and so on
 ```
 
-**Expected Output**: Real execution with session IDs, vertex IDs, Merkle roots, and verification!
+---
+
+## 📁 Demo Structure
+
+```
+00-local-primal/
+├── 01-hello-rhizocrypt/       (3 demos, 10 min)
+│   ├── demo-first-session.sh  ← Start here!
+│   ├── demo-first-vertex.sh
+│   └── demo-query-dag.sh
+│
+├── 02-dag-engine/             (4 demos, 15 min)
+│   ├── demo-genesis.sh
+│   ├── demo-multi-parent.sh
+│   ├── demo-frontier.sh
+│   └── demo-topological-sort.sh
+│
+├── 03-merkle-proofs/          (4 demos, 15 min)
+│   ├── demo-content-addressing.sh
+│   ├── demo-merkle-tree.sh
+│   ├── demo-merkle-proof.sh
+│   └── demo-tamper-detection.sh
+│
+├── 04-sessions/               (4 demos, 15 min)
+│   ├── demo-session-lifecycle.sh
+│   ├── demo-ephemeral-persistent.sh
+│   ├── demo-slices.sh
+│   └── demo-dehydration.sh
+│
+├── 04-slice-semantics/        (6 demos, 20 min) ⭐ NEW
+│   ├── demo-copy-mode.sh
+│   ├── demo-loan-mode.sh
+│   ├── demo-consignment-mode.sh
+│   ├── demo-escrow-mode.sh
+│   ├── demo-mirror-mode.sh
+│   └── demo-provenance-mode.sh
+│
+├── 05-performance/            (4 demos, 10 min)
+│   ├── demo-latency.sh
+│   ├── demo-memory.sh
+│   ├── demo-throughput.sh
+│   └── demo-scale.sh
+│
+├── 06-advanced-patterns/      (3 demos, 15 min)
+│   ├── demo-event-sourcing.sh
+│   ├── demo-capability-discovery.sh
+│   └── demo-multi-session.sh
+│
+└── 06-real-world-scenarios/   (4 demos, 30 min) ⭐ NEW
+    ├── demo-gaming-session.sh
+    ├── demo-document-workflow.sh
+    ├── demo-ml-pipeline.sh
+    └── demo-supply-chain.sh
+```
+
+**Total**: 32 demos, ~30 minutes for guided tour, ~2 hours for deep dive
 
 ---
 
-## 📚 SHOWCASE STRUCTURE
+## 🎓 Progressive Learning
 
-### ✅ Level 1: Hello rhizoCrypt (5 min, Beginner)
-**Path**: `01-hello-rhizocrypt/`  
-**Goal**: Your first session and vertex
-
-**What you'll learn**:
-- Create your first session
-- Add your first vertex (event)
-- Query the DAG
-- Understand content-addressing (Blake3)
+### Phase 1: Hello rhizoCrypt (10 min)
+**Goal**: Get comfortable with basic operations
 
 **Demos**:
-- `demo-first-session.sh` - Session lifecycle basics
-- `demo-first-vertex.sh` - Content-addressed events
-- `demo-query-dag.sh` - Simple DAG queries
+1. `demo-first-session.sh` - Create your first session
+2. `demo-first-vertex.sh` - Add vertices to the DAG
+3. `demo-query-dag.sh` - Query and explore the graph
 
-**Time**: 5 minutes total  
-**Skill**: Beginner  
-**Prerequisites**: None
+**Key Concepts**: Session, Vertex, DAG
+
+**Success**: You can create a session and add vertices
 
 ---
 
-### ✅ Level 2: DAG Engine (10 min, Beginner)
-**Path**: `02-dag-engine/`  
-**Goal**: Understand multi-parent DAG operations
-
-**What you'll learn**:
-- Multi-parent DAG (not just a chain)
-- Frontier tracking (DAG tips)
-- Genesis detection (session roots)
-- Topological ordering
+### Phase 2: DAG Engine (15 min)
+**Goal**: Understand directed acyclic graph operations
 
 **Demos**:
-- `demo-multi-parent.sh` - Complex DAG structures
-- `demo-frontier.sh` - Track DAG tips
-- `demo-genesis.sh` - Find session roots
-- `demo-topological-sort.sh` - Ordered traversal
+1. `demo-genesis.sh` - Genesis vertices (roots)
+2. `demo-multi-parent.sh` - Vertices with multiple parents
+3. `demo-frontier.sh` - Latest vertices (tips of the DAG)
+4. `demo-topological-sort.sh` - Ordering for computation
 
-**Time**: 10 minutes total  
-**Skill**: Beginner  
-**Prerequisites**: Level 1
+**Key Concepts**: Genesis, Multi-parent, Frontier, Topological sort
+
+**Success**: You understand DAG structure and queries
 
 ---
 
-### ✅ Level 3: Merkle Proofs (10 min, Intermediate)
-**Path**: `03-merkle-proofs/`  
-**Goal**: Cryptographic integrity verification
-
-**What you'll learn**:
-- Merkle tree construction
-- Proof generation
-- Proof verification
-- Tamper detection
+### Phase 3: Merkle Proofs (15 min)
+**Goal**: Master cryptographic integrity
 
 **Demos**:
-- `demo-simple-proof.sh` - Generate and verify proofs
-- `demo-verify.sh` - Verify vertex inclusion
-- `demo-tamper-detection.sh` - Catch modifications
-- `demo-batch-verification.sh` - Efficient batch proofs
+1. `demo-content-addressing.sh` - Blake3 hashing
+2. `demo-merkle-tree.sh` - Build Merkle tree for session
+3. `demo-merkle-proof.sh` - Generate and verify proofs
+4. `demo-tamper-detection.sh` - Detect modifications
 
-**Time**: 10 minutes total  
-**Skill**: Intermediate  
-**Prerequisites**: Level 2
+**Key Concepts**: Content-addressing, Merkle root, Proof, Verification
+
+**Success**: You can prove integrity and detect tampering
 
 ---
 
-### ✅ Level 4: Slice Semantics (15 min, Advanced)
-**Path**: `04-slice-semantics/`  
-**Goal**: Master state management modes
+### Phase 4: Sessions & Slices (35 min)
+**Goal**: Understand lifecycle and data access patterns
 
-**What you'll learn**:
-- 6 slice modes (Copy, Loan, Consignment, Escrow, Waypoint, Transfer)
-- Resolution routing
-- Slice constraints
-- Waypoint anchoring
+**Demos (Sessions)**:
+1. `demo-session-lifecycle.sh` - Full lifecycle
+2. `demo-ephemeral-persistent.sh` - Philosophy of forgetting
+3. `demo-slices.sh` - Basic slice semantics
+4. `demo-dehydration.sh` - Commit to permanent storage
+
+**Demos (Slice Semantics)**:
+1. `demo-copy-mode.sh` - Full ownership transfer
+2. `demo-loan-mode.sh` - Temporary access with return
+3. `demo-consignment-mode.sh` - Conditional transfer
+4. `demo-escrow-mode.sh` - Multi-party holding
+5. `demo-mirror-mode.sh` - Synchronized copy
+6. `demo-provenance-mode.sh` - Read-only with history
+
+**Key Concepts**: Lifecycle, Dehydration, 6 slice modes
+
+**Success**: You understand when to use each slice mode
+
+---
+
+### Phase 5: Performance (10 min)
+**Goal**: See sub-microsecond operations
 
 **Demos**:
-- `demo-copy-mode.sh` - Safe copying
-- `demo-loan-mode.sh` - Temporary lending with auto-return
-- `demo-escrow-mode.sh` - Multi-party agreement
-- `demo-waypoint.sh` - Anchored to permanent storage
+1. `demo-latency.sh` - Operation latencies (ns/µs)
+2. `demo-memory.sh` - Memory efficiency
+3. `demo-throughput.sh` - Operations per second
+4. `demo-scale.sh` - Large DAGs (1000+ vertices)
 
-**Time**: 15 minutes total  
-**Skill**: Advanced  
-**Prerequisites**: Level 3
+**Key Concepts**: Performance, Scalability, Efficiency
 
----
-
-### ✅ Level 5: Performance (10 min, Expert)
-**Path**: `05-performance/`  
-**Goal**: See world-class performance
-
-**What you'll learn**:
-- Sub-microsecond operations
-- High-throughput DAG operations
-- Benchmark results
-- Zero-copy optimizations
-
-**Demos**:
-- `demo-throughput.sh` - 1M+ vertices/sec
-- `demo-benchmarks.sh` - Run criterion benchmarks
-- `demo-zero-copy.sh` - Efficient payload handling
-- `results/` - Benchmark reports
-
-**Time**: 10 minutes total  
-**Skill**: Expert  
-**Prerequisites**: Level 4
-
-**Performance Highlights**:
-- Vertex creation: ~720 ns (1.4M/sec)
-- Blake3 hash (4KB): ~80 ns (12.5M/sec)
-- DAG put_vertex: ~1.6 µs (625K/sec)
-- DAG get_vertex: ~270 ns (3.7M/sec)
-- Merkle root (1k): ~750 µs
-- Proof verification: ~1.4 µs (714K/sec)
+**Success**: You know rhizoCrypt can handle production loads
 
 ---
 
-### ✅ Level 6: Real-World Scenarios (15 min, Expert)
-**Path**: `06-real-world-scenarios/`  
+### Phase 6: Advanced & Real-World (45 min)
 **Goal**: See rhizoCrypt in action
 
-**What you'll learn**:
-- Gaming session capture
-- ML experiment tracking
-- Collaborative document editing
-- Provenance tracking
+**Demos (Patterns)**:
+1. `demo-event-sourcing.sh` - Event-driven architecture
+2. `demo-capability-discovery.sh` - Runtime discovery
+3. `demo-multi-session.sh` - Coordinating multiple sessions
 
-**Demos**:
-- `demo-gaming-session.sh` - Capture gameplay with AI training
-- `demo-ml-experiment.sh` - Track training runs and checkpoints
-- `demo-collaborative-doc.sh` - CRDT-style conflict-free editing
-- `demo-provenance.sh` - Query "who did what"
+**Demos (Real-World)**:
+1. `demo-gaming-session.sh` - Gaming + ML training
+2. `demo-document-workflow.sh` - Contract negotiation
+3. `demo-ml-pipeline.sh` - Multi-agent ML workflow
+4. `demo-supply-chain.sh` - Farm-to-table tracking
 
-**Time**: 15 minutes total  
-**Skill**: Expert  
-**Prerequisites**: Level 5
+**Key Concepts**: Event sourcing, Discovery, Real scenarios
+
+**Success**: You can map rhizoCrypt to your use case
 
 ---
 
-## 🎓 LEARNING PATHS
+## 🎯 Success Criteria
 
-### Path A: "I'm New to rhizoCrypt" (60 minutes)
-**Goal**: Master all local capabilities
+### You're ready for Level 1 when:
+- [ ] You can create a session
+- [ ] You can add vertices with parents
+- [ ] You understand Merkle proofs
+- [ ] You know which slice mode to use
+- [ ] You've seen at least one real-world scenario
+- [ ] You can explain dehydration to someone
+
+---
+
+## 💡 Tips for Success
+
+### Start with RUN_ME_FIRST.sh
+The guided tour is the fastest way to learn.
+
+### Read the Output
+Demos explain what's happening. Pay attention to the logs.
+
+### Try Breaking Things
+After `demo-merkle-tree.sh`, modify a vertex. See tamper detection work.
+
+### Ask "Why This Way?"
+Each design decision has a reason. Try to understand the "why."
+
+### Map to Your Use Case
+As you learn, think: "How would I use this in my app?"
+
+---
+
+## 📊 Expected Outcomes
+
+By the end of Level 0, you should:
+
+✅ **Understand**: All core rhizoCrypt concepts  
+✅ **Experience**: Sub-microsecond performance  
+✅ **See**: Real-world applications  
+✅ **Know**: When to use each feature  
+✅ **Feel**: Confident to integrate rhizoCrypt  
+
+---
+
+## 🔗 Quick Links
+
+- **Next**: Level 1 (../01-inter-primal-live/00_START_HERE.md)
+- **Showcase Overview**: ../00_START_HERE.md
+- **Specs**: ../../specs/RHIZOCRYPT_SPECIFICATION.md
+- **Architecture**: ../../specs/ARCHITECTURE.md
+
+---
+
+## ❓ FAQ
+
+**Q: Do I need to run demos in order?**  
+A: Recommended but not required. Concepts build on each other.
+
+**Q: How long does RUN_ME_FIRST.sh take?**  
+A: About 30 minutes with explanations. You can skip through faster.
+
+**Q: Can I run specific demos?**  
+A: Yes! Each demo is standalone. Just cd into the directory and run.
+
+**Q: What if a demo fails?**  
+A: Check that you've built rhizoCrypt: `cd ../.. && cargo build --workspace --release`
+
+**Q: Do I need external services?**  
+A: No! Level 0 is 100% local. No Songbird, no network, no dependencies.
+
+---
+
+## 🚀 Ready to Start?
 
 ```bash
-# Run the automated tour
+# Guided tour (recommended)
 ./RUN_ME_FIRST.sh
-```
 
-This script walks you through all 6 levels with pauses and explanations.
-
----
-
-### Path B: "Show Me Something Cool!" (5 minutes)
-**Goal**: See rhizoCrypt's best features NOW
-
-```bash
-# The ultimate demo - performance showcase
-cd 05-performance
-./demo-throughput.sh
-```
-
----
-
-### Path C: "I Want Specific Features" (Variable)
-**Goal**: Jump to what interests you
-
-**For Content-Addressing**:
-```bash
-cd 01-hello-rhizocrypt
-./demo-first-vertex.sh
-```
-
-**For Cryptographic Proofs**:
-```bash
-cd 03-merkle-proofs
-./demo-simple-proof.sh
-```
-
-**For Real-World Use Cases**:
-```bash
-cd 06-real-world-scenarios
-./demo-gaming-session.sh
-```
-
----
-
-## 📊 WHAT MAKES rhizoCrypt SPECIAL?
-
-### 1. **Designed to Forget** 🧠
-Unlike traditional databases that preserve everything, rhizoCrypt is **ephemeral by default**:
-- Sessions have lifecycles (create → grow → resolve → expire)
-- Only dehydrated summaries persist to LoamSpine
-- Scales infinitely by forgetting
-
-### 2. **Content-Addressed Integrity** 🔒
-Every vertex is identified by its Blake3 hash:
-- Same content = same ID (deduplication)
-- Tamper-evident (any change = different hash)
-- Cryptographic proofs via Merkle trees
-
-### 3. **Multi-Parent DAG** 🌳
-Not just a blockchain (single parent):
-- Multiple parents per vertex
-- Complex branching and merging
-- Topological ordering
-
-### 4. **Selective Permanence** 💾
-Choose what survives:
-- Most data expires with session
-- Dehydration protocol commits summaries
-- Waypoints anchor to permanent storage
-
-### 5. **Pure Infant Discovery** 🐣
-Zero hardcoded primal names:
-- Discovers capabilities at runtime
-- Works with ANY service providing needed capability
-- No vendor lock-in
-
-### 6. **World-Class Performance** ⚡
-Sub-microsecond operations:
-- 1.4M vertices/sec creation
-- 625K/sec DAG insertions
-- 714K/sec proof verifications
-
----
-
-## 🏗️ ARCHITECTURE OVERVIEW
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     rhizoCrypt Core                          │
-│                  (Ephemeral DAG Engine)                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │ Sessions │  │   DAG    │  │  Merkle  │  │  Slices  │   │
-│  │          │  │  Store   │  │  Trees   │  │          │   │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
-│       │             │              │             │          │
-│       └─────────────┴──────────────┴─────────────┘          │
-│                          │                                   │
-│                          ▼                                   │
-│              ┌───────────────────────┐                       │
-│              │   Content Addressing  │                       │
-│              │   (Blake3 Hashing)    │                       │
-│              └───────────────────────┘                       │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🎯 SUCCESS CRITERIA
-
-### You've Mastered rhizoCrypt When:
-
-**Level 1 Complete**:
-- ✅ Can create and query sessions
-- ✅ Understand content-addressing
-- ✅ Know what a vertex is
-
-**Level 2 Complete**:
-- ✅ Understand multi-parent DAGs
-- ✅ Can track frontiers
-- ✅ Know topological ordering
-
-**Level 3 Complete**:
-- ✅ Can generate Merkle proofs
-- ✅ Understand cryptographic verification
-- ✅ Can detect tampering
-
-**Level 4 Complete**:
-- ✅ Master all 6 slice modes
-- ✅ Understand resolution routing
-- ✅ Know waypoint anchoring
-
-**Level 5 Complete**:
-- ✅ Understand performance characteristics
-- ✅ Know optimization techniques
-- ✅ Can benchmark operations
-
-**Level 6 Complete**:
-- ✅ Can apply rhizoCrypt to real problems
-- ✅ Understand use case patterns
-- ✅ Ready for production deployment
-
----
-
-## 💡 TIPS FOR SUCCESS
-
-### For Best Results:
-- ✅ Start with Level 1 (don't skip ahead)
-- ✅ Run demos in order (they build on each other)
-- ✅ Read the output carefully (it explains what's happening)
-- ✅ Experiment! Modify the demos and see what happens
-
-### Common Questions:
-
-**Q: Why is rhizoCrypt "ephemeral"?**  
-A: Most data should be temporary. Only what matters is committed to permanent storage. This enables infinite scalability.
-
-**Q: What's the difference between rhizoCrypt and a database?**  
-A: Databases preserve everything. rhizoCrypt is working memory - it captures, proves, and selectively commits.
-
-**Q: When should I use rhizoCrypt?**  
-A: When you need to capture complex, branching workflows with cryptographic integrity, then commit only the results.
-
-**Q: What's "infant discovery"?**  
-A: rhizoCrypt starts with zero knowledge of other primals and discovers capabilities at runtime. No hardcoded names!
-
----
-
-## 📚 NEXT STEPS
-
-### After Mastering Local Capabilities:
-
-**Phase 2: RPC Layer** (`../02-rpc/`)
-- tarpc server with 24 methods
-- Rate limiting and metrics
-- Client operations
-
-**Phase 3: Inter-Primal** (`../03-inter-primal/`)
-- Discover capabilities via Songbird
-- Sign vertices via BearDog
-- Store payloads via NestGate
-- Commit to LoamSpine
-
-**Phase 4: Complete Workflows** (`../04-complete-workflow/`)
-- Multi-agent sessions
-- Dehydration protocol
-- Provenance tracking
-
-**Phase 5: Live Integration** (`../05-live-integration/`)
-- Real Phase 1 binaries
-- Full ecosystem coordination
-
----
-
-## 🏆 SHOWCASE PHILOSOPHY
-
-**Following Best Practices from Phase 1**:
-- ✅ **Local-first** (ToadStool pattern) - Master standalone before ecosystem
-- ✅ **Progressive complexity** (NestGate pattern) - Beginner → Expert
-- ✅ **Real execution** (ToadStool pattern) - No mocks, actual API calls
-- ✅ **Automated tour** (NestGate pattern) - Zero-friction onboarding
-- ✅ **Time-boxed** (NestGate pattern) - Clear duration for each demo
-
-**rhizoCrypt Unique Value**:
-- 🏆 Ephemeral by default (designed to forget)
-- 🏆 Content-addressed DAG (not just a chain)
-- 🏆 Selective permanence (dehydration protocol)
-- 🏆 Pure infant discovery (zero hardcoding)
-- 🏆 World-class performance (sub-microsecond ops)
-
----
-
-## 🚀 READY TO START?
-
-### Option 1: Automated Tour (Recommended)
-```bash
-./RUN_ME_FIRST.sh
-```
-
-### Option 2: Manual Exploration
-```bash
+# Or start with first demo
 cd 01-hello-rhizocrypt
 ./demo-first-session.sh
 ```
 
-### Option 3: Jump to Performance
-```bash
-cd 05-performance
-./demo-throughput.sh
-```
-
 ---
 
-**Let's explore the memory that knows when to forget!** 🔐
+**🔐 Let's master rhizoCrypt's local capabilities!** 🔐
 
----
+*Questions? See individual demo READMEs or check ../../specs/*
 
-## 📖 ADDITIONAL RESOURCES
-
-- [rhizoCrypt Specification](../../specs/RHIZOCRYPT_SPECIFICATION.md)
-- [Architecture Overview](../../specs/ARCHITECTURE.md)
-- [Data Model](../../specs/DATA_MODEL.md)
-- [API Reference](../../specs/API_SPECIFICATION.md)
-- [Complete Audit Report](../../COMPREHENSIVE_AUDIT_DEC_24_2025.md)
-
----
-
-*"Great code deserves a great showcase. Welcome to rhizoCrypt."* 🚀
-
+*Last Updated: December 26, 2025*

@@ -38,6 +38,7 @@ hashbrown = { workspace = true }
 lru = "0.12"
 async-trait = { workspace = true }
 parking_lot = { workspace = true }
+dashmap = { workspace = true }
 # Optional storage backends
 sled = { version = "0.34.7", optional = true }
 # HTTP client for adapters (always available)
