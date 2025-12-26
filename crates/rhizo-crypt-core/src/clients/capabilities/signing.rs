@@ -84,7 +84,7 @@ impl SigningClient {
 
         // Query registry for ANY service providing signing capability
         let status = registry.discover(&Capability::Signing).await;
-        
+
         let endpoint = match status {
             crate::discovery::DiscoveryStatus::Available(endpoints) => {
                 endpoints.into_iter().next().ok_or_else(|| {
@@ -184,12 +184,7 @@ impl SigningClient {
     /// # Errors
     ///
     /// Returns error if service unavailable or verification fails.
-    pub async fn verify(
-        &self,
-        data: &[u8],
-        signature: &Signature,
-        signer: &Did,
-    ) -> Result<bool> {
+    pub async fn verify(&self, data: &[u8], signature: &Signature, signer: &Did) -> Result<bool> {
         tracing::debug!(
             signer = %signer,
             data_len = data.len(),
@@ -252,7 +247,9 @@ impl SigningClient {
     pub async fn verify_did(&self, did: &Did) -> Result<bool> {
         tracing::debug!(did = %did, "Verifying DID");
 
-        let request = VerifyDidRequest { did: did.clone() };
+        let request = VerifyDidRequest {
+            did: did.clone(),
+        };
 
         let response: VerifyDidResponse = self.adapter.call("verify_did", request).await?;
 
@@ -359,6 +356,8 @@ struct AttestResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::discovery::{DiscoveryRegistry, ServiceEndpoint};
+    use std::net::SocketAddr;
 
     #[test]
     fn test_signing_client_with_endpoint() {
@@ -382,5 +381,219 @@ mod tests {
         // Just testing that the method doesn't panic
         let _ = available;
     }
-}
 
+    #[tokio::test]
+    async fn test_signing_client_discover_no_providers() {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+        let result = SigningClient::discover(&registry).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("No signing provider available"));
+    }
+
+    #[tokio::test]
+    async fn test_signing_client_discover_with_provider() {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+
+        // Register a mock signing provider
+        let addr: SocketAddr = "127.0.0.1:9500".parse().unwrap();
+        let endpoint =
+            ServiceEndpoint::new("test-signer".to_string(), addr, vec![Capability::Signing]);
+        registry.register_endpoint(endpoint).await;
+
+        let result = SigningClient::discover(&registry).await;
+        assert!(result.is_ok());
+        let client = result.unwrap();
+        // AdapterFactory adds http:// prefix when no protocol specified
+        assert!(client.endpoint().contains("127.0.0.1:9500"));
+        assert_eq!(client.service_name(), Some("test-signer"));
+    }
+
+    #[test]
+    fn test_signing_request_serialization() {
+        let did = Did::new("did:key:test");
+        let request = SignRequest {
+            data: vec![1, 2, 3],
+            signer: did,
+        };
+
+        let serialized = serde_json::to_string(&request).unwrap();
+        assert!(serialized.contains("did:key:test"));
+
+        let deserialized: SignRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.data, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_signing_response_serialization() {
+        let response = SignResponse {
+            signature: vec![1, 2, 3, 4],
+        };
+
+        let serialized = serde_json::to_string(&response).unwrap();
+        let deserialized: SignResponse = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.signature, vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_verify_request_serialization() {
+        let did = Did::new("did:key:verifier");
+        let request = VerifyRequest {
+            data: vec![5, 6, 7],
+            signature: vec![8, 9, 10],
+            signer: did,
+        };
+
+        let serialized = serde_json::to_string(&request).unwrap();
+        let deserialized: VerifyRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.data, vec![5, 6, 7]);
+        assert_eq!(deserialized.signature, vec![8, 9, 10]);
+    }
+
+    #[test]
+    fn test_verify_response_serialization() {
+        let response = VerifyResponse {
+            valid: true,
+        };
+        let serialized = serde_json::to_string(&response).unwrap();
+        let deserialized: VerifyResponse = serde_json::from_str(&serialized).unwrap();
+        assert!(deserialized.valid);
+
+        let response_false = VerifyResponse {
+            valid: false,
+        };
+        let serialized = serde_json::to_string(&response_false).unwrap();
+        let deserialized: VerifyResponse = serde_json::from_str(&serialized).unwrap();
+        assert!(!deserialized.valid);
+    }
+
+    #[test]
+    fn test_verify_did_request_serialization() {
+        let did = Did::new("did:key:test123");
+        let request = VerifyDidRequest {
+            did: did.clone(),
+        };
+
+        let serialized = serde_json::to_string(&request).unwrap();
+        assert!(serialized.contains("did:key:test123"));
+
+        let deserialized: VerifyDidRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.did, did);
+    }
+
+    #[test]
+    fn test_attest_request_serialization() {
+        use crate::event::SessionOutcome;
+        use crate::merkle::MerkleRoot;
+        use crate::types::ContentHash;
+
+        let attester = Did::new("did:key:attester");
+        let summary = DehydrationSummary {
+            session_id: crate::types::SessionId::new(uuid::Uuid::now_v7()),
+            session_type: "test".to_string(),
+            created_at: crate::types::Timestamp::now(),
+            resolved_at: crate::types::Timestamp::now(),
+            outcome: SessionOutcome::Success,
+            merkle_root: MerkleRoot::new(ContentHash::from([0u8; 32])),
+            vertex_count: 10,
+            payload_bytes: 1000,
+            results: vec![],
+            agents: vec![],
+            attestations: vec![],
+        };
+        let request = AttestRequest {
+            attester,
+            summary,
+        };
+
+        let serialized = serde_json::to_string(&request).unwrap();
+        assert!(serialized.contains("did:key:attester"));
+
+        let _deserialized: AttestRequest = serde_json::from_str(&serialized).unwrap();
+        // Basic deserialization works
+    }
+
+    #[test]
+    fn test_signing_client_clone() {
+        let client = SigningClient::with_endpoint("http://localhost:9500").unwrap();
+        let cloned = client.clone();
+        assert_eq!(client.endpoint(), cloned.endpoint());
+        assert_eq!(client.service_name(), cloned.service_name());
+    }
+
+    #[test]
+    fn test_signing_client_debug() {
+        let client = SigningClient::with_endpoint("http://localhost:9500").unwrap();
+        let debug_str = format!("{:?}", client);
+        assert!(debug_str.contains("SigningClient"));
+    }
+
+    #[tokio::test]
+    async fn test_signing_client_multiple_providers() {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+
+        // Register multiple signing providers
+        let addr1: SocketAddr = "127.0.0.1:9500".parse().unwrap();
+        registry
+            .register_endpoint(ServiceEndpoint::new(
+                "signer-1".to_string(),
+                addr1,
+                vec![Capability::Signing],
+            ))
+            .await;
+
+        let addr2: SocketAddr = "127.0.0.1:9501".parse().unwrap();
+        registry
+            .register_endpoint(ServiceEndpoint::new(
+                "signer-2".to_string(),
+                addr2,
+                vec![Capability::Signing],
+            ))
+            .await;
+
+        // Discovery should return the first available
+        let result = SigningClient::discover(&registry).await;
+        assert!(result.is_ok());
+        let client = result.unwrap();
+        // Should get one of the registered endpoints (AdapterFactory adds http:// prefix)
+        assert!(
+            client.endpoint().contains("127.0.0.1:9500")
+                || client.endpoint().contains("127.0.0.1:9501")
+        );
+    }
+
+    #[test]
+    fn test_signature_from_bytes() {
+        let sig_bytes = vec![1, 2, 3, 4, 5];
+        let signature = Signature::new(sig_bytes.clone());
+        assert_eq!(signature.as_bytes(), &sig_bytes);
+    }
+
+    #[tokio::test]
+    async fn test_signing_client_service_name_tracking() {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+
+        let addr: SocketAddr = "127.0.0.1:9500".parse().unwrap();
+        let endpoint =
+            ServiceEndpoint::new("beardog-hsm".to_string(), addr, vec![Capability::Signing]);
+        registry.register_endpoint(endpoint).await;
+
+        let client = SigningClient::discover(&registry).await.unwrap();
+        assert_eq!(client.service_name(), Some("beardog-hsm"));
+        assert!(client.endpoint().contains("127.0.0.1:9500"));
+    }
+
+    #[test]
+    fn test_signing_client_endpoint_formats() {
+        // Test various endpoint formats
+        let http_client = SigningClient::with_endpoint("http://localhost:9500").unwrap();
+        assert_eq!(http_client.endpoint(), "http://localhost:9500");
+
+        let https_client = SigningClient::with_endpoint("https://signing.example.com:443").unwrap();
+        assert_eq!(https_client.endpoint(), "https://signing.example.com:443");
+
+        // AdapterFactory auto-adds http:// for addresses without protocol
+        let auto_http = SigningClient::with_endpoint("localhost:9500").unwrap();
+        assert!(auto_http.endpoint().contains("localhost:9500"));
+    }
+}

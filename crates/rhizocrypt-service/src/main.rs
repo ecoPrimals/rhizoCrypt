@@ -1,11 +1,11 @@
-//! RhizoCrypt Standalone Service
+//! `RhizoCrypt` Standalone Service
 //!
-//! This binary provides a standalone RPC service for rhizoCrypt, making it
-//! discoverable and coordinatable by BiomeOS.
+//! This binary provides a standalone RPC service for `rhizoCrypt`, making it
+//! discoverable and coordinatable by `BiomeOS`.
 //!
 //! ## Modes
 //!
-//! rhizoCrypt supports two modes:
+//! `rhizoCrypt` supports two modes:
 //! 1. **Library Mode**: Embedded directly into other primals
 //! 2. **Service Mode**: Standalone service discovered via capabilities
 //!
@@ -37,16 +37,22 @@
 //! - Fully standalone and independently deployable
 //! - Discoverable via capability-based discovery
 //! - No hardcoded dependencies on other primals
-//! - BiomeOS coordinates, doesn't embed
+//! - `BiomeOS` coordinates, doesn't embed
 
 #![forbid(unsafe_code)]
-#![warn(
-    missing_docs,
-    clippy::all,
-    clippy::pedantic,
-    clippy::cargo,
-    clippy::nursery
-)]
+#![warn(missing_docs, clippy::all, clippy::pedantic, clippy::cargo, clippy::nursery)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::redundant_clone)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::unnecessary_literal_bound)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::multiple_crate_versions)]
+#![allow(clippy::significant_drop_tightening)]
 
 use rhizo_crypt_core::safe_env::SafeEnv;
 use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig};
@@ -98,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start serving
     info!("✨ rhizoCrypt service ready");
-    
+
     match server.serve().await {
         Ok(()) => {
             info!("👋 rhizoCrypt service shutdown cleanly");
@@ -146,4 +152,3 @@ fn print_banner(addr: SocketAddr, port: u16) {
     println!("{}", "═".repeat(78));
     println!();
 }
-

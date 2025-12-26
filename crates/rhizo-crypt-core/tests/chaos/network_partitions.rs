@@ -2,7 +2,7 @@
 //!
 //! Tests system behavior under network failures and partitions.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::explicit_auto_deref, clippy::field_reassign_with_default, clippy::similar_names)]
 
 use rhizo_crypt_core::{
     EventType, PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, SessionBuilder, SessionType,
@@ -327,8 +327,8 @@ async fn test_rapid_connection_cycles() {
 
     // Rapid start/stop cycles
     for i in 0..5 {
-        primal.start().await.expect(&format!("start {i} should work"));
-        primal.stop().await.expect(&format!("stop {i} should work"));
+        primal.start().await.unwrap_or_else(|_| panic!("start {i} should work"));
+        primal.stop().await.unwrap_or_else(|_| panic!("stop {i} should work"));
     }
 
     // Should still be functional

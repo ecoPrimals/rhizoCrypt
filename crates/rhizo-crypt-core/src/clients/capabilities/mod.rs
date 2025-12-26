@@ -25,16 +25,15 @@
 //! let signature = signer.sign(data, &did).await?;
 //! ```
 
+pub mod compute;
+pub mod permanent;
+pub mod provenance;
 pub mod signing;
 pub mod storage;
-pub mod permanent;
-pub mod compute;
-pub mod provenance;
 
 // Re-exports
+pub use compute::ComputeClient;
+pub use permanent::PermanentStorageClient;
+pub use provenance::ProvenanceClient;
 pub use signing::SigningClient;
 pub use storage::StorageClient;
-pub use permanent::PermanentStorageClient;
-pub use compute::ComputeClient;
-pub use provenance::ProvenanceClient;
-

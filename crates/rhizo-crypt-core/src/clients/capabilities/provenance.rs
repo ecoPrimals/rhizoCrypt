@@ -19,7 +19,7 @@ impl ProvenanceClient {
         tracing::info!("🔍 Discovering provenance capability provider...");
 
         let status = registry.discover(&Capability::ProvenanceQuery).await;
-        
+
         let endpoint = match status {
             crate::discovery::DiscoveryStatus::Available(endpoints) => {
                 endpoints.into_iter().next().ok_or_else(|| {
@@ -86,4 +86,3 @@ mod tests {
         assert_eq!(client.endpoint(), "http://localhost:9900");
     }
 }
-

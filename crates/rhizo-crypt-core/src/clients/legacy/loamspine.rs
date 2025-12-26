@@ -37,7 +37,9 @@ use crate::types::SessionId;
 // These are scaffolded for future use when LoamSpine tarpc service is ready
 #[cfg(feature = "live-clients")]
 #[allow(unused_imports)]
-use super::loamspine_rpc::{LoamSpineRpcClient, RpcCommitSessionRequest, RpcDehydrationSummary};
+use super::super::loamspine_rpc::{
+    LoamSpineRpcClient, RpcCommitSessionRequest, RpcDehydrationSummary,
+};
 
 /// Configuration for LoamSpine client.
 ///

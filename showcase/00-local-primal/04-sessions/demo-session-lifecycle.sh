@@ -1,34 +1,40 @@
 #!/usr/bin/env bash
-# Demo: Session Lifecycle - Create → Grow → Resolve → Expire
-#
-# This demo shows the complete lifecycle of a rhizoCrypt session
+# Demo: Session Lifecycle - Create, Grow, Resolve, Expire
+set -euo pipefail
 
-set -e
+# Colors for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-echo "🔐 rhizoCrypt Demo: Session Lifecycle"
-echo "======================================"
-echo ""
-echo "Sessions in rhizoCrypt have a defined lifecycle:"
-echo "  Created → Active → Resolved → Expired"
-echo ""
-echo "This demonstrates the 'Philosophy of Forgetting' - sessions"
-echo "are ephemeral by default, only dehydrated summaries persist."
+echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}   🔄 rhizoCrypt Session Lifecycle Demo${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
 echo ""
 
-# Build if needed
-if [ ! -f "target/debug/demo-session-lifecycle" ]; then
-    echo "Building demo (first run)..."
-    cargo build --bin demo-session-lifecycle --quiet
-    echo ""
-fi
+# Get to the right directory
+cd "$(dirname "$0")"
 
-# Run the demo
-cargo run --bin demo-session-lifecycle --quiet
+echo -e "${YELLOW}📦 Building demo...${NC}"
+cargo build --release --bin demo-session-lifecycle 2>&1 | tail -3
+echo ""
+
+echo -e "${GREEN}▶ Running session lifecycle demo...${NC}"
+echo ""
+cargo run --release --bin demo-session-lifecycle
 
 echo ""
-echo "✅ Demo complete!"
+echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}✅ Demo complete!${NC}"
 echo ""
-echo "Next: Try ./demo-ephemeral-persistent.sh to compare session types"
+echo -e "${YELLOW}📚 What you learned:${NC}"
+echo "  • Sessions have distinct lifecycle states"
+echo "  • CREATE → GROW → RESOLVE → EXPIRE"
+echo "  • Vertices can only be added during GROW phase"
+echo "  • Resolution freezes the DAG and computes Merkle root"
+echo "  • Expiry discards ephemeral data (privacy by default)"
+echo ""
+echo -e "${YELLOW}📖 Read more:${NC} ./README.md"
+echo -e "${YELLOW}▶ Next demo:${NC} ./demo-ephemeral-persistent.sh"
+echo ""

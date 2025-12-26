@@ -6,6 +6,8 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Standalone RPC service for rhizoCrypt - Ephemeral DAG Engine"
+keywords = ["dag", "ephemeral", "rpc", "primal", "ecoprimal"]
+categories = ["cryptography", "network-programming", "data-structures"]
 
 [[bin]]
 name = "rhizocrypt-service"
