@@ -3,10 +3,11 @@ resolver = "2"
 members = [
     "crates/rhizo-crypt-core",
     "crates/rhizo-crypt-rpc",
+    "crates/rhizocrypt-service",
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.11.0"
 edition = "2021"
 license = "AGPL-3.0"
 repository = "https://github.com/ecoPrimals/rhizoCrypt"

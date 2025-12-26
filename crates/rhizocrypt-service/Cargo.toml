@@ -1,0 +1,20 @@
+[package]
+name = "rhizocrypt-service"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Standalone RPC service for rhizoCrypt - Ephemeral DAG Engine"
+
+[[bin]]
+name = "rhizocrypt-service"
+path = "src/main.rs"
+
+[dependencies]
+rhizo-crypt-core = { path = "../rhizo-crypt-core" }
+rhizo-crypt-rpc = { path = "../rhizo-crypt-rpc" }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
