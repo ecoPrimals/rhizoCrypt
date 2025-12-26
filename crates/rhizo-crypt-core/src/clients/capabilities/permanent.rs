@@ -214,10 +214,169 @@ struct ResolveSliceResponse {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::discovery::{DiscoveryRegistry, ServiceEndpoint};
+    use std::net::SocketAddr;
 
     #[test]
     fn test_permanent_storage_client_with_endpoint() {
         let client = PermanentStorageClient::with_endpoint("http://localhost:9700").unwrap();
         assert_eq!(client.endpoint(), "http://localhost:9700");
+    }
+
+    #[test]
+    fn test_permanent_storage_client_endpoint_formats() {
+        // HTTP endpoint
+        let http_client = PermanentStorageClient::with_endpoint("http://localhost:9700").unwrap();
+        assert_eq!(http_client.endpoint(), "http://localhost:9700");
+
+        // Auto-http (should add http://)
+        let auto_http = PermanentStorageClient::with_endpoint("localhost:9700").unwrap();
+        assert!(auto_http.endpoint().contains("localhost:9700"));
+    }
+
+    #[tokio::test]
+    async fn test_permanent_storage_client_discover() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register a permanent storage provider
+        let addr: SocketAddr = "127.0.0.1:9700".parse().unwrap();
+        let endpoint = ServiceEndpoint::new(
+            "test-loamspine",
+            addr,
+            vec![Capability::PermanentCommit, Capability::SliceCheckout],
+        );
+        registry.register_endpoint(endpoint).await;
+
+        // Discover should find the provider
+        let result = PermanentStorageClient::discover(&registry).await;
+        assert!(result.is_ok());
+
+        let client = result.unwrap();
+        assert!(client.endpoint().contains("127.0.0.1:9700"));
+        assert_eq!(client.service_name(), Some("test-loamspine"));
+    }
+
+    #[tokio::test]
+    async fn test_permanent_storage_client_discover_no_provider() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // No providers registered
+        let result = PermanentStorageClient::discover(&registry).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_permanent_storage_client_multiple_providers() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register multiple providers
+        let addr1: SocketAddr = "127.0.0.1:9700".parse().unwrap();
+        let endpoint1 =
+            ServiceEndpoint::new("loamspine-1", addr1, vec![Capability::PermanentCommit]);
+        registry.register_endpoint(endpoint1).await;
+
+        let addr2: SocketAddr = "127.0.0.1:9701".parse().unwrap();
+        let endpoint2 =
+            ServiceEndpoint::new("loamspine-2", addr2, vec![Capability::PermanentCommit]);
+        registry.register_endpoint(endpoint2).await;
+
+        // Should discover one of them
+        let result = PermanentStorageClient::discover(&registry).await;
+        assert!(result.is_ok());
+
+        let client = result.unwrap();
+        // Should connect to one of the providers
+        assert!(
+            client.endpoint().contains("127.0.0.1:9700")
+                || client.endpoint().contains("127.0.0.1:9701")
+        );
+    }
+
+    #[test]
+    fn test_permanent_storage_client_clone() {
+        let client1 = PermanentStorageClient::with_endpoint("http://localhost:9700").unwrap();
+        let client2 = client1.clone();
+
+        assert_eq!(client1.endpoint(), client2.endpoint());
+    }
+
+    #[test]
+    fn test_permanent_storage_client_debug() {
+        let client = PermanentStorageClient::with_endpoint("http://localhost:9700").unwrap();
+        let debug_str = format!("{:?}", client);
+        assert!(debug_str.contains("PermanentStorageClient"));
+    }
+
+    #[tokio::test]
+    async fn test_permanent_storage_client_concurrent_discovery() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register provider
+        let addr: SocketAddr = "127.0.0.1:9700".parse().unwrap();
+        let endpoint = ServiceEndpoint::new("loamspine", addr, vec![Capability::PermanentCommit]);
+        registry.register_endpoint(endpoint).await;
+
+        // Discover concurrently
+        let registry1 = registry.clone();
+        let registry2 = registry.clone();
+
+        let handle1 =
+            tokio::spawn(async move { PermanentStorageClient::discover(&registry1).await });
+
+        let handle2 =
+            tokio::spawn(async move { PermanentStorageClient::discover(&registry2).await });
+
+        let result1 = handle1.await.unwrap();
+        let result2 = handle2.await.unwrap();
+
+        assert!(result1.is_ok());
+        assert!(result2.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_permanent_storage_client_discover_with_slice_capability() {
+        let registry = Arc::new(DiscoveryRegistry::new("test-primal"));
+
+        // Register provider with both commit and slice capabilities
+        let addr: SocketAddr = "127.0.0.1:9700".parse().unwrap();
+        let endpoint = ServiceEndpoint::new(
+            "full-loamspine",
+            addr,
+            vec![
+                Capability::PermanentCommit,
+                Capability::SliceCheckout,
+                Capability::SliceResolution,
+            ],
+        );
+        registry.register_endpoint(endpoint).await;
+
+        let result = PermanentStorageClient::discover(&registry).await;
+        assert!(result.is_ok());
+
+        let client = result.unwrap();
+        assert_eq!(client.service_name(), Some("full-loamspine"));
+    }
+
+    #[test]
+    fn test_permanent_storage_client_service_name_tracking() {
+        // Client with explicit endpoint has no service name
+        let client1 = PermanentStorageClient::with_endpoint("http://localhost:9700").unwrap();
+        assert_eq!(client1.service_name(), None);
+    }
+
+    #[test]
+    fn test_permanent_storage_client_various_addresses() {
+        // Test different address formats
+        let formats = vec![
+            "http://localhost:9700",
+            "http://127.0.0.1:9700",
+            "localhost:9700",
+            "127.0.0.1:9700",
+        ];
+
+        for format in formats {
+            let result = PermanentStorageClient::with_endpoint(format);
+            assert!(result.is_ok(), "Failed for format: {}", format);
+        }
     }
 }

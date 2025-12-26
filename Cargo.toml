@@ -7,7 +7,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.11.0"
+version = "0.12.0"
 edition = "2021"
 license = "AGPL-3.0"
 repository = "https://github.com/ecoPrimals/rhizoCrypt"
@@ -56,6 +56,7 @@ http-body-util = "0.1"
 
 # Concurrency
 parking_lot = "0.12"
+dashmap = "6.1"
 
 # Benchmarking
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -79,6 +80,8 @@ doc_markdown = "allow"
 significant_drop_tightening = "allow"
 # Multiple crate versions caused by transitive dependencies (not actionable)
 multiple_crate_versions = "allow"
+# Async test functions may not await (test infrastructure)
+unused_async = "allow"
 
 # Production code quality
 unwrap_used = "warn"

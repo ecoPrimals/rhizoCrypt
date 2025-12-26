@@ -25,7 +25,7 @@ async fn test_dag_frontier() {
     let v1_id = primal.append_vertex(session_id, v1).await.expect("should append genesis");
 
     // Check frontier contains v1
-    let session = primal.get_session(session_id).await.expect("should get session");
+    let session = primal.get_session(session_id).expect("should get session");
     assert!(session.frontier.contains(&v1_id));
     assert!(session.genesis.contains(&v1_id));
 
@@ -39,7 +39,7 @@ async fn test_dag_frontier() {
     let v2_id = primal.append_vertex(session_id, v2).await.expect("should append child");
 
     // Frontier should now be v2 only
-    let session = primal.get_session(session_id).await.expect("should get session");
+    let session = primal.get_session(session_id).expect("should get session");
     assert!(!session.frontier.contains(&v1_id));
     assert!(session.frontier.contains(&v2_id));
 
@@ -82,7 +82,7 @@ async fn test_dag_branching() {
     let v3_id = primal.append_vertex(session_id, v3).await.expect("should append branch b");
 
     // Frontier should have both tips
-    let session = primal.get_session(session_id).await.expect("should get session");
+    let session = primal.get_session(session_id).expect("should get session");
     assert_eq!(session.frontier.len(), 2);
     assert!(session.frontier.contains(&v2_id));
     assert!(session.frontier.contains(&v3_id));
@@ -98,7 +98,7 @@ async fn test_dag_branching() {
     let v4_id = primal.append_vertex(session_id, v4).await.expect("should append merge");
 
     // Frontier should now be just v4
-    let session = primal.get_session(session_id).await.expect("should get session");
+    let session = primal.get_session(session_id).expect("should get session");
     assert_eq!(session.frontier.len(), 1);
     assert!(session.frontier.contains(&v4_id));
 

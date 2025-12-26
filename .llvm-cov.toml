@@ -1,0 +1,36 @@
+# llvm-cov configuration for rhizoCrypt
+# See: https://github.com/taiki-e/cargo-llvm-cov
+
+[workspace]
+# Target coverage: 60% minimum, 80% goal
+target = 60
+
+[report]
+# Generate HTML report
+html = true
+# Generate JSON report for CI
+json = true
+# Generate lcov for external tools
+lcov = true
+
+[coverage]
+# Include all workspace members
+all = true
+# Include tests in coverage
+tests = true
+# Include benches in coverage  
+benches = false
+# Include examples in coverage
+examples = false
+
+[exclude]
+# Exclude generated code
+patterns = [
+    "target/*",
+    "*/tests/*",
+    "*/benches/*",
+]
+
+# Exclude specific files (if needed)
+files = []
+

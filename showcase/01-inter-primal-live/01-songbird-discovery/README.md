@@ -261,15 +261,23 @@ Based on audit and Phase 1 experience:
 
 ### Songbird Rendezvous Configuration
 
-**Default Port**: 7878  
-**Protocol**: tarpc over TCP  
+**Default Port**: 8888 (self-managed)  
+**Protocol**: HTTP/REST API  
 **TLS**: Optional (certs in `../../../bins/certs/`)
+
+**Binary**: `../../../bins/songbird-rendezvous`
+
+**Key Points**:
+- Songbird manages its own port (8888)
+- You don't assign it a port - it chooses 8888
+- HTTP/REST API (not tarpc)
+- Endpoints: `/api/v1/register`, `/api/v1/query`, `/api/v1/heartbeat`, `/health`
 
 **Environment Variables**:
 ```bash
-SONGBIRD_PORT=7878
-SONGBIRD_LOG_LEVEL=info
-SONGBIRD_CERT_PATH=../../../bins/certs/
+# Songbird handles these internally
+# No port configuration needed - it uses 8888
+SONGBIRD_LOG_LEVEL=info  # Optional
 ```
 
 ### rhizoCrypt Registration Payload
