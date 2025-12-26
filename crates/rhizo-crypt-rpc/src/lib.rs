@@ -35,7 +35,7 @@ mod client;
 mod error;
 mod metrics;
 mod rate_limit;
-mod server;
+pub mod server;
 mod service;
 
 pub use client::RpcClient;

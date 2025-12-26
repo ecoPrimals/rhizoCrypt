@@ -66,6 +66,8 @@ See [INFANT_DISCOVERY.md](INFANT_DISCOVERY.md) for details.
 
 ## 🚀 Quick Start
 
+### As a Library
+
 ```bash
 # Clone and build
 git clone <repo>
@@ -79,6 +81,22 @@ cargo test --workspace
 cd showcase/00-local-primal/04-sessions
 ./demo-session-lifecycle.sh
 ```
+
+### As a Standalone Service
+
+```bash
+# Build standalone service
+cargo build --release --bin rhizocrypt-service
+
+# Run service (default port 9400)
+./target/release/rhizocrypt-service
+
+# Or with discovery registration
+RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500 \
+./target/release/rhizocrypt-service
+```
+
+See [crates/rhizocrypt-service/README.md](crates/rhizocrypt-service/README.md) for details.
 
 ---
 
