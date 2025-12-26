@@ -27,7 +27,7 @@ impl StorageClient {
         tracing::info!("🔍 Discovering payload storage capability provider...");
 
         let status = registry.discover(&Capability::PayloadStorage).await;
-        
+
         let endpoint = match status {
             crate::discovery::DiscoveryStatus::Available(endpoints) => {
                 endpoints.into_iter().next().ok_or_else(|| {
@@ -44,7 +44,10 @@ impl StorageClient {
                 return Err(RhizoCryptError::integration("Storage discovery in progress"));
             }
             crate::discovery::DiscoveryStatus::Failed(err) => {
-                return Err(RhizoCryptError::integration(format!("Storage discovery failed: {}", err)));
+                return Err(RhizoCryptError::integration(format!(
+                    "Storage discovery failed: {}",
+                    err
+                )));
             }
         };
 
@@ -96,9 +99,10 @@ impl StorageClient {
         let response: StoreResponse = self.adapter.call("store", request).await?;
 
         Ok(PayloadRef::new(
-            response.hash.try_into().map_err(|_| {
-                RhizoCryptError::integration("Invalid hash length in response")
-            })?,
+            response
+                .hash
+                .try_into()
+                .map_err(|_| RhizoCryptError::integration("Invalid hash length in response"))?,
             response.size,
         ))
     }
@@ -236,6 +240,8 @@ struct DeleteResponse {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::discovery::{DiscoveryRegistry, ServiceEndpoint};
+    use std::net::SocketAddr;
 
     #[test]
     fn test_storage_client_with_endpoint() {
@@ -249,5 +255,248 @@ mod tests {
         let result = StorageClient::with_endpoint("not a url");
         assert!(result.is_err());
     }
-}
 
+    #[tokio::test]
+    async fn test_storage_client_availability() {
+        let client = StorageClient::with_endpoint("http://localhost:9999").unwrap();
+        let available = client.is_available().await;
+        // Just testing that the method doesn't panic
+        let _ = available;
+    }
+
+    #[tokio::test]
+    async fn test_storage_client_discover_no_providers() {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+        let result = StorageClient::discover(&registry).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("No storage provider available"));
+    }
+
+    #[tokio::test]
+    async fn test_storage_client_discover_with_provider() {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+
+        // Register a mock storage provider
+        let addr: SocketAddr = "127.0.0.1:9600".parse().unwrap();
+        let endpoint = ServiceEndpoint::new(
+            "test-storage".to_string(),
+            addr,
+            vec![Capability::PayloadStorage],
+        );
+        registry.register_endpoint(endpoint).await;
+
+        let result = StorageClient::discover(&registry).await;
+        assert!(result.is_ok());
+        let client = result.unwrap();
+        // AdapterFactory adds http:// prefix
+        assert!(client.endpoint().contains("127.0.0.1:9600"));
+        assert_eq!(client.service_name(), Some("test-storage"));
+    }
+
+    #[test]
+    fn test_store_request_serialization() {
+        let request = StoreRequest {
+            data: vec![1, 2, 3, 4, 5],
+        };
+
+        let serialized = serde_json::to_string(&request).unwrap();
+        let deserialized: StoreRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.data, vec![1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_store_response_serialization() {
+        let hash = vec![0u8; 32];
+        let response = StoreResponse {
+            hash,
+            size: 12345,
+        };
+
+        let serialized = serde_json::to_string(&response).unwrap();
+        let deserialized: StoreResponse = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.hash.len(), 32);
+        assert_eq!(deserialized.size, 12345);
+    }
+
+    #[test]
+    fn test_retrieve_request_serialization() {
+        let hash = [42u8; 32];
+        let request = RetrieveRequest {
+            hash,
+        };
+
+        let serialized = serde_json::to_string(&request).unwrap();
+        let deserialized: RetrieveRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.hash, hash);
+    }
+
+    #[test]
+    fn test_retrieve_response_serialization() {
+        let response = RetrieveResponse {
+            data: Some(vec![1, 2, 3]),
+        };
+
+        let serialized = serde_json::to_string(&response).unwrap();
+        let deserialized: RetrieveResponse = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.data, Some(vec![1, 2, 3]));
+
+        let response_none = RetrieveResponse {
+            data: None,
+        };
+        let serialized = serde_json::to_string(&response_none).unwrap();
+        let deserialized: RetrieveResponse = serde_json::from_str(&serialized).unwrap();
+        assert!(deserialized.data.is_none());
+    }
+
+    #[test]
+    fn test_exists_request_serialization() {
+        let hash = [99u8; 32];
+        let request = ExistsRequest {
+            hash,
+        };
+
+        let serialized = serde_json::to_string(&request).unwrap();
+        let deserialized: ExistsRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.hash, hash);
+    }
+
+    #[test]
+    fn test_exists_response_serialization() {
+        let response_true = ExistsResponse {
+            exists: true,
+        };
+        let serialized = serde_json::to_string(&response_true).unwrap();
+        let deserialized: ExistsResponse = serde_json::from_str(&serialized).unwrap();
+        assert!(deserialized.exists);
+
+        let response_false = ExistsResponse {
+            exists: false,
+        };
+        let serialized = serde_json::to_string(&response_false).unwrap();
+        let deserialized: ExistsResponse = serde_json::from_str(&serialized).unwrap();
+        assert!(!deserialized.exists);
+    }
+
+    #[test]
+    fn test_delete_request_serialization() {
+        let hash = [7u8; 32];
+        let request = DeleteRequest {
+            hash,
+        };
+
+        let serialized = serde_json::to_string(&request).unwrap();
+        let deserialized: DeleteRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.hash, hash);
+    }
+
+    #[test]
+    fn test_delete_response_serialization() {
+        let response = DeleteResponse {};
+        let serialized = serde_json::to_string(&response).unwrap();
+        let _deserialized: DeleteResponse = serde_json::from_str(&serialized).unwrap();
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_storage_client_clone() {
+        let client = StorageClient::with_endpoint("http://localhost:9600").unwrap();
+        let cloned = client.clone();
+        assert_eq!(client.endpoint(), cloned.endpoint());
+        assert_eq!(client.service_name(), cloned.service_name());
+    }
+
+    #[test]
+    fn test_storage_client_debug() {
+        let client = StorageClient::with_endpoint("http://localhost:9600").unwrap();
+        let debug_str = format!("{:?}", client);
+        assert!(debug_str.contains("StorageClient"));
+    }
+
+    #[tokio::test]
+    async fn test_storage_client_multiple_providers() {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+
+        // Register multiple storage providers
+        let addr1: SocketAddr = "127.0.0.1:9600".parse().unwrap();
+        registry
+            .register_endpoint(ServiceEndpoint::new(
+                "nestgate-1".to_string(),
+                addr1,
+                vec![Capability::PayloadStorage],
+            ))
+            .await;
+
+        let addr2: SocketAddr = "127.0.0.1:9601".parse().unwrap();
+        registry
+            .register_endpoint(ServiceEndpoint::new(
+                "nestgate-2".to_string(),
+                addr2,
+                vec![Capability::PayloadStorage],
+            ))
+            .await;
+
+        // Discovery should return the first available
+        let result = StorageClient::discover(&registry).await;
+        assert!(result.is_ok());
+        let client = result.unwrap();
+        // Should get one of the registered endpoints (AdapterFactory adds http:// prefix)
+        assert!(
+            client.endpoint().contains("127.0.0.1:9600")
+                || client.endpoint().contains("127.0.0.1:9601")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_storage_client_service_name_tracking() {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+
+        let addr: SocketAddr = "127.0.0.1:9600".parse().unwrap();
+        let endpoint = ServiceEndpoint::new(
+            "nestgate-zfs".to_string(),
+            addr,
+            vec![Capability::PayloadStorage],
+        );
+        registry.register_endpoint(endpoint).await;
+
+        let client = StorageClient::discover(&registry).await.unwrap();
+        assert_eq!(client.service_name(), Some("nestgate-zfs"));
+        assert!(client.endpoint().contains("127.0.0.1:9600"));
+    }
+
+    #[test]
+    fn test_storage_client_endpoint_formats() {
+        // Test various endpoint formats
+        let http_client = StorageClient::with_endpoint("http://localhost:9600").unwrap();
+        assert_eq!(http_client.endpoint(), "http://localhost:9600");
+
+        let https_client = StorageClient::with_endpoint("https://storage.example.com:443").unwrap();
+        assert_eq!(https_client.endpoint(), "https://storage.example.com:443");
+
+        // AdapterFactory auto-adds http:// for addresses without protocol
+        let auto_http = StorageClient::with_endpoint("localhost:9600").unwrap();
+        assert!(auto_http.endpoint().contains("localhost:9600"));
+    }
+
+    #[test]
+    fn test_payload_ref_creation() {
+        let hash = [123u8; 32];
+        let payload_ref = PayloadRef::new(hash, 5000);
+        assert_eq!(payload_ref.hash, hash);
+        assert_eq!(payload_ref.size, 5000);
+    }
+
+    #[test]
+    fn test_large_payload_serialization() {
+        // Test with large payload data
+        let large_data = vec![42u8; 1024 * 1024]; // 1MB
+        let request = StoreRequest {
+            data: large_data.clone(),
+        };
+
+        let serialized = serde_json::to_string(&request).unwrap();
+        let deserialized: StoreRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.data.len(), 1024 * 1024);
+        assert_eq!(deserialized.data[0], 42);
+    }
+}

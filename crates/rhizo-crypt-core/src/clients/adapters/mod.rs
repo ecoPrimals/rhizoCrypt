@@ -28,13 +28,14 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 pub mod http;
-#[cfg(feature = "live-clients")]
-pub mod tarpc_adapter;
+// TODO: Implement tarpc_adapter when live-clients feature is needed
+// #[cfg(feature = "live-clients")]
+// pub mod tarpc_adapter;
 
 // Re-exports
 pub use http::HttpAdapter;
-#[cfg(feature = "live-clients")]
-pub use tarpc_adapter::TarpcAdapter;
+// #[cfg(feature = "live-clients")]
+// pub use tarpc_adapter::TarpcAdapter;
 
 // ============================================================================
 // Protocol Adapter Trait
@@ -84,12 +85,13 @@ pub trait ProtocolAdapterExt: ProtocolAdapter {
         Response: for<'de> Deserialize<'de> + Send,
     {
         let args_json = serde_json::to_string(&args)
-            .map_err(|e| RhizoCryptError::integration(format!("Failed to serialize args: {}", e)))?;
-        
+            .map_err(|e| RhizoCryptError::integration(format!("Failed to serialize args: {e}")))?;
+
         let response_json = self.call_json(method, args_json).await?;
-        
-        serde_json::from_str(&response_json)
-            .map_err(|e| RhizoCryptError::integration(format!("Failed to deserialize response: {}", e)))
+
+        serde_json::from_str(&response_json).map_err(|e| {
+            RhizoCryptError::integration(format!("Failed to deserialize response: {e}"))
+        })
     }
 
     /// Call a remote method without expecting a response.
@@ -98,8 +100,8 @@ pub trait ProtocolAdapterExt: ProtocolAdapter {
         Args: Serialize + Send + Sync,
     {
         let args_json = serde_json::to_string(&args)
-            .map_err(|e| RhizoCryptError::integration(format!("Failed to serialize args: {}", e)))?;
-        
+            .map_err(|e| RhizoCryptError::integration(format!("Failed to serialize args: {e}")))?;
+
         self.call_oneway_json(method, args_json).await
     }
 }
@@ -132,16 +134,11 @@ impl AdapterFactory {
         if let Some((protocol, _)) = endpoint.split_once("://") {
             match protocol {
                 "http" | "https" => Ok(Box::new(HttpAdapter::new(endpoint)?)),
-                #[cfg(feature = "live-clients")]
-                "tarpc" => Ok(Box::new(TarpcAdapter::new(endpoint)?)),
+                // TODO: Re-enable when tarpc_adapter is implemented
+                // #[cfg(feature = "live-clients")]
+                // "tarpc" => Ok(Box::new(TarpcAdapter::new(endpoint)?)),
                 unsupported => Err(RhizoCryptError::integration(format!(
-                    "Unsupported protocol: {}. Supported: http, https{}",
-                    unsupported,
-                    if cfg!(feature = "live-clients") {
-                        ", tarpc"
-                    } else {
-                        ""
-                    }
+                    "Unsupported protocol: {unsupported}. Supported: http, https"
                 ))),
             }
         } else {
@@ -158,15 +155,20 @@ impl AdapterFactory {
     }
 
     /// Create an HTTP adapter.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP adapter cannot be created (e.g., invalid endpoint URL).
     pub fn http(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
         Ok(Box::new(HttpAdapter::new(endpoint)?))
     }
 
-    /// Create a tarpc adapter (requires `live-clients` feature).
-    #[cfg(feature = "live-clients")]
-    pub fn tarpc(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
-        Ok(Box::new(TarpcAdapter::new(endpoint)?))
-    }
+    // TODO: Create a tarpc adapter (requires `live-clients` feature).
+    // Implement when tarpc_adapter module is ready
+    // #[cfg(feature = "live-clients")]
+    // pub fn tarpc(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
+    //     Ok(Box::new(TarpcAdapter::new(endpoint)?))
+    // }
 }
 
 // ============================================================================
@@ -203,11 +205,11 @@ mod tests {
         assert!(err.to_string().contains("Unsupported protocol"));
     }
 
-    #[cfg(feature = "live-clients")]
-    #[test]
-    fn test_factory_tarpc() {
-        let adapter = AdapterFactory::create("tarpc://localhost:9600").unwrap();
-        assert_eq!(adapter.protocol(), "tarpc");
-    }
+    // TODO: Re-enable when tarpc_adapter is implemented
+    // #[cfg(feature = "live-clients")]
+    // #[test]
+    // fn test_factory_tarpc() {
+    //     let adapter = AdapterFactory::create("tarpc://localhost:9600").unwrap();
+    //     assert_eq!(adapter.protocol(), "tarpc");
+    // }
 }
-

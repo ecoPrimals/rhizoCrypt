@@ -35,7 +35,7 @@ use crate::types::{Did, Signature};
 
 // Import HTTP client when live-clients feature is enabled
 #[cfg(feature = "live-clients")]
-use super::beardog_http::BearDogHttpClient;
+use super::super::beardog_http::BearDogHttpClient;
 
 /// Configuration for BearDog client.
 ///

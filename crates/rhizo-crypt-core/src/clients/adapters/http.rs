@@ -30,12 +30,14 @@ impl HttpAdapter {
         // Validate URL
         let parsed = base_url
             .parse::<reqwest::Url>()
-            .map_err(|e| RhizoCryptError::integration(format!("Invalid URL: {}", e)))?;
+            .map_err(|e| RhizoCryptError::integration(format!("Invalid URL: {e}")))?;
 
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .map_err(|e| RhizoCryptError::integration(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| {
+                RhizoCryptError::integration(format!("Failed to create HTTP client: {e}"))
+            })?;
 
         Ok(Self {
             base_url: parsed.to_string().trim_end_matches('/').to_string(),
@@ -54,13 +56,13 @@ impl fmt::Debug for HttpAdapter {
         f.debug_struct("HttpAdapter")
             .field("base_url", &self.base_url)
             .field("protocol", &"http")
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 #[async_trait]
 impl ProtocolAdapter for HttpAdapter {
-    fn protocol(&self) -> &str {
+    fn protocol(&self) -> &'static str {
         "http"
     }
 
@@ -80,27 +82,22 @@ impl ProtocolAdapter for HttpAdapter {
             .body(args_json)
             .send()
             .await
-            .map_err(|e| {
-                RhizoCryptError::integration(format!("HTTP request failed: {}", e))
-            })?;
+            .map_err(|e| RhizoCryptError::integration(format!("HTTP request failed: {e}")))?;
 
         // Check status
         if !response.status().is_success() {
             let status = response.status();
-            let body = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "<no body>".to_string());
+            let body = response.text().await.unwrap_or_else(|_| "<no body>".to_string());
             return Err(RhizoCryptError::integration(format!(
-                "HTTP request failed with status {}: {}",
-                status, body
+                "HTTP request failed with status {status}: {body}"
             )));
         }
 
         // Get response as JSON string
-        response.text().await.map_err(|e| {
-            RhizoCryptError::integration(format!("Failed to read response: {}", e))
-        })
+        response
+            .text()
+            .await
+            .map_err(|e| RhizoCryptError::integration(format!("Failed to read response: {e}")))
     }
 
     async fn call_oneway_json(&self, method: &str, args_json: String) -> Result<()> {
@@ -119,16 +116,13 @@ impl ProtocolAdapter for HttpAdapter {
             .body(args_json)
             .send()
             .await
-            .map_err(|e| {
-                RhizoCryptError::integration(format!("HTTP request failed: {}", e))
-            })?;
+            .map_err(|e| RhizoCryptError::integration(format!("HTTP request failed: {e}")))?;
 
         // Check status but don't wait for response body
         if !response.status().is_success() {
             let status = response.status();
             return Err(RhizoCryptError::integration(format!(
-                "HTTP request failed with status {}",
-                status
+                "HTTP request failed with status {status}"
             )));
         }
 
@@ -138,11 +132,12 @@ impl ProtocolAdapter for HttpAdapter {
     async fn is_healthy(&self) -> bool {
         // Try to connect to /health endpoint
         let health_url = format!("{}/health", self.base_url);
-        
-        match self.client.get(&health_url).send().await {
-            Ok(response) => response.status().is_success(),
-            Err(_) => false,
-        }
+
+        self.client
+            .get(&health_url)
+            .send()
+            .await
+            .is_ok_and(|response| response.status().is_success())
     }
 
     fn endpoint(&self) -> &str {
@@ -155,6 +150,7 @@ impl ProtocolAdapter for HttpAdapter {
 // ============================================================================
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -192,4 +188,3 @@ mod tests {
         assert_eq!(url, "http://localhost:9500/api/v1/sign");
     }
 }
-

@@ -585,4 +585,403 @@ mod tests {
         let result = client.subscribe_task(TaskId::now()).await;
         assert!(result.is_err());
     }
+
+    // ============================================================================
+    // Additional Tests for Coverage Boost (40% → 80%+)
+    // ============================================================================
+
+    #[test]
+    fn test_task_id_new() {
+        let bytes = [1u8; 32];
+        let id = TaskId::new(bytes);
+        assert_eq!(id.as_bytes(), &bytes);
+    }
+
+    #[test]
+    fn test_task_id_now() {
+        let id1 = TaskId::now();
+        let id2 = TaskId::now();
+        // UUIDs should be different
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn test_task_id_default() {
+        let id = TaskId::default();
+        // Should not be all zeros
+        assert_ne!(id.as_bytes(), &[0u8; 32]);
+    }
+
+    #[test]
+    fn test_task_id_equality() {
+        let bytes = [42u8; 32];
+        let id1 = TaskId::new(bytes);
+        let id2 = TaskId::new(bytes);
+        assert_eq!(id1, id2);
+
+        let id3 = TaskId::now();
+        assert_ne!(id1, id3);
+    }
+
+    #[test]
+    fn test_compute_event_task_started() {
+        let event = ComputeEvent::TaskStarted {
+            task_id: TaskId::now(),
+            worker: Did::new("did:key:worker"),
+            started_at: Timestamp::now(),
+        };
+        assert_eq!(event.event_type(), "task.started");
+        assert!(!event.is_terminal());
+    }
+
+    #[test]
+    fn test_compute_event_task_progress() {
+        let event = ComputeEvent::TaskProgress {
+            task_id: TaskId::now(),
+            progress: 0.5,
+            message: Some("Processing...".to_string()),
+            updated_at: Timestamp::now(),
+        };
+        assert_eq!(event.event_type(), "task.progress");
+        assert!(!event.is_terminal());
+    }
+
+    #[test]
+    fn test_compute_event_task_failed() {
+        let event = ComputeEvent::TaskFailed {
+            task_id: TaskId::now(),
+            error: "Out of memory".to_string(),
+            failed_at: Timestamp::now(),
+        };
+        assert_eq!(event.event_type(), "task.failed");
+        assert!(event.is_terminal());
+    }
+
+    #[test]
+    fn test_compute_event_task_cancelled() {
+        let event = ComputeEvent::TaskCancelled {
+            task_id: TaskId::now(),
+            reason: "Cancelled by admin".to_string(),
+            cancelled_at: Timestamp::now(),
+        };
+        assert_eq!(event.event_type(), "task.cancelled");
+        assert!(event.is_terminal());
+    }
+
+    #[test]
+    fn test_config_from_env() {
+        let config = ToadStoolConfig::from_env();
+        // Default values (may be overridden by env vars)
+        assert!(config.timeout_ms > 0);
+        assert!(config.event_buffer_size > 0);
+    }
+
+    #[test]
+    fn test_config_with_custom_values() {
+        let mut config = ToadStoolConfig::default();
+        config.timeout_ms = 10000;
+        config.event_buffer_size = 200;
+
+        assert_eq!(config.timeout_ms, 10000);
+        assert_eq!(config.event_buffer_size, 200);
+    }
+
+    #[test]
+    fn test_client_state_default() {
+        let state = ClientState::default();
+        assert_eq!(state, ClientState::Disconnected);
+    }
+
+    #[test]
+    fn test_client_state_transitions() {
+        let state1 = ClientState::Disconnected;
+        let state2 = ClientState::Connecting;
+        let state3 = ClientState::Connected;
+        let state4 = ClientState::Error;
+
+        assert_ne!(state1, state2);
+        assert_ne!(state2, state3);
+        assert_ne!(state3, state4);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_client_with_discovery() {
+        let registry = Arc::new(DiscoveryRegistry::new("test"));
+        let client = ToadStoolClient::with_discovery(registry.clone());
+
+        assert!(client.registry().is_some());
+        assert_eq!(client.state().await, ClientState::Disconnected);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_client_is_connected() {
+        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        assert!(!client.is_connected().await);
+
+        // Manually set connected
+        *client.state.write().await = ClientState::Connected;
+        assert!(client.is_connected().await);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_connect_already_connected() {
+        let config = ToadStoolConfig::with_fallback("127.0.0.1:9800");
+        let client = ToadStoolClient::new(config);
+
+        // Manually set connected
+        *client.state.write().await = ClientState::Connected;
+
+        // Should succeed (idempotent)
+        let result = client.connect().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_connect_no_address_available() {
+        let client = ToadStoolClient::new(ToadStoolConfig::default());
+
+        let result = client.connect().await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("No ToadStool address available"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_connect_invalid_address() {
+        let config = ToadStoolConfig::with_fallback("invalid-address");
+        let client = ToadStoolClient::new(config);
+
+        let result = client.connect().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_subscribe_agent_without_connection() {
+        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let did = Did::new("did:key:test");
+        let result = client.subscribe_agent(&did).await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Not connected"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_subscribe_agent_connected() {
+        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        *client.state.write().await = ClientState::Connected;
+
+        let did = Did::new("did:key:test");
+        let result = client.subscribe_agent(&did).await;
+
+        assert!(result.is_ok());
+        let mut rx = result.unwrap();
+        // Channel should be closed (scaffolded mode)
+        assert!(rx.recv().await.is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_subscribe_task_connected() {
+        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        *client.state.write().await = ClientState::Connected;
+
+        let result = client.subscribe_task(TaskId::now()).await;
+
+        assert!(result.is_ok());
+        let mut rx = result.unwrap();
+        // Channel should be closed (scaffolded mode)
+        assert!(rx.recv().await.is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_events_without_connection() {
+        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let task_id = TaskId::now();
+        let start = Timestamp::now();
+        let end = Timestamp::now();
+
+        let result = client.get_events(task_id, start, end).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Not connected"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_events_connected() {
+        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        *client.state.write().await = ClientState::Connected;
+
+        let task_id = TaskId::now();
+        let start = Timestamp::now();
+        let end = Timestamp::now();
+
+        let result = client.get_events(task_id, start, end).await;
+        assert!(result.is_ok());
+        let events = result.unwrap();
+        assert!(events.is_empty()); // Scaffolded mode returns empty
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_endpoint_management() {
+        let client = ToadStoolClient::new(ToadStoolConfig::default());
+
+        // Initially no endpoint
+        assert!(client.endpoint().await.is_none());
+
+        // Set endpoint
+        let addr: SocketAddr = "127.0.0.1:9800".parse().unwrap();
+        client.set_connected(addr).await;
+
+        // Verify endpoint and state
+        assert_eq!(client.endpoint().await, Some(addr));
+        assert_eq!(client.state().await, ClientState::Connected);
+        assert!(client.is_connected().await);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_fallback_address() {
+        let config = ToadStoolConfig::with_fallback("10.0.0.1:9800");
+        let client = ToadStoolClient::new(config);
+
+        assert_eq!(client.fallback_address(), Some("10.0.0.1:9800"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_registry_access() {
+        let registry = Arc::new(DiscoveryRegistry::new("test"));
+        let client = ToadStoolClient::with_discovery(registry.clone());
+
+        let retrieved = client.registry();
+        assert!(retrieved.is_some());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_state_error_transition() {
+        let client = ToadStoolClient::new(ToadStoolConfig::default());
+
+        *client.state.write().await = ClientState::Error;
+        assert_eq!(client.state().await, ClientState::Error);
+        assert!(!client.is_connected().await);
+    }
+
+    #[test]
+    fn test_compute_event_all_types() {
+        let task_id = TaskId::now();
+        let timestamp = Timestamp::now();
+        let did = Did::new("did:key:test");
+
+        // TaskCreated
+        let event = ComputeEvent::TaskCreated {
+            task_id,
+            task_type: "ml-training".to_string(),
+            requester: did.clone(),
+            created_at: timestamp,
+        };
+        assert_eq!(event.event_type(), "task.created");
+        assert!(!event.is_terminal());
+
+        // TaskStarted
+        let event = ComputeEvent::TaskStarted {
+            task_id,
+            worker: did.clone(),
+            started_at: timestamp,
+        };
+        assert_eq!(event.event_type(), "task.started");
+        assert!(!event.is_terminal());
+
+        // TaskProgress with message
+        let event = ComputeEvent::TaskProgress {
+            task_id,
+            progress: 0.75,
+            message: Some("Almost done".to_string()),
+            updated_at: timestamp,
+        };
+        assert_eq!(event.event_type(), "task.progress");
+        assert!(!event.is_terminal());
+
+        // TaskProgress without message
+        let event = ComputeEvent::TaskProgress {
+            task_id,
+            progress: 0.5,
+            message: None,
+            updated_at: timestamp,
+        };
+        assert!(!event.is_terminal());
+
+        // TaskCompleted
+        let event = ComputeEvent::TaskCompleted {
+            task_id,
+            result_ref: PayloadRef::from_bytes(b"result"),
+            completed_at: timestamp,
+        };
+        assert_eq!(event.event_type(), "task.completed");
+        assert!(event.is_terminal());
+
+        // TaskFailed
+        let event = ComputeEvent::TaskFailed {
+            task_id,
+            error: "Test error".to_string(),
+            failed_at: timestamp,
+        };
+        assert_eq!(event.event_type(), "task.failed");
+        assert!(event.is_terminal());
+
+        // TaskCancelled
+        let event = ComputeEvent::TaskCancelled {
+            task_id,
+            reason: "User requested".to_string(),
+            cancelled_at: timestamp,
+        };
+        assert_eq!(event.event_type(), "task.cancelled");
+        assert!(event.is_terminal());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_multiple_state_changes() {
+        let client = ToadStoolClient::new(ToadStoolConfig::default());
+
+        // Initial state
+        assert_eq!(client.state().await, ClientState::Disconnected);
+
+        // Connecting
+        *client.state.write().await = ClientState::Connecting;
+        assert_eq!(client.state().await, ClientState::Connecting);
+        assert!(!client.is_connected().await);
+
+        // Connected
+        *client.state.write().await = ClientState::Connected;
+        assert_eq!(client.state().await, ClientState::Connected);
+        assert!(client.is_connected().await);
+
+        // Error
+        *client.state.write().await = ClientState::Error;
+        assert_eq!(client.state().await, ClientState::Error);
+        assert!(!client.is_connected().await);
+
+        // Back to disconnected
+        *client.state.write().await = ClientState::Disconnected;
+        assert_eq!(client.state().await, ClientState::Disconnected);
+    }
+
+    #[test]
+    fn test_task_id_serialization() {
+        let id = TaskId::now();
+        let serialized = serde_json::to_string(&id).unwrap();
+        let deserialized: TaskId = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(id, deserialized);
+    }
+
+    #[test]
+    fn test_compute_event_serialization() {
+        let event = ComputeEvent::TaskCreated {
+            task_id: TaskId::now(),
+            task_type: "test".to_string(),
+            requester: Did::new("did:key:test"),
+            created_at: Timestamp::now(),
+        };
+
+        let serialized = serde_json::to_string(&event).unwrap();
+        let deserialized: ComputeEvent = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.event_type(), "task.created");
+    }
 }

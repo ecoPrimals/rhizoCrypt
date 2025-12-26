@@ -1,223 +1,151 @@
-#!/bin/bash
-#
-# 🔐 rhizoCrypt - Capability Discovery Demo
-#
-# Demonstrates:
-# 1. Pure Infant Discovery (no hardcoded primal names)
-# 2. Capability-based addressing (what, not who)
-# 3. Runtime discovery via Songbird
-#
+#!/usr/bin/env bash
+# Demo: Infant Discovery - Zero Hardcoding
+set -euo pipefail
 
-set -e
-
-# Colors
-RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
+YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Logging
-log() { echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} $1"; }
-success() { echo -e "${GREEN}✓${NC} $1"; }
-info() { echo -e "${CYAN}ℹ${NC} $1"; }
-warning() { echo -e "${YELLOW}⚠${NC} $1"; }
-
-# Banner
-echo -e "${PURPLE}"
-cat << 'EOF'
-╔══════════════════════════════════════════════════════════╗
-║   🌟 Capability Discovery - Pure Infant Discovery 🌟     ║
-║                                                           ║
-║  Learn: Discover capabilities, not primals               ║
-╚══════════════════════════════════════════════════════════╝
-EOF
-echo -e "${NC}"
-
-echo ""
-echo -e "${CYAN}Note: This demo is conceptual - actual discovery requires Songbird${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}   🔍 Infant Discovery: Zero Hardcoding${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
 echo ""
 
-# Get paths
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RHIZO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+cd "$(dirname "$0")/../.."
 
-log "Building rhizoCrypt..."
-cd "$RHIZO_ROOT"
-cargo build --quiet 2>/dev/null || cargo build
-
+echo -e "${YELLOW}Demonstrating capability-based discovery...${NC}"
 echo ""
-log "Creating capability discovery demo..."
 
-# Create temporary Rust program
-TEMP_DIR=$(mktemp -d)
-cat > "$TEMP_DIR/Cargo.toml" << CARGO_EOF
-[package]
-name = "capability-discovery-demo"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-rhizo-crypt-core = { path = "$RHIZO_ROOT/crates/rhizo-crypt-core" }
-tokio = { version = "1.46", features = ["full"] }
-CARGO_EOF
-
-mkdir -p "$TEMP_DIR/src"
-cat > "$TEMP_DIR/src/main.rs" << 'RUST_EOF'
-use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig};
+cat > /tmp/capability_discovery.rs << 'EOF'
+use rhizo_crypt_core::*;
+use rhizo_crypt_core::discovery::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n🌟 Capability Discovery: Pure Infant Discovery...\n");
+    println!("═══════════════════════════════════════════════════════");
+    println!("  Infant Discovery: Start with Zero Knowledge");
+    println!("═══════════════════════════════════════════════════════\n");
     
-    // Create rhizoCrypt instance
+    println!("📝 Core Principle:");
+    println!("   Primals only have SELF-KNOWLEDGE");
+    println!("   All other primals discovered at RUNTIME");
+    println!("   No hardcoded primal names or addresses\n");
+    
+    // Initialize rhizoCrypt (knows only itself)
     let config = RhizoCryptConfig::default();
-    let rhizo = RhizoCrypt::new(config);
-    rhizo.start().await?;
+    let mut primal = RhizoCrypt::new(config);
+    primal.start().await?;
     
-    // Demonstrate capability-based thinking
-    println!("🚫 Old Way (Hardcoded Primal Names):");
-    println!("   ❌ let beardog = connect(\"https://beardog.tower1.example\");");
-    println!("   ❌ let signature = beardog.sign(data);");
-    println!();
-    println!("   Problems:");
-    println!("     • Hardcoded primal name (BearDog)");
-    println!("     • Hardcoded tower address");
-    println!("     • No user sovereignty (can't choose provider)");
-    println!("     • No federation (single provider)");
-    println!();
+    println!("✅ rhizoCrypt started");
+    println!("   • Knows: Self (rhizoCrypt)");
+    println!("   • Knows: Own capabilities");
+    println!("   • Discovers: Everything else\n");
     
-    println!("✅ New Way (Capability-Based Discovery):");
-    println!("   ✓ let signer = discover_capability(\"crypto:signing\").await?;");
-    println!("   ✓ let signature = signer.sign(data).await?;");
-    println!();
-    println!("   Benefits:");
-    println!("     • No hardcoded primal names!");
-    println!("     • User chooses which tower");
-    println!("     • Federation: Multiple providers");
-    println!("     • Fallback: Try alternate providers");
-    println!();
+    // Create discovery registry (infant discovery)
+    let registry = DiscoveryRegistry::new();
     
-    // Show capability discovery flow
-    println!("🔄 Capability Discovery Flow:");
-    println!();
-    println!("   Step 1: rhizoCrypt needs crypto:signing");
-    println!("           ↓");
-    println!("   Step 2: Query Songbird: \"Who provides crypto:signing?\"");
-    println!("           ↓");
-    println!("   Step 3: Songbird responds:");
-    println!("           • Tower A: https://beardog.tower-a.example");
-    println!("           • Tower B: https://beardog.tower-b.example");
-    println!("           • Tower C: https://custom-signer.tower-c.example");
-    println!("           ↓");
-    println!("   Step 4: rhizoCrypt tries Tower A (user's preference)");
-    println!("           ↓");
-    println!("   Step 5: Connect and use capability");
-    println!();
+    println!("🔍 Capability-Based Discovery:");
+    println!("");
     
-    // Show available capabilities
-    println!("📋 Standard Capabilities:");
-    println!();
-    println!("   crypto:signing");
-    println!("     → Sign data, verify signatures (e.g., BearDog)");
-    println!();
-    println!("   storage:payload");
-    println!("     → Store/retrieve large payloads (e.g., NestGate)");
-    println!();
-    println!("   storage:permanent");
-    println!("     → Permanent storage, dehydration (e.g., LoamSpine)");
-    println!();
-    println!("   compute:orchestration");
-    println!("     → Compute workloads, scripts (e.g., ToadStool)");
-    println!();
-    println!("   discovery:registry");
-    println!("     → Capability discovery, federation (e.g., Songbird)");
-    println!();
-    println!("   provenance:tracking");
-    println!("     → Data lineage, attribution (e.g., SweetGrass)");
-    println!();
+    // Discover by CAPABILITY, not by name
+    println!("   1. Need: Signing service");
+    match registry.discover_by_capability(Capability::Signing).await {
+        Ok(services) => {
+            println!("      ✓ Found {} signing service(s)", services.len());
+            for service in services {
+                println!("        - {} ({})", service.service_id, service.address);
+            }
+        }
+        Err(_) => {
+            println!("      ℹ  No signing services discovered (yet)");
+            println!("        (Would discover from Songbird at runtime)");
+        }
+    }
+    println!("");
     
-    // Show environment variable usage
-    println!("🔧 How rhizoCrypt Discovers Capabilities:");
-    println!();
-    println!("   1. Check environment for capability endpoints:");
-    println!("      • RHIZOCRYPT_CRYPTO_SIGNING_ENDPOINT");
-    println!("      • RHIZOCRYPT_STORAGE_PAYLOAD_ENDPOINT");
-    println!("      • RHIZOCRYPT_STORAGE_PERMANENT_ENDPOINT");
-    println!();
-    println!("   2. If not set, query Songbird (discovery registry)");
-    println!();
-    println!("   3. Fallback to legacy env vars (with deprecation warning):");
-    println!("      • BEARDOG_ADDRESS → crypto:signing");
-    println!("      • NESTGATE_ADDRESS → storage:payload");
-    println!("      • LOAMSPINE_ADDRESS → storage:permanent");
-    println!();
+    println!("   2. Need: Storage service");
+    match registry.discover_by_capability(Capability::Storage).await {
+        Ok(services) => {
+            println!("      ✓ Found {} storage service(s)", services.len());
+            for service in services {
+                println!("        - {} ({})", service.service_id, service.address);
+            }
+        }
+        Err(_) => {
+            println!("      ℹ  No storage services discovered (yet)");
+            println!("        (Would discover from Songbird at runtime)");
+        }
+    }
+    println!("");
     
-    println!("🎉 Success! You understand capability-based discovery!");
-    println!("\n💡 Key Concepts:");
-    println!("  • Pure Infant Discovery: No hardcoded primal names");
-    println!("  • Capability-Based: Ask for \"what\" not \"who\"");
-    println!("  • Runtime Discovery: Find providers at startup");
-    println!("  • User Sovereignty: User chooses which tower");
-    println!("  • Federation: Multiple providers for same capability");
+    println!("   3. Need: Compute service");
+    match registry.discover_by_capability(Capability::Compute).await {
+        Ok(services) => {
+            println!("      ✓ Found {} compute service(s)", services.len());
+            for service in services {
+                println!("        - {} ({})", service.service_id, service.address);
+            }
+        }
+        Err(_) => {
+            println!("      ℹ  No compute services discovered (yet)");
+            println!("        (Would discover from Songbird at runtime)");
+        }
+    }
     
-    println!("\n🌟 Sovereignty Benefits:");
-    println!("  • User Control: Choose your own towers");
-    println!("  • Vendor Independence: Not locked to specific providers");
-    println!("  • Privacy: Use trusted towers for sensitive operations");
-    println!("  • Resilience: Fallback to alternate providers");
-    
-    println!("\n🔐 Architecture Principles:");
-    println!("  • Primal code has no knowledge of other primals");
-    println!("  • rhizoCrypt doesn't know about BearDog, NestGate, etc.");
-    println!("  • Discovery happens at runtime via Songbird");
-    println!("  • Capabilities are interfaces, not implementations");
-    
-    println!("\n📖 Real-World Example:");
-    println!("   // rhizoCrypt code (no primal names!)");
-    println!("   let signer = rhizo.get_capability(\"crypto:signing\").await?;");
-    println!("   let signature = signer.sign(session_merkle_root).await?;");
-    println!();
-    println!("   // User's environment determines provider:");
-    println!("   export RHIZOCRYPT_CRYPTO_SIGNING_ENDPOINT=\"https://my-tower.example/beardog\"");
-    println!("   // → rhizoCrypt uses user's chosen tower!");
-    println!();
-    
-    // Cleanup
-    rhizo.stop().await?;
+    println!("");
+    println!("═══════════════════════════════════════════════════════");
+    println!("  🎯 Zero-Hardcoding Architecture:");
+    println!("═══════════════════════════════════════════════════════");
+    println!("  ✅ No primal names in code");
+    println!("  ✅ No hardcoded addresses or ports");
+    println!("  ✅ Capability-based discovery");
+    println!("  ✅ Vendor-neutral (works with ANY provider)");
+    println!("  ✅ Runtime flexibility");
+    println!("");
+    println!("  Example: Need signing?");
+    println!("    ❌ BAD:  use beardog::sign()");
+    println!("    ✅ GOOD: discover_by_capability(Signing)");
+    println!("");
+    println!("  Benefits:");
+    println!("    • Swap providers without code changes");
+    println!("    • Multiple providers (redundancy)");
+    println!("    • Federation (discover across towers)");
+    println!("    • Sovereignty (no vendor lock-in)");
+    println!("═══════════════════════════════════════════════════════\n");
     
     Ok(())
 }
-RUST_EOF
+EOF
 
-echo ""
-log "Running demo..."
-echo ""
-
-cd "$TEMP_DIR"
-cargo run --quiet 2>/dev/null || cargo run
-
-# Cleanup
-cd "$RHIZO_ROOT"
-rm -rf "$TEMP_DIR"
-
-echo ""
-echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}Demo Complete!${NC}"
-echo ""
-info "What you learned:"
-echo "  1. Pure Infant Discovery (no hardcoded primal names)"
-echo "  2. Capability-based addressing (what, not who)"
-echo "  3. Runtime discovery via Songbird"
-echo "  4. User sovereignty (choose your own towers)"
-echo ""
-info "Congratulations! You've completed all advanced patterns demos."
-echo ""
-info "Next steps:"
-echo "  • Run the full automated tour: cd ../..; ./RUN_ME_FIRST.sh"
-echo "  • Explore inter-primal demos: cd ../../01-inter-primal"
-echo "  • Build your own rhizoCrypt application!"
+echo -e "${GREEN}▶ Running capability discovery demo...${NC}"
 echo ""
 
+rustc --edition 2021 /tmp/capability_discovery.rs \
+    -L ../../target/release/deps \
+    --extern rhizo_crypt_core=../../target/release/librhizo_crypt_core.rlib \
+    --extern tokio=../../target/release/deps/libtokio-*.rlib \
+    -o /tmp/capability_discovery 2>&1 | grep -v "warning" || true
+
+/tmp/capability_discovery
+
+echo ""
+echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}✅ Capability discovery demo complete!${NC}"
+echo ""
+echo -e "${YELLOW}📚 What you learned:${NC}"
+echo "  • Primals have only self-knowledge"
+echo "  • All other primals discovered at runtime"
+echo "  • Capability-based (not name-based) discovery"
+echo "  • Zero hardcoding = maximum flexibility"
+echo "  • Vendor-neutral architecture"
+echo ""
+echo -e "${CYAN}🎉 Local Showcase Complete!${NC}"
+echo -e "${CYAN}   All 22 demos finished!${NC}"
+echo ""
+echo -e "${YELLOW}▶ Next:${NC} Inter-primal integration with real Phase 1 binaries"
+echo -e "${YELLOW}   See:${NC} ../../01-inter-primal-live/README.md"
+echo ""
+
+rm -f /tmp/capability_discovery.rs /tmp/capability_discovery

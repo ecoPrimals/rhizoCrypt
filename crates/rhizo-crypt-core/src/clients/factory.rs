@@ -241,9 +241,6 @@ impl CapabilityClientFactory {
     #[must_use]
     pub fn with_mocks() -> Self {
         // For testing, we'll need to implement mock clients
-        // For now, create with a mock registry
-        use crate::discovery::DiscoveryRegistry;
-        
         // TODO: Create a mock registry for testing
         // For now, this will panic if actually used
         panic!("Mock factory not yet implemented. Use test-specific setup.");
@@ -252,12 +249,9 @@ impl CapabilityClientFactory {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[tokio::test]
     async fn test_factory_caches_clients() {
         // This test requires a mock registry
         // TODO: Implement once mock registry is available
     }
 }
-

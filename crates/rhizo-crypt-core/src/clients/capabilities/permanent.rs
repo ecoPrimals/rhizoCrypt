@@ -27,7 +27,7 @@ impl PermanentStorageClient {
         tracing::info!("🔍 Discovering permanent storage capability provider...");
 
         let status = registry.discover(&Capability::PermanentCommit).await;
-        
+
         let endpoint = match status {
             crate::discovery::DiscoveryStatus::Available(endpoints) => {
                 endpoints.into_iter().next().ok_or_else(|| {
@@ -35,7 +35,9 @@ impl PermanentStorageClient {
                 })?
             }
             _ => {
-                return Err(RhizoCryptError::integration("No permanent storage provider available."));
+                return Err(RhizoCryptError::integration(
+                    "No permanent storage provider available.",
+                ));
             }
         };
 
@@ -119,8 +121,7 @@ impl PermanentStorageClient {
             holder: holder.clone(),
         };
 
-        let response: CheckoutSliceResponse =
-            self.adapter.call("checkout_slice", request).await?;
+        let response: CheckoutSliceResponse = self.adapter.call("checkout_slice", request).await?;
 
         Ok(response.origin)
     }
@@ -132,8 +133,7 @@ impl PermanentStorageClient {
             outcome: outcome.clone(),
         };
 
-        let _response: ResolveSliceResponse =
-            self.adapter.call("resolve_slice", request).await?;
+        let _response: ResolveSliceResponse = self.adapter.call("resolve_slice", request).await?;
 
         Ok(())
     }
@@ -221,4 +221,3 @@ mod tests {
         assert_eq!(client.endpoint(), "http://localhost:9700");
     }
 }
-

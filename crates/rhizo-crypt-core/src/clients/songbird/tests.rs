@@ -222,3 +222,408 @@ async fn test_client_clone() {
     *client1.state.write().await = ClientState::Registered;
     assert_eq!(client2.state().await, ClientState::Registered);
 }
+
+// ============================================================================
+// Additional Tests for Coverage Boost (39% → 80%+)
+// ============================================================================
+
+#[test]
+fn test_config_default() {
+    let config = SongbirdConfig::default();
+    assert_eq!(config.service_name, "rhizoCrypt");
+    assert!(!config.capabilities.is_empty());
+    assert_eq!(config.timeout_ms, 5000);
+    assert!(config.auto_reconnect);
+}
+
+#[test]
+fn test_config_with_metadata() {
+    let mut config = SongbirdConfig::new();
+    config.metadata.insert("version".to_string(), "0.11.0".to_string());
+    config.metadata.insert("role".to_string(), "dag-engine".to_string());
+
+    assert_eq!(config.metadata.len(), 2);
+    assert_eq!(config.metadata.get("version"), Some(&"0.11.0".to_string()));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_connect_invalid_address() {
+    let config = SongbirdConfig::with_address("invalid-address-no-port");
+    let client = SongbirdClient::new(config);
+    let result = client.connect().await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("Invalid Songbird address"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_connect_already_connected() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+
+    // Manually set to connected
+    *client.state.write().await = ClientState::Connected;
+
+    // Second connect should succeed immediately (idempotent)
+    let result = client.connect().await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_connect_already_registered() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+
+    // Manually set to registered
+    *client.state.write().await = ClientState::Registered;
+
+    // Connect should succeed (already connected)
+    let result = client.connect().await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_register_not_connected() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+
+    // Try to register without connecting
+    let result = client.register("127.0.0.1:9400").await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("not connected") || err.to_string().contains("Not connected"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_specific_primal() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    // Cache a beardog service
+    client
+        .cache_discovery(
+            "signing",
+            vec![ServiceInfo {
+                id: "beardog-1".to_string(),
+                name: "beardog-main".to_string(),
+                endpoint: "127.0.0.1:9500".to_string(),
+                capabilities: vec!["signing".to_string(), "did-verification".to_string()],
+                status: "healthy".to_string(),
+                metadata: HashMap::new(),
+            }],
+        )
+        .await;
+
+    // Discover using specific methods
+    let beardog = client.discover_beardog().await;
+    assert!(beardog.is_ok());
+    assert!(beardog.unwrap().is_some());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_loamspine() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    // Cache a loamspine service
+    client
+        .cache_discovery(
+            "permanent-storage",
+            vec![ServiceInfo {
+                id: "loamspine-1".to_string(),
+                name: "loamspine-main".to_string(),
+                endpoint: "127.0.0.1:9600".to_string(),
+                capabilities: vec!["permanent-storage".to_string()],
+                status: "healthy".to_string(),
+                metadata: HashMap::new(),
+            }],
+        )
+        .await;
+
+    let loamspine = client.discover_loamspine().await;
+    assert!(loamspine.is_ok());
+    assert!(loamspine.unwrap().is_some());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_nestgate() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    // Cache a nestgate service
+    client
+        .cache_discovery(
+            "payload-storage",
+            vec![ServiceInfo {
+                id: "nestgate-1".to_string(),
+                name: "nestgate-main".to_string(),
+                endpoint: "127.0.0.1:9700".to_string(),
+                capabilities: vec!["payload-storage".to_string()],
+                status: "healthy".to_string(),
+                metadata: HashMap::new(),
+            }],
+        )
+        .await;
+
+    let nestgate = client.discover_nestgate().await;
+    assert!(nestgate.is_ok());
+    assert!(nestgate.unwrap().is_some());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_empty_results() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    // No services cached - should return empty
+    let result = client.discover("nonexistent-capability").await;
+    assert!(result.is_ok());
+    assert!(result.unwrap().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_populate_registry_not_connected() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    let registry = DiscoveryRegistry::new("test-service");
+
+    // Try to populate registry without connection
+    let result = client.populate_registry(&registry).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("Not connected"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_populate_registry_with_services() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    // Cache multiple services
+    client
+        .cache_discovery(
+            "signing",
+            vec![ServiceInfo {
+                id: "beardog-1".to_string(),
+                name: "beardog".to_string(),
+                endpoint: "127.0.0.1:9500".to_string(),
+                capabilities: vec!["signing".to_string()],
+                status: "healthy".to_string(),
+                metadata: HashMap::new(),
+            }],
+        )
+        .await;
+
+    client
+        .cache_discovery(
+            "permanent-storage",
+            vec![ServiceInfo {
+                id: "loamspine-1".to_string(),
+                name: "loamspine".to_string(),
+                endpoint: "127.0.0.1:9600".to_string(),
+                capabilities: vec!["permanent-storage".to_string()],
+                status: "healthy".to_string(),
+                metadata: HashMap::new(),
+            }],
+        )
+        .await;
+
+    client
+        .cache_discovery(
+            "payload-storage",
+            vec![ServiceInfo {
+                id: "nestgate-1".to_string(),
+                name: "nestgate".to_string(),
+                endpoint: "127.0.0.1:9700".to_string(),
+                capabilities: vec!["payload-storage".to_string()],
+                status: "healthy".to_string(),
+                metadata: HashMap::new(),
+            }],
+        )
+        .await;
+
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    let result = client.populate_registry(&registry).await;
+    assert!(result.is_ok());
+
+    // Verify services were registered
+    assert!(registry.is_available(&Capability::Signing).await);
+    assert!(registry.is_available(&Capability::PermanentCommit).await);
+    assert!(registry.is_available(&Capability::PayloadStorage).await);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_federation_status_not_connected() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+
+    let result = client.federation_status().await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("Not connected"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_federation_status_connected() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    let result = client.federation_status().await;
+    assert!(result.is_ok());
+    let status = result.unwrap();
+    assert_eq!(status.version, "pending-integration");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_unregister_without_registration() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+
+    // Unregister without being registered (should succeed, no-op)
+    let result = client.unregister().await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_unregister_with_registration() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Registered;
+    *client.service_id.write().await = Some("test-service-id".to_string());
+
+    let result = client.unregister().await;
+    assert!(result.is_ok());
+
+    // Verify state changed
+    assert_eq!(client.state().await, ClientState::Connected);
+    assert!(client.service_id().await.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_disconnect() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Registered;
+    *client.service_id.write().await = Some("test-id".to_string());
+
+    client.disconnect().await;
+
+    // Verify disconnected
+    assert_eq!(client.state().await, ClientState::Disconnected);
+    assert!(!client.is_connected().await);
+    assert!(client.service_id().await.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_cache_invalidation() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    // Add services
+    client
+        .cache_discovery(
+            "signing",
+            vec![ServiceInfo {
+                id: "test".to_string(),
+                name: "test".to_string(),
+                endpoint: "127.0.0.1:9000".to_string(),
+                capabilities: vec!["signing".to_string()],
+                status: "healthy".to_string(),
+                metadata: HashMap::new(),
+            }],
+        )
+        .await;
+
+    // Verify cached
+    let result = client.discover("signing").await.unwrap();
+    assert_eq!(result.len(), 1);
+
+    // Clear cache
+    client.clear_cache().await;
+
+    // Verify empty
+    let result = client.discover("signing").await.unwrap();
+    assert!(result.is_empty());
+}
+
+#[test]
+fn test_service_info_metadata() {
+    let mut metadata = HashMap::new();
+    metadata.insert("version".to_string(), "1.0.0".to_string());
+    metadata.insert("region".to_string(), "us-west".to_string());
+
+    let service = ServiceInfo {
+        id: "test".to_string(),
+        name: "test-service".to_string(),
+        endpoint: "10.0.0.1:9000".to_string(),
+        capabilities: vec!["signing".to_string()],
+        status: "healthy".to_string(),
+        metadata: metadata.clone(),
+    };
+
+    assert_eq!(service.metadata.len(), 2);
+    assert_eq!(service.metadata.get("version"), Some(&"1.0.0".to_string()));
+    assert_eq!(service.metadata.get("region"), Some(&"us-west".to_string()));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_state_transitions() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+
+    // Initial state
+    assert_eq!(client.state().await, ClientState::Disconnected);
+
+    // Transition to connected
+    *client.state.write().await = ClientState::Connected;
+    assert!(client.is_connected().await);
+
+    // Transition to registered
+    *client.state.write().await = ClientState::Registered;
+    assert!(client.is_connected().await);
+
+    // Back to disconnected
+    *client.state.write().await = ClientState::Disconnected;
+    assert!(!client.is_connected().await);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_multiple_capability_discovery() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    // Add services with multiple capabilities
+    client
+        .cache_discovery(
+            "multi-capability",
+            vec![ServiceInfo {
+                id: "multi-1".to_string(),
+                name: "multi-service".to_string(),
+                endpoint: "127.0.0.1:9000".to_string(),
+                capabilities: vec![
+                    "signing".to_string(),
+                    "did-verification".to_string(),
+                    "key-management".to_string(),
+                ],
+                status: "healthy".to_string(),
+                metadata: HashMap::new(),
+            }],
+        )
+        .await;
+
+    let services = client.discover("multi-capability").await.unwrap();
+    assert_eq!(services.len(), 1);
+    assert_eq!(services[0].capabilities.len(), 3);
+    assert!(services[0].has_capability("signing"));
+    assert!(services[0].has_capability("did-verification"));
+    assert!(services[0].has_capability("key-management"));
+}

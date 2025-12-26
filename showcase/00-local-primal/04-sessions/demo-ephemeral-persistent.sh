@@ -1,32 +1,39 @@
 #!/usr/bin/env bash
 # Demo: Ephemeral vs Persistent Sessions
-#
-# This demo compares ephemeral and persistent session types
+set -euo pipefail
 
-set -e
+# Colors
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-echo "🔐 rhizoCrypt Demo: Ephemeral vs Persistent Sessions"
-echo "======================================================"
-echo ""
-echo "rhizoCrypt supports two session types:"
-echo "  • Ephemeral: Fast, in-memory, discarded on expire"
-echo "  • Persistent: Optionally saved, audit trail preserved"
+echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}   💾 Ephemeral vs Persistent Sessions${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
 echo ""
 
-# Build if needed
-if [ ! -f "target/debug/demo-ephemeral-persistent" ]; then
-    echo "Building demo (first run)..."
-    cargo build --bin demo-ephemeral-persistent --quiet
-    echo ""
-fi
+cd "$(dirname "$0")"
 
-# Run the demo
-cargo run --bin demo-ephemeral-persistent --quiet
+echo -e "${YELLOW}📦 Building demo...${NC}"
+cargo build --release --bin demo-ephemeral-persistent 2>&1 | tail -3
+echo ""
+
+echo -e "${GREEN}▶ Running ephemeral vs persistent demo...${NC}"
+echo ""
+cargo run --release --bin demo-ephemeral-persistent
 
 echo ""
-echo "✅ Demo complete!"
+echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}✅ Demo complete!${NC}"
 echo ""
-echo "Next: Try ./demo-slices.sh to see slice semantics"
+echo -e "${YELLOW}📚 What you learned:${NC}"
+echo "  • Ephemeral: Fast, in-memory, privacy-first (default)"
+echo "  • Persistent: Optionally saved, audit trail, requires consent"
+echo "  • Choose ephemeral for temporary computations"
+echo "  • Choose persistent when provenance matters"
+echo "  • Human dignity: Forget by default, remember by consent"
+echo ""
+echo -e "${YELLOW}📖 Read more:${NC} ./README.md"
+echo -e "${YELLOW}▶ Next demo:${NC} ./demo-slices.sh"
+echo ""

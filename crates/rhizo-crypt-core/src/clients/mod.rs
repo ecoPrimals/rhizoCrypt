@@ -34,12 +34,25 @@
 //! No compile-time knowledge of other primals' addresses.
 
 // NEW: Capability-based clients (vendor-agnostic)
-pub mod capabilities;
 pub mod adapters;
-pub mod factory;  // Factory for creating and caching capability clients
+pub mod capabilities;
+pub mod factory; // Factory for creating and caching capability clients
 
 // LEGACY: Primal-specific clients (vendor-specific, deprecated)
 pub mod legacy;
+
+// HTTP/RPC client implementations (used by legacy clients)
+#[cfg(feature = "live-clients")]
+pub mod beardog_http;
+#[cfg(feature = "live-clients")]
+pub mod loamspine_rpc;
+#[cfg(feature = "live-clients")]
+pub mod nestgate_http;
+#[cfg(feature = "live-clients")]
+pub mod songbird_rpc;
+
+// HTTP client for ToadStool
+pub mod toadstool_http;
 
 // Universal adapter (bootstrap only - could be Songbird, Consul, etcd, etc.)
 pub mod songbird;
@@ -68,10 +81,7 @@ pub use legacy::loamspine::{LoamSpineClient, LoamSpineConfig};
 #[deprecated(since = "0.11.0", note = "Use capabilities::ComputeClient instead")]
 pub use legacy::toadstool::{ToadStoolClient, ToadStoolConfig};
 
-#[deprecated(
-    since = "0.11.0",
-    note = "Use capabilities::ProvenanceClient instead"
-)]
+#[deprecated(since = "0.11.0", note = "Use capabilities::ProvenanceClient instead")]
 pub use legacy::sweetgrass::{
     AgentContribution, ProvenanceChain, SessionAttribution, SweetGrassConfig, SweetGrassNotifier,
     SweetGrassQueryable, VertexQuery, VertexRef,

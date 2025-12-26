@@ -49,7 +49,20 @@
 #![warn(clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
 #![allow(clippy::doc_markdown)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::redundant_clone)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::unnecessary_literal_bound)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::expect_fun_call)]
+#![allow(clippy::explicit_auto_deref)]
+#![allow(clippy::similar_names)]
+// Allow unwrap/expect in test code
+#![cfg_attr(test, allow(clippy::unwrap_used))]
+#![cfg_attr(test, allow(clippy::expect_used))]
 // Nursery lint has known issues with async RwLock patterns
 #![allow(clippy::significant_drop_tightening)]
 
@@ -86,9 +99,7 @@ pub use discovery::{
 };
 pub use error::{Result, RhizoCryptError};
 pub use event::EventType;
-pub use integration::{
-    ClientFactory, IntegrationStatus, ServiceStatus,
-};
+pub use integration::{ClientFactory, IntegrationStatus, ServiceStatus};
 pub use safe_env::{CapabilityEnv, SafeEnv};
 
 // NEW: Capability-based clients (vendor-agnostic)

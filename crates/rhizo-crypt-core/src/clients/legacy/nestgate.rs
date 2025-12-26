@@ -34,7 +34,7 @@ use crate::types::PayloadRef;
 
 // Import HTTP client when live-clients feature is enabled
 #[cfg(feature = "live-clients")]
-use super::nestgate_http::NestGateHttpClient;
+use super::super::nestgate_http::NestGateHttpClient;
 
 /// Default cache size for metadata.
 const DEFAULT_CACHE_SIZE: usize = 1000;

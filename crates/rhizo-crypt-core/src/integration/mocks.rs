@@ -445,9 +445,10 @@ impl MockProtocolAdapter {
     ///
     /// The response should be JSON-serializable.
     pub async fn set_response<T: serde::Serialize>(&self, method: &str, response: T) -> Result<()> {
-        let json = serde_json::to_string(&response)
-            .map_err(|e| crate::error::RhizoCryptError::integration(format!("Mock serialization failed: {}", e)))?;
-        
+        let json = serde_json::to_string(&response).map_err(|e| {
+            crate::error::RhizoCryptError::integration(format!("Mock serialization failed: {}", e))
+        })?;
+
         let mut responses = self.responses.write().await;
         responses.insert(method.to_string(), json);
         Ok(())
@@ -462,7 +463,9 @@ impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
 
     async fn call_json(&self, method: &str, _args: String) -> Result<String> {
         if !self.permissive {
-            return Err(crate::error::RhizoCryptError::integration("Mock adapter is in strict mode"));
+            return Err(crate::error::RhizoCryptError::integration(
+                "Mock adapter is in strict mode",
+            ));
         }
 
         // Check for pre-configured response
@@ -485,7 +488,9 @@ impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
 
     async fn call_oneway_json(&self, method: &str, _args: String) -> Result<()> {
         if !self.permissive {
-            return Err(crate::error::RhizoCryptError::integration("Mock adapter is in strict mode"));
+            return Err(crate::error::RhizoCryptError::integration(
+                "Mock adapter is in strict mode",
+            ));
         }
 
         // One-way calls always succeed in permissive mode
@@ -556,7 +561,7 @@ mod capability_mock_tests {
     #[tokio::test]
     async fn test_mock_protocol_adapter_permissive() {
         let adapter = MockProtocolAdapter::permissive();
-        
+
         // Should return default responses
         let result = adapter.call_json("verify_did", "{}".to_string()).await;
         assert!(result.is_ok());
@@ -566,7 +571,7 @@ mod capability_mock_tests {
     #[tokio::test]
     async fn test_mock_protocol_adapter_strict() {
         let adapter = MockProtocolAdapter::strict();
-        
+
         // Should fail all calls
         let result = adapter.call_json("verify_did", "{}".to_string()).await;
         assert!(result.is_err());
@@ -575,10 +580,10 @@ mod capability_mock_tests {
     #[tokio::test]
     async fn test_mock_protocol_adapter_custom_response() {
         let adapter = MockProtocolAdapter::permissive();
-        
+
         // Set custom response
         adapter.set_response("my_method", "custom_response").await.unwrap();
-        
+
         // Should return custom response
         let result = adapter.call_json("my_method", "{}".to_string()).await;
         assert!(result.is_ok());
