@@ -43,8 +43,13 @@ use std::sync::Arc;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod mocks;
 
-// Re-export legacy mocks for backward compatibility
+// Re-export capability-based providers (NEW, recommended)
 #[cfg(any(test, feature = "test-utils"))]
+pub use mocks::{MockPayloadStorageProvider, MockPermanentStorageProvider, MockSigningProvider};
+
+// Re-export deprecated aliases for backward compatibility
+#[cfg(any(test, feature = "test-utils"))]
+#[allow(deprecated)]
 pub use mocks::{MockBearDogClient, MockLoamSpineClient, MockNestGateClient};
 
 // Re-export new capability-based mocks
@@ -52,17 +57,41 @@ pub use mocks::{MockBearDogClient, MockLoamSpineClient, MockNestGateClient};
 pub use mocks::{MockCapabilityFactory, MockProtocolAdapter};
 
 // ============================================================================
-// BearDog Integration (Identity & Signing)
+// Signing Provider (Identity & Cryptographic Signing)
 // ============================================================================
 
-/// BearDog client interface for identity and signing.
+/// Generic signing provider interface - works with ANY signing service.
 ///
-/// BearDog provides:
+/// This trait is implemented by services providing cryptographic signing capabilities:
+/// - BearDog (HSM-backed signing & identity)
+/// - YubiKey (hardware security key)
+/// - CloudKMS (AWS KMS, GCP KMS, Azure Key Vault)
+/// - Software signing services
+/// - Hardware Security Modules (HSMs)
+///
+/// ## Philosophy
+///
+/// Request **capabilities**, not **vendors**:
+/// - ✅ "I need crypto:signing capability"
+/// - ❌ "I need BearDog"
+///
+/// ## Discovery
+///
+/// Providers are discovered at runtime via capability queries:
+///
+/// ```rust,ignore
+/// use rhizo_crypt_core::capabilities::SigningClient;
+/// let signer = SigningClient::discover(&registry).await?;
+/// // Works with ANY signing provider!
+/// ```
+///
+/// ## Capabilities Provided
+///
 /// - DID verification and resolution
 /// - Cryptographic signing operations
 /// - Signature verification
 /// - Attestation requests
-pub trait BearDogClient: Send + Sync {
+pub trait SigningProvider: Send + Sync {
     /// Resolve a DID to verify it exists and is active.
     fn verify_did(&self, did: &Did) -> impl std::future::Future<Output = Result<bool>> + Send;
 
@@ -102,18 +131,55 @@ pub trait BearDogClient: Send + Sync {
     ) -> impl std::future::Future<Output = Result<Attestation>> + Send;
 }
 
+/// Backward compatibility type alias (v0.12.x).
+///
+/// **DEPRECATED**: Use `SigningProvider` instead.
+///
+/// This alias maintains backward compatibility for existing code while we migrate
+/// to capability-based naming. Will be removed in v1.0.0.
+#[deprecated(
+    since = "0.13.0",
+    note = "Use SigningProvider instead - this is capability-based, not vendor-specific"
+)]
+pub trait BearDogClient: SigningProvider {}
+
 // ============================================================================
-// LoamSpine Integration (Permanent Storage)
+// Permanent Storage Provider (Commit & Slice Management)
 // ============================================================================
 
-/// LoamSpine client interface for permanent storage.
+/// Generic permanent storage provider interface - works with ANY permanent storage service.
 ///
-/// LoamSpine provides:
+/// This trait is implemented by services providing permanent commit capabilities:
+/// - LoamSpine (DAG commit storage)
+/// - IPFS (distributed content storage)
+/// - Arweave (permanent storage)
+/// - Traditional databases with append-only logs
+/// - Blockchain-based storage
+///
+/// ## Philosophy
+///
+/// Request **capabilities**, not **vendors**:
+/// - ✅ "I need permanent commit capability"
+/// - ❌ "I need LoamSpine"
+///
+/// ## Discovery
+///
+/// Providers are discovered at runtime via capability queries:
+///
+/// ```rust,ignore
+/// use rhizo_crypt_core::capabilities::PermanentStorageClient;
+/// let storage = PermanentStorageClient::discover(&registry).await?;
+/// // Works with ANY permanent storage provider!
+/// ```
+///
+/// ## Capabilities Provided
+///
 /// - Permanent commit of dehydration summaries
-/// - Commit verification
+/// - Commit verification and retrieval
 /// - Slice checkout and resolution
-pub trait LoamSpineClient: Send + Sync {
-    /// Commit a dehydration summary to the spine.
+/// - Immutable storage guarantees
+pub trait PermanentStorageProvider: Send + Sync {
+    /// Commit a dehydration summary to permanent storage.
     fn commit(
         &self,
         summary: &DehydrationSummary,
@@ -131,7 +197,7 @@ pub trait LoamSpineClient: Send + Sync {
         commit_ref: &LoamCommitRef,
     ) -> impl std::future::Future<Output = Result<Option<DehydrationSummary>>> + Send;
 
-    /// Check out a slice from the spine.
+    /// Check out a slice from permanent storage.
     fn checkout_slice(
         &self,
         spine_id: &str,
@@ -139,7 +205,7 @@ pub trait LoamSpineClient: Send + Sync {
         holder: &Did,
     ) -> impl std::future::Future<Output = Result<SliceOrigin>> + Send;
 
-    /// Resolve a slice back to the spine.
+    /// Resolve a slice back to permanent storage.
     fn resolve_slice(
         &self,
         slice: &Slice,
@@ -147,35 +213,84 @@ pub trait LoamSpineClient: Send + Sync {
     ) -> impl std::future::Future<Output = Result<()>> + Send;
 }
 
+/// Backward compatibility type alias (v0.12.x).
+///
+/// **DEPRECATED**: Use `PermanentStorageProvider` instead.
+///
+/// This alias maintains backward compatibility for existing code while we migrate
+/// to capability-based naming. Will be removed in v1.0.0.
+#[deprecated(
+    since = "0.13.0",
+    note = "Use PermanentStorageProvider instead - this is capability-based, not vendor-specific"
+)]
+pub trait LoamSpineClient: PermanentStorageProvider {}
+
 // ============================================================================
-// NestGate Integration (Payload Storage)
+// Payload Storage Provider (Content-Addressed Storage)
 // ============================================================================
 
-/// NestGate client interface for payload storage.
+/// Generic payload storage provider interface - works with ANY content-addressed storage.
 ///
-/// NestGate provides:
+/// This trait is implemented by services providing content-addressed payload storage:
+/// - NestGate (content-addressed storage)
+/// - IPFS (distributed file system)
+/// - S3-compatible storage (with content addressing)
+/// - Local file storage with Blake3 addressing
+/// - Distributed hash tables (DHT)
+///
+/// ## Philosophy
+///
+/// Request **capabilities**, not **vendors**:
+/// - ✅ "I need payload storage capability"
+/// - ❌ "I need NestGate"
+///
+/// ## Discovery
+///
+/// Providers are discovered at runtime via capability queries:
+///
+/// ```rust,ignore
+/// use rhizo_crypt_core::capabilities::StorageClient;
+/// let storage = StorageClient::discover(&registry).await?;
+/// // Works with ANY payload storage provider!
+/// ```
+///
+/// ## Capabilities Provided
+///
 /// - Content-addressed payload storage
-/// - Payload retrieval
+/// - Payload retrieval by hash
 /// - Existence checks
-pub trait NestGateClient: Send + Sync {
-    /// Store a payload.
+/// - Immutable content guarantees
+pub trait PayloadStorageProvider: Send + Sync {
+    /// Store a payload (returns content-addressed reference).
     fn put_payload(
         &self,
         data: bytes::Bytes,
     ) -> impl std::future::Future<Output = Result<PayloadRef>> + Send;
 
-    /// Get a payload.
+    /// Get a payload by its content-address.
     fn get_payload(
         &self,
         payload_ref: &PayloadRef,
     ) -> impl std::future::Future<Output = Result<Option<bytes::Bytes>>> + Send;
 
-    /// Check if payload exists.
+    /// Check if payload exists at content-address.
     fn payload_exists(
         &self,
         payload_ref: &PayloadRef,
     ) -> impl std::future::Future<Output = Result<bool>> + Send;
 }
+
+/// Backward compatibility type alias (v0.12.x).
+///
+/// **DEPRECATED**: Use `PayloadStorageProvider` instead.
+///
+/// This alias maintains backward compatibility for existing code while we migrate
+/// to capability-based naming. Will be removed in v1.0.0.
+#[deprecated(
+    since = "0.13.0",
+    note = "Use PayloadStorageProvider instead - this is capability-based, not vendor-specific"
+)]
+pub trait NestGateClient: PayloadStorageProvider {}
 
 // ============================================================================
 // Integration Status - Runtime capability checking

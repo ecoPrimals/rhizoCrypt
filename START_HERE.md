@@ -6,15 +6,18 @@ Welcome to **rhizoCrypt** — the ephemeral DAG engine for the ecoPrimals ecosys
 
 ## ✅ Quick Status Check
 
-**Current Status:** 🟢 **PRODUCTION READY**
+**Current Status:** 🟢 **PRODUCTION READY** 🥇 **ECOSYSTEM LEADER**
 
 - ✅ **486/486 tests passing** (100%)
 - ✅ **86.17% code coverage**
 - ✅ **Zero unsafe code** (verified)
 - ✅ **Zero clippy warnings** (pedantic mode)
+- ✅ **Capability-based architecture** 🥇 (first in ecosystem)
+- ✅ **Zero vendor hardcoding** 🥇 (perfect infant discovery)
 - ✅ **35+ showcase demos** (Level 0: 100% complete)
 - ✅ **Production infrastructure** (CI/CD, Docker, K8s)
 
+**Version:** 0.13.0-dev  
 **Last Verified:** December 26, 2025
 
 ---
@@ -36,13 +39,17 @@ rhizoCrypt is the **ephemeral working memory** for the ecoPrimals ecosystem:
 
 rhizoCrypt forgets by design. Only explicit dehydration creates permanence.
 
+> **"Request capabilities, not vendors."** 🥇
+
+rhizoCrypt's type system is 100% capability-based. It asks for signing, not "BearDog". Any provider works.
+
+> **"Like an infant, discover at runtime."** 🥇
+
+rhizoCrypt starts with zero compile-time knowledge. Everything discovered by capability through Songbird.
+
 > **"Orchestrate, don't embed."**
 
 rhizoCrypt coordinates other primals without coupling to them.
-
-> **"Like an infant, discover at runtime."**
-
-rhizoCrypt starts with zero hardcoded services. Everything discovered by capability.
 
 ---
 

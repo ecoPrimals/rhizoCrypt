@@ -102,26 +102,89 @@ pub use event::EventType;
 pub use integration::{ClientFactory, IntegrationStatus, ServiceStatus};
 pub use safe_env::{CapabilityEnv, SafeEnv};
 
-// NEW: Capability-based clients (vendor-agnostic)
+// ============================================================================
+// Capability-Based Integration (RECOMMENDED)
+// ============================================================================
+
+/// Capability-based provider traits - vendor-agnostic, federation-ready.
+///
+/// These traits define capabilities (signing, storage, etc.) without hardcoding
+/// specific primal names. Any service can implement these traits.
+///
+/// ## Philosophy
+///
+/// Request **capabilities**, not **vendors**:
+/// - ✅ "I need crypto:signing capability"
+/// - ❌ "I need BearDog"
+///
+/// ## Example
+///
+/// ```ignore
+/// use rhizo_crypt_core::{SigningProvider, PermanentStorageProvider};
+///
+/// // Discover ANY signing provider (BearDog, YubiKey, CloudKMS, etc.)
+/// let signer: Box<dyn SigningProvider> = discover_signing().await?;
+/// let signature = signer.sign(data, &did).await?;
+/// ```
+pub use integration::{PayloadStorageProvider, PermanentStorageProvider, SigningProvider};
+
+/// Capability-based client implementations.
+///
+/// These clients use discovery to find providers at runtime.
 pub use clients::capabilities::{
     ComputeClient, PermanentStorageClient, ProvenanceClient, SigningClient, StorageClient,
 };
 
-// DEPRECATED: Legacy primal-specific clients
+// ============================================================================
+// Test Utilities (Capability-Based Mocks)
+// ============================================================================
+
+/// Mock providers for testing - capability-based, not vendor-specific.
+#[cfg(any(test, feature = "test-utils"))]
+pub use integration::{
+    MockPayloadStorageProvider, MockPermanentStorageProvider, MockSigningProvider,
+};
+
+// ============================================================================
+// DEPRECATED: Legacy Primal-Specific Names
+// ============================================================================
+
+/// **DEPRECATED**: Legacy primal-specific trait names.
+///
+/// These create vendor lock-in. Use capability-based traits instead:
+/// - `BearDogClient` → `SigningProvider`
+/// - `LoamSpineClient` → `PermanentStorageProvider`
+/// - `NestGateClient` → `PayloadStorageProvider`
+///
+/// Will be removed in v1.0.0.
+#[deprecated(
+    since = "0.13.0",
+    note = "Use SigningProvider, PermanentStorageProvider, PayloadStorageProvider instead"
+)]
 #[allow(deprecated)]
 pub use clients::{
     BearDogClient, LoamSpineClient, NestGateClient, SweetGrassQueryable, ToadStoolClient,
 };
+
+/// **DEPRECATED**: Legacy mock names.
+///
+/// Use capability-based mocks instead:
+/// - `MockBearDogClient` → `MockSigningProvider`
+/// - `MockLoamSpineClient` → `MockPermanentStorageProvider`
+/// - `MockNestGateClient` → `MockPayloadStorageProvider`
+#[cfg(any(test, feature = "test-utils"))]
+#[deprecated(
+    since = "0.13.0",
+    note = "Use MockSigningProvider, MockPermanentStorageProvider, MockPayloadStorageProvider instead"
+)]
+#[allow(deprecated)]
+pub use integration::{MockBearDogClient, MockLoamSpineClient, MockNestGateClient};
 
 // Legacy client modules (for re-exports)
 pub use clients::legacy::sweetgrass::{
     AgentContribution, ProvenanceChain, SessionAttribution, VertexRef,
 };
 pub use clients::legacy::toadstool::{ComputeEvent, TaskId, ToadStoolConfig};
-
-// Test utilities - only available with test-utils feature or in tests
-#[cfg(any(test, feature = "test-utils"))]
-pub use integration::{MockBearDogClient, MockLoamSpineClient, MockNestGateClient};
 pub use merkle::{MerkleProof, MerkleRoot};
 pub use primal::{
     HealthReport, HealthStatus, PrimalError, PrimalHealth, PrimalLifecycle, PrimalState,

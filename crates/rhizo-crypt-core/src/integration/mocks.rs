@@ -20,7 +20,7 @@ use crate::slice::{ResolutionOutcome, Slice, SliceOrigin};
 use crate::types::{Did, PayloadRef, Signature, Timestamp};
 use crate::vertex::Vertex;
 
-use super::{BearDogClient, LoamSpineClient, NestGateClient};
+use super::{PayloadStorageProvider, PermanentStorageProvider, SigningProvider};
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -28,22 +28,23 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 // ============================================================================
-// MockBearDogClient
+// MockSigningProvider
 // ============================================================================
 
-/// Mock BearDog client for testing.
+/// Mock signing provider for testing - works with ANY signing capability.
 ///
 /// Provides configurable behavior for DID verification and signing operations.
+/// This mock is capability-based, not vendor-specific.
 #[derive(Debug, Default, Clone)]
-pub struct MockBearDogClient {
+pub struct MockSigningProvider {
     /// Always verify DIDs as valid.
     pub always_valid: bool,
     /// Always verify signatures as valid.
     pub signatures_valid: bool,
 }
 
-impl MockBearDogClient {
-    /// Create a new mock client that accepts everything.
+impl MockSigningProvider {
+    /// Create a new mock provider that accepts everything.
     #[must_use]
     pub const fn permissive() -> Self {
         Self {
@@ -52,7 +53,7 @@ impl MockBearDogClient {
         }
     }
 
-    /// Create a new mock client that rejects everything.
+    /// Create a new mock provider that rejects everything.
     #[must_use]
     pub const fn strict() -> Self {
         Self {
@@ -62,7 +63,7 @@ impl MockBearDogClient {
     }
 }
 
-impl BearDogClient for MockBearDogClient {
+impl SigningProvider for MockSigningProvider {
     async fn verify_did(&self, _did: &Did) -> Result<bool> {
         Ok(self.always_valid)
     }
@@ -105,19 +106,26 @@ impl BearDogClient for MockBearDogClient {
     }
 }
 
+/// Backward compatibility type alias (v0.12.x).
+///
+/// **DEPRECATED**: Use `MockSigningProvider` instead.
+#[deprecated(since = "0.13.0", note = "Use MockSigningProvider instead - this is capability-based")]
+pub type MockBearDogClient = MockSigningProvider;
+
 // ============================================================================
-// MockLoamSpineClient
+// MockPermanentStorageProvider
 // ============================================================================
 
-/// Mock LoamSpine client for testing.
+/// Mock permanent storage provider for testing - works with ANY permanent storage capability.
 ///
 /// Provides a simple in-memory implementation that tracks commit indices.
+/// This mock is capability-based, not vendor-specific.
 #[derive(Debug, Default)]
-pub struct MockLoamSpineClient {
+pub struct MockPermanentStorageProvider {
     next_index: AtomicU64,
 }
 
-impl Clone for MockLoamSpineClient {
+impl Clone for MockPermanentStorageProvider {
     fn clone(&self) -> Self {
         Self {
             next_index: AtomicU64::new(self.next_index.load(Ordering::SeqCst)),
@@ -125,15 +133,15 @@ impl Clone for MockLoamSpineClient {
     }
 }
 
-impl MockLoamSpineClient {
-    /// Create a new mock client.
+impl MockPermanentStorageProvider {
+    /// Create a new mock provider.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl LoamSpineClient for MockLoamSpineClient {
+impl PermanentStorageProvider for MockPermanentStorageProvider {
     async fn commit(&self, _summary: &DehydrationSummary) -> Result<LoamCommitRef> {
         let index = self.next_index.fetch_add(1, Ordering::SeqCst);
         Ok(LoamCommitRef {
@@ -171,27 +179,37 @@ impl LoamSpineClient for MockLoamSpineClient {
     }
 }
 
+/// Backward compatibility type alias (v0.12.x).
+///
+/// **DEPRECATED**: Use `MockPermanentStorageProvider` instead.
+#[deprecated(
+    since = "0.13.0",
+    note = "Use MockPermanentStorageProvider instead - this is capability-based"
+)]
+pub type MockLoamSpineClient = MockPermanentStorageProvider;
+
 // ============================================================================
-// MockNestGateClient
+// MockPayloadStorageProvider
 // ============================================================================
 
-/// Mock NestGate client for testing.
+/// Mock payload storage provider for testing - works with ANY content-addressed storage.
 ///
 /// Provides an in-memory payload store for testing.
+/// This mock is capability-based, not vendor-specific.
 #[derive(Debug, Default, Clone)]
-pub struct MockNestGateClient {
+pub struct MockPayloadStorageProvider {
     payloads: Arc<RwLock<HashMap<[u8; 32], bytes::Bytes>>>,
 }
 
-impl MockNestGateClient {
-    /// Create a new mock client.
+impl MockPayloadStorageProvider {
+    /// Create a new mock provider.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl NestGateClient for MockNestGateClient {
+impl PayloadStorageProvider for MockPayloadStorageProvider {
     async fn put_payload(&self, data: bytes::Bytes) -> Result<PayloadRef> {
         let payload_ref = PayloadRef::from_bytes(&data);
         self.payloads.write().await.insert(payload_ref.hash, data);
@@ -209,12 +227,22 @@ impl NestGateClient for MockNestGateClient {
     }
 }
 
+/// Backward compatibility type alias (v0.12.x).
+///
+/// **DEPRECATED**: Use `MockPayloadStorageProvider` instead.
+#[deprecated(
+    since = "0.13.0",
+    note = "Use MockPayloadStorageProvider instead - this is capability-based"
+)]
+pub type MockNestGateClient = MockPayloadStorageProvider;
+
 // ============================================================================
 // Tests
 // ============================================================================
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(deprecated)] // Allow use of deprecated type aliases in tests
 mod tests {
     use super::*;
     use crate::dehydration::DehydrationSummaryBuilder;

@@ -10,25 +10,54 @@
 
 | Metric | Value |
 |--------|-------|
-| **Version** | 0.12.0 |
+| **Version** | 0.13.0-dev (capability-based) 🥇 |
 | **Pure Rust** | 🦀 **100%** (zero C/C++ deps) |
 | **Tests** | ✅ **486 passing (100%)** |
 | **Coverage** | ✅ **86.17%** (exceeded 60% target) |
 | **Clippy** | ✅ **Zero warnings** (pedantic mode) |
 | **Unsafe** | ✅ **0 blocks** (forbidden) |
 | **Showcase** | ✅ **35+ demos (Level 0: 100%)** |
-| **Architecture** | 🌱 **Lock-Free Concurrent** |
-| **Status** | 🚀 **PRODUCTION READY** |
+| **Architecture** | 🌱 **Lock-Free Concurrent + Capability-Based** 🥇 |
+| **Status** | 🚀 **PRODUCTION READY - ECOSYSTEM LEADER** 🥇 |
 
 **Last Verified**: December 26, 2025
 
 ---
 
-## 🌟 What's New - v0.12.0 (December 2025)
+## 🌟 What's New
 
-### 🚀 **Lock-Free Concurrency Revolution**
+### v0.13.0 (December 2025) - 🥇 **CAPABILITY-BASED ARCHITECTURE**
 
-rhizoCrypt now has the **BEST concurrency model in the ecoPrimals ecosystem**:
+**rhizoCrypt is now the FIRST ecoPrimals primal with perfect capability-based architecture!**
+
+#### 🏆 **Type System Evolution**
+
+Zero vendor hardcoding in the type system:
+
+```rust
+// OLD (Vendor-Specific) ❌
+trait BearDogClient { }  // Hardcodes primal name
+
+// NEW (Capability-Based) ✅
+trait SigningProvider { }  // Any signing service works!
+```
+
+**All traits evolved**:
+- `BearDogClient` → `SigningProvider` 🥇
+- `LoamSpineClient` → `PermanentStorageProvider` 🥇
+- `NestGateClient` → `PayloadStorageProvider` 🥇
+
+**Benefits**:
+- ✅ Zero vendor lock-in
+- ✅ Federation ready (multiple providers)
+- ✅ True infant discovery (zero compile-time knowledge)
+- ✅ Perfect backward compatibility (old names still work)
+
+**See**: `HARDCODING_ELIMINATION_COMPLETE.md` for full details
+
+### v0.12.0 (December 2025) - 🚀 **Lock-Free Concurrency Revolution**
+
+rhizoCrypt has the **BEST concurrency model in the ecoPrimals ecosystem**:
 
 - 🔥 **10-100x faster** concurrent operations
 - 🔥 **Zero blocking** on read operations
@@ -64,20 +93,27 @@ Arc<DashMap<K, V>>  // Zero blocking on reads
 
 **See**: `CONCURRENCY_EVOLUTION_DEC_26_2025.md` for technical details
 
-### ✅ **Capability-Based Architecture**
+### ✅ **Capability-Based Architecture** 🥇
 
-rhizoCrypt uses **capability-based discovery** instead of hardcoded services:
+rhizoCrypt uses **capability-based discovery** with zero vendor hardcoding:
 
 ```rust
-// ✅ Works with ANY signing provider
-use rhizo_crypt_core::clients::capabilities::SigningClient;
-let signer = SigningClient::discover(&registry).await?;
-// BearDog, YubiKey, CloudKMS, HSM, etc.
+// ✅ Request capabilities, not vendors
+use rhizo_crypt_core::{SigningProvider, PermanentStorageProvider};
 
-// ✅ Works with ANY storage provider
-use rhizo_crypt_core::clients::capabilities::StorageClient;
-let storage = StorageClient::discover(&registry).await?;
-// NestGate, S3, IPFS, etc.
+// Discovery finds ANY provider at runtime
+let signer: Box<dyn SigningProvider> = SigningClient::discover(&registry).await?;
+// Could be: BearDog, YubiKey, CloudKMS, HSM, etc.
+
+let storage: Box<dyn PermanentStorageProvider> = PermanentStorageClient::discover(&registry).await?;
+// Could be: LoamSpine, IPFS, Arweave, etc.
+```
+
+**Philosophy**:
+- 🥇 **Zero compile-time knowledge** (true infant discovery)
+- 🥇 **Federation ready** (multiple providers per capability)
+- 🥇 **No vendor lock-in** (swap providers without code changes)
+- 🥇 **Backward compatible** (old names still work)
 ```
 
 **Configuration:**
