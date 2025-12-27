@@ -1,0 +1,31 @@
+🔒 BearDog Encryption
+====================
+
+🔑 Loading key: rhizo-demo-1766849054
+✅ Key loaded
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+
+📂 Reading input file: /tmp/tmp.JXAGEZeCBt
+   Size: 19 bytes
+
+🔐 Initializing encryption...
+   Mode: Standard algorithm
+2025-12-27T15:24:14.538805Z  INFO 🔐 Initializing Rust Software HSM
+2025-12-27T15:24:14.538823Z  INFO Creating pure Rust crypto provider
+2025-12-27T15:24:14.538829Z  INFO Creating memory protector with config: MemoryProtectionConfig { enable_protection: true, clear_on_drop: true }
+2025-12-27T15:24:14.539085Z  INFO ✅ Persistent audit storage initialized: "audit.log"
+2025-12-27T15:24:14.539168Z  INFO ✅ Rust Software HSM initialized successfully with Universal Crypto Provider
+2025-12-27T15:24:14.539177Z  INFO 📥 Importing key: rhizo-demo-1766849054
+2025-12-27T15:24:14.539182Z  INFO    Key type inferred: Aes (size: 32 bytes)
+2025-12-27T15:24:14.539195Z  INFO ✅ Key imported successfully: rhizo-demo-1766849054
+✅ Encryption complete
+   Input: 19 bytes
+   Output: 47 bytes
+   Overhead: 28 bytes
+
+💾 Writing encrypted file: /tmp/tmp.xTbEjE530G
+✅ Saved successfully
+
+💡 Next steps:
+   • Decrypt: beardog decrypt --key rhizo-demo-1766849054 --input /tmp/tmp.xTbEjE530G --output data-decrypted.txt

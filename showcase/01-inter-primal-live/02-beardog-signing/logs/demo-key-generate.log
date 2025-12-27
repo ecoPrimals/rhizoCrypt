@@ -1,0 +1,50 @@
+🔑 BearDog Key Generation (Enhanced)
+====================================
+
+📋 Configuration:
+   Key ID: rhizo-demo-1766849054
+   Algorithm: ed25519
+   HSM Preference: auto
+   KDF: argon2
+   Purpose: signing
+   Usage: all
+
+🔍 Discovering HSMs...
+2025-12-27T15:24:14.269901Z  INFO 🔍 Initializing HSM Discovery Engine
+2025-12-27T15:24:14.269926Z  INFO 🔍 Discovering PKCS#11 HSMs
+2025-12-27T15:24:14.270118Z  INFO ✅ Found 0 PKCS#11 HSMs
+2025-12-27T15:24:14.270122Z  INFO 🔌 Discovering USB HSMs
+2025-12-27T15:24:14.270123Z  WARN 🔌 USB HSM discovery not yet implemented
+2025-12-27T15:24:14.270126Z  INFO 📱 Discovering Mobile HSMs
+2025-12-27T15:24:14.270128Z  WARN 📱 Mobile HSM discovery not yet implemented
+2025-12-27T15:24:14.270130Z  INFO 💻 Discovering Software HSMs
+2025-12-27T15:24:14.270136Z  INFO ✅ Found 3 Software HSMs
+2025-12-27T15:24:14.270139Z  INFO 🔐 Discovering TPMs
+2025-12-27T15:24:14.270140Z  WARN 🔐 TPM discovery not yet implemented
+2025-12-27T15:24:14.270142Z  INFO 💳 Discovering Smart Cards
+2025-12-27T15:24:14.270143Z  WARN 💳 Smart Card discovery not yet implemented
+✅ Selected HSM: BearDog Native Software HSM
+   Tier: Software
+
+🔐 Deriving ed25519 key with ARGON2...
+   Using Argon2id (memory: 65536KB, time: 3)
+✅ Key material derived (32 bytes)
+
+✅ Key generated successfully!
+
+📋 Key Details:
+   ID: rhizo-demo-1766849054
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+   KDF: argon2
+   Generation: 0 (root key)
+   Status: Active
+   Usage: all
+   Purpose: signing
+
+📜 Receipt: receipts/receipt-key-generate-20251227-152414-417.json
+   Receipt ID: 4c7103af-c3e5-402f-8b5b-643f3e9c0ec5
+
+💡 Next steps:
+   • List keys: beardog key list
+   • Encrypt: beardog encrypt --key rhizo-demo-1766849054 --input data.txt --output data.enc

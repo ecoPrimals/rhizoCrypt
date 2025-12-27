@@ -28,14 +28,11 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 pub mod http;
-// TODO: Implement tarpc_adapter when live-clients feature is needed
-// #[cfg(feature = "live-clients")]
-// pub mod tarpc_adapter;
+pub mod tarpc;
 
 // Re-exports
 pub use http::HttpAdapter;
-// #[cfg(feature = "live-clients")]
-// pub use tarpc_adapter::TarpcAdapter;
+pub use tarpc::TarpcAdapter;
 
 // ============================================================================
 // Protocol Adapter Trait
@@ -134,11 +131,9 @@ impl AdapterFactory {
         if let Some((protocol, _)) = endpoint.split_once("://") {
             match protocol {
                 "http" | "https" => Ok(Box::new(HttpAdapter::new(endpoint)?)),
-                // TODO: Re-enable when tarpc_adapter is implemented
-                // #[cfg(feature = "live-clients")]
-                // "tarpc" => Ok(Box::new(TarpcAdapter::new(endpoint)?)),
+                "tarpc" => Ok(Box::new(TarpcAdapter::new(endpoint)?)),
                 unsupported => Err(RhizoCryptError::integration(format!(
-                    "Unsupported protocol: {unsupported}. Supported: http, https"
+                    "Unsupported protocol: {unsupported}. Supported: http, https, tarpc"
                 ))),
             }
         } else {
@@ -163,12 +158,14 @@ impl AdapterFactory {
         Ok(Box::new(HttpAdapter::new(endpoint)?))
     }
 
-    // TODO: Create a tarpc adapter (requires `live-clients` feature).
-    // Implement when tarpc_adapter module is ready
-    // #[cfg(feature = "live-clients")]
-    // pub fn tarpc(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
-    //     Ok(Box::new(TarpcAdapter::new(endpoint)?))
-    // }
+    /// Create a tarpc adapter.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the tarpc adapter cannot be created (e.g., invalid endpoint format).
+    pub fn tarpc(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
+        Ok(Box::new(TarpcAdapter::new(endpoint)?))
+    }
 }
 
 // ============================================================================
@@ -205,11 +202,16 @@ mod tests {
         assert!(err.to_string().contains("Unsupported protocol"));
     }
 
-    // TODO: Re-enable when tarpc_adapter is implemented
-    // #[cfg(feature = "live-clients")]
-    // #[test]
-    // fn test_factory_tarpc() {
-    //     let adapter = AdapterFactory::create("tarpc://localhost:9600").unwrap();
-    //     assert_eq!(adapter.protocol(), "tarpc");
-    // }
+    #[test]
+    fn test_factory_tarpc() {
+        let adapter = AdapterFactory::create("tarpc://localhost:9600").unwrap();
+        assert_eq!(adapter.protocol(), "tarpc");
+    }
+
+    #[test]
+    fn test_tarpc_factory_method() {
+        let adapter = AdapterFactory::tarpc("localhost:7777").unwrap();
+        assert_eq!(adapter.protocol(), "tarpc");
+        assert_eq!(adapter.endpoint(), "localhost:7777");
+    }
 }

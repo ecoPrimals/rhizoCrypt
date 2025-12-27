@@ -334,8 +334,8 @@ pub async fn resolve_all_slices(
     session: &Session,
     outcome: &SessionOutcome,
     summary: &mut DehydrationSummary,
-    loamspine: &impl LoamSpineClient,
-    beardog: &impl BearDogClient,
+    loamspine: &impl PermanentStorageProvider,
+    beardog: &impl SigningProvider,
 ) -> Result<(), RhizoCryptError> {
     for (slice_id, slice) in &session.slices {
         let resolution = resolve_single_slice(
@@ -373,7 +373,7 @@ pub struct SliceResolution {
 pub async fn collect_attestations(
     summary: &DehydrationSummary,
     config: &DehydrationConfig,
-    beardog: &impl BearDogClient,
+    beardog: &impl SigningProvider,
 ) -> Result<Vec<Attestation>, RhizoCryptError> {
     if config.required_attestations.is_empty() {
         return Ok(Vec::new());
@@ -421,7 +421,7 @@ pub struct Attestation {
 pub async fn commit_to_loamspine(
     summary: &DehydrationSummary,
     destination_spine: &SpineId,
-    loamspine: &impl LoamSpineClient,
+    loamspine: &impl PermanentStorageProvider,
     signer: &impl Signer,
 ) -> Result<LoamCommitRef, RhizoCryptError> {
     // Create SessionCommit entry
@@ -485,8 +485,8 @@ pub async fn dehydrate_session(
     session_manager: &SessionManager,
     dag_store: &impl DagStore,
     dag_index: &DagIndex,
-    loamspine: &impl LoamSpineClient,
-    beardog: &impl BearDogClient,
+    loamspine: &impl PermanentStorageProvider,
+    beardog: &impl SigningProvider,
     signer: &impl Signer,
 ) -> Result<DehydrationResult, RhizoCryptError> {
     // Step 1: Freeze session
@@ -810,7 +810,7 @@ After dehydration, the session can be verified:
 /// Verify a committed session
 pub async fn verify_committed_session(
     commit_ref: &LoamCommitRef,
-    loamspine: &impl LoamSpineClient,
+    loamspine: &impl PermanentStorageProvider,
 ) -> Result<VerificationResult, RhizoCryptError> {
     // Get the commit entry
     let entry = loamspine

@@ -1,0 +1,36 @@
+🏠 NestGate v2.0.0 - Universal ZFS & Storage Management
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌟 ZFS features on ANY storage backend
+📦 Local, Cloud, Network, Memory support
+⚡ Production-ready performance
+🔒 Enterprise-grade data integrity
+
+2025-12-27T15:26:50.670606Z  INFO 🚀 Starting NestGate service on 127.0.0.1:9500
+
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║  🏠 NestGate v2.0.0                                          ║
+║     Universal ZFS & Storage Management                    ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+
+2025-12-27T15:26:50.670908Z  INFO ⚡ tarpc endpoint available via discovery (port 8091)
+✅ Service started successfully
+🌐 HTTP API: http://127.0.0.1:9500
+🔍 Health check: http://127.0.0.1:9500/health
+
+HTTP Endpoints:
+  GET  /health - Service health check
+  POST /jsonrpc - JSON-RPC endpoint
+  GET  /api/v1/protocol/capabilities - Protocol discovery
+  GET  /api/v1/storage/pools - List storage pools
+  GET  /api/v1/storage/datasets - List datasets
+  GET  /api/v1/storage/metrics - Storage metrics
+
+RPC Protocols:
+  HTTP/REST  - Port 9500 (~5ms latency) ✅
+  JSON-RPC   - Port 9500 (~2ms latency) ✅
+  tarpc      - Port 8091 (~50μs latency) 🚧 Coming soon
+
+Press Ctrl+C to stop
+

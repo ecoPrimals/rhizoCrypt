@@ -47,7 +47,7 @@ BearDog provides identity, signing, and policy enforcement.
 ```rust
 /// BearDog client for RhizoCrypt
 #[async_trait]
-pub trait BearDogClient: Send + Sync {
+pub trait SigningProvider: Send + Sync {
     // ==================== Identity ====================
     
     /// Resolve a DID to its document
@@ -195,7 +195,7 @@ LoamSpine provides permanent storage for dehydrated sessions.
 ```rust
 /// LoamSpine client for RhizoCrypt
 #[async_trait]
-pub trait LoamSpineClient: Send + Sync {
+pub trait PermanentStorageProvider: Send + Sync {
     // ==================== Entry Operations ====================
     
     /// Append an entry to a spine
@@ -373,7 +373,7 @@ NestGate provides content-addressed storage for large payloads.
 ```rust
 /// NestGate client for RhizoCrypt
 #[async_trait]
-pub trait NestGateClient: Send + Sync {
+pub trait PayloadStorageProvider: Send + Sync {
     // ==================== Payload Operations ====================
     
     /// Store a payload
@@ -488,7 +488,7 @@ When RhizoCrypt GCs a session, it must coordinate with NestGate:
 async fn gc_payloads(
     session: &Session,
     dag_store: &impl DagStore,
-    nestgate: &impl NestGateClient,
+    nestgate: &impl PayloadStorageProvider,
 ) -> Result<GcPayloadStats, RhizoCryptError> {
     // Collect all payload refs in the session
     let payload_refs = collect_payload_refs(session, dag_store).await?;

@@ -782,7 +782,7 @@ pub trait DehydrationEngine {
     async fn commit_to_loam(
         &self,
         summary: DehydrationSummary,
-        loam: &impl LoamSpineClient,
+        loam: &impl PermanentStorageProvider,
     ) -> Result<LoamCommitRef, RhizoError>;
     
     /// Generate Merkle proof for a specific vertex
@@ -949,7 +949,7 @@ RhizoCrypt relies on BearDog for identity and signing:
 
 ```rust
 /// BearDog client interface for RhizoCrypt
-pub trait BearDogClient {
+pub trait SigningProvider {
     /// Resolve a DID to a public key
     async fn resolve_did(&self, did: &Did) -> Result<PublicKey, BearDogError>;
     
@@ -976,7 +976,7 @@ RhizoCrypt commits to LoamSpine via the Dehydration Engine:
 
 ```rust
 /// LoamSpine client interface for RhizoCrypt
-pub trait LoamSpineClient {
+pub trait PermanentStorageProvider {
     /// Commit a dehydration summary
     async fn commit(
         &self,
