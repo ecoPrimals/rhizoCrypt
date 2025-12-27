@@ -1,0 +1,44 @@
+🐻 BearDog Status
+================
+
+📋 System Information:
+   Version: v0.9.0
+   Platform: linux (x86_64)
+   Build: release
+   Target: unknown
+
+🔐 Security Features:
+   ✅ Universal HSM Integration
+   ✅ Genetic Cryptography
+   ✅ Human Entropy Collection
+   ✅ Vendor-Agnostic Design
+   ✅ Algorithm-Agnostic Encryption
+   ✅ Transport-Agnostic Security
+   ✅ Sovereignty Compliance
+
+🛠️  Supported HSMs:
+   • SoftHSM2 (software)
+   • Android StrongBox (mobile)
+   • USB security token (FIDO2/CTAP2)
+   • Solo 2 (FIDO2 token)
+   • TPM (platform)
+   • Any PKCS#11 device
+
+🎯 Supported Algorithms:
+   • AES-256-GCM
+   • ChaCha20-Poly1305
+   • Ed25519
+   • RSA-4096
+   • Genetic variants (adaptive)
+
+💡 Quick Start:
+   1. Discover HSMs: beardog hsm discover
+   2. Collect entropy: beardog entropy collect --human-input --output seed.json
+   3. Generate key: beardog key generate --key-id my-key --algorithm aes256-gcm
+   4. Encrypt file: beardog encrypt --key my-key --input data.txt --output data.enc
+
+📚 Documentation:
+   • User Guide: docs/USER_GUIDE_CLI.md
+   • Architecture: specs/current/integration/
+   • GitHub: https://github.com/eastgate-software/beardog
+

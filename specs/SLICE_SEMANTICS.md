@@ -482,9 +482,9 @@ pub struct CheckoutResponse {
 /// Checkout a slice from LoamSpine into a RhizoCrypt session
 pub async fn checkout_slice(
     request: CheckoutRequest,
-    loamspine: &impl LoamSpineClient,
+    loamspine: &impl PermanentStorageProvider,
     session_manager: &SessionManager,
-    beardog: &impl BearDogClient,
+    beardog: &impl SigningProvider,
 ) -> Result<CheckoutResponse, RhizoCryptError> {
     // 1. Validate requester has permission
     let permissions = beardog
@@ -561,8 +561,8 @@ pub async fn checkout_slice(
 pub async fn resolve_slices(
     session: &Session,
     outcome: &SessionOutcome,
-    loamspine: &impl LoamSpineClient,
-    beardog: &impl BearDogClient,
+    loamspine: &impl PermanentStorageProvider,
+    beardog: &impl SigningProvider,
 ) -> Result<Vec<SliceResolution>, RhizoCryptError> {
     let mut resolutions = Vec::new();
     
@@ -587,8 +587,8 @@ pub async fn resolve_slices(
 async fn resolve_single_slice(
     slice: &Slice,
     session_outcome: &SessionOutcome,
-    loamspine: &impl LoamSpineClient,
-    beardog: &impl BearDogClient,
+    loamspine: &impl PermanentStorageProvider,
+    beardog: &impl SigningProvider,
 ) -> Result<ResolutionOutcome, RhizoCryptError> {
     // Determine actual route based on session outcome and conditions
     let route = evaluate_resolution_route(

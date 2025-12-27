@@ -140,11 +140,11 @@ let signature = signer.sign(data, &did).await?;
 ```rust
 // OLD (still works with deprecation warning)
 #[deprecated(since = "0.13.0", note = "Use SigningProvider instead")]
-pub type BearDogClient = dyn SigningProvider;
+pub type SigningProvider = dyn SigningProvider;
 
 // Existing code continues to work:
 #[allow(deprecated)]
-let client: Box<dyn BearDogClient> = create_client();
+let client: Box<dyn SigningProvider> = create_client();
 ```
 
 ---
@@ -245,7 +245,7 @@ let commit_ref = storage.commit(&summary).await?;
 ```rust
 // OLD (still works with deprecation warning)
 #[deprecated(since = "0.13.0", note = "Use PermanentStorageProvider instead")]
-pub type LoamSpineClient = dyn PermanentStorageProvider;
+pub type PermanentStorageProvider = dyn PermanentStorageProvider;
 ```
 
 ---
@@ -330,7 +330,7 @@ let payload_ref = storage.put_payload(data).await?;
 ```rust
 // OLD (still works with deprecation warning)
 #[deprecated(since = "0.13.0", note = "Use PayloadStorageProvider instead")]
-pub type NestGateClient = dyn PayloadStorageProvider;
+pub type PayloadStorageProvider = dyn PayloadStorageProvider;
 ```
 
 ---
@@ -392,9 +392,9 @@ let storage = match registry.discover(&Capability::PayloadStorage).await {
 
 **Find & Replace**:
 ```bash
-sed -i 's/BearDogClient/SigningProvider/g' *.rs
-sed -i 's/LoamSpineClient/PermanentStorageProvider/g' *.rs
-sed -i 's/NestGateClient/PayloadStorageProvider/g' *.rs
+sed -i 's/SigningProvider/SigningProvider/g' *.rs
+sed -i 's/PermanentStorageProvider/PermanentStorageProvider/g' *.rs
+sed -i 's/PayloadStorageProvider/PayloadStorageProvider/g' *.rs
 ```
 
 ### 5.2 Gradual Migration
@@ -402,7 +402,7 @@ sed -i 's/NestGateClient/PayloadStorageProvider/g' *.rs
 **Phase 1**: Allow deprecated names
 ```rust
 #[allow(deprecated)]
-use rhizo_crypt_core::BearDogClient;  // ⚠️ Works with warning
+use rhizo_crypt_core::SigningProvider;  // ⚠️ Works with warning
 ```
 
 **Phase 2**: Update to new names
@@ -418,7 +418,7 @@ use rhizo_crypt_core::SigningProvider;  // ✅ Future-proof
 
 ```rust
 // v1.0: Tied to BearDog
-let client: Box<dyn BearDogClient> = /* ... */;  // ❌ Vendor lock-in
+let client: Box<dyn SigningProvider> = /* ... */;  // ❌ Vendor lock-in
 
 // v2.0: Works with ANY provider
 let provider: Box<dyn SigningProvider> = /* ... */;  // ✅ Vendor agnostic
@@ -462,9 +462,9 @@ assert!(mock.sign(data, &did).await.is_ok());
 
 | Component | v1.0 (Legacy) | v2.0 (Current) 🥇 | Status |
 |-----------|--------------|-------------------|--------|
-| Signing | `BearDogClient` | `SigningProvider` | ✅ Complete |
-| Permanent Storage | `LoamSpineClient` | `PermanentStorageProvider` | ✅ Complete |
-| Payload Storage | `NestGateClient` | `PayloadStorageProvider` | ✅ Complete |
+| Signing | `SigningProvider` | `SigningProvider` | ✅ Complete |
+| Permanent Storage | `PermanentStorageProvider` | `PermanentStorageProvider` | ✅ Complete |
+| Payload Storage | `PayloadStorageProvider` | `PayloadStorageProvider` | ✅ Complete |
 | Compute | `ToadStoolClient` | `ComputeProvider` | 📋 Planned |
 | Provenance | `SweetGrassQueryable` | `ProvenanceProvider` | 📋 Planned |
 

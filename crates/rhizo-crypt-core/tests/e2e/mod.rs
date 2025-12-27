@@ -4,4 +4,5 @@
 //! dehydration, exercising the full RPC interface.
 
 pub mod dag_operations;
+pub mod dehydration_complete;
 pub mod session_lifecycle;

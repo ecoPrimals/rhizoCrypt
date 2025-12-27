@@ -61,7 +61,7 @@ CARGO_EOF
 
 mkdir -p "$TEMP_DIR/src"
 cat > "$TEMP_DIR/src/main.rs" << 'RUST_EOF'
-use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig, Session, SessionType};
+use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig, SessionType, PrimalLifecycle, session::SessionBuilder, Did};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -69,25 +69,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Create rhizoCrypt instance with default config
     let config = RhizoCryptConfig::default();
-    let rhizo = RhizoCrypt::new(config);
+    let mut rhizo = RhizoCrypt::new(config);
     
     // Start the primal
     rhizo.start().await?;
     println!("✓ rhizoCrypt primal started");
     
-    // Create a session
-    let session = Session::new(
-        "my-first-session".to_string(),
-        SessionType::Ephemeral,
-    );
+    // Create a session using builder pattern
+    let session = SessionBuilder::new(SessionType::General)
+        .with_name("my-first-session")
+        .with_owner(Did::new("did:key:alice"))
+        .build();
     let session_id = session.id;
     
     rhizo.create_session(session).await?;
     println!("✓ Session created");
     println!("  Session ID: {}", session_id);
     
-    // Query session info
-    let session_info = rhizo.get_session(session_id).await?;
+    // Query session info (not async - lock-free read!)
+    let session_info = rhizo.get_session(session_id)?;
     println!("\n📊 Session Information:");
     println!("  Name: {}", session_info.name.as_deref().unwrap_or("(unnamed)"));
     println!("  Type: {:?}", session_info.session_type);
@@ -97,18 +97,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Genesis Vertices: {}", session_info.genesis.len());
     println!("  Frontier Vertices: {}", session_info.frontier.len());
     
-    // List all sessions
-    let sessions = rhizo.list_sessions().await;
+    // List all sessions (also lock-free!)
+    let sessions = rhizo.list_sessions();
     println!("\n📋 Total Sessions: {}", sessions.len());
     
     println!("\n🎉 Success! You've created your first rhizoCrypt session!");
     println!("\n💡 Key Concepts:");
     println!("  • Sessions are scoped DAG workspaces");
     println!("  • Each session has a unique UUID v7 ID");
-    println!("  • Sessions start in 'Created' state");
-    println!("  • Sessions are ephemeral by default");
+    println!("  • Sessions start in 'Active' state");
+    println!("  • Sessions are ephemeral (in-memory)");
     println!("  • Genesis = vertices with no parents");
     println!("  • Frontier = vertices with no children (DAG tips)");
+    println!("  • Lock-free reads = no blocking on queries!");
     
     // Cleanup
     rhizo.stop().await?;
