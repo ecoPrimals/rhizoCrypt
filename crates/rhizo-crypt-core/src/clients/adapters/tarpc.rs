@@ -10,7 +10,6 @@ use serde_json::Value;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::net::ToSocketAddrs;
 use tokio::sync::RwLock;
 use tokio::time::timeout;
 
@@ -113,14 +112,14 @@ impl TarpcAdapter {
     ///
     /// # Arguments
     ///
-    /// * `addr` - Service address (can be SocketAddr or any ToSocketAddrs type)
+    /// * `addr` - Service address (can be SocketAddr or implements ToSocketAddrs)
     ///
     /// # Errors
     ///
     /// Returns error if address resolution or connection fails
     pub async fn connect<A>(addr: A) -> Result<Self>
     where
-        A: ToSocketAddrs,
+        A: tokio::net::ToSocketAddrs,
     {
         // Resolve to SocketAddr
         let socket_addr = tokio::net::lookup_host(addr)
