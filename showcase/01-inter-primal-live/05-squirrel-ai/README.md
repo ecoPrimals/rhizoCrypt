@@ -1,366 +1,229 @@
-# 🐿️ rhizoCrypt + Squirrel Integration
+# 05: Squirrel AI Routing & Intelligence
 
-**Purpose**: AI provenance tracking with complete training and inference lineage  
-**Status**: Phase 5 - AI & Machine Learning Integration  
-**Binary**: `../../../bins/squirrel`
+**Integration with Squirrel for intelligent routing and AI-powered decision making**
 
----
+## Overview
 
-## 🎯 Goal
+Squirrel is the AI/intelligence primal, providing intelligent routing, pattern recognition, and adaptive decision-making. `rhizoCrypt` integrates with Squirrel to enable AI-guided workflows, smart content routing, and emergent collaboration patterns.
 
-Integrate rhizoCrypt with Squirrel to add:
-1. **Model Training Lineage** - Track data → training → model provenance
-2. **Inference Auditability** - Cryptographic proof of AI decisions
-3. **AI Provenance Chain** - Complete lineage from data to decision
-4. **Human Dignity** - Ensure AI systems respect human sovereignty
+## Architecture
 
----
+```
+┌─────────────────┐         ┌─────────────────┐
+│   rhizoCrypt    │         │    Squirrel     │
+│   (DAG State)   │         │   (AI/Intel)    │
+├─────────────────┤         ├─────────────────┤
+│ • Session DAG   │  query  │ • Pattern match │
+│ • Event history │────────>│ • Route suggest │
+│ • Agent actions │         │ • Smart routing │
+│ • Context       │         │ • Learning      │
+└─────────────────┘         └─────────────────┘
+```
 
-## 🐿️ Squirrel Capabilities
+## Demos
 
-Squirrel provides:
-- **Training Provenance** (what data trained this model?)
-- **Inference Tracking** (what model made this decision?)
-- **Model Versioning** (immutable model snapshots)
-- **Human-in-Loop** (sovereign approval gates)
-- **Explainability** (why did the AI decide this?)
-- **Bias Detection** (identify discriminatory patterns)
+### 1. Intelligent Routing (`demo-intelligent-routing.sh`)
+**Concept:** AI-powered content routing based on DAG patterns.
 
----
+- Session context analysis
+- Agent capability matching
+- Dynamic route selection
+- Performance optimization
 
-## 📁 Demos
-
-### 1. Model Training Lineage (`demo-training-lineage.sh`)
-**What it does**:
-- Loads training dataset
-- Trains ML model
-- Records complete training provenance
-- Creates cryptographic audit trail
-
-**Run**:
+**Run:**
 ```bash
-./demo-training-lineage.sh
+./demo-intelligent-routing.sh
 ```
 
-**Expected Output**:
-```
-✅ Dataset: 1000 training examples (sha256:a4b3c2...)
-✅ Training started: Model v1.0
-✅ Training complete: Accuracy 94.2%, Loss 0.058
-✅ Model hash: sha256:f3e4d5...
-✅ Provenance vertex created
-   - Input data: NestGate payload
-   - Training agent: did:key:agent-ml
-   - Model output: NestGate model store
-   - Signature: BearDog cryptographic proof
-```
+### 2. Pattern Recognition (`demo-pattern-recognition.sh`)
+**Concept:** Detect workflow patterns in DAG history.
 
----
+- Common workflows identified
+- Bottleneck detection
+- Collaboration patterns
+- Anomaly detection
 
-### 2. Inference Auditability (`demo-inference-audit.sh`)
-**What it does**:
-- Loads trained model
-- Makes prediction on new data
-- Signs inference result
-- Records full inference provenance
-
-**Run**:
+**Run:**
 ```bash
-./demo-inference-audit.sh
+./demo-pattern-recognition.sh
 ```
 
-**Expected Output**:
-```
-✅ Model loaded: model-v1.0 (sha256:f3e4d5...)
-✅ Input: [features...] (sha256:b2c3d4...)
-✅ Prediction: Class A (confidence: 87.3%)
-✅ Inference provenance:
-   - Model version: v1.0
-   - Input hash: sha256:b2c3d4...
-   - Output: {"class": "A", "confidence": 0.873}
-   - Signed by: did:key:inference-agent
-   - Timestamp: 2025-12-26T10:45:00Z
-✅ Complete audit trail recorded
-```
+### 3. Adaptive Workflows (`demo-adaptive-workflows.sh`)
+**Concept:** AI adapts workflows based on learned patterns.
 
----
+- Historical pattern analysis
+- Workflow optimization suggestions
+- Auto-routing based on context
+- Continuous learning
 
-### 3. AI Provenance Chain (`demo-ai-provenance.sh`)
-**What it does**:
-- Demonstrates full AI lifecycle
-- Data collection → Training → Inference → Decision
-- Shows complete cryptographic chain
-- Includes human approval gates
-
-**Run**:
+**Run:**
 ```bash
-./demo-ai-provenance.sh
+./demo-adaptive-workflows.sh
 ```
 
-**Expected Output**:
-```
-✅ AI Provenance Chain:
+## Key Patterns
 
-┌─────────────────────────────────────────┐
-│ 1. Data Collection                      │
-│    - Source: sensor network             │
-│    - Records: 10,000 samples            │
-│    - Hash: sha256:a1b2c3...             │
-│    - Signed: did:key:data-collector     │
-└─────────────────────────────────────────┘
-                 ↓
-┌─────────────────────────────────────────┐
-│ 2. Human Approval (Sovereign Gate)     │
-│    - Approved by: did:key:data-steward  │
-│    - Purpose: "Train safety model"      │
-│    - Timestamp: 2025-12-26T09:00:00Z    │
-└─────────────────────────────────────────┘
-                 ↓
-┌─────────────────────────────────────────┐
-│ 3. Model Training                       │
-│    - Algorithm: Random Forest           │
-│    - Accuracy: 96.8%                    │
-│    - Model: sha256:f3e4d5...            │
-│    - Signed: did:key:ml-trainer         │
-└─────────────────────────────────────────┘
-                 ↓
-┌─────────────────────────────────────────┐
-│ 4. Model Approval (Sovereign Gate)     │
-│    - Approved by: did:key:model-auditor │
-│    - Bias check: PASSED                 │
-│    - Safety check: PASSED               │
-└─────────────────────────────────────────┘
-                 ↓
-┌─────────────────────────────────────────┐
-│ 5. Inference (Real-world Use)          │
-│    - Input: real-time sensor data       │
-│    - Prediction: "SAFE" (99.2%)         │
-│    - Decision hash: sha256:e4f5g6...    │
-│    - Signed: did:key:inference-agent    │
-└─────────────────────────────────────────┘
+### Routing Request
+```rust
+// Ask Squirrel for optimal routing
+let routing_decision = squirrel_client.route_request(
+    RoutingContext {
+        session_id: session.id(),
+        agent: did!("did:key:user"),
+        content_type: "document-edit",
+        dag_frontier: session.frontier().await?,
+        history: session.recent_vertices(100).await?,
+    }
+).await?;
 
-✅ Complete provenance chain verified
-✅ All signatures valid
-✅ Human dignity preserved (2 approval gates)
-```
-
----
-
-## 🔄 Integration Pattern
-
-```
-┌─────────────┐
-│   Training  │
-│    Data     │
-│ (NestGate)  │
-└──────┬──────┘
-       │
-       │ 1. Load data
-       ▼
-┌─────────────┐
-│   Squirrel  │
-│   Training  │
-└──────┬──────┘
-       │
-       │ 2. Train model
-       ▼
-┌─────────────┐
-│    Model    │
-│ (versioned) │
-└──────┬──────┘
-       │
-       │ 3. Store model
-       ▼
-┌─────────────┐
-│  NestGate   │
-│Model Storage│
-└──────┬──────┘
-       │
-       │ 4. Sign & record
-       ▼
-┌─────────────┐
-│ rhizoCrypt  │
-│  Provenance │
-│   Vertex    │
-└─────────────┘
-```
-
-**Key Insight**: AI provenance requires tracking:
-- **Data lineage**: Where did training data come from?
-- **Training process**: What algorithm? What hyperparameters?
-- **Model version**: Immutable model snapshot
-- **Inference**: What inputs produced what outputs?
-- **Human approval**: Sovereign gates for data use and model deployment
-
----
-
-## 🧠 AI Provenance Model
-
-### Training Provenance
-```json
-{
-  "event_type": "ai.model_trained",
-  "training_data": {
-    "dataset_hash": "sha256:a1b2c3...",
-    "record_count": 10000,
-    "features": ["temperature", "pressure", "humidity"],
-    "source": "nestgate://datasets/sensor-2025-12"
-  },
-  "training_config": {
-    "algorithm": "random_forest",
-    "hyperparameters": {
-      "n_estimators": 100,
-      "max_depth": 10
-    },
-    "training_duration_secs": 45
-  },
-  "model_output": {
-    "model_hash": "sha256:f3e4d5...",
-    "accuracy": 0.968,
-    "loss": 0.032,
-    "storage": "nestgate://models/safety-v1.0"
-  },
-  "agent": "did:key:ml-trainer",
-  "signature": "...",
-  "timestamp": "2025-12-26T10:00:00Z"
+// Apply AI recommendation
+match routing_decision.recommendation {
+    Route::BearDog => sign_vertex_with_beardog().await?,
+    Route::NestGate => store_payload_in_nestgate().await?,
+    Route::ToadStool => execute_compute().await?,
 }
 ```
 
-### Inference Provenance
-```json
-{
-  "event_type": "ai.inference",
-  "model": {
-    "hash": "sha256:f3e4d5...",
-    "version": "v1.0",
-    "source": "nestgate://models/safety-v1.0"
-  },
-  "input": {
-    "data_hash": "sha256:b2c3d4...",
-    "features": [22.5, 1013.25, 58.3]
-  },
-  "output": {
-    "prediction": "SAFE",
-    "confidence": 0.992,
-    "explanation": "All sensors within normal range"
-  },
-  "agent": "did:key:inference-agent",
-  "signature": "...",
-  "timestamp": "2025-12-26T10:45:00Z"
+### Pattern Detection
+```rust
+// Detect patterns in DAG
+let patterns = squirrel_client.analyze_patterns(
+    session.all_vertices().await?
+).await?;
+
+for pattern in patterns {
+    println!("Pattern: {} (confidence: {})", 
+        pattern.name, pattern.confidence);
+    println!("Suggestion: {}", pattern.optimization);
 }
 ```
 
----
+### Adaptive Learning
+```rust
+// Squirrel learns from workflow outcomes
+let outcome = WorkflowOutcome {
+    session_id: session.id(),
+    success: true,
+    duration_ms: 1234,
+    agent_satisfaction: 0.95,
+};
 
-## 🛡️ Human Dignity & Sovereignty
+squirrel_client.record_outcome(outcome).await?;
 
-Squirrel enforces **human sovereignty** through:
-
-1. **Approval Gates**: Humans approve data use and model deployment
-2. **Explainability**: AI decisions must be explainable
-3. **Bias Detection**: Automatic detection of discriminatory patterns
-4. **Transparency**: Complete provenance visible to affected humans
-5. **Right to Challenge**: Humans can challenge AI decisions
-
-**Example Approval Gate**:
-```json
-{
-  "event_type": "human.approval",
-  "approver": "did:key:data-steward",
-  "approval_type": "data_use",
-  "purpose": "Train safety monitoring model",
-  "data_scope": "sensor-network-2025-12",
-  "approved_at": "2025-12-26T09:00:00Z",
-  "signature": "..."
-}
+// Future workflows benefit from learning
 ```
 
----
+## Benefits
 
-## 🚀 Prerequisites
+| Aspect | Benefit |
+|--------|---------|
+| **Efficiency** | Optimal routing reduces latency |
+| **Scalability** | AI handles complex routing logic |
+| **Learning** | Improves over time |
+| **Flexibility** | Adapts to changing patterns |
+| **Intelligence** | Emergent collaboration |
 
-### 1. Squirrel Binary
+## Real-World Use Cases
+
+1. **Smart Document Routing**
+   - Route edits to appropriate primals
+   - Detect collaboration patterns
+   - Optimize for latency/cost
+
+2. **Workflow Optimization**
+   - Identify common patterns
+   - Suggest improvements
+   - Auto-route based on context
+
+3. **Anomaly Detection**
+   - Unusual access patterns
+   - Security threat detection
+   - Performance issues
+
+4. **Multi-Agent Coordination**
+   - Intelligent task distribution
+   - Load balancing
+   - Capability matching
+
+5. **Adaptive Systems**
+   - Self-optimizing workflows
+   - Continuous improvement
+   - Emergent intelligence
+
+## Technical Details
+
+### Capability-Based Discovery
+```rust
+// No hardcoded Squirrel endpoints
+let ai_client = CapabilityRegistry::discover("AIProvider")
+    .with_capability("routing")
+    .with_capability("pattern-recognition")
+    .await?;
+```
+
+### Context Sharing
+```rust
+// Share DAG context with Squirrel
+let context = AIContext {
+    session_dag: session.export_dag().await?,
+    agent_history: session.agent_actions(agent_did).await?,
+    recent_vertices: session.frontier_with_depth(10).await?,
+    metadata: session.metadata().await?,
+};
+
+let decision = ai_client.make_decision(context).await?;
+```
+
+### Privacy Preservation
+```rust
+// Squirrel only sees what it needs
+let anonymized_context = session.export_dag()
+    .anonymize_agents()  // Remove agent DIDs
+    .truncate_payloads() // Strip sensitive data
+    .await?;
+
+ai_client.analyze(anonymized_context).await?;
+```
+
+## Integration Philosophy
+
+### "Intelligence Where It Matters"
+- rhizoCrypt: Fast ephemeral DAG
+- Squirrel: Smart routing and patterns
+- Humans: Final decisions
+
+### No Lock-In
+- Pure capability-based discovery
+- Works with any AI provider
+- Graceful fallback to heuristics
+
+### Consent-Based
+- Agents opt-in to AI routing
+- Privacy-preserving by default
+- Transparent recommendations
+
+## Provenance
+
+```
+Session (Collaborative Editing)
+├─ Edit 1 (Alice)
+├─ Routing Decision (Squirrel AI)
+│  └─ Recommendation: Store in NestGate
+├─ Storage (NestGate)
+└─ Edit 2 (Bob)
+   └─ Squirrel learned: Co-editing pattern detected
+
+Merkle Root: Includes AI routing decisions in provenance
+```
+
+## Next Steps
+
+Explore complete workflows with AI intelligence:
 ```bash
-# Check if squirrel binary exists
-ls ../../../bins/squirrel
-
-# If not, it needs to be built from phase1/squirrel
-```
-
-### 2. Start Squirrel Service
-```bash
-# Default port: 9800
-../../../bins/squirrel --port 9800 --storage ./squirrel-models
-```
-
-### 3. Verify Service
-```bash
-curl http://localhost:9800/health
-# Expected: {"status":"healthy","models":0}
+cd ../05-complete-workflows
+./demo-ai-document-collaboration.sh
 ```
 
 ---
 
-## 🎓 Learning Progression
-
-1. **Start with `demo-training-lineage.sh`** - Basic training provenance
-2. **Then `demo-inference-audit.sh`** - Understand inference tracking
-3. **Finally `demo-ai-provenance.sh`** - Complete AI lifecycle
-
----
-
-## 📝 Notes
-
-- **Immutable**: Models are versioned and immutable
-- **Auditable**: Every inference is cryptographically signed
-- **Explainable**: AI decisions include explanations
-- **Sovereign**: Human approval gates protect dignity
-- **Provenance**: Complete lineage from data to decision
-
----
-
-## 🔍 Troubleshooting
-
-### Squirrel not responding
-```bash
-netstat -tuln | grep 9800
-tail -f squirrel.log
-```
-
-### Training fails
-```bash
-# Check training data
-curl http://localhost:9800/api/v1/datasets
-
-# Verify model storage
-ls ./squirrel-models/
-```
-
-### Inference errors
-```bash
-# Check model is loaded
-curl http://localhost:9800/api/v1/models/{model_hash}
-
-# Verify input format
-```
-
----
-
-## 🔗 Related Demos
-
-- **04-toadstool-compute**: Distribute AI training across agents
-- **03-nestgate-storage**: Store models and datasets
-- **06-complete-workflow**: Full AI + provenance workflow
-
----
-
-## 📚 Further Reading
-
-- `specs/INTEGRATION_SPECIFICATION.md` - Squirrel integration
-- `specs/HUMAN_DIGNITY.md` - Sovereignty principles
-- `specs/AI_PROVENANCE.md` - AI-specific provenance
-
----
-
-*Last Updated: Dec 26, 2025*
-
+**No mocks. Real Squirrel binary. Intelligent, adaptive workflows.**

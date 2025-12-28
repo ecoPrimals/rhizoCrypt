@@ -1,287 +1,423 @@
-#!/usr/bin/env bash
-# Demo: Complete ML Pipeline - All Primals Working Together
+#!/bin/bash
+# Demo: Complete ML Pipeline with Multi-Primal Integration
+# Prerequisites: Understanding of all primals (rhizoCrypt, ToadStool, BearDog, NestGate, LoamSpine)
+# Expected: End-to-end ML training with full provenance
+
 set -euo pipefail
 
+# Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
+PURPLE='\033[0;35m'
 NC='\033[0m'
 
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}   🤖 Complete ML Pipeline: All Primals${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}  🤖 Complete ML Pipeline: Multi-Primal Integration${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
-cd "$(dirname "$0")/../.."
+# Workflow overview
+echo -e "${YELLOW}📝 Scenario: Train ML model with full provenance${NC}"
+echo -e "${BLUE}   Dataset → Preprocessing → Training → Validation → Storage${NC}"
+echo -e "${BLUE}   All steps tracked in rhizoCrypt DAG${NC}"
+echo ""
 
-cat > /tmp/ml_pipeline.rs << 'EOF'
-use rhizo_crypt_core::*;
+# Architecture
+echo -e "${YELLOW}📝 Step 1: Multi-primal architecture${NC}"
+cat <<'EOF'
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("═══════════════════════════════════════════════════════");
-    println!("  Complete ML Pipeline: rhizoCrypt Orchestrates All");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    primal.start().await?;
-    
-    println!("🎯 Scenario: Image Classification Model Training");
-    println!("   Dataset: ImageNet subset");
-    println!("   Model: ResNet-50");
-    println!("   Team: 5 researchers, 2 ML engineers");
-    println!("");
-    
-    let session = SessionBuilder::new(SessionType::General)
-        .with_name("resnet-training-v2")
-        .with_owner(Did::new("did:key:ml-team-lead"))
-        .build();
-    let session_id = primal.create_session(session).await?;
-    
-    println!("═══════════════════════════════════════════════════════");
-    println!("  Phase 1: Data Preparation & Storage (NestGate)");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    // Upload dataset
-    println!("📦 Uploading Dataset to NestGate");
-    let dataset = b"[ImageNet data: 50,000 images, 224x224, RGB]".repeat(100);
-    let dataset_payload = PayloadRef::from_bytes(&dataset);
-    let dataset_hash = blake3::hash(&dataset);
-    
-    let v1 = VertexBuilder::new(EventType::DataCreate { schema: None })
-        .with_agent(Did::new("did:key:data-engineer"))
-        .with_payload(dataset_payload)
-        .with_metadata("stage", "data_upload")
-        .with_metadata("dataset", "imagenet-subset")
-        .with_metadata("images", "50000")
-        .with_metadata("size_gb", "12.5")
-        .with_metadata("storage", "nestgate")
-        .build();
-    let v1_id = primal.append_vertex(session_id, v1).await?;
-    
-    println!("   ✓ Dataset uploaded");
-    println!("     Hash: {}", dataset_hash);
-    println!("     Size: 12.5 GB");
-    println!("     Location: NestGate (content-addressed)");
-    println!("     Vertex: {}", v1_id);
-    println!("");
-    
-    // Data validation
-    println!("✅ Validating Dataset");
-    let v2 = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:key:data-validator"))
-        .with_parent(v1_id)
-        .with_metadata("stage", "validation")
-        .with_metadata("status", "passed")
-        .with_metadata("corrupt_images", "0")
-        .with_metadata("format_errors", "0")
-        .build();
-    let v2_id = primal.append_vertex(session_id, v2).await?;
-    println!("   ✓ Dataset validated");
-    println!("     Status: Passed");
-    println!("     Corrupt images: 0");
-    println!("");
-    
-    println!("═══════════════════════════════════════════════════════");
-    println!("  Phase 2: Training Request & Execution (ToadStool)");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    // Training request
-    println!("🎓 Requesting GPU Training from ToadStool");
-    let v3 = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:key:ml-engineer"))
-        .with_parent(v2_id)
-        .with_metadata("stage", "training_request")
-        .with_metadata("model", "resnet-50")
-        .with_metadata("gpus", "8")
-        .with_metadata("framework", "pytorch")
-        .with_metadata("epochs", "100")
-        .with_metadata("batch_size", "256")
-        .build();
-    let v3_id = primal.append_vertex(session_id, v3).await?;
-    println!("   ✓ Training requested");
-    println!("     Model: ResNet-50");
-    println!("     GPUs: 8× NVIDIA A100");
-    println!("     Epochs: 100");
-    println!("");
-    
-    // ToadStool training
-    println!("⚙️  ToadStool Training (8 GPUs)...");
-    std::thread::sleep(std::time::Duration::from_millis(300));
-    
-    let model = b"[ResNet-50 weights: 25.6M parameters]".repeat(100);
-    let model_payload = PayloadRef::from_bytes(&model);
-    let model_hash = blake3::hash(&model);
-    
-    let v4 = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:toadstool:coordinator"))
-        .with_parent(v3_id)
-        .with_payload(model_payload)
-        .with_metadata("stage", "training_complete")
-        .with_metadata("accuracy", "0.92")
-        .with_metadata("loss", "0.08")
-        .with_metadata("duration_hours", "6.2")
-        .with_metadata("gpu_hours", "49.6")
-        .with_metadata("cost_usd", "148.80")
-        .build();
-    let v4_id = primal.append_vertex(session_id, v4).await?;
-    
-    println!("   ✓ Training complete");
-    println!("     Accuracy: 92%");
-    println!("     Loss: 0.08");
-    println!("     Duration: 6.2 hours");
-    println!("     GPU hours: 49.6");
-    println!("     Cost: $148.80");
-    println!("     Model hash: {}", model_hash);
-    println!("");
-    
-    println!("═══════════════════════════════════════════════════════");
-    println!("  Phase 3: Model Storage & Signing (NestGate + BearDog)");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    // Store model in NestGate
-    println!("💾 Storing Model in NestGate");
-    let v5 = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:key:ml-ops"))
-        .with_parent(v4_id)
-        .with_metadata("stage", "model_storage")
-        .with_metadata("storage", "nestgate")
-        .with_metadata("model_hash", &model_hash.to_string())
-        .with_metadata("size_mb", "98.4")
-        .build();
-    let v5_id = primal.append_vertex(session_id, v5).await?;
-    println!("   ✓ Model stored in NestGate");
-    println!("     Hash: {}", model_hash);
-    println!("     Size: 98.4 MB");
-    println!("");
-    
-    // Sign model with BearDog
-    println!("🔐 Signing Model with BearDog HSM");
-    let signature = b"[Ed25519 signature over model hash]";
-    
-    let v6 = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:beardog:hsm-prod-1"))
-        .with_parent(v5_id)
-        .with_metadata("stage", "model_signing")
-        .with_metadata("signature", &hex::encode(signature))
-        .with_metadata("algorithm", "Ed25519")
-        .with_metadata("signer", "ml-team-release-key")
-        .build();
-    let v6_id = primal.append_vertex(session_id, v6).await?;
-    println!("   ✓ Model signed");
-    println!("     Algorithm: Ed25519");
-    println!("     Signer: ml-team-release-key");
-    println!("     Signature: {}...", hex::encode(&signature[0..16]));
-    println!("");
-    
-    println!("═══════════════════════════════════════════════════════");
-    println!("  Phase 4: Validation & Release Approval");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    // Validation
-    println!("✅ Validating Model Performance");
-    let v7 = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:key:qa-engineer"))
-        .with_parent(v6_id)
-        .with_metadata("stage", "validation")
-        .with_metadata("test_accuracy", "0.91")
-        .with_metadata("inference_ms", "45")
-        .with_metadata("status", "passed")
-        .build();
-    let v7_id = primal.append_vertex(session_id, v7).await?;
-    println!("   ✓ Validation passed");
-    println!("     Test accuracy: 91%");
-    println!("     Inference time: 45ms");
-    println!("");
-    
-    // Release approval
-    println!("📢 Release Approval");
-    let v8 = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:key:ml-team-lead"))
-        .with_parent(v7_id)
-        .with_metadata("stage", "release_approval")
-        .with_metadata("version", "resnet-50-v2.0")
-        .with_metadata("status", "approved")
-        .with_metadata("deployment", "production")
-        .build();
-    let _v8_id = primal.append_vertex(session_id, v8).await?;
-    println!("   ✓ Release approved");
-    println!("     Version: resnet-50-v2.0");
-    println!("     Deployment: Production");
-    println!("");
-    
-    // Resolve session
-    let resolution = primal.resolve_session(session_id, ResolutionOutcome::Commit).await?;
-    
-    println!("═══════════════════════════════════════════════════════");
-    println!("  🎉 Complete ML Pipeline: Success!");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    println!("📊 Full Workflow:");
-    println!("");
-    println!("   Data Engineer    → Upload dataset (NestGate)");
-    println!("   Data Validator   → Validate dataset");
-    println!("   ML Engineer      → Request training (ToadStool)");
-    println!("   ToadStool        → Train model (8 GPUs)");
-    println!("   ML Ops           → Store model (NestGate)");
-    println!("   BearDog HSM      → Sign model");
-    println!("   QA Engineer      → Validate model");
-    println!("   Team Lead        → Approve release");
-    println!("");
-    
-    println!("🔐 Provenance Proof:");
-    println!("   • 8 vertices (8 agents)");
-    println!("   • 4 primals (rhizoCrypt, NestGate, ToadStool, BearDog)");
-    println!("   • Merkle root: {}", hex::encode(&resolution.merkle_root));
-    println!("   • Single cryptographic proof of entire pipeline");
-    println!("");
-    
-    println!("✨ What This Demonstrates:");
-    println!("   • rhizoCrypt orchestrates, doesn't embed");
-    println!("   • Each primal does what it does best");
-    println!("   • Full provenance: dataset → training → model → deployment");
-    println!("   • Multi-agent collaboration");
-    println!("   • Cost, performance, and compliance tracking");
-    println!("   • Zero-knowledge discovery (no hardcoded endpoints)");
-    println!("");
-    
-    println!("═══════════════════════════════════════════════════════");
-    println!("  This is the power of the ecoPrimals ecosystem!");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    Ok(())
-}
+┌─────────────────────────────────────────────────────────────────┐
+│  Complete ML Pipeline (Multi-Primal)                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ① Data Acquisition                                            │
+│     └─ NestGate: Fetch MNIST dataset                           │
+│        └─ Agent: did:nestgate:data-provider                    │
+│        └─ Payload: 60,000 training images                      │
+│                                                                 │
+│  ② Provenance Tracking                                         │
+│     └─ rhizoCrypt: Create session, track DAG                   │
+│        └─ Agent: did:key:ml-researcher                         │
+│        └─ Event: dataset-loaded                                │
+│                                                                 │
+│  ③ Preprocessing                                               │
+│     └─ ToadStool: Normalize, augment, split                    │
+│        └─ Agent: did:toadstool:preprocessor                    │
+│        └─ Event: preprocessing-complete                        │
+│                                                                 │
+│  ④ Training                                                    │
+│     └─ ToadStool: GPU training (8 epochs)                      │
+│        └─ Agent: did:toadstool:gpu-0                           │
+│        └─ Event: training-step-N (one per epoch)               │
+│                                                                 │
+│  ⑤ Signature                                                   │
+│     └─ BearDog: Sign final model weights                       │
+│        └─ Agent: did:beardog:hsm-1                             │
+│        └─ Event: model-signed                                  │
+│                                                                 │
+│  ⑥ Storage                                                     │
+│     └─ NestGate: Store model + metadata                        │
+│        └─ Agent: did:nestgate:model-registry                   │
+│        └─ Event: model-stored                                  │
+│                                                                 │
+│  ⑦ Dehydration                                                 │
+│     └─ LoamSpine: Commit session for reproducibility           │
+│        └─ Agent: did:loamspine:archiver                        │
+│        └─ Event: session-committed                             │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
 EOF
+echo -e "${GREEN}✓ 5 primals working together!${NC}"
 
-echo -e "${YELLOW}Compiling ML pipeline demo...${NC}"
-rustc --edition 2021 /tmp/ml_pipeline.rs \
-    -L target/release/deps \
-    --extern rhizo_crypt_core=target/release/librhizo_crypt_core.rlib \
-    --extern tokio=target/release/deps/libtokio-*.rlib \
-    --extern blake3=target/release/deps/libblake3-*.rlib \
-    --extern hex=target/release/deps/libhex-*.rlib \
-    -o /tmp/ml_pipeline 2>&1 | grep -v "warning" || true
+# DAG structure
+echo -e "\n${YELLOW}📝 Step 2: DAG structure (provenance chain)${NC}"
+cat <<'EOF'
 
-echo "Running ML pipeline demo..."
-echo ""
-/tmp/ml_pipeline
+Session DAG:
+════════════════════════════════════════════════════════════════
+                      Genesis (Session Start)
+                            │
+                            ↓
+                   ① Dataset Loaded (NestGate)
+                            │
+                            ↓
+                   ② Preprocessing (ToadStool)
+                            │
+                    ┌───────┴───────┐
+                    │               │
+            ③ Training Epoch 1   Training Epoch 2
+            (ToadStool GPU)      (ToadStool GPU)
+                    │               │
+                    └───────┬───────┘
+                            │
+                    ... (Epochs 3-8) ...
+                            │
+                            ↓
+                    ④ Model Weights (ToadStool)
+                            │
+                            ↓
+                    ⑤ Model Signed (BearDog)
+                            │
+                            ↓
+                    ⑥ Model Stored (NestGate)
+                            │
+                            ↓
+                    ⑦ Session Committed (LoamSpine)
 
-echo ""
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}✅ Complete ML pipeline demo complete!${NC}"
-echo ""
-echo -e "${YELLOW}📚 What you learned:${NC}"
-echo "  • rhizoCrypt orchestrates all primals"
-echo "  • NestGate: Data and model storage"
-echo "  • ToadStool: GPU training"
-echo "  • BearDog: Model signing"
-echo "  • Complete provenance: dataset → production"
-echo ""
-echo -e "${YELLOW}▶ Next demo:${NC} ./demo-document-workflow.sh"
-echo ""
+Merkle Root: Single cryptographic proof of entire pipeline!
 
-rm -f /tmp/ml_pipeline.rs /tmp/ml_pipeline
+EOF
+echo -e "${GREEN}✓ Complete provenance from raw data to final model${NC}"
 
+# Step-by-step workflow
+echo -e "\n${YELLOW}📝 Step 3: Execute workflow (conceptual)${NC}"
+
+echo -e "\n${CYAN}  Step 3.1: Fetch dataset from NestGate${NC}"
+cat <<'EOF'
+
+// Discover NestGate via capabilities
+let storage = CapabilityRegistry::discover("StorageProvider")
+    .with_capability("payload-management")
+    .await?;
+
+// Fetch MNIST dataset
+let dataset_payload = storage.fetch_payload(
+    "mnist-training-60k"
+).await?;
+
+// Track in rhizoCrypt
+let dataset_vertex = session.create_vertex(
+    EventType::DataUpdate { schema: Some("dataset") },
+    did!("did:nestgate:data-provider"),
+    vec![genesis_vertex],
+    json!({
+        "dataset": "MNIST",
+        "size": 60_000,
+        "source": "NestGate",
+        "payload_hash": dataset_payload.hash(),
+    })
+).await?;
+
+EOF
+echo -e "${GREEN}✓ Step 3.1 complete: Dataset loaded${NC}"
+
+echo -e "\n${CYAN}  Step 3.2: Preprocess with ToadStool${NC}"
+cat <<'EOF'
+
+// Discover ToadStool compute
+let compute = CapabilityRegistry::discover("ComputeProvider")
+    .with_capability("data-preprocessing")
+    .await?;
+
+// Submit preprocessing job
+let preprocess_job = compute.submit_job(JobSpec {
+    name: "mnist-preprocessing",
+    script: "normalize.py",
+    inputs: vec![dataset_payload],
+    resources: Resources { cpus: 4, memory_gb: 8 },
+}).await?;
+
+// Track in rhizoCrypt
+let preprocess_vertex = session.create_vertex(
+    EventType::DataUpdate { schema: Some("preprocessing") },
+    did!("did:toadstool:preprocessor"),
+    vec![dataset_vertex],
+    json!({
+        "job_id": preprocess_job.id,
+        "operations": ["normalize", "augment", "split"],
+        "train_size": 50_000,
+        "val_size": 10_000,
+    })
+).await?;
+
+EOF
+echo -e "${GREEN}✓ Step 3.2 complete: Data preprocessed${NC}"
+
+echo -e "\n${CYAN}  Step 3.3: Train model with ToadStool GPU${NC}"
+cat <<'EOF'
+
+// Submit training job (8 epochs)
+let training_job = compute.submit_job(JobSpec {
+    name: "mnist-training",
+    script: "train.py",
+    inputs: vec![preprocess_job.output],
+    resources: Resources { gpus: 1, memory_gb: 16 },
+    params: json!({
+        "model": "cnn",
+        "epochs": 8,
+        "batch_size": 128,
+        "learning_rate": 0.001,
+    }),
+}).await?;
+
+// Track each epoch in DAG
+let mut parent = preprocess_vertex;
+for epoch in 1..=8 {
+    let epoch_vertex = session.create_vertex(
+        EventType::DataUpdate { schema: Some("training-epoch") },
+        did!("did:toadstool:gpu-0"),
+        vec![parent],
+        json!({
+            "epoch": epoch,
+            "loss": 0.5 - (epoch as f64 * 0.05),  // Simulated
+            "accuracy": 0.7 + (epoch as f64 * 0.03),
+            "duration_sec": 45,
+            "gpu_utilization": 0.95,
+        })
+    ).await?;
+    parent = epoch_vertex;
+}
+
+let final_model_vertex = parent;
+
+EOF
+echo -e "${GREEN}✓ Step 3.3 complete: Model trained (8 epochs)${NC}"
+
+echo -e "\n${CYAN}  Step 3.4: Sign model with BearDog${NC}"
+cat <<'EOF'
+
+// Discover BearDog HSM
+let signing = CapabilityRegistry::discover("SigningProvider")
+    .with_capability("hsm-signing")
+    .await?;
+
+// Sign model weights
+let model_weights_hash = compute.get_job_output_hash(training_job.id).await?;
+let signature = signing.sign(
+    model_weights_hash.as_bytes(),
+    &did!("did:key:ml-researcher")
+).await?;
+
+// Track signature in DAG
+let signature_vertex = session.create_vertex(
+    EventType::DataUpdate { schema: Some("model-signature") },
+    did!("did:beardog:hsm-1"),
+    vec![final_model_vertex],
+    json!({
+        "model_hash": model_weights_hash,
+        "signature": signature.to_string(),
+        "signer": "did:key:ml-researcher",
+        "timestamp": Utc::now(),
+    })
+).await?;
+
+EOF
+echo -e "${GREEN}✓ Step 3.4 complete: Model signed${NC}"
+
+echo -e "\n${CYAN}  Step 3.5: Store model in NestGate${NC}"
+cat <<'EOF'
+
+// Store model + metadata
+let model_payload = Payload {
+    content: training_job.output,
+    metadata: json!({
+        "model_type": "cnn",
+        "dataset": "MNIST",
+        "accuracy": 0.98,
+        "signature": signature.to_string(),
+        "provenance_session": session.id(),
+    }),
+};
+
+let storage_id = storage.store_payload(model_payload).await?;
+
+// Track storage in DAG
+let storage_vertex = session.create_vertex(
+    EventType::DataUpdate { schema: Some("model-storage") },
+    did!("did:nestgate:model-registry"),
+    vec![signature_vertex],
+    json!({
+        "storage_id": storage_id,
+        "model_name": "mnist-cnn-v1",
+        "version": "1.0.0",
+        "registry": "NestGate",
+    })
+).await?;
+
+EOF
+echo -e "${GREEN}✓ Step 3.5 complete: Model stored${NC}"
+
+echo -e "\n${CYAN}  Step 3.6: Commit session to LoamSpine${NC}"
+cat <<'EOF'
+
+// Dehydrate session for permanent provenance
+let summary = session.generate_summary().await?;
+let merkle_root = session.compute_merkle_root().await?;
+
+// Discover LoamSpine permanent storage
+let permanent = CapabilityRegistry::discover("PermanentStorageProvider")
+    .with_capability("provenance-archival")
+    .await?;
+
+// Commit to LoamSpine
+let commit_id = permanent.commit_session(CommitRequest {
+    session_id: session.id(),
+    summary,
+    merkle_root,
+    metadata: json!({
+        "workflow": "ml-training",
+        "model": "mnist-cnn-v1",
+        "dataset": "MNIST",
+        "timestamp": Utc::now(),
+    }),
+}).await?;
+
+// Track commit in DAG (final vertex!)
+let commit_vertex = session.create_vertex(
+    EventType::DataUpdate { schema: Some("session-commit") },
+    did!("did:loamspine:archiver"),
+    vec![storage_vertex],
+    json!({
+        "commit_id": commit_id,
+        "merkle_root": merkle_root,
+        "vertex_count": session.vertex_count().await?,
+        "storage": "LoamSpine",
+    })
+).await?;
+
+EOF
+echo -e "${GREEN}✓ Step 3.6 complete: Session committed to LoamSpine${NC}"
+
+# Provenance benefits
+echo -e "\n${YELLOW}📝 Step 4: Provenance benefits${NC}"
+cat <<'EOF'
+
+What we can now prove:
+═════════════════════════════════════════════════════════════════
+  ✅ Dataset source: MNIST from NestGate (content hash verified)
+  ✅ Preprocessing: Exact steps (normalize, augment, split)
+  ✅ Training: Every epoch tracked (loss, accuracy, GPU used)
+  ✅ Signature: Model signed by ML researcher (BearDog HSM)
+  ✅ Storage: Model stored in NestGate (immutable)
+  ✅ Provenance: Full DAG committed to LoamSpine (permanent)
+
+Reproducibility:
+  → Checkout session slice from LoamSpine
+  → Re-run training with same dataset
+  → Verify results match (cryptographically)
+
+Auditability:
+  → Show complete provenance chain
+  → Prove no tampering (Merkle root)
+  → Attribute work to specific GPUs/agents
+
+Compliance:
+  → Model cards with full lineage
+  → Regulatory audit trail
+  → Fair use verification
+
+EOF
+echo -e "${GREEN}✓ Complete ML provenance: Dataset → Model → Archive${NC}"
+
+# Query examples
+echo -e "\n${YELLOW}📝 Step 5: Query provenance${NC}"
+cat <<'EOF'
+
+// Question: What dataset was used?
+let dataset_vertex = session.find_vertices_by_schema("dataset").await?;
+println!("Dataset: {}", dataset_vertex[0].metadata["dataset"]);
+// → "MNIST"
+
+// Question: Which GPU trained this model?
+let training_vertices = session.find_vertices_by_schema("training-epoch").await?;
+for v in training_vertices {
+    println!("Epoch {}: GPU {}, Accuracy {}",
+        v.metadata["epoch"],
+        v.agent,  // → did:toadstool:gpu-0
+        v.metadata["accuracy"]
+    );
+}
+
+// Question: Who signed this model?
+let sig_vertex = session.find_vertices_by_schema("model-signature").await?;
+println!("Signed by: {}", sig_vertex[0].metadata["signer"]);
+// → "did:key:ml-researcher"
+
+// Question: Can I reproduce this?
+let commit_vertex = session.find_vertices_by_schema("session-commit").await?;
+let commit_id = commit_vertex[0].metadata["commit_id"];
+
+// Checkout from LoamSpine
+let historical_session = loamspine.checkout_session(commit_id).await?;
+// → Full DAG restored, can re-run!
+
+EOF
+echo -e "${GREEN}✓ Complete audit trail, fully queryable${NC}"
+
+# Final summary
+echo -e "\n${GREEN}✅ Complete ML Pipeline Demo!${NC}"
+echo -e "\n${BLUE}Primals used:${NC}"
+echo "  🔐 rhizoCrypt: DAG provenance tracking"
+echo "  🍄 ToadStool: Data preprocessing + GPU training"
+echo "  🐻 BearDog: Model signature (HSM)"
+echo "  🏰 NestGate: Dataset + model storage"
+echo "  🌾 LoamSpine: Permanent provenance archive"
+echo ""
+echo -e "${BLUE}Workflow steps:${NC}"
+echo "  ① Fetch dataset (NestGate)"
+echo "  ② Preprocess data (ToadStool)"
+echo "  ③ Train model 8 epochs (ToadStool GPU)"
+echo "  ④ Sign model (BearDog HSM)"
+echo "  ⑤ Store model (NestGate)"
+echo "  ⑥ Commit provenance (LoamSpine)"
+echo ""
+echo -e "${BLUE}Benefits:${NC}"
+echo "  • Complete reproducibility"
+echo "  • Cryptographic audit trail"
+echo "  • Regulatory compliance"
+echo "  • Fair attribution (per-GPU)"
+echo "  • Permanent provenance"
+echo ""
+echo -e "${CYAN}🏆 This is the power of ecoPrimals!${NC}"
+echo -e "${CYAN}   5 primals, 1 workflow, complete provenance${NC}"
+echo ""
+echo -e "${BLUE}Next steps:${NC}"
+echo "  • Try: demo-document-collaboration.sh"
+echo "  • Try: demo-supply-chain.sh"
+echo "  • See: ../../README.md for more workflows"
+echo ""
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
