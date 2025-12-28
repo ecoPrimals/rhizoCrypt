@@ -9,7 +9,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BINS_DIR="/home/strandgate/Development/ecoPrimals/phase2/bins"
+BINS_DIR="/home/strandgate/Development/ecoPrimals/primalBins"
 BEARDOG_BIN="$BINS_DIR/beardog"
 SONGBIRD_BIN="$BINS_DIR/songbird-rendezvous"
 

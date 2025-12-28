@@ -173,8 +173,11 @@ pub struct DehydrationConfig {
     /// Required attestations before commit.
     pub required_attestations: Vec<Did>,
 
-    /// Timeout for attestation collection.
-    pub attestation_timeout_secs: u64,
+    /// Timeout for attestation collection (seconds).
+    pub attestation_timeout_secs: Option<u64>,
+
+    /// Require all attestations before committing.
+    pub require_all_attestations: bool,
 }
 
 impl DehydrationConfig {
@@ -186,7 +189,8 @@ impl DehydrationConfig {
             include_payloads: false,
             generate_proofs_for: Vec::new(),
             required_attestations: Vec::new(),
-            attestation_timeout_secs: 60,
+            attestation_timeout_secs: Some(60),
+            require_all_attestations: false,
         }
     }
 
@@ -198,7 +202,8 @@ impl DehydrationConfig {
             include_payloads: true,
             generate_proofs_for: Vec::new(),
             required_attestations: Vec::new(),
-            attestation_timeout_secs: 300,
+            attestation_timeout_secs: Some(300),
+            require_all_attestations: false,
         }
     }
 }
