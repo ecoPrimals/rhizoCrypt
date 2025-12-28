@@ -3,7 +3,6 @@
 //! Tests the main service entry point, configuration, startup, shutdown,
 //! and error handling scenarios.
 
-use rhizo_crypt_core::safe_env::SafeEnv;
 use std::process::{Command, Stdio};
 use std::time::Duration;
 use tokio::time::sleep;
