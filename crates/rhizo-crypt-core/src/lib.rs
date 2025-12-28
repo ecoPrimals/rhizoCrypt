@@ -68,6 +68,7 @@
 
 pub mod clients;
 pub mod config;
+pub mod constants;
 pub mod dehydration;
 pub mod discovery;
 pub mod error;
