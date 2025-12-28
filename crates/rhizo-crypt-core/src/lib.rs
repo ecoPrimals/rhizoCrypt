@@ -80,6 +80,11 @@ pub mod session;
 pub mod slice;
 pub mod store;
 pub mod types;
+pub mod types_ecosystem; // Ecosystem type definitions
+
+// Legacy type aliases (deprecated, for backward compatibility)
+#[allow(deprecated)]
+pub mod legacy_aliases;
 pub mod vertex;
 
 // Optional storage backends
@@ -157,14 +162,6 @@ pub use integration::{
 /// - `NestGateClient` → `PayloadStorageProvider`
 ///
 /// Will be removed in v1.0.0.
-#[deprecated(
-    since = "0.13.0",
-    note = "Use SigningProvider, PermanentStorageProvider, PayloadStorageProvider instead"
-)]
-#[allow(deprecated)]
-pub use clients::{
-    BearDogClient, LoamSpineClient, NestGateClient, SweetGrassQueryable, ToadStoolClient,
-};
 
 /// **DEPRECATED**: Legacy mock names.
 ///
@@ -180,11 +177,18 @@ pub use clients::{
 #[allow(deprecated)]
 pub use integration::{MockBearDogClient, MockLoamSpineClient, MockNestGateClient};
 
-// Legacy client modules (for re-exports)
-pub use clients::legacy::sweetgrass::{
-    AgentContribution, ProvenanceChain, SessionAttribution, VertexRef,
+// Ecosystem type definitions (compute, provenance)
+pub use types_ecosystem::compute::{ComputeEvent, ComputeProviderClient, ComputeProviderConfig, TaskId};
+pub use types_ecosystem::provenance::{
+    AgentContribution, ProvenanceChain, ProvenanceNotifier, ProvenanceProviderConfig,
+    ProvenanceQueryable, SessionAttribution, VertexQuery, VertexRef,
 };
-pub use clients::legacy::toadstool::{ComputeEvent, TaskId, ToadStoolConfig};
+
+// Legacy aliases (deprecated, for backward compatibility)
+#[allow(deprecated)]
+pub use legacy_aliases::{
+    SweetGrassConfig, SweetGrassNotifier, SweetGrassQueryable, ToadStoolClient, ToadStoolConfig,
+};
 pub use merkle::{MerkleProof, MerkleRoot};
 pub use primal::{
     HealthReport, HealthStatus, PrimalError, PrimalHealth, PrimalLifecycle, PrimalState,

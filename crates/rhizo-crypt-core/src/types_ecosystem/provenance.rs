@@ -1,23 +1,21 @@
-//! SweetGrass Client - Provenance Query Interface
+//! Provenance Provider Types - Lineage & Attribution
 //!
-//! Provides rhizoCrypt data to SweetGrass for:
-//! - Provenance chain queries
-//! - Agent contribution tracking
-//! - Data lineage resolution
+//! Type definitions for provenance query capability providers.
+//! These types work with ANY provenance provider (provenance provider, custom audit systems).
 //!
-//! ## Discovery-Based Architecture
+//! ## Capability-Based Architecture
 //!
-//! SweetGrass queries rhizoCrypt (we are the provider, not the client).
-//! This module defines the queryable interface that SweetGrass can call.
+//! Provenance providers query rhizoCrypt (we are the provider, not the client).
+//! This module defines the queryable interface that provenance systems can call.
 //!
 //! ```text
-//! SweetGrass                   Songbird                    rhizoCrypt
-//!     │                            │                            │
-//!     │──discover(dag-engine)─────▶│                            │
-//!     │◀──ServiceEndpoint──────────│                            │
-//!     │                            │                            │
-//!     │────────query_provenance()───────────────────────────────▶│
-//!     │◀───────ProvenanceChain──────────────────────────────────│
+//! Provenance Provider      Bootstrap                rhizoCrypt
+//!     │                        │                         │
+//!     │──discover(dag-engine)─▶│                         │
+//!     │◀──ServiceEndpoint──────│                         │
+//!     │                        │                         │
+//!     │────────query_provenance()───────────────────────▶│
+//!     │◀───────ProvenanceChain──────────────────────────│
 //! ```
 
 use std::borrow::Cow;
@@ -107,7 +105,7 @@ pub struct AgentContribution {
     pub last_event: Timestamp,
 }
 
-/// Session attribution information for SweetGrass.
+/// Session attribution information for provenance provider.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SessionAttribution {
     /// Session identifier.
@@ -124,10 +122,10 @@ pub struct SessionAttribution {
     pub merkle_root: [u8; 32],
 }
 
-/// Configuration for SweetGrass queryable interface.
+/// Configuration for provenance provider queryable interface.
 #[derive(Debug, Clone)]
-pub struct SweetGrassConfig {
-    /// SweetGrass service address (for push notifications).
+pub struct ProvenanceProviderConfig {
+    /// provenance provider service address (for push notifications).
     pub push_address: Option<Cow<'static, str>>,
 
     /// Query timeout in milliseconds.
@@ -143,7 +141,7 @@ pub struct SweetGrassConfig {
     pub cache_ttl_secs: u64,
 }
 
-impl Default for SweetGrassConfig {
+impl Default for ProvenanceProviderConfig {
     fn default() -> Self {
         Self {
             push_address: None,
@@ -155,7 +153,7 @@ impl Default for SweetGrassConfig {
     }
 }
 
-impl SweetGrassConfig {
+impl ProvenanceProviderConfig {
     /// Create config from environment variables.
     ///
     /// Environment variables (priority order):
@@ -256,21 +254,21 @@ impl VertexQuery {
     }
 }
 
-/// SweetGrass queryable interface.
+/// provenance provider queryable interface.
 ///
-/// This is the interface that SweetGrass uses to query rhizoCrypt
+/// This is the interface that provenance provider uses to query rhizoCrypt
 /// for provenance and attribution information.
 ///
 /// ## Usage
 ///
 /// ```rust,ignore
-/// use rhizo_crypt_core::clients::SweetGrassQueryable;
+/// use rhizo_crypt_core::clients::ProvenanceQueryable;
 ///
 /// // rhizoCrypt implements this trait
 /// let vertices = queryable.get_vertices_for_data(data_hash).await?;
 /// let chain = queryable.get_provenance_chain(vertex_id).await?;
 /// ```
-pub trait SweetGrassQueryable: Send + Sync {
+pub trait ProvenanceQueryable: Send + Sync {
     /// Get all vertices related to a data hash.
     fn get_vertices_for_data(
         &self,
@@ -289,7 +287,7 @@ pub trait SweetGrassQueryable: Send + Sync {
         query: VertexQuery,
     ) -> impl std::future::Future<Output = Result<Vec<VertexRef>>> + Send;
 
-    /// Get session attribution for SweetGrass.
+    /// Get session attribution for provenance provider.
     fn get_session_attribution(
         &self,
         session_id: SessionId,
@@ -306,12 +304,12 @@ pub enum ClientState {
     Connected,
 }
 
-/// SweetGrass notifier for push updates.
+/// provenance provider notifier for push updates.
 ///
-/// Used to notify SweetGrass when new provenance data is available.
-pub struct SweetGrassNotifier {
+/// Used to notify provenance provider when new provenance data is available.
+pub struct ProvenanceNotifier {
     /// Client configuration.
-    pub config: SweetGrassConfig,
+    pub config: ProvenanceProviderConfig,
 
     /// Discovery registry.
     registry: Option<Arc<DiscoveryRegistry>>,
@@ -323,10 +321,10 @@ pub struct SweetGrassNotifier {
     endpoint: Arc<RwLock<Option<SocketAddr>>>,
 }
 
-impl SweetGrassNotifier {
+impl ProvenanceNotifier {
     /// Create a new notifier with the given configuration.
     #[must_use]
-    pub fn new(config: SweetGrassConfig) -> Self {
+    pub fn new(config: ProvenanceProviderConfig) -> Self {
         Self {
             config,
             registry: None,
@@ -339,7 +337,7 @@ impl SweetGrassNotifier {
     #[must_use]
     pub fn with_discovery(registry: Arc<DiscoveryRegistry>) -> Self {
         Self {
-            config: SweetGrassConfig::from_env(),
+            config: ProvenanceProviderConfig::from_env(),
             registry: Some(registry),
             state: Arc::new(RwLock::new(ClientState::Disconnected)),
             endpoint: Arc::new(RwLock::new(None)),
@@ -351,7 +349,7 @@ impl SweetGrassNotifier {
         *self.state.read().await
     }
 
-    /// Connect to SweetGrass for push notifications.
+    /// Connect to provenance provider for push notifications.
     ///
     /// # Errors
     ///
@@ -360,7 +358,7 @@ impl SweetGrassNotifier {
         // Try discovery first
         if let Some(registry) = &self.registry {
             if let Some(endpoint) = registry.get_endpoint(&Capability::ProvenanceQuery).await {
-                info!(address = %endpoint.addr, "Discovered SweetGrass via registry");
+                info!(address = %endpoint.addr, "Discovered provenance provider via registry");
                 *self.endpoint.write().await = Some(endpoint.addr);
                 *self.state.write().await = ClientState::Connected;
                 return Ok(());
@@ -370,32 +368,32 @@ impl SweetGrassNotifier {
         // Fall back to configured address
         if let Some(ref addr) = self.config.push_address {
             let socket_addr: SocketAddr = addr.parse().map_err(|e| {
-                RhizoCryptError::integration(format!("Invalid SweetGrass address '{addr}': {e}"))
+                RhizoCryptError::integration(format!("Invalid provenance provider address '{addr}': {e}"))
             })?;
 
-            debug!(address = %socket_addr, "Connecting to SweetGrass");
+            debug!(address = %socket_addr, "Connecting to provenance provider");
             *self.endpoint.write().await = Some(socket_addr);
             *self.state.write().await = ClientState::Connected;
             return Ok(());
         }
 
-        // SweetGrass is optional - we can operate without it
-        warn!("No SweetGrass address available. Push notifications disabled.");
+        // provenance provider is optional - we can operate without it
+        warn!("No provenance provider address available. Push notifications disabled.");
         Ok(())
     }
 
-    /// Notify SweetGrass of a new session commit.
+    /// Notify provenance provider of a new session commit.
     ///
     /// # Errors
     ///
     /// Returns error if notification fails.
     pub async fn notify_session_commit(&self, session_id: SessionId) -> Result<()> {
         if *self.state.read().await != ClientState::Connected {
-            // Silently ignore if not connected - SweetGrass is optional
+            // Silently ignore if not connected - provenance provider is optional
             return Ok(());
         }
 
-        debug!(%session_id, "Notifying SweetGrass of session commit");
+        debug!(%session_id, "Notifying provenance provider of session commit");
 
         // Scaffolded mode: log but don't send
         // With live-clients feature, this would send the notification
@@ -403,7 +401,7 @@ impl SweetGrassNotifier {
         Ok(())
     }
 
-    /// Notify SweetGrass of a new provenance chain.
+    /// Notify provenance provider of a new provenance chain.
     ///
     /// # Errors
     ///
@@ -413,7 +411,7 @@ impl SweetGrassNotifier {
             return Ok(());
         }
 
-        debug!(vertices = chain.len(), "Notifying SweetGrass of provenance update");
+        debug!(vertices = chain.len(), "Notifying provenance provider of provenance update");
 
         Ok(())
     }
@@ -431,7 +429,7 @@ mod tests {
 
     #[test]
     fn test_config_default() {
-        let config = SweetGrassConfig::default();
+        let config = ProvenanceProviderConfig::default();
         assert!(config.push_address.is_none());
         assert_eq!(config.timeout_ms, 5000);
         assert!(config.cache_enabled);
@@ -439,7 +437,7 @@ mod tests {
 
     #[test]
     fn test_config_with_push_address() {
-        let config = SweetGrassConfig::with_push_address("127.0.0.1:9900");
+        let config = ProvenanceProviderConfig::with_push_address("127.0.0.1:9900");
         assert_eq!(config.push_address.as_deref(), Some("127.0.0.1:9900"));
     }
 
@@ -471,14 +469,14 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notifier_creation() {
-        let config = SweetGrassConfig::default();
-        let notifier = SweetGrassNotifier::new(config);
+        let config = ProvenanceProviderConfig::default();
+        let notifier = ProvenanceNotifier::new(config);
         assert_eq!(notifier.state().await, ClientState::Disconnected);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notify_without_connection() {
-        let notifier = SweetGrassNotifier::new(SweetGrassConfig::default());
+        let notifier = ProvenanceNotifier::new(ProvenanceProviderConfig::default());
         // Should succeed silently when not connected
         let result = notifier.notify_session_commit(SessionId::now()).await;
         assert!(result.is_ok());
@@ -725,13 +723,13 @@ mod tests {
 
     #[test]
     fn test_config_from_env() {
-        let config = SweetGrassConfig::from_env();
+        let config = ProvenanceProviderConfig::from_env();
         assert!(config.timeout_ms > 0);
     }
 
     #[test]
     fn test_config_with_custom_values() {
-        let mut config = SweetGrassConfig::default();
+        let mut config = ProvenanceProviderConfig::default();
         config.timeout_ms = 10000;
         config.cache_ttl_secs = 120;
         config.cache_enabled = false;
@@ -757,14 +755,14 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notifier_with_discovery() {
         let registry = Arc::new(DiscoveryRegistry::new("test"));
-        let notifier = SweetGrassNotifier::with_discovery(registry);
+        let notifier = ProvenanceNotifier::with_discovery(registry);
         assert_eq!(notifier.state().await, ClientState::Disconnected);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notifier_connect_with_push_address() {
-        let config = SweetGrassConfig::with_push_address("127.0.0.1:9900");
-        let notifier = SweetGrassNotifier::new(config);
+        let config = ProvenanceProviderConfig::with_push_address("127.0.0.1:9900");
+        let notifier = ProvenanceNotifier::new(config);
 
         let result = notifier.connect().await;
         assert!(result.is_ok());
@@ -773,8 +771,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notifier_connect_invalid_address() {
-        let config = SweetGrassConfig::with_push_address("invalid-address");
-        let notifier = SweetGrassNotifier::new(config);
+        let config = ProvenanceProviderConfig::with_push_address("invalid-address");
+        let notifier = ProvenanceNotifier::new(config);
 
         let result = notifier.connect().await;
         assert!(result.is_err());
@@ -782,17 +780,17 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notifier_connect_no_address() {
-        let notifier = SweetGrassNotifier::new(SweetGrassConfig::default());
+        let notifier = ProvenanceNotifier::new(ProvenanceProviderConfig::default());
 
-        // Should succeed with warning (SweetGrass is optional)
+        // Should succeed with warning (provenance provider is optional)
         let result = notifier.connect().await;
         assert!(result.is_ok());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notify_session_commit_connected() {
-        let config = SweetGrassConfig::with_push_address("127.0.0.1:9900");
-        let notifier = SweetGrassNotifier::new(config);
+        let config = ProvenanceProviderConfig::with_push_address("127.0.0.1:9900");
+        let notifier = ProvenanceNotifier::new(config);
         notifier.connect().await.unwrap();
 
         let result = notifier.notify_session_commit(SessionId::now()).await;
@@ -801,7 +799,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notify_provenance_without_connection() {
-        let notifier = SweetGrassNotifier::new(SweetGrassConfig::default());
+        let notifier = ProvenanceNotifier::new(ProvenanceProviderConfig::default());
         let chain = ProvenanceChain::new();
 
         // Should succeed silently when not connected
@@ -811,8 +809,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notify_provenance_connected() {
-        let config = SweetGrassConfig::with_push_address("127.0.0.1:9900");
-        let notifier = SweetGrassNotifier::new(config);
+        let config = ProvenanceProviderConfig::with_push_address("127.0.0.1:9900");
+        let notifier = ProvenanceNotifier::new(config);
         notifier.connect().await.unwrap();
 
         let mut chain = ProvenanceChain::new();
@@ -831,8 +829,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_endpoint_management() {
-        let config = SweetGrassConfig::with_push_address("127.0.0.1:9900");
-        let notifier = SweetGrassNotifier::new(config);
+        let config = ProvenanceProviderConfig::with_push_address("127.0.0.1:9900");
+        let notifier = ProvenanceNotifier::new(config);
 
         // Initially no endpoint
         assert!(notifier.endpoint().await.is_none());

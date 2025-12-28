@@ -1,22 +1,21 @@
-//! ToadStool Client - Compute Event Sourcing
+//! Compute Provider Types - Task Events & Configuration
 //!
-//! Connects rhizoCrypt to ToadStool for:
-//! - Compute task event subscription
-//! - ML pipeline status tracking
-//! - Task result integration
+//! Type definitions for compute orchestration capability providers.
+//! These types work with ANY compute provider (compute provider, Kubernetes, Nomad, custom).
 //!
-//! ## Discovery-Based Architecture
+//! ## Capability-Based Architecture
 //!
-//! ToadStool's address is discovered via Songbird at runtime.
+//! Compute providers are discovered via the `compute:orchestration` capability.
+//! The primal doesn't know or care which specific service provides the capability.
 //!
 //! ```text
-//! rhizoCrypt                    Songbird                     ToadStool
-//!     │                            │                            │
-//!     │──discover(compute-events)─▶│                            │
-//!     │◀──ServiceEndpoint──────────│                            │
-//!     │                            │                            │
-//!     │──────────────subscribe(task_id)─────────────────────────▶│
-//!     │◀─────────────Stream<ComputeEvent>───────────────────────│
+//! rhizoCrypt              Bootstrap              Compute Provider
+//!     │                      │                         │
+//!     │──discover(compute)──▶│                         │
+//!     │◀──ServiceEndpoint────│                         │
+//!     │                      │                         │
+//!     │──────────subscribe(task_id)────────────────────▶│
+//!     │◀────────Stream<ComputeEvent>───────────────────│
 //! ```
 
 use std::borrow::Cow;
@@ -31,7 +30,7 @@ use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::{Result, RhizoCryptError};
 use crate::types::{Did, PayloadRef, Timestamp};
 
-/// Task identifier for ToadStool compute tasks.
+/// Task identifier for compute provider compute tasks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TaskId(pub [u8; 32]);
 
@@ -74,7 +73,7 @@ impl std::fmt::Display for TaskId {
     }
 }
 
-/// Compute events from ToadStool.
+/// Compute events from compute provider.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ComputeEvent {
     /// Task created.
@@ -204,10 +203,10 @@ impl ComputeEvent {
     }
 }
 
-/// Configuration for ToadStool client.
+/// Configuration for compute provider client.
 #[derive(Debug, Clone)]
-pub struct ToadStoolConfig {
-    /// ToadStool service address (fallback when discovery unavailable).
+pub struct ComputeProviderConfig {
+    /// compute provider service address (fallback when discovery unavailable).
     pub fallback_address: Option<Cow<'static, str>>,
 
     /// Connection timeout in milliseconds.
@@ -220,7 +219,7 @@ pub struct ToadStoolConfig {
     pub max_retries: u8,
 }
 
-impl Default for ToadStoolConfig {
+impl Default for ComputeProviderConfig {
     fn default() -> Self {
         Self {
             fallback_address: None, // No fallback - use discovery
@@ -231,7 +230,7 @@ impl Default for ToadStoolConfig {
     }
 }
 
-impl ToadStoolConfig {
+impl ComputeProviderConfig {
     /// Create config from environment variables.
     ///
     /// Environment variables (priority order):
@@ -291,7 +290,7 @@ pub enum ClientState {
     Error,
 }
 
-/// ToadStool client for compute event integration.
+/// Compute provider client for task event integration.
 ///
 /// Provides subscription to compute task events for integration
 /// into rhizoCrypt sessions.
@@ -299,10 +298,10 @@ pub enum ClientState {
 /// ## Usage
 ///
 /// ```rust,ignore
-/// use rhizo_crypt_core::clients::{ToadStoolClient, ToadStoolConfig};
+/// use rhizo_crypt_core::types_ecosystem::compute::{ComputeProviderClient, ComputeProviderConfig};
 ///
 /// // Create with discovery (preferred)
-/// let client = ToadStoolClient::with_discovery(registry);
+/// let client = ComputeProviderClient::with_discovery(registry);
 /// client.connect().await?;
 ///
 /// // Subscribe to a task
@@ -311,11 +310,11 @@ pub enum ClientState {
 ///     println!("Event: {:?}", event);
 /// }
 /// ```
-pub struct ToadStoolClient {
+pub struct ComputeProviderClient {
     /// Client configuration.
-    pub config: ToadStoolConfig,
+    pub config: ComputeProviderConfig,
 
-    /// Discovery registry for finding ToadStool.
+    /// Discovery registry for finding compute provider.
     registry: Option<Arc<DiscoveryRegistry>>,
 
     /// Current connection state.
@@ -325,10 +324,10 @@ pub struct ToadStoolClient {
     endpoint: Arc<RwLock<Option<SocketAddr>>>,
 }
 
-impl ToadStoolClient {
+impl ComputeProviderClient {
     /// Create a new client with the given configuration.
     #[must_use]
-    pub fn new(config: ToadStoolConfig) -> Self {
+    pub fn new(config: ComputeProviderConfig) -> Self {
         Self {
             config,
             registry: None,
@@ -341,7 +340,7 @@ impl ToadStoolClient {
     #[must_use]
     pub fn with_discovery(registry: Arc<DiscoveryRegistry>) -> Self {
         Self {
-            config: ToadStoolConfig::from_env(),
+            config: ComputeProviderConfig::from_env(),
             registry: Some(registry),
             state: Arc::new(RwLock::new(ClientState::Disconnected)),
             endpoint: Arc::new(RwLock::new(None)),
@@ -358,7 +357,7 @@ impl ToadStoolClient {
         *self.state.read().await == ClientState::Connected
     }
 
-    /// Connect to ToadStool.
+    /// Connect to compute provider.
     ///
     /// Uses discovery if available, otherwise falls back to configured address.
     ///
@@ -377,7 +376,7 @@ impl ToadStoolClient {
         // Try discovery first
         if let Some(registry) = &self.registry {
             if let Some(endpoint) = registry.get_endpoint(&Capability::ComputeOrchestration).await {
-                info!(address = %endpoint.addr, "Discovered ToadStool via registry");
+                info!(address = %endpoint.addr, "Discovered compute provider via registry");
                 return self.connect_to(endpoint.addr).await;
             }
         }
@@ -385,20 +384,20 @@ impl ToadStoolClient {
         // Fall back to configured address
         if let Some(ref addr) = self.config.fallback_address {
             let socket_addr: SocketAddr = addr.parse().map_err(|e| {
-                RhizoCryptError::integration(format!("Invalid ToadStool address '{addr}': {e}"))
+                RhizoCryptError::integration(format!("Invalid compute provider address '{addr}': {e}"))
             })?;
             return self.connect_to(socket_addr).await;
         }
 
         *self.state.write().await = ClientState::Error;
         Err(RhizoCryptError::integration(
-            "No ToadStool address available. Set TOADSTOOL_ADDRESS or use discovery.",
+            "No compute provider address available. Set COMPUTE_ENDPOINT or use discovery.",
         ))
     }
 
     /// Connect to a specific address.
     async fn connect_to(&self, addr: SocketAddr) -> Result<()> {
-        debug!(address = %addr, "Connecting to ToadStool");
+        debug!(address = %addr, "Connecting to compute provider");
 
         // Scaffolded mode: verify we can reach the address
         match tokio::time::timeout(
@@ -408,20 +407,20 @@ impl ToadStoolClient {
         .await
         {
             Ok(Ok(_stream)) => {
-                info!(address = %addr, "Connected to ToadStool (scaffolded mode)");
+                info!(address = %addr, "Connected to compute provider (scaffolded mode)");
                 *self.endpoint.write().await = Some(addr);
                 *self.state.write().await = ClientState::Connected;
                 Ok(())
             }
             Ok(Err(e)) => {
-                warn!(error = %e, "Failed to connect to ToadStool");
+                warn!(error = %e, "Failed to connect to compute provider");
                 *self.state.write().await = ClientState::Error;
-                Err(RhizoCryptError::integration(format!("Failed to connect to ToadStool: {e}")))
+                Err(RhizoCryptError::integration(format!("Failed to connect to compute provider: {e}")))
             }
             Err(_) => {
-                warn!("ToadStool connection timeout");
+                warn!("Compute provider connection timeout");
                 *self.state.write().await = ClientState::Error;
-                Err(RhizoCryptError::integration("ToadStool connection timeout"))
+                Err(RhizoCryptError::integration("Compute provider connection timeout"))
             }
         }
     }
@@ -439,7 +438,7 @@ impl ToadStoolClient {
     ) -> Result<tokio::sync::mpsc::Receiver<ComputeEvent>> {
         if *self.state.read().await != ClientState::Connected {
             return Err(RhizoCryptError::integration(
-                "Not connected to ToadStool. Call connect() first.",
+                "Not connected to compute provider. Call connect() first.",
             ));
         }
 
@@ -466,7 +465,7 @@ impl ToadStoolClient {
     ) -> Result<tokio::sync::mpsc::Receiver<ComputeEvent>> {
         if *self.state.read().await != ClientState::Connected {
             return Err(RhizoCryptError::integration(
-                "Not connected to ToadStool. Call connect() first.",
+                "Not connected to compute provider. Call connect() first.",
             ));
         }
 
@@ -491,7 +490,7 @@ impl ToadStoolClient {
     ) -> Result<Vec<ComputeEvent>> {
         if *self.state.read().await != ClientState::Connected {
             return Err(RhizoCryptError::integration(
-                "Not connected to ToadStool. Call connect() first.",
+                "Not connected to compute provider. Call connect() first.",
             ));
         }
 
@@ -533,14 +532,14 @@ mod tests {
 
     #[test]
     fn test_config_default() {
-        let config = ToadStoolConfig::default();
+        let config = ComputeProviderConfig::default();
         assert!(config.fallback_address.is_none());
         assert_eq!(config.timeout_ms, 5000);
     }
 
     #[test]
     fn test_config_with_fallback() {
-        let config = ToadStoolConfig::with_fallback("127.0.0.1:9800");
+        let config = ComputeProviderConfig::with_fallback("127.0.0.1:9800");
         assert_eq!(config.fallback_address.as_deref(), Some("127.0.0.1:9800"));
     }
 
@@ -574,14 +573,14 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_creation() {
-        let config = ToadStoolConfig::default();
-        let client = ToadStoolClient::new(config);
+        let config = ComputeProviderConfig::default();
+        let client = ComputeProviderClient::new(config);
         assert_eq!(client.state().await, ClientState::Disconnected);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_subscribe_without_connection() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
         let result = client.subscribe_task(TaskId::now()).await;
         assert!(result.is_err());
     }
@@ -670,7 +669,7 @@ mod tests {
 
     #[test]
     fn test_config_from_env() {
-        let config = ToadStoolConfig::from_env();
+        let config = ComputeProviderConfig::from_env();
         // Default values (may be overridden by env vars)
         assert!(config.timeout_ms > 0);
         assert!(config.event_buffer_size > 0);
@@ -678,7 +677,7 @@ mod tests {
 
     #[test]
     fn test_config_with_custom_values() {
-        let mut config = ToadStoolConfig::default();
+        let mut config = ComputeProviderConfig::default();
         config.timeout_ms = 10000;
         config.event_buffer_size = 200;
 
@@ -707,7 +706,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_with_discovery() {
         let registry = Arc::new(DiscoveryRegistry::new("test"));
-        let client = ToadStoolClient::with_discovery(registry.clone());
+        let client = ComputeProviderClient::with_discovery(registry.clone());
 
         assert!(client.registry().is_some());
         assert_eq!(client.state().await, ClientState::Disconnected);
@@ -715,7 +714,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_is_connected() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
         assert!(!client.is_connected().await);
 
         // Manually set connected
@@ -725,8 +724,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_connect_already_connected() {
-        let config = ToadStoolConfig::with_fallback("127.0.0.1:9800");
-        let client = ToadStoolClient::new(config);
+        let config = ComputeProviderConfig::with_fallback("127.0.0.1:9800");
+        let client = ComputeProviderClient::new(config);
 
         // Manually set connected
         *client.state.write().await = ClientState::Connected;
@@ -738,18 +737,18 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_connect_no_address_available() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
 
         let result = client.connect().await;
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("No ToadStool address available"));
+        assert!(err.to_string().contains("No compute provider address available"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_connect_invalid_address() {
-        let config = ToadStoolConfig::with_fallback("invalid-address");
-        let client = ToadStoolClient::new(config);
+        let config = ComputeProviderConfig::with_fallback("invalid-address");
+        let client = ComputeProviderClient::new(config);
 
         let result = client.connect().await;
         assert!(result.is_err());
@@ -757,7 +756,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_subscribe_agent_without_connection() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
         let did = Did::new("did:key:test");
         let result = client.subscribe_agent(&did).await;
 
@@ -768,7 +767,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_subscribe_agent_connected() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
         *client.state.write().await = ClientState::Connected;
 
         let did = Did::new("did:key:test");
@@ -782,7 +781,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_subscribe_task_connected() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
         *client.state.write().await = ClientState::Connected;
 
         let result = client.subscribe_task(TaskId::now()).await;
@@ -795,7 +794,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_get_events_without_connection() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
         let task_id = TaskId::now();
         let start = Timestamp::now();
         let end = Timestamp::now();
@@ -808,7 +807,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_get_events_connected() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
         *client.state.write().await = ClientState::Connected;
 
         let task_id = TaskId::now();
@@ -823,7 +822,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_endpoint_management() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
 
         // Initially no endpoint
         assert!(client.endpoint().await.is_none());
@@ -840,8 +839,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_fallback_address() {
-        let config = ToadStoolConfig::with_fallback("10.0.0.1:9800");
-        let client = ToadStoolClient::new(config);
+        let config = ComputeProviderConfig::with_fallback("10.0.0.1:9800");
+        let client = ComputeProviderClient::new(config);
 
         assert_eq!(client.fallback_address(), Some("10.0.0.1:9800"));
     }
@@ -849,7 +848,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_registry_access() {
         let registry = Arc::new(DiscoveryRegistry::new("test"));
-        let client = ToadStoolClient::with_discovery(registry.clone());
+        let client = ComputeProviderClient::with_discovery(registry.clone());
 
         let retrieved = client.registry();
         assert!(retrieved.is_some());
@@ -857,7 +856,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_state_error_transition() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
 
         *client.state.write().await = ClientState::Error;
         assert_eq!(client.state().await, ClientState::Error);
@@ -938,7 +937,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_multiple_state_changes() {
-        let client = ToadStoolClient::new(ToadStoolConfig::default());
+        let client = ComputeProviderClient::new(ComputeProviderConfig::default());
 
         // Initial state
         assert_eq!(client.state().await, ClientState::Disconnected);

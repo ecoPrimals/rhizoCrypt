@@ -20,7 +20,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
-use crate::clients::legacy::toadstool::{ComputeEvent, TaskId};
+use crate::types_ecosystem::compute::{ComputeEvent, TaskId};
 use crate::error::{Result, RhizoCryptError};
 use crate::types::{Did, PayloadRef, Timestamp};
 
