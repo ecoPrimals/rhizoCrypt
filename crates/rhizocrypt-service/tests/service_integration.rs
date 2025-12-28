@@ -133,7 +133,7 @@ async fn test_service_concurrent_sessions() {
     let mut tasks = Vec::new();
     for i in 0..10 {
         let session =
-            SessionBuilder::new(SessionType::General).with_name(&format!("session-{}", i)).build();
+            SessionBuilder::new(SessionType::General).with_name(format!("session-{}", i)).build();
         let task = primal.create_session(session);
         tasks.push(task);
     }

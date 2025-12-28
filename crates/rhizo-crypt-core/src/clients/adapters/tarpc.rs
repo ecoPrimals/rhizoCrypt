@@ -80,22 +80,19 @@ impl TarpcAdapter {
         let addr_str = endpoint.strip_prefix("tarpc://").unwrap_or(endpoint);
 
         // Try to parse as SocketAddr first (IP address)
-        let addr: SocketAddr = match addr_str.parse() {
-            Ok(addr) => addr,
-            Err(_) => {
-                // Not an IP address, try to resolve hostname
-                // For new() we need blocking resolution, so we use std::net
-                use std::net::ToSocketAddrs as StdToSocketAddrs;
-                
-                addr_str.to_socket_addrs()
-                    .map_err(|e| RhizoCryptError::integration(format!(
-                        "Invalid tarpc endpoint: {endpoint}. Expected format: host:port or tarpc://host:port. Error: {e}"
-                    )))?
-                    .next()
-                    .ok_or_else(|| RhizoCryptError::integration(format!(
-                        "Could not resolve tarpc endpoint: {endpoint}"
-                    )))?
-            }
+        let addr: SocketAddr = if let Ok(addr) = addr_str.parse() { addr } else {
+            // Not an IP address, try to resolve hostname
+            // For new() we need blocking resolution, so we use std::net
+            use std::net::ToSocketAddrs as StdToSocketAddrs;
+            
+            addr_str.to_socket_addrs()
+                .map_err(|e| RhizoCryptError::integration(format!(
+                    "Invalid tarpc endpoint: {endpoint}. Expected format: host:port or tarpc://host:port. Error: {e}"
+                )))?
+                .next()
+                .ok_or_else(|| RhizoCryptError::integration(format!(
+                    "Could not resolve tarpc endpoint: {endpoint}"
+                )))?
         };
 
         tracing::info!(endpoint = %addr, "Created tarpc adapter");
