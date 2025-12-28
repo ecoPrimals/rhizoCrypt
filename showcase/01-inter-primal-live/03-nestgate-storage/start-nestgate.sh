@@ -37,7 +37,8 @@ echo -e "${NC}"
 
 # Get paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BINS_DIR="/path/to/ecoPrimals/phase2/bins"
+# Use primalBins from ecoPrimals root
+BINS_DIR="/path/to/ecoPrimals/primalBins"
 NESTGATE_BIN="$BINS_DIR/nestgate"
 
 # Verify binary exists

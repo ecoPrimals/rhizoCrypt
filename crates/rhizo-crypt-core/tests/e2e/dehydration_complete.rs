@@ -18,44 +18,29 @@ async fn test_complete_dehydration_workflow() {
     primal.start().await.expect("primal should start");
 
     // Create a session
-    let session = SessionBuilder::new(SessionType::General)
-        .with_name("dehydration-test")
-        .build();
-    let session_id = primal
-        .create_session(session)
-        .await
-        .expect("should create session");
+    let session = SessionBuilder::new(SessionType::General).with_name("dehydration-test").build();
+    let session_id = primal.create_session(session).await.expect("should create session");
 
     // Add vertices to create a DAG
     let v1 = VertexBuilder::new(EventType::SessionStart).build();
-    let v1_id = primal
-        .append_vertex(session_id, v1)
-        .await
-        .expect("should append v1");
+    let v1_id = primal.append_vertex(session_id, v1).await.expect("should append v1");
 
-    let v2 = VertexBuilder::new(EventType::DataCreate { schema: None })
-        .with_parent(v1_id)
-        .build();
-    let v2_id = primal
-        .append_vertex(session_id, v2)
-        .await
-        .expect("should append v2");
+    let v2 = VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .with_parent(v1_id)
+    .build();
+    let v2_id = primal.append_vertex(session_id, v2).await.expect("should append v2");
 
     let v3 = VertexBuilder::new(EventType::SessionEnd {
         outcome: SessionOutcome::Success,
     })
     .with_parent(v2_id)
     .build();
-    primal
-        .append_vertex(session_id, v3)
-        .await
-        .expect("should append v3");
+    primal.append_vertex(session_id, v3).await.expect("should append v3");
 
     // Dehydrate the session
-    let merkle_root = primal
-        .dehydrate(session_id)
-        .await
-        .expect("dehydration should succeed");
+    let merkle_root = primal.dehydrate(session_id).await.expect("dehydration should succeed");
 
     // Verify Merkle root is not zero
     assert_ne!(*merkle_root.as_bytes(), [0u8; 32]);
@@ -65,7 +50,10 @@ async fn test_complete_dehydration_workflow() {
     assert!(status.is_complete(), "Dehydration should be complete");
 
     // Verify commit ref was created
-    if let DehydrationStatus::Completed { commit_ref } = status {
+    if let DehydrationStatus::Completed {
+        commit_ref,
+    } = status
+    {
         // Should have a commit reference (local or remote)
         assert!(!commit_ref.spine_id.is_empty());
         assert_eq!(commit_ref.entry_hash, *merkle_root.as_bytes());
@@ -94,34 +82,22 @@ async fn test_dehydration_multi_agent() {
     })
     .with_name("multi-agent-session")
     .build();
-    let session_id = primal
-        .create_session(session)
-        .await
-        .expect("should create session");
+    let session_id = primal.create_session(session).await.expect("should create session");
 
     // Add vertices from different agents
-    let v1 = VertexBuilder::new(EventType::SessionStart)
-        .with_agent(agent1.clone())
-        .build();
-    let v1_id = primal
-        .append_vertex(session_id, v1)
-        .await
-        .expect("should append v1");
+    let v1 = VertexBuilder::new(EventType::SessionStart).with_agent(agent1.clone()).build();
+    let v1_id = primal.append_vertex(session_id, v1).await.expect("should append v1");
 
-    let v2 = VertexBuilder::new(EventType::DataCreate { schema: None })
-        .with_parent(v1_id)
-        .with_agent(agent2.clone())
-        .build();
-    primal
-        .append_vertex(session_id, v2)
-        .await
-        .expect("should append v2");
+    let v2 = VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .with_parent(v1_id)
+    .with_agent(agent2.clone())
+    .build();
+    primal.append_vertex(session_id, v2).await.expect("should append v2");
 
     // Dehydrate
-    let merkle_root = primal
-        .dehydrate(session_id)
-        .await
-        .expect("dehydration should succeed");
+    let merkle_root = primal.dehydrate(session_id).await.expect("dehydration should succeed");
 
     assert_ne!(*merkle_root.as_bytes(), [0u8; 32]);
 
@@ -132,7 +108,7 @@ async fn test_dehydration_multi_agent() {
 }
 
 /// Test dehydration with large payload.
-/// 
+///
 /// Note: This test creates a vertex with metadata instead of payload
 /// since payloads now use PayloadRef (content-addressed references).
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -142,24 +118,17 @@ async fn test_dehydration_large_payload() {
     primal.start().await.expect("primal should start");
 
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal
-        .create_session(session)
-        .await
-        .expect("should create session");
+    let session_id = primal.create_session(session).await.expect("should create session");
 
     // Add vertex (no payload - would need PayloadRef)
-    let v1 = VertexBuilder::new(EventType::DataCreate { schema: None })
-        .build();
-    primal
-        .append_vertex(session_id, v1)
-        .await
-        .expect("should append vertex");
+    let v1 = VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .build();
+    primal.append_vertex(session_id, v1).await.expect("should append vertex");
 
     // Dehydrate
-    let merkle_root = primal
-        .dehydrate(session_id)
-        .await
-        .expect("dehydration should succeed");
+    let merkle_root = primal.dehydrate(session_id).await.expect("dehydration should succeed");
 
     assert_ne!(*merkle_root.as_bytes(), [0u8; 32]);
 
@@ -177,17 +146,11 @@ async fn test_dehydration_status_progression() {
     primal.start().await.expect("primal should start");
 
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal
-        .create_session(session)
-        .await
-        .expect("should create session");
+    let session_id = primal.create_session(session).await.expect("should create session");
 
     // Add a vertex
     let v1 = VertexBuilder::new(EventType::SessionStart).build();
-    primal
-        .append_vertex(session_id, v1)
-        .await
-        .expect("should append vertex");
+    primal.append_vertex(session_id, v1).await.expect("should append vertex");
 
     // Initial status should be Pending
     let status = primal.get_dehydration_status(session_id).await;
@@ -195,10 +158,7 @@ async fn test_dehydration_status_progression() {
     assert!(!status.is_in_progress());
 
     // Start dehydration
-    let _merkle_root = primal
-        .dehydrate(session_id)
-        .await
-        .expect("dehydration should succeed");
+    let _merkle_root = primal.dehydrate(session_id).await.expect("dehydration should succeed");
 
     // Final status should be Completed
     let status = primal.get_dehydration_status(session_id).await;
@@ -216,10 +176,7 @@ async fn test_dehydration_empty_session() {
     primal.start().await.expect("primal should start");
 
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal
-        .create_session(session)
-        .await
-        .expect("should create session");
+    let session_id = primal.create_session(session).await.expect("should create session");
 
     // Dehydrate without adding any vertices
     let result = primal.dehydrate(session_id).await;
@@ -239,35 +196,20 @@ async fn test_dehydration_merkle_determinism() {
 
     // Create two identical sessions
     let session1 = SessionBuilder::new(SessionType::General).build();
-    let session1_id = primal
-        .create_session(session1)
-        .await
-        .expect("should create session1");
+    let session1_id = primal.create_session(session1).await.expect("should create session1");
 
     let session2 = SessionBuilder::new(SessionType::General).build();
-    let session2_id = primal
-        .create_session(session2)
-        .await
-        .expect("should create session2");
+    let session2_id = primal.create_session(session2).await.expect("should create session2");
 
     // Add identical vertices to both
     for session_id in [session1_id, session2_id] {
         let v1 = VertexBuilder::new(EventType::SessionStart).build();
-        primal
-            .append_vertex(session_id, v1)
-            .await
-            .expect("should append vertex");
+        primal.append_vertex(session_id, v1).await.expect("should append vertex");
     }
 
     // Dehydrate both
-    let root1 = primal
-        .dehydrate(session1_id)
-        .await
-        .expect("dehydration1 should succeed");
-    let root2 = primal
-        .dehydrate(session2_id)
-        .await
-        .expect("dehydration2 should succeed");
+    let root1 = primal.dehydrate(session1_id).await.expect("dehydration1 should succeed");
+    let root2 = primal.dehydrate(session2_id).await.expect("dehydration2 should succeed");
 
     // Merkle roots should be different (sessions have different IDs/timestamps)
     // But the structure should be deterministic
@@ -276,4 +218,3 @@ async fn test_dehydration_merkle_determinism() {
 
     primal.stop().await.expect("primal should stop");
 }
-

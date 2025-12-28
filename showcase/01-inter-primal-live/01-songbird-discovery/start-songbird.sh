@@ -38,8 +38,9 @@ echo -e "${NC}"
 # Get paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RHIZO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-BINS_DIR="$(cd "$RHIZO_ROOT/../bins" && pwd)"
-SONGBIRD_BIN="$BINS_DIR/songbird-rendezvous"
+# Use primalBins from ecoPrimals root
+BINS_DIR="/path/to/ecoPrimals/primalBins"
+SONGBIRD_BIN="$BINS_DIR/songbird-cli"
 
 # Verify binary exists
 if [ ! -f "$SONGBIRD_BIN" ]; then
@@ -84,11 +85,11 @@ LOG_DIR="$SCRIPT_DIR/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/songbird-rendezvous.log"
 
-log "Starting Songbird rendezvous server..."
+log "Starting Songbird tower (rendezvous mode)..."
 echo ""
 
-# Start in background
-"$SONGBIRD_BIN" > "$LOG_FILE" 2>&1 &
+# Start tower in background
+"$SONGBIRD_BIN" tower start --port $SONGBIRD_PORT > "$LOG_FILE" 2>&1 &
 SONGBIRD_PID=$!
 
 echo "$SONGBIRD_PID" > "$SCRIPT_DIR/.songbird.pid"

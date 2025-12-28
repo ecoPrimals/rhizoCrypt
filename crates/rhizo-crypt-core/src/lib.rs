@@ -753,7 +753,7 @@ impl RhizoCrypt {
         let attestations = if config.required_attestations.is_empty() {
             Vec::new()
         } else {
-            self.collect_attestations(session_id, &summary, &config).await?
+            self.collect_attestations(session_id, &summary, &config)
         };
 
         // Add attestations to summary
@@ -858,15 +858,15 @@ impl RhizoCrypt {
     /// 4. Return verified attestations
     ///
     /// For now, returns empty vec (attestations are optional).
-    async fn collect_attestations(
+    fn collect_attestations(
         &self,
-        _session_id: SessionId,
+        session_id: SessionId,
         summary: &dehydration::DehydrationSummary,
         config: &dehydration::DehydrationConfig,
-    ) -> Result<Vec<dehydration::Attestation>> {
+    ) -> Vec<dehydration::Attestation> {
         // Update status with progress
         self.dehydration_status.insert(
-            _session_id,
+            session_id,
             dehydration::DehydrationStatus::CollectingAttestations {
                 collected: 0,
                 required: config.required_attestations.len(),
@@ -883,7 +883,7 @@ impl RhizoCrypt {
         // 5. Return attestations
 
         // For now, return empty (attestations optional)
-        Ok(Vec::new())
+        Vec::new()
     }
 
     /// Commit dehydration summary to permanent storage.
@@ -894,12 +894,13 @@ impl RhizoCrypt {
         &self,
         summary: &dehydration::DehydrationSummary,
     ) -> Result<session::LoamCommitRef> {
+        use crate::clients::PermanentStorageClient;
+        
         // Create a discovery registry for capability-based lookup
         // In production, this would be passed in or created at startup
         let registry = discovery::DiscoveryRegistry::new("rhizoCrypt");
 
         // Try to discover permanent storage provider
-        use crate::clients::PermanentStorageClient;
         match PermanentStorageClient::discover(&registry).await {
             Ok(client) => {
                 // Commit via discovered provider (capability-based!)

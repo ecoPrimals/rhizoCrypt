@@ -16,7 +16,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BINS_DIR="/path/to/ecoPrimals/phase2/bins"
+BINS_DIR="/path/to/ecoPrimals/primalBins"
 BEARDOG="$BINS_DIR/beardog"
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"

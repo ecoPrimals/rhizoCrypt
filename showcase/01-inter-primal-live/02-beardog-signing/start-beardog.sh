@@ -38,7 +38,8 @@ echo -e "${NC}"
 # Get paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RHIZO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-BINS_DIR="$(cd "$RHIZO_ROOT/../bins" && pwd)"
+# Use primalBins from ecoPrimals root
+BINS_DIR="/path/to/ecoPrimals/primalBins"
 BEARDOG_BIN="$BINS_DIR/beardog"
 
 # Verify binary exists
