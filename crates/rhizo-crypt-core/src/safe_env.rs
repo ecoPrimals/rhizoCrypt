@@ -522,13 +522,20 @@ mod tests {
 
     #[test]
     fn test_is_development_case_insensitive() {
+        // Save current value
+        let original = std::env::var("RHIZOCRYPT_ENV").ok();
+        
         std::env::set_var("RHIZOCRYPT_ENV", "DEVELOPMENT");
         assert!(SafeEnv::is_development());
-        std::env::remove_var("RHIZOCRYPT_ENV");
-
+        
         std::env::set_var("RHIZOCRYPT_ENV", "Development");
         assert!(SafeEnv::is_development());
-        std::env::remove_var("RHIZOCRYPT_ENV");
+        
+        // Restore original value
+        match original {
+            Some(val) => std::env::set_var("RHIZOCRYPT_ENV", val),
+            None => std::env::remove_var("RHIZOCRYPT_ENV"),
+        }
     }
 
     #[test]
