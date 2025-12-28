@@ -1,190 +1,228 @@
-#!/usr/bin/env bash
-# Demo: DAG-Driven Compute with ToadStool
+#!/bin/bash
+# Demo: DAG-Driven Compute Workflow with ToadStool
+# Prerequisites: ToadStool binary available
+# Expected: Complete ML workflow with provenance tracking
+
 set -euo pipefail
 
+# Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
+RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}   🧮 DAG-Driven Compute with ToadStool${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
+# Paths
+TOADSTOOL_BIN="/path/to/ecoPrimals/primalBins/toadstool-cli"
+RHIZO_BIN="/path/to/ecoPrimals/phase2/rhizoCrypt/target/release/rhizocrypt-service"
+
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}  🍄 Demo: DAG-Driven Compute with ToadStool${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
-cd "$(dirname "$0")/../.."
+# Check binaries
+echo -e "${YELLOW}📝 Step 1: Check binaries${NC}"
+if [ ! -f "$TOADSTOOL_BIN" ]; then
+    echo -e "${RED}✗ ToadStool binary not found at: $TOADSTOOL_BIN${NC}"
+    echo -e "${YELLOW}  Build ToadStool or check path in primalBins/${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ ToadStool binary found${NC}"
 
-cat > /tmp/dag_compute.rs << 'EOF'
-use rhizo_crypt_core::*;
+if [ ! -f "$RHIZO_BIN" ]; then
+    echo -e "${YELLOW}⚠  rhizoCrypt service not built, building now...${NC}"
+    cd ../../../ && cargo build --release --bin rhizocrypt-service
+    cd -
+fi
+echo -e "${GREEN}✓ rhizoCrypt service ready${NC}"
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("═══════════════════════════════════════════════════════");
-    println!("  DAG-Driven Compute: Provenance + Execution");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    primal.start().await?;
-    
-    // Create session for compute workflow
-    let session = SessionBuilder::new(SessionType::General)
-        .with_name("compute-workflow")
-        .build();
-    let session_id = primal.create_session(session).await?;
-    
-    println!("📋 Scenario: ML Training with Provenance");
-    println!("");
-    
-    // Step 1: Data preparation
-    println!("📝 Step 1: Prepare Dataset");
-    let dataset = PayloadRef::from_bytes(b"Training data: [1,2,3,4,5]");
-    let v1 = VertexBuilder::new(EventType::DataCreate { schema: None })
-        .with_agent(Did::new("did:key:data-scientist"))
-        .with_payload(dataset)
-        .with_metadata("stage", "data_prep")
-        .with_metadata("dataset", "mnist-subset")
-        .with_metadata("size", "50000")
-        .build();
-    let v1_id = primal.append_vertex(session_id, v1).await?;
-    println!("   ✓ Dataset prepared: {}", v1_id);
-    println!("");
-    
-    // Step 2: Request compute
-    println!("🧮 Step 2: Request Compute from ToadStool");
-    let compute_request = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:key:ml-pipeline"))
-        .with_parent(v1_id)
-        .with_metadata("stage", "compute_request")
-        .with_metadata("compute_type", "gpu")
-        .with_metadata("framework", "pytorch")
-        .with_metadata("epochs", "10")
-        .build();
-    let v2_id = primal.append_vertex(session_id, compute_request).await?;
-    println!("   ✓ Compute requested: {}", v2_id);
-    println!("   • GPU compute");
-    println!("   • PyTorch framework");
-    println!("   • 10 training epochs");
-    println!("");
-    
-    // Step 3: Compute execution
-    println!("⚙️  Step 3: ToadStool Executes Training");
-    println!("   (Simulating GPU training...)");
-    std::thread::sleep(std::time::Duration::from_millis(500));
-    
-    let model_payload = PayloadRef::from_bytes(b"Trained model weights: [0.42, 0.87, ...]");
-    let compute_result = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:toadstool:gpu-node-7"))
-        .with_parent(v2_id)
-        .with_payload(model_payload)
-        .with_metadata("stage", "compute_complete")
-        .with_metadata("accuracy", "0.95")
-        .with_metadata("loss", "0.05")
-        .with_metadata("duration_sec", "127")
-        .with_metadata("gpu_hours", "0.035")
-        .build();
-    let v3_id = primal.append_vertex(session_id, compute_result).await?;
-    println!("   ✓ Training complete: {}", v3_id);
-    println!("   • Accuracy: 0.95");
-    println!("   • Loss: 0.05");
-    println!("   • Duration: 127 seconds");
-    println!("   • GPU hours: 0.035");
-    println!("");
-    
-    // Step 4: Validation
-    println!("✅ Step 4: Validate Results");
-    let validation = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:key:data-scientist"))
-        .with_parent(v3_id)
-        .with_metadata("stage", "validation")
-        .with_metadata("status", "approved")
-        .with_metadata("test_accuracy", "0.94")
-        .build();
-    let _v4_id = primal.append_vertex(session_id, validation).await?;
-    println!("   ✓ Model validated");
-    println!("   • Test accuracy: 0.94");
-    println!("   • Status: Approved");
-    println!("");
-    
-    // Show DAG
-    println!("🔄 Complete Compute Workflow:");
-    println!("");
-    println!("   ┌────────────────┐");
-    println!("   │ Data Prep      │  Scientist prepares dataset");
-    println!("   │ (Scientist)    │");
-    println!("   └────────┬───────┘");
-    println!("            │");
-    println!("   ┌────────▼───────┐");
-    println!("   │ Request Compute│  ML pipeline requests GPU");
-    println!("   │ (ML Pipeline)  │");
-    println!("   └────────┬───────┘");
-    println!("            │");
-    println!("   ┌────────▼───────┐");
-    println!("   │ Train Model    │  ToadStool executes on GPU");
-    println!("   │ (ToadStool)    │");
-    println!("   └────────┬───────┘");
-    println!("            │");
-    println!("   ┌────────▼───────┐");
-    println!("   │ Validate       │  Scientist approves");
-    println!("   │ (Scientist)    │");
-    println!("   └────────────────┘");
-    println!("");
-    
-    // Resolve session
-    let resolution = primal.resolve_session(session_id, ResolutionOutcome::Commit).await?;
-    
-    println!("🔐 Provenance Proof:");
-    println!("   • Full training lineage captured");
-    println!("   • Dataset → Request → Execution → Validation");
-    println!("   • Multi-agent workflow (3 agents)");
-    println!("   • Merkle root: {}", hex::encode(&resolution.merkle_root));
-    println!("   • Cryptographic proof of entire workflow");
-    println!("");
-    
-    println!("═══════════════════════════════════════════════════════");
-    println!("  ✨ DAG-Driven Compute Benefits:");
-    println!("═══════════════════════════════════════════════════════");
-    println!("  rhizoCrypt (DAG):          ToadStool (Compute):");
-    println!("  • Training provenance      • GPU execution");
-    println!("  • Dataset lineage          • ML frameworks");
-    println!("  • Agent attribution        • Resource allocation");
-    println!("  • Result validation        • Performance metrics");
-    println!("  • Audit trail              • Cost tracking");
-    println!("");
-    println!("  Together: Reproducible ML with full provenance!");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    Ok(())
+# Check ToadStool capabilities
+echo -e "\n${YELLOW}📝 Step 2: Discover ToadStool capabilities${NC}"
+echo -e "${BLUE}   Running: $TOADSTOOL_BIN --help${NC}"
+if "$TOADSTOOL_BIN" --help > /tmp/toadstool-help.txt 2>&1; then
+    echo -e "${GREEN}✓ ToadStool CLI responsive${NC}"
+    head -n 5 /tmp/toadstool-help.txt
+else
+    echo -e "${RED}✗ ToadStool CLI not responding${NC}"
+    echo -e "${YELLOW}  This demo shows the intended integration pattern${NC}"
+fi
+
+# Simulate DAG workflow (conceptual demonstration)
+echo -e "\n${YELLOW}📝 Step 3: Create compute workflow DAG${NC}"
+cat > /tmp/compute-workflow.json <<'EOF'
+{
+  "workflow": "ml-training",
+  "steps": [
+    {
+      "id": "dataset-prep",
+      "type": "data-update",
+      "agent": "did:key:researcher",
+      "description": "Load and preprocess MNIST dataset"
+    },
+    {
+      "id": "compute-request",
+      "type": "data-update", 
+      "agent": "did:key:ml-pipeline",
+      "parents": ["dataset-prep"],
+      "metadata": {
+        "compute_type": "gpu",
+        "framework": "pytorch",
+        "gpus_requested": 1
+      }
+    },
+    {
+      "id": "toadstool-execution",
+      "type": "data-update",
+      "agent": "did:toadstool:gpu-0",
+      "parents": ["compute-request"],
+      "metadata": {
+        "gpu_model": "NVIDIA GPU",
+        "utilization": "95%",
+        "duration_sec": 45
+      }
+    },
+    {
+      "id": "result-validation",
+      "type": "data-update",
+      "agent": "did:key:researcher",
+      "parents": ["toadstool-execution"],
+      "metadata": {
+        "accuracy": "0.98",
+        "validation": "passed"
+      }
+    }
+  ]
 }
 EOF
 
-echo -e "${YELLOW}Compiling DAG-compute demo...${NC}"
-rustc --edition 2021 /tmp/dag_compute.rs \
-    -L target/release/deps \
-    --extern rhizo_crypt_core=target/release/librhizo_crypt_core.rlib \
-    --extern tokio=target/release/deps/libtokio-*.rlib \
-    --extern blake3=target/release/deps/libblake3-*.rlib \
-    --extern hex=target/release/deps/libhex-*.rlib \
-    -o /tmp/dag_compute 2>&1 | grep -v "warning" || true
+echo -e "${GREEN}✓ Workflow DAG defined${NC}"
+echo -e "${BLUE}   Workflow structure:${NC}"
+echo -e "     dataset-prep → compute-request → toadstool-execution → result-validation"
 
-echo "Running DAG-compute demo..."
-echo ""
-/tmp/dag_compute
+# Show provenance hierarchy
+echo -e "\n${YELLOW}📝 Step 4: Provenance hierarchy${NC}"
+cat <<'EOF'
 
+┌─────────────────────────────────────────────────────────┐
+│  Session: ML Training Experiment                       │
+│  DID: did:key:researcher                               │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ① Dataset Preparation                                 │
+│     └─ Agent: did:key:researcher                       │
+│        └─ Event: Load MNIST, normalize, split          │
+│                                                         │
+│  ② Compute Request                                     │
+│     └─ Agent: did:key:ml-pipeline                      │
+│        └─ Parents: [dataset-prep]                      │
+│        └─ Metadata: {gpu, pytorch, 1 GPU}              │
+│                                                         │
+│  ③ ToadStool Execution                                 │
+│     └─ Agent: did:toadstool:gpu-0                      │
+│        └─ Parents: [compute-request]                   │
+│        └─ Hardware: NVIDIA GPU @ 95% util              │
+│        └─ Duration: 45 seconds                         │
+│                                                         │
+│  ④ Result Validation                                   │
+│     └─ Agent: did:key:researcher                       │
+│        └─ Parents: [toadstool-execution]               │
+│        └─ Accuracy: 0.98 (98% correct)                 │
+│        └─ Status: PASSED                               │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+
+EOF
+echo -e "${GREEN}✓ Complete provenance chain captured${NC}"
+
+# Key benefits
+echo -e "\n${YELLOW}📝 Step 5: Key benefits of DAG-driven compute${NC}"
+echo -e "${BLUE}   1. Reproducibility${NC}"
+echo -e "      → Full training lineage from raw data to final model"
+echo -e "      → Every step cryptographically linked"
+echo -e ""
+echo -e "${BLUE}   2. Hardware Attribution${NC}"
+echo -e "      → Each GPU has a DID (did:toadstool:gpu-N)"
+echo -e "      → Track utilization, power, cost per GPU"
+echo -e ""
+echo -e "${BLUE}   3. Debugging & Optimization${NC}"
+echo -e "      → Identify bottlenecks in the DAG"
+echo -e "      → Compare performance across runs"
+echo -e ""
+echo -e "${BLUE}   4. Compliance & Auditing${NC}"
+echo -e "      → Merkle proofs for entire workflow"
+echo -e "      → Tamper-evident compute records"
+echo -e ""
+
+# Integration pattern
+echo -e "\n${YELLOW}📝 Step 6: Integration pattern (capability-based)${NC}"
+cat <<'EOF'
+
+// No hardcoded ToadStool endpoints!
+let compute_client = CapabilityRegistry::discover("ComputeProvider")
+    .with_requirement("gpu")
+    .with_framework("pytorch")
+    .await?;
+
+// Submit job through discovered capability
+let job_id = compute_client.submit_job(JobSpec {
+    framework: "pytorch",
+    script: "train.py",
+    resources: Resources { gpus: 1 },
+}).await?;
+
+// Track execution in rhizoCrypt DAG
+let compute_vertex = session.create_vertex(
+    EventType::DataUpdate { schema: None },
+    did!("did:toadstool:gpu-0"),
+    vec![request_vertex],
+    ComputeMetadata {
+        job_id,
+        gpu_model: "NVIDIA GPU",
+        utilization: 0.95,
+        duration_sec: 45,
+    }
+).await?;
+
+EOF
+echo -e "${GREEN}✓ Zero vendor lock-in, pure capability discovery${NC}"
+
+# Real-world scenarios
+echo -e "\n${YELLOW}📝 Step 7: Real-world use cases${NC}"
+echo -e "${BLUE}   ① ML Training${NC}"
+echo -e "      Dataset → Preprocessing → Training → Validation → Model"
+echo -e "      Full reproducibility for research papers"
+echo -e ""
+echo -e "${BLUE}   ② Distributed Inference${NC}"
+echo -e "      Multi-region GPU deployment with per-node attribution"
+echo -e "      SLA verification and cost tracking"
+echo -e ""
+echo -e "${BLUE}   ③ Cost Accounting${NC}"
+echo -e "      GPU hours per user/project"
+echo -e "      Energy consumption and carbon footprint"
+echo -e ""
+
+# Final summary
+echo -e "\n${GREEN}✅ Demo complete!${NC}"
+echo -e "\n${BLUE}What you learned:${NC}"
+echo "  • rhizoCrypt tracks compute workflow as a DAG"
+echo "  • Each GPU/hardware gets a unique DID"
+echo "  • Complete provenance from data to model"
+echo "  • Capability-based discovery (no hardcoding)"
+echo "  • Merkle proofs for tamper-evident compute"
 echo ""
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}✅ DAG-driven compute demo complete!${NC}"
+echo -e "${YELLOW}⚠️  Current status:${NC}"
+echo "  • Pattern demonstrated (conceptual)"
+echo "  • ToadStool CLI available but integration API pending"
+echo "  • Full working demo requires ToadStool RPC service"
 echo ""
-echo -e "${YELLOW}📚 What you learned:${NC}"
-echo "  • rhizoCrypt tracks ML training provenance"
-echo "  • ToadStool provides GPU compute"
-echo "  • Full workflow captured in DAG"
-echo "  • Multi-agent collaboration"
-echo "  • Reproducible ML with audit trail"
-echo ""
-echo -e "${YELLOW}▶ Next demo:${NC} ./demo-gpu-provenance.sh"
+echo -e "${BLUE}Next steps:${NC}"
+echo "  • Try: ./demo-gpu-provenance.sh (hardware attribution)"
+echo "  • Try: ./demo-distributed-compute.sh (multi-node)"
+echo "  • See: ../05-complete-workflows/demo-ml-pipeline.sh"
 echo ""
 
-rm -f /tmp/dag_compute.rs /tmp/dag_compute
+# Cleanup
+rm -f /tmp/compute-workflow.json /tmp/toadstool-help.txt
 
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"

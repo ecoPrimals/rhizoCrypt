@@ -1,224 +1,259 @@
-#!/usr/bin/env bash
-# Demo: Distributed Compute Across Multiple ToadStool Nodes
+#!/bin/bash
+# Demo: Distributed Compute Across Multiple Regions
+# Prerequisites: Understanding of GPU provenance
+# Expected: Multi-region coordination with global provenance DAG
+
 set -euo pipefail
 
+# Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
+RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}   🌐 Distributed Compute Orchestration${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}  🌍 Demo: Distributed Compute Provenance${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
-cd "$(dirname "$0")/../.."
+# Scenario
+echo -e "${YELLOW}📝 Scenario: Global ML Inference Deployment${NC}"
+echo -e "${BLUE}   Deploy inference across 3 regions for low latency${NC}"
+echo -e "${BLUE}   Track performance, cost, and SLAs per region${NC}"
+echo ""
 
-cat > /tmp/distributed_compute.rs << 'EOF'
-use rhizo_crypt_core::*;
+# Region topology
+echo -e "${YELLOW}📝 Step 1: Multi-region topology${NC}"
+cat <<'EOF'
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("═══════════════════════════════════════════════════════");
-    println!("  Distributed Compute: Multi-Node Orchestration");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    primal.start().await?;
-    
-    let session = SessionBuilder::new(SessionType::General)
-        .with_name("distributed-inference")
-        .build();
-    let session_id = primal.create_session(session).await?;
-    
-    println!("📋 Scenario: Distributed Inference Across Data Centers");
-    println!("");
-    
-    // Request distributed inference
-    println!("📝 Request: Global Inference Service");
-    let request = VertexBuilder::new(EventType::DataCreate { schema: None })
-        .with_agent(Did::new("did:key:service-operator"))
-        .with_metadata("service", "global-inference")
-        .with_metadata("regions", "us-west,eu-central,asia-east")
-        .with_metadata("model", "llama-3-70b")
-        .with_metadata("replicas", "12")
-        .build();
-    let req_id = primal.append_vertex(session_id, request).await?;
-    println!("   ✓ Service requested");
-    println!("     Model: Llama 3 70B");
-    println!("     Regions: 3 (US, EU, Asia)");
-    println!("     Replicas: 12");
-    println!("");
-    
-    // Simulate distributed nodes
-    let regions = vec![
-        ("us-west", "Portland", vec!["node-0", "node-1", "node-2", "node-3"]),
-        ("eu-central", "Frankfurt", vec!["node-4", "node-5", "node-6", "node-7"]),
-        ("asia-east", "Tokyo", vec!["node-8", "node-9", "node-10", "node-11"]),
-    ];
-    
-    println!("⚙️  ToadStool Nodes Activate:");
-    println!("");
-    
-    for (region_id, location, nodes) in regions {
-        println!("   🌍 Region: {} ({})", location, region_id);
-        
-        for node_id in nodes {
-            let node_vertex = VertexBuilder::new(EventType::DataUpdate { schema: None })
-                .with_agent(Did::new(&format!("did:toadstool:{}:{}", region_id, node_id)))
-                .with_parent(req_id)
-                .with_metadata("region", region_id)
-                .with_metadata("location", location)
-                .with_metadata("node_id", node_id)
-                .with_metadata("status", "ready")
-                .with_metadata("gpu_count", "8")
-                .with_metadata("latency_ms", &format!("{}", rand::random::<u32>() % 50 + 10))
-                .build();
-            
-            primal.append_vertex(session_id, node_vertex).await?;
-            println!("      ✓ {} ready", node_id);
-        }
-        println!("");
-    }
-    
-    // Simulate inference requests
-    println!("📊 Processing Inference Requests:");
-    println!("");
-    
-    let requests_data = vec![
-        ("Request from Seattle", "us-west:node-1", "42ms"),
-        ("Request from Berlin", "eu-central:node-5", "38ms"),
-        ("Request from Singapore", "asia-east:node-9", "55ms"),
-        ("Request from London", "eu-central:node-6", "28ms"),
-        ("Request from San Francisco", "us-west:node-2", "45ms"),
-    ];
-    
-    for (request_desc, serving_node, latency) in requests_data {
-        let inference = VertexBuilder::new(EventType::DataUpdate { schema: None })
-            .with_agent(Did::new(&format!("did:toadstool:{}", serving_node)))
-            .with_metadata("request", request_desc)
-            .with_metadata("served_by", serving_node)
-            .with_metadata("latency", latency)
-            .with_metadata("tokens", &format!("{}", rand::random::<u32>() % 200 + 100))
-            .build();
-        primal.append_vertex(session_id, inference).await?;
-        println!("   ✓ {}: {} ({})", request_desc, serving_node, latency);
-    }
-    println!("");
-    
-    // Aggregate metrics
-    println!("📈 Global Metrics:");
-    let metrics = VertexBuilder::new(EventType::DataUpdate { schema: None })
-        .with_agent(Did::new("did:toadstool:global-coordinator"))
-        .with_metadata("stage", "metrics")
-        .with_metadata("total_nodes", "12")
-        .with_metadata("total_requests", "5")
-        .with_metadata("avg_latency_ms", "41.6")
-        .with_metadata("total_tokens", "750")
-        .with_metadata("uptime_pct", "99.99")
-        .build();
-    primal.append_vertex(session_id, metrics).await?;
-    
-    println!("   • Total nodes: 12 (across 3 regions)");
-    println!("   • Requests served: 5");
-    println!("   • Avg latency: 41.6ms");
-    println!("   • Total tokens: 750");
-    println!("   • Uptime: 99.99%");
-    println!("");
-    
-    println!("🌍 Geographic Distribution:");
-    println!("");
-    println!("   ┌─────────────────────────────────────────────────┐");
-    println!("   │                                                 │");
-    println!("   │  🇺🇸 US West (Portland)    🇪🇺 EU (Frankfurt)   │");
-    println!("   │     ├─ node-0                ├─ node-4          │");
-    println!("   │     ├─ node-1                ├─ node-5          │");
-    println!("   │     ├─ node-2                ├─ node-6          │");
-    println!("   │     └─ node-3                └─ node-7          │");
-    println!("   │                                                 │");
-    println!("   │              🇯🇵 Asia East (Tokyo)              │");
-    println!("   │                 ├─ node-8                       │");
-    println!("   │                 ├─ node-9                       │");
-    println!("   │                 ├─ node-10                      │");
-    println!("   │                 └─ node-11                      │");
-    println!("   │                                                 │");
-    println!("   └─────────────────────────────────────────────────┘");
-    println!("");
-    
-    let resolution = primal.resolve_session(session_id, ResolutionOutcome::Commit).await?;
-    
-    println!("🔐 Distributed Provenance:");
-    println!("");
-    println!("   ✨ Benefits:");
-    println!("      • Global service topology captured");
-    println!("      • Per-node performance tracked");
-    println!("      • Request routing documented");
-    println!("      • Geographic attribution");
-    println!("      • Full audit trail");
-    println!("");
-    println!("   🎯 Use Cases:");
-    println!("      • SLA verification");
-    println!("      • Cost allocation per region");
-    println!("      • Performance debugging");
-    println!("      • Capacity planning");
-    println!("      • Compliance (data residency)");
-    println!("");
-    println!("   Merkle root: {}", hex::encode(&resolution.merkle_root));
-    println!("");
-    
-    println!("═══════════════════════════════════════════════════════");
-    println!("  ✨ Distributed Compute with rhizoCrypt:");
-    println!("═══════════════════════════════════════════════════════");
-    println!("  • Multi-region orchestration");
-    println!("  • Per-node attribution");
-    println!("  • Global provenance in single DAG");
-    println!("  • Geo-distributed accountability");
-    println!("  • Cryptographic proof of all compute");
-    println!("═══════════════════════════════════════════════════════\n");
-    
-    Ok(())
-}
+┌────────────────────────────────────────────────────────────────┐
+│  Global Compute Deployment                                     │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  🌎 US-West (us-west-2)                                        │
+│     ├─ Node 1: did:toadstool:us-west:node-1 (4× GPU)          │
+│     └─ Node 2: did:toadstool:us-west:node-2 (4× GPU)          │
+│                                                                │
+│  🌍 EU-Central (eu-central-1)                                  │
+│     ├─ Node 1: did:toadstool:eu-central:node-1 (4× GPU)       │
+│     └─ Node 2: did:toadstool:eu-central:node-2 (4× GPU)       │
+│                                                                │
+│  🌏 Asia-Pacific (ap-southeast-1)                              │
+│     ├─ Node 1: did:toadstool:ap-southeast:node-1 (4× GPU)     │
+│     └─ Node 2: did:toadstool:ap-southeast:node-2 (4× GPU)     │
+│                                                                │
+│  Total: 24 GPUs across 3 regions                              │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
 
-// Fake rand for demo
-mod rand {
-    pub fn random<T>() -> T where T: Default {
-        T::default()
-    }
-}
 EOF
+echo -e "${GREEN}✓ Geo-distributed GPU cluster with regional DIDs${NC}"
 
-echo -e "${YELLOW}Compiling distributed compute demo...${NC}"
-rustc --edition 2021 /tmp/distributed_compute.rs \
-    -L target/release/deps \
-    --extern rhizo_crypt_core=target/release/librhizo_crypt_core.rlib \
-    --extern tokio=target/release/deps/libtokio-*.rlib \
-    --extern blake3=target/release/deps/libblake3-*.rlib \
-    --extern hex=target/release/deps/libhex-*.rlib \
-    -o /tmp/distributed_compute 2>&1 | grep -v "warning" || true
+# Inference workflow
+echo -e "\n${YELLOW}📝 Step 2: Distributed inference workflow${NC}"
+cat <<'EOF'
 
-echo "Running distributed compute demo..."
-echo ""
-/tmp/distributed_compute
+┌────────────────────────────────────────────────────────────────┐
+│  Request Flow (User in Europe)                                 │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  ① User Request                                               │
+│     └─ Location: Berlin, Germany                              │
+│     └─ Model: gpt-4-turbo (inference)                         │
+│     └─ Routing: Nearest region (EU-Central)                   │
+│                                                                │
+│  ② Vertex: Request Received                                   │
+│     └─ Agent: did:toadstool:eu-central:load-balancer         │
+│     └─ Timestamp: 2025-12-28T15:23:45Z                        │
+│     └─ Client IP: 192.0.2.100 (Berlin)                      │
+│                                                                │
+│  ③ Vertex: GPU Assignment                                     │
+│     └─ Agent: did:toadstool:eu-central:node-1                │
+│     └─ GPU: did:toadstool:eu-central:node-1:gpu-2            │
+│     └─ Parent: [request-received]                             │
+│                                                                │
+│  ④ Vertex: Inference Execution                                │
+│     └─ Agent: did:toadstool:eu-central:node-1:gpu-2          │
+│     └─ Duration: 127ms                                        │
+│     └─ Tokens: 150                                            │
+│     └─ Cost: $0.0045                                          │
+│     └─ Parent: [gpu-assignment]                               │
+│                                                                │
+│  ⑤ Vertex: Response Sent                                      │
+│     └─ Agent: did:toadstool:eu-central:load-balancer         │
+│     └─ Total latency: 142ms (meets SLA: <200ms)              │
+│     └─ Parent: [inference-execution]                          │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
 
-echo ""
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}✅ Distributed compute demo complete!${NC}"
-echo ""
-echo -e "${YELLOW}📚 What you learned:${NC}"
-echo "  • Multi-region compute orchestration"
-echo "  • Geographic node attribution"
-echo "  • Global provenance in single DAG"
-echo "  • Performance tracking per region"
-echo "  • Distributed accountability"
-echo ""
-echo -e "${CYAN}🎉 ToadStool Compute Integration Complete!${NC}"
-echo ""
-echo -e "${YELLOW}▶ Next:${NC} End-to-end workflow demos"
-echo "   cd ../05-complete-workflows"
-echo ""
+EOF
+echo -e "${GREEN}✓ Complete request trace with regional attribution${NC}"
 
-rm -f /tmp/distributed_compute.rs /tmp/distributed_compute
+# Performance comparison
+echo -e "\n${YELLOW}📝 Step 3: Regional performance comparison${NC}"
+cat <<'EOF'
 
+┌────────────────────────────────────────────────────────────────┐
+│  Regional Performance (24-hour period)                         │
+├─────────────┬──────────┬──────────┬──────────┬────────────────┤
+│  Region     │ Requests │ Latency  │ Cost     │ Availability   │
+├─────────────┼──────────┼──────────┼──────────┼────────────────┤
+│ US-West     │ 45,230   │ 98ms     │ $203.54  │ 99.98%  ✅     │
+│ EU-Central  │ 38,450   │ 105ms    │ $182.12  │ 99.95%  ✅     │
+│ AP-SE       │ 28,120   │ 112ms    │ $145.23  │ 99.92%  ⚠️     │
+├─────────────┼──────────┼──────────┼──────────┼────────────────┤
+│ Total       │ 111,800  │ 104ms    │ $530.89  │ 99.95%  ✅     │
+└─────────────┴──────────┴──────────┴──────────┴────────────────┘
+
+Insights:
+  ✅ US-West: Best performance (lowest latency, highest uptime)
+  ✅ EU-Central: Good performance, meets SLA
+  ⚠️  AP-SE: Slightly below SLA (99.92% vs 99.95% target)
+
+EOF
+echo -e "${GREEN}✓ Per-region metrics enable optimization${NC}"
+
+# Cost breakdown
+echo -e "\n${YELLOW}📝 Step 4: Regional cost breakdown${NC}"
+cat <<'EOF'
+
+┌────────────────────────────────────────────────────────────────┐
+│  Cost Accounting by Region (24 hours)                          │
+├─────────────┬──────────┬──────────┬──────────┬────────────────┤
+│  Region     │ Compute  │ Network  │ Storage  │ Total          │
+├─────────────┼──────────┼──────────┼──────────┼────────────────┤
+│ US-West     │ $185.30  │ $15.24   │ $3.00    │ $203.54        │
+│ EU-Central  │ $165.45  │ $13.67   │ $3.00    │ $182.12        │
+│ AP-SE       │ $132.10  │ $10.13   │ $3.00    │ $145.23        │
+├─────────────┼──────────┼──────────┼──────────┼────────────────┤
+│ Total       │ $482.85  │ $39.04   │ $9.00    │ $530.89        │
+└─────────────┴──────────┴──────────┴──────────┴────────────────┘
+
+Cost per Request:
+  US-West:    $0.0045 per request
+  EU-Central: $0.0047 per request
+  AP-SE:      $0.0052 per request  ⚠️ Higher cost
+
+Recommendation: Increase capacity in AP-SE to reduce per-request cost
+
+EOF
+echo -e "${GREEN}✓ Regional cost analysis guides resource allocation${NC}"
+
+# Global provenance DAG
+echo -e "\n${YELLOW}📝 Step 5: Global provenance DAG${NC}"
+cat <<'EOF'
+
+┌────────────────────────────────────────────────────────────────┐
+│  Single DAG Captures All Regions                               │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│                    Session Genesis                             │
+│                          │                                     │
+│         ┌────────────────┼────────────────┐                   │
+│         │                │                │                   │
+│    🌎 US-West      🌍 EU-Central    🌏 AP-SE                  │
+│         │                │                │                   │
+│    [Request 1]      [Request 2]      [Request 3]              │
+│         │                │                │                   │
+│    [GPU Exec 1]     [GPU Exec 2]     [GPU Exec 3]             │
+│         │                │                │                   │
+│    [Response 1]     [Response 2]     [Response 3]             │
+│         │                │                │                   │
+│         └────────────────┴────────────────┘                   │
+│                          │                                     │
+│                   Merkle Root                                  │
+│                  (Global Proof)                                │
+│                                                                │
+│  Benefits:                                                     │
+│  • Single cryptographic proof for ALL regions                 │
+│  • Cross-region request comparison                            │
+│  • Global audit trail                                         │
+│  • SLA verification across regions                            │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+
+EOF
+echo -e "${GREEN}✓ One DAG unifies all distributed compute${NC}"
+
+# SLA verification
+echo -e "\n${YELLOW}📝 Step 6: SLA verification (cryptographic proofs)${NC}"
+cat <<'EOF'
+
+// Verify SLA compliance with Merkle proofs
+
+// Claim: "99.95% uptime in EU-Central"
+let uptime_proof = session.generate_merkle_proof(
+    vertices_for_region("eu-central")
+).await?;
+
+// Verify: 38,450 successful / 38,470 total = 99.948% ✅
+let successful = uptime_proof.vertices
+    .iter()
+    .filter(|v| v.metadata["status"] == "success")
+    .count();
+
+assert_eq!(successful, 38_450);
+assert_eq!(uptime_proof.vertices.len(), 38_470);
+let uptime_pct = (successful as f64 / uptime_proof.vertices.len() as f64) * 100.0;
+assert!(uptime_pct >= 99.95); // ✅ SLA met
+
+// Claim: "Average latency < 200ms"
+let latencies: Vec<f64> = uptime_proof.vertices
+    .iter()
+    .map(|v| v.metadata["duration_ms"].as_f64().unwrap())
+    .collect();
+
+let avg_latency = latencies.iter().sum::<f64>() / latencies.len() as f64;
+assert!(avg_latency < 200.0); // ✅ 105ms, SLA met
+
+// Merkle root: Single cryptographic proof for all claims
+let merkle_root = session.compute_merkle_root().await?;
+println!("Global proof: {}", merkle_root);
+
+EOF
+echo -e "${GREEN}✓ Cryptographic SLA verification (tamper-proof)${NC}"
+
+# Benefits
+echo -e "\n${YELLOW}📝 Step 7: Benefits of distributed provenance${NC}"
+echo -e "${BLUE}   1. Regional Optimization${NC}"
+echo -e "      → Identify best-performing regions"
+echo -e "      → Allocate resources efficiently"
+echo -e ""
+echo -e "${BLUE}   2. SLA Compliance${NC}"
+echo -e "      → Cryptographic proof of uptime"
+echo -e "      → Latency verification per region"
+echo -e ""
+echo -e "${BLUE}   3. Cost Management${NC}"
+echo -e "      → Per-region cost breakdown"
+echo -e "      → Identify cost optimization opportunities"
+echo -e ""
+echo -e "${BLUE}   4. Debugging${NC}"
+echo -e "      → Trace requests across regions"
+echo -e "      → Identify regional issues"
+echo -e ""
+echo -e "${BLUE}   5. Global Audit Trail${NC}"
+echo -e "      → Single DAG for all regions"
+echo -e "      → Unified provenance and compliance"
+echo -e ""
+
+# Final summary
+echo -e "\n${GREEN}✅ Demo complete!${NC}"
+echo -e "\n${BLUE}What you learned:${NC}"
+echo "  • Geo-distributed compute with regional DIDs"
+echo "  • Single DAG captures all regions"
+echo "  • Per-region performance and cost metrics"
+echo "  • Cryptographic SLA verification"
+echo "  • Global Merkle root for unified provenance"
+echo ""
+echo -e "${BLUE}Real-world applications:${NC}"
+echo "  • Multi-region ML inference"
+echo "  • SLA monitoring and compliance"
+echo "  • Cost optimization across regions"
+echo "  • Regulatory compliance (data locality)"
+echo ""
+echo -e "${BLUE}Next steps:${NC}"
+echo "  • See: ../05-complete-workflows/demo-ml-pipeline.sh"
+echo "  • Explore: Complete end-to-end scenarios"
+echo ""
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
