@@ -147,9 +147,15 @@ impl SafeEnv {
     }
 
     /// Get the RPC port, with environment override.
+    ///
+    /// Checks both `RHIZOCRYPT_RPC_PORT` and legacy `RHIZOCRYPT_PORT`
+    /// for backward compatibility.
     #[must_use]
     pub fn get_rpc_port(default: u16) -> u16 {
+        // Try RHIZOCRYPT_RPC_PORT first (preferred)
         Self::parse("RHIZOCRYPT_RPC_PORT", default)
+            // Fall back to legacy RHIZOCRYPT_PORT
+            .max(Self::parse("RHIZOCRYPT_PORT", default))
     }
 
     /// Get the RPC host, with environment override.
@@ -524,13 +530,13 @@ mod tests {
     fn test_is_development_case_insensitive() {
         // Save current value
         let original = std::env::var("RHIZOCRYPT_ENV").ok();
-        
+
         std::env::set_var("RHIZOCRYPT_ENV", "DEVELOPMENT");
         assert!(SafeEnv::is_development());
-        
+
         std::env::set_var("RHIZOCRYPT_ENV", "Development");
         assert!(SafeEnv::is_development());
-        
+
         // Restore original value
         match original {
             Some(val) => std::env::set_var("RHIZOCRYPT_ENV", val),

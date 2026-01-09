@@ -20,9 +20,9 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
-use crate::types_ecosystem::compute::{ComputeEvent, TaskId};
 use crate::error::{Result, RhizoCryptError};
 use crate::types::{Did, PayloadRef, Timestamp};
+use crate::types_ecosystem::compute::{ComputeEvent, TaskId};
 
 /// HTTP client for ToadStool BYOB API.
 #[derive(Clone)]

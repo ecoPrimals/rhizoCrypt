@@ -9,9 +9,7 @@ use tokio::time::sleep;
 
 /// Helper to build the service binary
 fn build_service() -> Result<(), Box<dyn std::error::Error>> {
-    let output = Command::new("cargo")
-        .args(["build", "--bin", "rhizocrypt-service"])
-        .output()?;
+    let output = Command::new("cargo").args(["build", "--bin", "rhizocrypt-service"]).output()?;
 
     if !output.status.success() {
         return Err(format!(
@@ -27,36 +25,36 @@ fn build_service() -> Result<(), Box<dyn std::error::Error>> {
 /// Helper to get path to service binary
 fn service_binary_path() -> String {
     // Tests run from workspace root, so we need absolute path or workspace-relative path
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .expect("CARGO_MANIFEST_DIR should be set");
-    
+    let manifest_dir =
+        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should be set");
+
     // Go up to workspace root (from crates/rhizocrypt-service to workspace root)
     let workspace_root = std::path::Path::new(&manifest_dir)
         .parent()
         .and_then(|p| p.parent())
         .expect("Should have workspace root");
-    
+
     let target_dir = std::env::var("CARGO_TARGET_DIR")
         .unwrap_or_else(|_| workspace_root.join("target").to_string_lossy().to_string());
-    
+
     format!("{}/debug/rhizocrypt-service", target_dir)
 }
 
 #[tokio::test]
 async fn test_service_binary_exists() {
     let binary_path = service_binary_path();
-    
+
     eprintln!("Looking for binary at: {}", binary_path);
     eprintln!("Binary exists: {}", std::path::Path::new(&binary_path).exists());
-    
+
     // Build if not exists
     if !std::path::Path::new(&binary_path).exists() {
         eprintln!("Binary not found, attempting to build...");
         build_service().expect("Failed to build service binary");
     }
-    
+
     eprintln!("After build, exists: {}", std::path::Path::new(&binary_path).exists());
-    
+
     assert!(
         std::path::Path::new(&binary_path).exists(),
         "Service binary should exist after build at: {}",
@@ -68,9 +66,9 @@ async fn test_service_binary_exists() {
 async fn test_service_starts_with_defaults() {
     // Build service first
     build_service().expect("Failed to build service");
-    
+
     let binary_path = service_binary_path();
-    
+
     // Start service in background with unique port
     let mut child = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "19400") // Use unique port for test
@@ -79,10 +77,10 @@ async fn test_service_starts_with_defaults() {
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service");
-    
+
     // Give it time to start
     sleep(Duration::from_millis(500)).await;
-    
+
     // Check if process is running
     match child.try_wait() {
         Ok(Some(status)) => {
@@ -95,7 +93,7 @@ async fn test_service_starts_with_defaults() {
             panic!("Error checking service status: {}", e);
         }
     }
-    
+
     // Clean up
     let _ = child.kill();
     let _ = child.wait();
@@ -104,29 +102,26 @@ async fn test_service_starts_with_defaults() {
 #[tokio::test]
 async fn test_service_handles_invalid_port() {
     build_service().expect("Failed to build service");
-    
+
     let binary_path = service_binary_path();
-    
+
     // Try to start with invalid port
     let output = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "99999") // Invalid port number
         .env("RUST_LOG", "error")
         .output()
         .expect("Failed to execute service");
-    
+
     // Service should fail to start with invalid port
-    assert!(
-        !output.status.success(),
-        "Service should fail with invalid port"
-    );
+    assert!(!output.status.success(), "Service should fail with invalid port");
 }
 
 #[tokio::test]
 async fn test_service_custom_configuration() {
     build_service().expect("Failed to build service");
-    
+
     let binary_path = service_binary_path();
-    
+
     // Start with custom configuration
     let mut child = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "19401")
@@ -136,9 +131,9 @@ async fn test_service_custom_configuration() {
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service");
-    
+
     sleep(Duration::from_millis(500)).await;
-    
+
     // Should be running with custom config
     match child.try_wait() {
         Ok(Some(status)) => {
@@ -151,7 +146,7 @@ async fn test_service_custom_configuration() {
             panic!("Error checking service: {}", e);
         }
     }
-    
+
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -159,9 +154,9 @@ async fn test_service_custom_configuration() {
 #[tokio::test]
 async fn test_service_without_discovery() {
     build_service().expect("Failed to build service");
-    
+
     let binary_path = service_binary_path();
-    
+
     // Start without discovery service configured
     let mut child = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "19402")
@@ -172,9 +167,9 @@ async fn test_service_without_discovery() {
         .stderr(Stdio::piped())
         .spawn()
         .expect("Failed to start service");
-    
+
     sleep(Duration::from_millis(500)).await;
-    
+
     // Should start successfully even without discovery
     match child.try_wait() {
         Ok(Some(status)) => {
@@ -187,7 +182,7 @@ async fn test_service_without_discovery() {
             panic!("Error: {}", e);
         }
     }
-    
+
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -195,9 +190,9 @@ async fn test_service_without_discovery() {
 #[tokio::test]
 async fn test_service_graceful_shutdown_sigterm() {
     build_service().expect("Failed to build service");
-    
+
     let binary_path = service_binary_path();
-    
+
     // Start service
     let mut child = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "19403")
@@ -206,52 +201,47 @@ async fn test_service_graceful_shutdown_sigterm() {
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service");
-    
+
     sleep(Duration::from_millis(500)).await;
-    
+
     // Send SIGTERM for graceful shutdown
     #[cfg(unix)]
     {
         use nix::sys::signal::{kill, Signal};
         use nix::unistd::Pid;
-        
+
         let pid = Pid::from_raw(child.id() as i32);
         let _ = kill(pid, Signal::SIGTERM);
     }
-    
+
     // On non-Unix, just kill
     #[cfg(not(unix))]
     {
         let _ = child.kill();
     }
-    
+
     // Wait for shutdown (with timeout)
-    let wait_result = tokio::time::timeout(
-        Duration::from_secs(5),
-        async {
-            loop {
-                match child.try_wait() {
-                    Ok(Some(_)) => return Ok(()),
-                    Ok(None) => sleep(Duration::from_millis(100)).await,
-                    Err(e) => return Err(e),
-                }
+    let wait_result = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            match child.try_wait() {
+                Ok(Some(_)) => return Ok(()),
+                Ok(None) => sleep(Duration::from_millis(100)).await,
+                Err(e) => return Err(e),
             }
         }
-    ).await;
-    
-    assert!(
-        wait_result.is_ok(),
-        "Service should shutdown gracefully within 5 seconds"
-    );
+    })
+    .await;
+
+    assert!(wait_result.is_ok(), "Service should shutdown gracefully within 5 seconds");
 }
 
 #[tokio::test]
 async fn test_service_port_already_in_use() {
     build_service().expect("Failed to build service");
-    
+
     let binary_path = service_binary_path();
     let test_port = "19404";
-    
+
     // Start first service
     let mut child1 = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", test_port)
@@ -260,22 +250,19 @@ async fn test_service_port_already_in_use() {
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start first service");
-    
+
     sleep(Duration::from_millis(500)).await;
-    
+
     // Try to start second service on same port
     let output = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", test_port)
         .env("RUST_LOG", "error")
         .output()
         .expect("Failed to execute second service");
-    
+
     // Second service should fail (port in use)
-    assert!(
-        !output.status.success(),
-        "Second service should fail when port is in use"
-    );
-    
+    assert!(!output.status.success(), "Second service should fail when port is in use");
+
     // Clean up
     let _ = child1.kill();
     let _ = child1.wait();
@@ -284,9 +271,9 @@ async fn test_service_port_already_in_use() {
 #[tokio::test]
 async fn test_service_environment_variable_parsing() {
     build_service().expect("Failed to build service");
-    
+
     let binary_path = service_binary_path();
-    
+
     // Test with various environment configurations
     let mut child = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "19405")
@@ -297,9 +284,9 @@ async fn test_service_environment_variable_parsing() {
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service");
-    
+
     sleep(Duration::from_millis(500)).await;
-    
+
     // Should parse environment vars correctly
     match child.try_wait() {
         Ok(Some(status)) => {
@@ -312,7 +299,7 @@ async fn test_service_environment_variable_parsing() {
             panic!("Error: {}", e);
         }
     }
-    
+
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -320,9 +307,9 @@ async fn test_service_environment_variable_parsing() {
 #[tokio::test]
 async fn test_service_multiple_instances_different_ports() {
     build_service().expect("Failed to build service");
-    
+
     let binary_path = service_binary_path();
-    
+
     // Start multiple instances on different ports
     let mut child1 = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "19406")
@@ -331,7 +318,7 @@ async fn test_service_multiple_instances_different_ports() {
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service 1");
-    
+
     let mut child2 = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "19407")
         .env("RUST_LOG", "error")
@@ -339,7 +326,7 @@ async fn test_service_multiple_instances_different_ports() {
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service 2");
-    
+
     let mut child3 = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "19408")
         .env("RUST_LOG", "error")
@@ -347,14 +334,14 @@ async fn test_service_multiple_instances_different_ports() {
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service 3");
-    
+
     sleep(Duration::from_secs(1)).await;
-    
+
     // All should be running
     assert!(child1.try_wait().unwrap().is_none(), "Service 1 should be running");
     assert!(child2.try_wait().unwrap().is_none(), "Service 2 should be running");
     assert!(child3.try_wait().unwrap().is_none(), "Service 3 should be running");
-    
+
     // Clean up
     let _ = child1.kill();
     let _ = child2.kill();
@@ -369,11 +356,11 @@ async fn test_service_multiple_instances_different_ports() {
 async fn test_service_signal_handling() {
     use nix::sys::signal::{kill, Signal};
     use nix::unistd::Pid;
-    
+
     build_service().expect("Failed to build service");
-    
+
     let binary_path = service_binary_path();
-    
+
     // Start service
     let mut child = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "19409")
@@ -382,40 +369,35 @@ async fn test_service_signal_handling() {
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service");
-    
+
     sleep(Duration::from_millis(500)).await;
-    
+
     let pid = Pid::from_raw(child.id() as i32);
-    
+
     // Test SIGTERM (graceful shutdown)
     let result = kill(pid, Signal::SIGTERM);
     assert!(result.is_ok(), "Should be able to send SIGTERM");
-    
+
     // Wait for graceful shutdown
-    let shutdown_result = tokio::time::timeout(
-        Duration::from_secs(5),
-        async {
-            loop {
-                if let Ok(Some(_)) = child.try_wait() {
-                    return true;
-                }
-                sleep(Duration::from_millis(100)).await;
+    let shutdown_result = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let Ok(Some(_)) = child.try_wait() {
+                return true;
             }
+            sleep(Duration::from_millis(100)).await;
         }
-    ).await;
-    
-    assert!(
-        shutdown_result.is_ok(),
-        "Service should shutdown gracefully on SIGTERM"
-    );
+    })
+    .await;
+
+    assert!(shutdown_result.is_ok(), "Service should shutdown gracefully on SIGTERM");
 }
 
 #[tokio::test]
 async fn test_service_with_discovery_fallback() {
     build_service().expect("Failed to build service");
-    
+
     let binary_path = service_binary_path();
-    
+
     // Start with invalid discovery address (should fallback to standalone)
     let mut child = Command::new(&binary_path)
         .env("RHIZOCRYPT_PORT", "19410")
@@ -425,9 +407,9 @@ async fn test_service_with_discovery_fallback() {
         .stderr(Stdio::piped())
         .spawn()
         .expect("Failed to start service");
-    
+
     sleep(Duration::from_secs(1)).await;
-    
+
     // Service should still run even if discovery fails
     match child.try_wait() {
         Ok(Some(status)) => {
@@ -440,8 +422,7 @@ async fn test_service_with_discovery_fallback() {
             panic!("Error: {}", e);
         }
     }
-    
+
     let _ = child.kill();
     let _ = child.wait();
 }
-

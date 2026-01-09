@@ -37,6 +37,7 @@ pub mod factory; // Factory for creating and caching capability clients
 // HTTP/RPC client implementations
 #[cfg(feature = "live-clients")]
 pub mod beardog_http;
+pub mod loamspine_http;
 #[cfg(feature = "live-clients")]
 pub mod loamspine_rpc;
 #[cfg(feature = "live-clients")]

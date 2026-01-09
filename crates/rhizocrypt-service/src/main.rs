@@ -75,18 +75,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("🔐 Starting rhizoCrypt service...");
 
     // Get configuration from environment
-    let port = SafeEnv::get_rpc_port(9400);
+    // Use port 0 by default for OS-assigned port (avoids conflicts in tests)
+    let default_port = if SafeEnv::is_development() { 0 } else { 9400 };
+    let port = SafeEnv::get_rpc_port(default_port);
     let host = SafeEnv::get_rpc_host();
     let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
 
-    info!("📡 Binding to {}", addr);
+    info!("📡 Will bind to {}:{}", host, port);
 
     // Create rhizoCrypt instance with default configuration
     let config = RhizoCryptConfig::default();
     let primal = Arc::new(RhizoCrypt::new(config));
     info!("🔐 rhizoCrypt DAG engine initialized");
 
-    // Create RPC server
+    // Create RPC server (will bind when serve() is called)
     let server = RpcServer::new(primal, addr);
 
     // Optional: Register with discovery service (Songbird)
@@ -111,8 +113,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display startup banner
     print_banner(addr, port);
 
-    // Start serving
-    info!("✨ rhizoCrypt service ready");
+    // Start serving (this binds the port)
+    info!("✨ rhizoCrypt service ready - starting RPC server...");
 
     match server.serve().await {
         Ok(()) => {

@@ -179,7 +179,9 @@ pub use integration::{
 pub use integration::{MockBearDogClient, MockLoamSpineClient, MockNestGateClient};
 
 // Ecosystem type definitions (compute, provenance)
-pub use types_ecosystem::compute::{ComputeEvent, ComputeProviderClient, ComputeProviderConfig, TaskId};
+pub use types_ecosystem::compute::{
+    ComputeEvent, ComputeProviderClient, ComputeProviderConfig, TaskId,
+};
 pub use types_ecosystem::provenance::{
     AgentContribution, ProvenanceChain, ProvenanceNotifier, ProvenanceProviderConfig,
     ProvenanceQueryable, SessionAttribution, VertexQuery, VertexRef,
@@ -797,14 +799,14 @@ impl RhizoCrypt {
         // Count total payload bytes by iterating vertices
         let payload_bytes = 0u64; // Would need payload store for actual sizes
         let mut results = Vec::new();
-        
+
         // Collect frontier vertices as results (final outputs)
         for vertex_id in &session.frontier {
             if let Ok(vertex) = self.get_vertex(session_id, *vertex_id).await {
                 // PayloadRef is just a hash reference, actual size would need payload store lookup
                 // For now, we skip payload size tracking (could add in production)
-                
-                // Extract result entry from frontier vertex  
+
+                // Extract result entry from frontier vertex
                 let result = dehydration::ResultEntry {
                     result_type: format!("{:?}", vertex.event_type),
                     key: vertex_id.to_string(),
@@ -881,7 +883,7 @@ impl RhizoCrypt {
         // In production, would:
         // 1. Compute summary hash
         let _summary_hash = summary.compute_hash();
-        
+
         // 2. For each required attester, request signature via SigningProvider
         // 3. Wait for responses with timeout
         // 4. Verify signatures
@@ -900,7 +902,7 @@ impl RhizoCrypt {
         summary: &dehydration::DehydrationSummary,
     ) -> Result<session::LoamCommitRef> {
         use crate::clients::PermanentStorageClient;
-        
+
         // Create a discovery registry for capability-based lookup
         // In production, this would be passed in or created at startup
         let registry = discovery::DiscoveryRegistry::new("rhizoCrypt");
@@ -915,9 +917,11 @@ impl RhizoCrypt {
                     vertex_count = summary.vertex_count,
                     "Committing dehydration to permanent storage"
                 );
-                
+
                 client.commit(summary).await.map_err(|e| {
-                    RhizoCryptError::integration(format!("Failed to commit to permanent storage: {e}"))
+                    RhizoCryptError::integration(format!(
+                        "Failed to commit to permanent storage: {e}"
+                    ))
                 })
             }
             Err(e) => {
@@ -928,7 +932,7 @@ impl RhizoCrypt {
                     error = %e,
                     "No permanent storage provider available, creating local reference"
                 );
-                
+
                 Ok(session::LoamCommitRef {
                     spine_id: format!("local-{}", summary.session_id),
                     entry_hash: *summary.merkle_root.as_bytes(),
