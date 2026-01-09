@@ -272,6 +272,7 @@ pub struct SliceRef {
 
 /// Session type.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum SessionType {
     /// Gaming session (raid, match, etc.).
     Gaming {
@@ -289,6 +290,7 @@ pub enum SessionType {
         workspace_id: String,
     },
     /// General-purpose session.
+    #[default]
     General,
     /// Custom domain.
     Custom {
@@ -297,11 +299,6 @@ pub enum SessionType {
     },
 }
 
-impl Default for SessionType {
-    fn default() -> Self {
-        Self::General
-    }
-}
 
 /// Session configuration.
 #[derive(Clone, Debug, Serialize, Deserialize)]

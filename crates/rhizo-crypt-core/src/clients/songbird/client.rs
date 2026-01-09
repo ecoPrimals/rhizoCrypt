@@ -853,6 +853,7 @@ impl Clone for SongbirdClient {
 
 /// Service registration request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 struct ServiceRegistration {
     service_name: String,
     endpoint: String,

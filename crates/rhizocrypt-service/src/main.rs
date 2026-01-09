@@ -76,7 +76,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get configuration from environment
     // Use port 0 by default for OS-assigned port (avoids conflicts in tests)
-    let default_port = if SafeEnv::is_development() { 0 } else { 9400 };
+    let default_port = if SafeEnv::is_development() {
+        0
+    } else {
+        9400
+    };
     let port = SafeEnv::get_rpc_port(default_port);
     let host = SafeEnv::get_rpc_host();
     let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
