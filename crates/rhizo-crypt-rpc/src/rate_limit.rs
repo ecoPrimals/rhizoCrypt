@@ -300,7 +300,7 @@ mod tests {
         };
 
         let limiter = RateLimiter::new(config);
-        let client = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
         // Should allow burst of requests
         for _ in 0..20 {
@@ -319,7 +319,7 @@ mod tests {
         };
 
         let limiter = RateLimiter::new(config);
-        let client = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
         // Consume all tokens
         for _ in 0..10 {
@@ -333,7 +333,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_rate_limiter_disabled() {
         let limiter = RateLimiter::disabled();
-        let client = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
         // Should always allow when disabled
         for _ in 0..1000 {
@@ -352,7 +352,7 @@ mod tests {
         };
 
         let limiter = RateLimiter::new(config);
-        let client1 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+        let client1 = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let client2 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2));
 
         // Exhaust client1's tokens
@@ -375,7 +375,7 @@ mod tests {
         };
 
         let limiter = RateLimiter::new(config);
-        let client = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
         // Create client entry
         limiter.check(client, OperationType::Read).await;

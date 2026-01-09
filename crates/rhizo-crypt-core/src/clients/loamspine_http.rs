@@ -146,6 +146,8 @@ impl LoamSpineHttpClient {
 }
 
 impl PermanentStorageProvider for LoamSpineHttpClient {
+    // Note: Cannot use async fn here due to trait signature using RPITIT pattern
+    #[allow(clippy::manual_async_fn)]
     fn commit(
         &self,
         summary: &DehydrationSummary,

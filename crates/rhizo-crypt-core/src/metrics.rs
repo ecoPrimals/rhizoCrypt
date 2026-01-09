@@ -116,11 +116,11 @@ mod tests {
     #[test]
     fn test_metrics_increment() {
         let metrics = PrimalMetrics::new();
-        
+
         assert_eq!(metrics.get_sessions_created(), 0);
         metrics.inc_sessions_created();
         assert_eq!(metrics.get_sessions_created(), 1);
-        
+
         metrics.inc_vertices_appended();
         metrics.inc_vertices_appended();
         assert_eq!(metrics.get_vertices_appended(), 2);

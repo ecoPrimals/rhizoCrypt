@@ -178,7 +178,8 @@ mod tests {
     fn test_resource_limits() {
         assert_eq!(DEFAULT_MAX_CONNECTIONS, 1000);
         assert_eq!(DEFAULT_CACHE_SIZE, 1000);
-        assert!(DEFAULT_MAX_PAYLOAD_SIZE > 0);
+        // DEFAULT_MAX_PAYLOAD_SIZE is 100 MB, obviously > 0 at compile time
+        assert_eq!(DEFAULT_MAX_PAYLOAD_SIZE, 100 * 1024 * 1024);
     }
 
     #[test]
