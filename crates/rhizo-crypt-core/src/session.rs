@@ -271,8 +271,7 @@ pub struct SliceRef {
 }
 
 /// Session type.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SessionType {
     /// Gaming session (raid, match, etc.).
     Gaming {
@@ -298,7 +297,6 @@ pub enum SessionType {
         domain: String,
     },
 }
-
 
 /// Session configuration.
 #[derive(Clone, Debug, Serialize, Deserialize)]

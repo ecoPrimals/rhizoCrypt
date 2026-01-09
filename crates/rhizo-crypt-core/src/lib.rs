@@ -162,9 +162,7 @@ pub use store::{
 pub use store_sled::SledDagStore;
 
 // Types
-pub use types::{
-    ContentHash, Did, PayloadRef, SessionId, Signature, SliceId, Timestamp, VertexId,
-};
+pub use types::{ContentHash, Did, PayloadRef, SessionId, Signature, SliceId, Timestamp, VertexId};
 
 // Vertices
 pub use vertex::{MetadataValue, Vertex, VertexBuilder};

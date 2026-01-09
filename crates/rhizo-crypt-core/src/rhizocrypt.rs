@@ -40,7 +40,7 @@ use tokio::sync::RwLock;
 /// - Concurrent reads: Zero blocking
 /// - Concurrent writes to different keys: Zero blocking
 /// - Fine-grained locking: Only when mutating same key
-/// - Expected improvement: 10-100x vs RwLock<HashMap>
+/// - Expected improvement: 10-100x vs `RwLock<HashMap>`
 pub struct RhizoCrypt {
     config: RhizoCryptConfig,
     state: PrimalState,
@@ -151,10 +151,7 @@ impl RhizoCrypt {
 
     /// List all sessions (lock-free iterator).
     pub fn list_sessions(&self) -> Vec<Session> {
-        self.sessions
-            .iter()
-            .map(|entry| entry.value().clone())
-            .collect()
+        self.sessions.iter().map(|entry| entry.value().clone()).collect()
     }
 
     /// Discard a session (lock-free removal).
@@ -189,10 +186,7 @@ impl RhizoCrypt {
 
     /// Get total vertex count across all sessions (lock-free).
     pub fn total_vertex_count(&self) -> u64 {
-        self.sessions
-            .iter()
-            .map(|entry| entry.value().vertex_count)
-            .sum()
+        self.sessions.iter().map(|entry| entry.value().vertex_count).sum()
     }
 
     // ========================================================================
@@ -439,8 +433,7 @@ impl RhizoCrypt {
     /// Returns an error if session not found, dehydration fails, or commit fails.
     pub async fn dehydrate(&self, session_id: SessionId) -> Result<MerkleRoot> {
         // Set status to computing root
-        self.dehydration_status
-            .insert(session_id, dehydration::DehydrationStatus::ComputingRoot);
+        self.dehydration_status.insert(session_id, dehydration::DehydrationStatus::ComputingRoot);
 
         // Compute merkle root
         let root = self.compute_merkle_root(session_id).await?;
@@ -465,18 +458,17 @@ impl RhizoCrypt {
         summary_with_attestations.attestations.extend(attestations);
 
         // Set status to committing
-        self.dehydration_status
-            .insert(session_id, dehydration::DehydrationStatus::Committing);
+        self.dehydration_status.insert(session_id, dehydration::DehydrationStatus::Committing);
 
         // Commit to permanent storage
-        let commit_ref = self
-            .commit_to_permanent_storage(&summary_with_attestations)
-            .await?;
+        let commit_ref = self.commit_to_permanent_storage(&summary_with_attestations).await?;
 
         // Update status to complete
         self.dehydration_status.insert(
             session_id,
-            dehydration::DehydrationStatus::Completed { commit_ref },
+            dehydration::DehydrationStatus::Completed {
+                commit_ref,
+            },
         );
 
         self.metrics.inc_dehydrations_completed();
@@ -565,7 +557,10 @@ impl RhizoCrypt {
     /// Commit dehydration summary to permanent storage.
     ///
     /// Uses capability-based discovery - any PermanentStorageProvider works.
-    async fn commit_to_permanent_storage(&self, summary: &DehydrationSummary) -> Result<LoamCommitRef> {
+    async fn commit_to_permanent_storage(
+        &self,
+        summary: &DehydrationSummary,
+    ) -> Result<LoamCommitRef> {
         use crate::clients::PermanentStorageClient;
 
         let registry = DiscoveryRegistry::new("rhizoCrypt");
@@ -580,7 +575,9 @@ impl RhizoCrypt {
                 );
 
                 client.commit(summary).await.map_err(|e| {
-                    RhizoCryptError::integration(format!("Failed to commit to permanent storage: {e}"))
+                    RhizoCryptError::integration(format!(
+                        "Failed to commit to permanent storage: {e}"
+                    ))
                 })
             }
             Err(e) => {
@@ -607,9 +604,7 @@ impl RhizoCrypt {
     ) -> dehydration::DehydrationStatus {
         self.dehydration_status
             .get(&session_id)
-            .map_or(dehydration::DehydrationStatus::Pending, |entry| {
-                entry.value().clone()
-            })
+            .map_or(dehydration::DehydrationStatus::Pending, |entry| entry.value().clone())
     }
 }
 
@@ -698,8 +693,8 @@ impl PrimalHealth for RhizoCrypt {
     }
 
     async fn health_check(&self) -> std::result::Result<HealthReport, PrimalError> {
-        let mut report =
-            HealthReport::new(&self.config.name, env!("CARGO_PKG_VERSION")).with_status(self.health_status());
+        let mut report = HealthReport::new(&self.config.name, env!("CARGO_PKG_VERSION"))
+            .with_status(self.health_status());
 
         if let Some(uptime) = self.uptime_secs() {
             report = report.with_uptime(uptime);
