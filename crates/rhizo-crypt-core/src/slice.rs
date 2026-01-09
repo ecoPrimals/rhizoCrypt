@@ -239,7 +239,7 @@ pub enum ResolutionRoute {
         /// Conditions and their routes.
         conditions: Vec<ConditionalRouteEntry>,
         /// Default route if no conditions match.
-        default: Box<ResolutionRoute>,
+        default: Box<Self>,
     },
 }
 

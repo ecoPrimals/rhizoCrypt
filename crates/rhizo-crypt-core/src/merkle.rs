@@ -161,12 +161,12 @@ impl MerkleProof {
         let mut idx = position;
 
         while hashes.len() > 1 {
-            let sibling_idx = if idx % 2 == 0 {
+            let sibling_idx = if idx.is_multiple_of(2) {
                 idx + 1
             } else {
                 idx - 1
             };
-            let direction = if idx % 2 == 0 {
+            let direction = if idx.is_multiple_of(2) {
                 Direction::Right
             } else {
                 Direction::Left

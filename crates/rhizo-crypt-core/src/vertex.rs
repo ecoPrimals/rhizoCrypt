@@ -150,9 +150,9 @@ pub enum MetadataValue {
     /// Bytes value.
     Bytes(Vec<u8>),
     /// Array value.
-    Array(Vec<MetadataValue>),
+    Array(Vec<Self>),
     /// Object value.
-    Object(HashMap<String, MetadataValue>),
+    Object(HashMap<String, Self>),
 }
 
 impl From<bool> for MetadataValue {
