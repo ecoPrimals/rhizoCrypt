@@ -384,7 +384,9 @@ impl ComputeProviderClient {
         // Fall back to configured address
         if let Some(ref addr) = self.config.fallback_address {
             let socket_addr: SocketAddr = addr.parse().map_err(|e| {
-                RhizoCryptError::integration(format!("Invalid compute provider address '{addr}': {e}"))
+                RhizoCryptError::integration(format!(
+                    "Invalid compute provider address '{addr}': {e}"
+                ))
             })?;
             return self.connect_to(socket_addr).await;
         }
@@ -415,7 +417,9 @@ impl ComputeProviderClient {
             Ok(Err(e)) => {
                 warn!(error = %e, "Failed to connect to compute provider");
                 *self.state.write().await = ClientState::Error;
-                Err(RhizoCryptError::integration(format!("Failed to connect to compute provider: {e}")))
+                Err(RhizoCryptError::integration(format!(
+                    "Failed to connect to compute provider: {e}"
+                )))
             }
             Err(_) => {
                 warn!("Compute provider connection timeout");

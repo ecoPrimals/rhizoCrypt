@@ -80,11 +80,13 @@ impl TarpcAdapter {
         let addr_str = endpoint.strip_prefix("tarpc://").unwrap_or(endpoint);
 
         // Try to parse as SocketAddr first (IP address)
-        let addr: SocketAddr = if let Ok(addr) = addr_str.parse() { addr } else {
+        let addr: SocketAddr = if let Ok(addr) = addr_str.parse() {
+            addr
+        } else {
             // Not an IP address, try to resolve hostname
             // For new() we need blocking resolution, so we use std::net
             use std::net::ToSocketAddrs as StdToSocketAddrs;
-            
+
             addr_str.to_socket_addrs()
                 .map_err(|e| RhizoCryptError::integration(format!(
                     "Invalid tarpc endpoint: {endpoint}. Expected format: host:port or tarpc://host:port. Error: {e}"
@@ -121,9 +123,13 @@ impl TarpcAdapter {
         // Resolve to SocketAddr
         let socket_addr = tokio::net::lookup_host(addr)
             .await
-            .map_err(|e| RhizoCryptError::integration(format!("Failed to resolve tarpc address: {e}")))?
+            .map_err(|e| {
+                RhizoCryptError::integration(format!("Failed to resolve tarpc address: {e}"))
+            })?
             .next()
-            .ok_or_else(|| RhizoCryptError::integration("No addresses resolved for tarpc endpoint"))?;
+            .ok_or_else(|| {
+                RhizoCryptError::integration("No addresses resolved for tarpc endpoint")
+            })?;
 
         tracing::info!(endpoint = %socket_addr, "Connecting to tarpc service");
 
@@ -148,10 +154,10 @@ impl TarpcAdapter {
     /// to fail-fast on connection errors.
     async fn ensure_connected(&self) -> Result<()> {
         let mut conn = self.connection.write().await;
-        
+
         if conn.is_none() {
             tracing::debug!(endpoint = %self.addr, "Establishing tarpc connection");
-            
+
             // In a fully generic implementation, we would:
             // 1. Create TCP connection to self.addr
             // 2. Wrap in tarpc transport (Bincode or JSON codec)
@@ -164,14 +170,14 @@ impl TarpcAdapter {
             // - HTTP-based JSON-RPC (easier but loses tarpc benefits)
             //
             // For now, we implement the structure and document the path forward.
-            
+
             *conn = Some(TarpcConnection {
                 _endpoint: self.endpoint.clone(),
             });
-            
+
             tracing::info!(endpoint = %self.addr, "tarpc connection established (stub)");
         }
-        
+
         Ok(())
     }
 }
@@ -185,7 +191,7 @@ impl ProtocolAdapter for TarpcAdapter {
     async fn call_json(&self, method: &str, args_json: String) -> Result<String> {
         // Ensure we have a connection
         self.ensure_connected().await?;
-        
+
         // Parse args for validation
         let _args: Value = serde_json::from_str(&args_json)
             .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
@@ -241,7 +247,7 @@ impl ProtocolAdapter for TarpcAdapter {
             // These live in integration crates, not core.
             //
             // ================================================================
-            
+
             Err(RhizoCryptError::integration(format!(
                 "tarpc adapter: Generic JSON-RPC over tarpc requires ecosystem standardization.\n\
                  Method: {method}, Endpoint: {}\n\
@@ -256,18 +262,18 @@ impl ProtocolAdapter for TarpcAdapter {
             )))
         };
 
-        timeout(self.timeout_duration, call_future)
-            .await
-            .map_err(|_| RhizoCryptError::integration(format!(
+        timeout(self.timeout_duration, call_future).await.map_err(|_| {
+            RhizoCryptError::integration(format!(
                 "tarpc call timed out after {:?}: method={}, endpoint={}",
                 self.timeout_duration, method, self.addr
-            )))?
+            ))
+        })?
     }
 
     async fn call_oneway_json(&self, method: &str, args_json: String) -> Result<()> {
         // Ensure we have a connection
         self.ensure_connected().await?;
-        
+
         // Parse args for validation
         let _args: Value = serde_json::from_str(&args_json)
             .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
@@ -351,9 +357,8 @@ mod tests {
 
     #[test]
     fn test_with_timeout() {
-        let adapter = TarpcAdapter::new("127.0.0.1:7777")
-            .unwrap()
-            .with_timeout(Duration::from_secs(5));
+        let adapter =
+            TarpcAdapter::new("127.0.0.1:7777").unwrap().with_timeout(Duration::from_secs(5));
         assert_eq!(adapter.timeout_duration, Duration::from_secs(5));
     }
 
@@ -363,7 +368,7 @@ mod tests {
         // Connection establishment should succeed (stub implementation)
         let result = adapter.ensure_connected().await;
         assert!(result.is_ok());
-        
+
         // Should cache connection
         assert!(adapter.connection.read().await.is_some());
     }
@@ -386,9 +391,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_call_json_timeout() {
-        let adapter = TarpcAdapter::new("127.0.0.1:7777")
-            .unwrap()
-            .with_timeout(Duration::from_millis(1));
+        let adapter =
+            TarpcAdapter::new("127.0.0.1:7777").unwrap().with_timeout(Duration::from_millis(1));
         let result = adapter.call_json("test_method", "{}".to_string()).await;
         // Should either timeout or return not-implemented error
         assert!(result.is_err());

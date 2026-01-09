@@ -368,7 +368,9 @@ impl ProvenanceNotifier {
         // Fall back to configured address
         if let Some(ref addr) = self.config.push_address {
             let socket_addr: SocketAddr = addr.parse().map_err(|e| {
-                RhizoCryptError::integration(format!("Invalid provenance provider address '{addr}': {e}"))
+                RhizoCryptError::integration(format!(
+                    "Invalid provenance provider address '{addr}': {e}"
+                ))
             })?;
 
             debug!(address = %socket_addr, "Connecting to provenance provider");

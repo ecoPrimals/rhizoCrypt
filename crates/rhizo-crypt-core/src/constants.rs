@@ -194,4 +194,3 @@ mod tests {
         assert_eq!(DEFAULT_CHANNEL_BUFFER_SIZE, 100);
     }
 }
-
