@@ -327,56 +327,257 @@ impl ClientProvider {
         }
     }
 
-    /// Check if BearDog capabilities are available.
-    pub async fn has_beardog(&self) -> bool {
-        self.registry.is_available(&Capability::DidVerification).await
-            && self.registry.is_available(&Capability::Signing).await
+    // ============================================================================
+    // Capability-Based Discovery (Infant Discovery Model) 🥇
+    // ============================================================================
+
+    /// Check if signing capabilities are available.
+    ///
+    /// This checks for services that provide cryptographic signing,
+    /// regardless of which service implements it (could be BearDog, YubiKey, CloudKMS, etc.).
+    pub async fn has_signing(&self) -> bool {
+        self.registry.is_available(&Capability::Signing).await
     }
 
-    /// Check if LoamSpine capabilities are available.
-    pub async fn has_loamspine(&self) -> bool {
+    /// Check if DID verification capabilities are available.
+    ///
+    /// This checks for services that can verify DIDs and resolve them to public keys.
+    pub async fn has_did_verification(&self) -> bool {
+        self.registry.is_available(&Capability::DidVerification).await
+    }
+
+    /// Check if permanent storage capabilities are available.
+    ///
+    /// This checks for services that provide permanent, immutable storage,
+    /// regardless of which service implements it (could be LoamSpine, Arweave, IPFS, etc.).
+    pub async fn has_permanent_storage(&self) -> bool {
         self.registry.is_available(&Capability::PermanentCommit).await
     }
 
-    /// Check if NestGate capabilities are available.
-    pub async fn has_nestgate(&self) -> bool {
+    /// Check if payload storage capabilities are available.
+    ///
+    /// This checks for services that provide ephemeral blob storage,
+    /// regardless of which service implements it (could be NestGate, S3, Azure, etc.).
+    pub async fn has_payload_storage(&self) -> bool {
         self.registry.is_available(&Capability::PayloadStorage).await
     }
 
+    /// Check if compute orchestration capabilities are available.
+    ///
+    /// This checks for services that can orchestrate compute tasks,
+    /// regardless of which service implements it (could be ToadStool, Kubernetes, Nomad, etc.).
+    pub async fn has_compute(&self) -> bool {
+        self.registry.is_available(&Capability::ComputeOrchestration).await
+    }
+
+    /// Check if provenance query capabilities are available.
+    ///
+    /// This checks for services that can answer provenance queries,
+    /// regardless of which service implements it (could be SweetGrass, custom ledger, etc.).
+    pub async fn has_provenance(&self) -> bool {
+        self.registry.is_available(&Capability::ProvenanceQuery).await
+    }
+
+    /// Get endpoint for signing capabilities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no signing service has been discovered.
+    pub async fn signing_endpoint(&self) -> Result<ServiceEndpoint> {
+        self.registry
+            .get_endpoint(&Capability::Signing)
+            .await
+            .ok_or_else(|| RhizoCryptError::integration("No signing service discovered"))
+    }
+
+    /// Get endpoint for DID verification capabilities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no DID verification service has been discovered.
+    pub async fn did_verification_endpoint(&self) -> Result<ServiceEndpoint> {
+        self.registry
+            .get_endpoint(&Capability::DidVerification)
+            .await
+            .ok_or_else(|| RhizoCryptError::integration("No DID verification service discovered"))
+    }
+
+    /// Get endpoint for permanent storage capabilities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no permanent storage service has been discovered.
+    pub async fn permanent_storage_endpoint(&self) -> Result<ServiceEndpoint> {
+        self.registry
+            .get_endpoint(&Capability::PermanentCommit)
+            .await
+            .ok_or_else(|| RhizoCryptError::integration("No permanent storage service discovered"))
+    }
+
+    /// Get endpoint for payload storage capabilities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no payload storage service has been discovered.
+    pub async fn payload_storage_endpoint(&self) -> Result<ServiceEndpoint> {
+        self.registry
+            .get_endpoint(&Capability::PayloadStorage)
+            .await
+            .ok_or_else(|| RhizoCryptError::integration("No payload storage service discovered"))
+    }
+
+    /// Get endpoint for compute orchestration capabilities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no compute service has been discovered.
+    pub async fn compute_endpoint(&self) -> Result<ServiceEndpoint> {
+        self.registry
+            .get_endpoint(&Capability::ComputeOrchestration)
+            .await
+            .ok_or_else(|| RhizoCryptError::integration("No compute service discovered"))
+    }
+
+    /// Get endpoint for provenance query capabilities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no provenance service has been discovered.
+    pub async fn provenance_endpoint(&self) -> Result<ServiceEndpoint> {
+        self.registry
+            .get_endpoint(&Capability::ProvenanceQuery)
+            .await
+            .ok_or_else(|| RhizoCryptError::integration("No provenance service discovered"))
+    }
+
+    // ============================================================================
+    // Deprecated Vendor-Specific Methods (Backward Compatibility)
+    // ============================================================================
+
+    /// **DEPRECATED**: Use `has_signing()` and `has_did_verification()` instead.
+    ///
+    /// Check if BearDog capabilities are available.
+    ///
+    /// **Migration:** Replace with capability-based discovery:
+    /// ```rust,ignore
+    /// // OLD:
+    /// if provider.has_beardog().await { ... }
+    ///
+    /// // NEW:
+    /// if provider.has_signing().await && provider.has_did_verification().await { ... }
+    /// ```
+    #[deprecated(
+        since = "0.15.0",
+        note = "Use has_signing() and has_did_verification() instead - vendor agnostic"
+    )]
+    pub async fn has_beardog(&self) -> bool {
+        self.has_signing().await && self.has_did_verification().await
+    }
+
+    /// **DEPRECATED**: Use `has_permanent_storage()` instead.
+    ///
+    /// Check if LoamSpine capabilities are available.
+    ///
+    /// **Migration:** Replace with capability-based discovery:
+    /// ```rust,ignore
+    /// // OLD:
+    /// if provider.has_loamspine().await { ... }
+    ///
+    /// // NEW:
+    /// if provider.has_permanent_storage().await { ... }
+    /// ```
+    #[deprecated(since = "0.15.0", note = "Use has_permanent_storage() instead - vendor agnostic")]
+    pub async fn has_loamspine(&self) -> bool {
+        self.has_permanent_storage().await
+    }
+
+    /// **DEPRECATED**: Use `has_payload_storage()` instead.
+    ///
+    /// Check if NestGate capabilities are available.
+    ///
+    /// **Migration:** Replace with capability-based discovery:
+    /// ```rust,ignore
+    /// // OLD:
+    /// if provider.has_nestgate().await { ... }
+    ///
+    /// // NEW:
+    /// if provider.has_payload_storage().await { ... }
+    /// ```
+    #[deprecated(since = "0.15.0", note = "Use has_payload_storage() instead - vendor agnostic")]
+    pub async fn has_nestgate(&self) -> bool {
+        self.has_payload_storage().await
+    }
+
+    /// **DEPRECATED**: Use `signing_endpoint()` or `did_verification_endpoint()` instead.
+    ///
     /// Get the BearDog endpoint if available.
     ///
     /// # Errors
     ///
     /// Returns an error if BearDog has not been discovered.
+    ///
+    /// **Migration:** Replace with capability-based discovery:
+    /// ```rust,ignore
+    /// // OLD:
+    /// let endpoint = provider.beardog_endpoint().await?;
+    ///
+    /// // NEW:
+    /// let endpoint = provider.signing_endpoint().await?;
+    /// ```
+    #[deprecated(
+        since = "0.15.0",
+        note = "Use signing_endpoint() or did_verification_endpoint() instead - vendor agnostic"
+    )]
     pub async fn beardog_endpoint(&self) -> Result<ServiceEndpoint> {
-        self.registry
-            .get_endpoint(&Capability::DidVerification)
-            .await
-            .ok_or_else(|| RhizoCryptError::integration("BearDog not discovered"))
+        self.signing_endpoint().await
     }
 
+    /// **DEPRECATED**: Use `permanent_storage_endpoint()` instead.
+    ///
     /// Get the LoamSpine endpoint if available.
     ///
     /// # Errors
     ///
     /// Returns an error if LoamSpine has not been discovered.
+    ///
+    /// **Migration:** Replace with capability-based discovery:
+    /// ```rust,ignore
+    /// // OLD:
+    /// let endpoint = provider.loamspine_endpoint().await?;
+    ///
+    /// // NEW:
+    /// let endpoint = provider.permanent_storage_endpoint().await?;
+    /// ```
+    #[deprecated(
+        since = "0.15.0",
+        note = "Use permanent_storage_endpoint() instead - vendor agnostic"
+    )]
     pub async fn loamspine_endpoint(&self) -> Result<ServiceEndpoint> {
-        self.registry
-            .get_endpoint(&Capability::PermanentCommit)
-            .await
-            .ok_or_else(|| RhizoCryptError::integration("LoamSpine not discovered"))
+        self.permanent_storage_endpoint().await
     }
 
+    /// **DEPRECATED**: Use `payload_storage_endpoint()` instead.
+    ///
     /// Get the NestGate endpoint if available.
     ///
     /// # Errors
     ///
     /// Returns an error if NestGate has not been discovered.
+    ///
+    /// **Migration:** Replace with capability-based discovery:
+    /// ```rust,ignore
+    /// // OLD:
+    /// let endpoint = provider.nestgate_endpoint().await?;
+    ///
+    /// // NEW:
+    /// let endpoint = provider.payload_storage_endpoint().await?;
+    /// ```
+    #[deprecated(
+        since = "0.15.0",
+        note = "Use payload_storage_endpoint() instead - vendor agnostic"
+    )]
     pub async fn nestgate_endpoint(&self) -> Result<ServiceEndpoint> {
-        self.registry
-            .get_endpoint(&Capability::PayloadStorage)
-            .await
-            .ok_or_else(|| RhizoCryptError::integration("NestGate not discovered"))
+        self.payload_storage_endpoint().await
     }
 }
 
@@ -422,7 +623,10 @@ mod tests {
         let provider = ClientProvider::new(Arc::clone(&registry));
 
         // Nothing registered yet
-        assert!(!provider.has_beardog().await);
+        #[allow(deprecated)]
+        {
+            assert!(!provider.has_beardog().await);
+        }
 
         // Register BearDog
         registry
@@ -433,8 +637,37 @@ mod tests {
             ))
             .await;
 
-        assert!(provider.has_beardog().await);
-        assert!(provider.beardog_endpoint().await.is_ok());
+        #[allow(deprecated)]
+        {
+            assert!(provider.has_beardog().await);
+            assert!(provider.beardog_endpoint().await.is_ok());
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_client_provider_capability_based() {
+        let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
+        let provider = ClientProvider::new(Arc::clone(&registry));
+
+        // Nothing registered yet - capability-based checks
+        assert!(!provider.has_signing().await);
+        assert!(!provider.has_did_verification().await);
+        assert!(provider.signing_endpoint().await.is_err());
+
+        // Register a signing service (could be BearDog, YubiKey, CloudKMS, etc.)
+        registry
+            .register_endpoint(ServiceEndpoint::new(
+                "signingService", // Deliberately generic name
+                "127.0.0.1:9000".parse().unwrap(),
+                vec![Capability::DidVerification, Capability::Signing],
+            ))
+            .await;
+
+        // Now capability-based checks work
+        assert!(provider.has_signing().await);
+        assert!(provider.has_did_verification().await);
+        assert!(provider.signing_endpoint().await.is_ok());
+        assert!(provider.did_verification_endpoint().await.is_ok());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
