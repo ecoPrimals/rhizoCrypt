@@ -57,12 +57,16 @@ pub struct RhizoCrypt {
     dehydration_status: Arc<DashMap<SessionId, dehydration::DehydrationStatus>>,
     // Atomic metrics (lock-free)
     metrics: Arc<PrimalMetrics>,
+    // Provenance notifier (optional, non-fatal)
+    provenance_notifier: Arc<crate::types_ecosystem::provenance::ProvenanceNotifier>,
 }
 
 impl RhizoCrypt {
     /// Create a new RhizoCrypt instance.
     #[must_use]
     pub fn new(config: RhizoCryptConfig) -> Self {
+        use crate::types_ecosystem::provenance::{ProvenanceNotifier, ProvenanceProviderConfig};
+
         Self {
             config,
             state: PrimalState::Created,
@@ -73,6 +77,9 @@ impl RhizoCrypt {
             slices: Arc::new(DashMap::new()),
             dehydration_status: Arc::new(DashMap::new()),
             metrics: Arc::new(PrimalMetrics::new()),
+            provenance_notifier: Arc::new(ProvenanceNotifier::new(
+                ProvenanceProviderConfig::from_env(),
+            )),
         }
     }
 
@@ -464,6 +471,12 @@ impl RhizoCrypt {
 
         // Commit to permanent storage
         let commit_ref = self.commit_to_permanent_storage(&summary_with_attestations).await?;
+
+        // Notify provenance provider (non-fatal: dehydration succeeds regardless)
+        self.provenance_notifier
+            .notify_dehydration(&summary_with_attestations)
+            .await
+            .ok();
 
         // Update status to complete
         self.dehydration_status.insert(

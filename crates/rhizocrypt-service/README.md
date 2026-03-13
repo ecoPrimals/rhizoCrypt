@@ -1,6 +1,6 @@
 # 🚀 Standalone Service Mode
 
-rhizoCrypt v0.11.0 now supports **dual-mode operation**:
+rhizoCrypt v0.13.0 supports **dual-mode operation**:
 1. **Library Mode** - Embed directly into other primals
 2. **Service Mode** - Standalone RPC service for BiomeOS coordination
 
@@ -268,7 +268,7 @@ docker run -p 9400:9400 -e RHIZOCRYPT_DISCOVERY_ADAPTER=songbird:7500 rhizocrypt
 
 ## 🎊 Summary
 
-rhizoCrypt v0.11.0 is now:
+rhizoCrypt v0.13.0 is now:
 - ✅ **Library** - Embed directly for tight integration
 - ✅ **Service** - Deploy standalone for BiomeOS coordination
 - ✅ **Discoverable** - Registers with capability-based discovery

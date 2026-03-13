@@ -14,6 +14,7 @@ pub use rhizo_crypt_rpc;
 use rhizo_crypt_core::clients::songbird::{SongbirdClient, SongbirdConfig};
 use rhizo_crypt_core::constants;
 use rhizo_crypt_core::safe_env::SafeEnv;
+use rhizo_crypt_core::primal::PrimalLifecycle;
 use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig};
 use rhizo_crypt_rpc::jsonrpc::JsonRpcServer;
 use rhizo_crypt_rpc::server::RpcServer;
@@ -77,8 +78,10 @@ pub async fn run_server(
     info!(address = %addr, "Binding RPC server");
 
     let config = RhizoCryptConfig::default();
-    let primal = Arc::new(RhizoCrypt::new(config));
-    info!("DAG engine initialized");
+    let mut primal = RhizoCrypt::new(config);
+    primal.start().await.map_err(|e| ServiceError::Config(e.to_string()))?;
+    let primal = Arc::new(primal);
+    info!("DAG engine initialized and running");
 
     let server = RpcServer::new(Arc::clone(&primal), addr);
 

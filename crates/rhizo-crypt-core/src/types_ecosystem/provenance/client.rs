@@ -4,6 +4,8 @@
 //! Provenance provider notifier for push updates.
 //!
 //! Used to notify provenance provider when new provenance data is available.
+//! When connected, sends JSON-RPC calls to the attribution provider (sweetGrass
+//! or any provider with `ProvenanceQuery` capability).
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -11,6 +13,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
+use crate::dehydration::DehydrationSummary;
 use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::{Result, RhizoCryptError};
 use crate::types::SessionId;
@@ -99,19 +102,120 @@ impl ProvenanceNotifier {
 
     /// Notify provenance provider of a new session commit.
     ///
+    /// Sends a `contribution.recordSession` JSON-RPC call to the connected
+    /// provenance provider with the session ID so it can begin attribution.
+    ///
     /// # Errors
     ///
     /// Returns error if notification fails.
     pub async fn notify_session_commit(&self, session_id: SessionId) -> Result<()> {
         if *self.state.read().await != ClientState::Connected {
-            // Silently ignore if not connected - provenance provider is optional
             return Ok(());
         }
 
-        debug!(%session_id, "Notifying provenance provider of session commit");
+        let stored = *self.endpoint.read().await;
+        let Some(endpoint) = stored else {
+            return Ok(());
+        };
 
-        // Scaffolded mode: log but don't send
-        // With live-clients feature, this would send the notification
+        debug!(%session_id, %endpoint, "Notifying provenance provider of session commit");
+
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "contribution.recordSession",
+            "params": {
+                "session_id": session_id.to_string(),
+                "source_primal": crate::constants::PRIMAL_NAME,
+            },
+            "id": 1
+        });
+
+        match Self::send_jsonrpc(&endpoint, &request).await {
+            Ok(response) => {
+                info!(
+                    %session_id,
+                    "Provenance provider notified of session commit: {}",
+                    response
+                );
+            }
+            Err(e) => {
+                warn!(
+                    %session_id,
+                    error = %e,
+                    "Failed to notify provenance provider (non-fatal)"
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Notify provenance provider of a completed dehydration with full summary.
+    ///
+    /// Sends a `contribution.recordDehydration` JSON-RPC call with the
+    /// `DehydrationSummary` so the provider can create attribution braids
+    /// linking agents to their contributions.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if notification fails.
+    pub async fn notify_dehydration(
+        &self,
+        summary: &DehydrationSummary,
+    ) -> Result<()> {
+        if *self.state.read().await != ClientState::Connected {
+            return Ok(());
+        }
+
+        let stored = *self.endpoint.read().await;
+        let Some(endpoint) = stored else {
+            return Ok(());
+        };
+
+        debug!(
+            session_id = %summary.session_id,
+            agents = summary.agents.len(),
+            %endpoint,
+            "Notifying provenance provider of dehydration"
+        );
+
+        let agent_dids: Vec<String> = summary
+            .agents
+            .iter()
+            .map(|a| a.agent.to_string())
+            .collect();
+
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "contribution.recordDehydration",
+            "params": {
+                "session_id": summary.session_id.to_string(),
+                "source_primal": crate::constants::PRIMAL_NAME,
+                "merkle_root": summary.merkle_root.to_string(),
+                "vertex_count": summary.vertex_count,
+                "agents": agent_dids,
+                "session_type": summary.session_type,
+                "outcome": format!("{:?}", summary.outcome),
+            },
+            "id": 1
+        });
+
+        match Self::send_jsonrpc(&endpoint, &request).await {
+            Ok(response) => {
+                info!(
+                    session_id = %summary.session_id,
+                    "Provenance provider notified of dehydration: {}",
+                    response
+                );
+            }
+            Err(e) => {
+                warn!(
+                    session_id = %summary.session_id,
+                    error = %e,
+                    "Failed to notify provenance provider of dehydration (non-fatal)"
+                );
+            }
+        }
 
         Ok(())
     }
@@ -131,6 +235,44 @@ impl ProvenanceNotifier {
         Ok(())
     }
 
+    /// Send a JSON-RPC request to the given endpoint via TCP.
+    async fn send_jsonrpc(
+        endpoint: &SocketAddr,
+        request: &serde_json::Value,
+    ) -> std::result::Result<String, String> {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::TcpStream;
+
+        let stream = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            TcpStream::connect(endpoint),
+        )
+        .await
+        .map_err(|_| format!("Connection timeout to {endpoint}"))?
+        .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
+
+        let (reader, mut writer) = stream.into_split();
+
+        let payload = format!("{}\n", serde_json::to_string(request).unwrap_or_default());
+        writer
+            .write_all(payload.as_bytes())
+            .await
+            .map_err(|e| format!("Write failed: {e}"))?;
+
+        let mut buf_reader = BufReader::new(reader);
+        let mut response = String::new();
+
+        tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            buf_reader.read_line(&mut response),
+        )
+        .await
+        .map_err(|_| "Response timeout".to_string())?
+        .map_err(|e| format!("Read failed: {e}"))?;
+
+        Ok(response)
+    }
+
     /// Get the current endpoint.
     pub async fn endpoint(&self) -> Option<SocketAddr> {
         *self.endpoint.read().await
@@ -143,6 +285,7 @@ mod tests {
     use super::*;
     use crate::types::{Did, Timestamp, VertexId};
     use crate::types_ecosystem::provenance::VertexRef;
+    use crate::MerkleRoot;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notifier_creation() {
@@ -201,6 +344,65 @@ mod tests {
         notifier.connect().await.unwrap();
 
         let result = notifier.notify_session_commit(SessionId::now()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_notify_dehydration_without_connection() {
+        use crate::dehydration::{AgentSummary, DehydrationSummaryBuilder};
+        use crate::event::SessionOutcome;
+
+        let notifier = ProvenanceNotifier::new(ProvenanceProviderConfig::default());
+
+        let summary = DehydrationSummaryBuilder::new(
+            SessionId::now(),
+            "test",
+            Timestamp::now(),
+            MerkleRoot::new([0u8; 32]),
+        )
+        .with_outcome(SessionOutcome::Success)
+        .with_vertex_count(5)
+        .with_agent(AgentSummary {
+            agent: Did::new("did:key:test"),
+            joined_at: Timestamp::now(),
+            left_at: None,
+            event_count: 3,
+            role: "author".to_string(),
+        })
+        .build();
+
+        let result = notifier.notify_dehydration(&summary).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_notify_dehydration_connected_no_server() {
+        use crate::dehydration::{AgentSummary, DehydrationSummaryBuilder};
+        use crate::event::SessionOutcome;
+
+        let config = ProvenanceProviderConfig::with_push_address("127.0.0.1:19901");
+        let notifier = ProvenanceNotifier::new(config);
+        notifier.connect().await.unwrap();
+
+        let summary = DehydrationSummaryBuilder::new(
+            SessionId::now(),
+            "test",
+            Timestamp::now(),
+            MerkleRoot::new([0u8; 32]),
+        )
+        .with_outcome(SessionOutcome::Success)
+        .with_vertex_count(5)
+        .with_agent(AgentSummary {
+            agent: Did::new("did:key:test"),
+            joined_at: Timestamp::now(),
+            left_at: None,
+            event_count: 3,
+            role: "author".to_string(),
+        })
+        .build();
+
+        // Non-fatal: should succeed even when provider is unreachable
+        let result = notifier.notify_dehydration(&summary).await;
         assert!(result.is_ok());
     }
 
