@@ -82,10 +82,50 @@ impl ProvenanceClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::discovery::{Capability, DiscoveryRegistry};
+    use std::net::SocketAddr;
 
     #[test]
     fn test_provenance_client_with_endpoint() {
-        let client = ProvenanceClient::with_endpoint("http://localhost:9900").unwrap();
-        assert_eq!(client.endpoint(), "http://localhost:9900");
+        let client = ProvenanceClient::with_endpoint("127.0.0.1:9900").unwrap();
+        assert_eq!(client.endpoint(), "127.0.0.1:9900");
+        assert!(client.service_name().is_none());
+    }
+
+    #[test]
+    fn test_provenance_client_with_tarpc_endpoint() {
+        let client = ProvenanceClient::with_endpoint("tarpc://127.0.0.1:9901").unwrap();
+        assert_eq!(client.endpoint(), "tarpc://127.0.0.1:9901");
+    }
+
+    #[test]
+    fn test_provenance_client_with_unix_endpoint() {
+        let client = ProvenanceClient::with_endpoint("/tmp/provenance.sock").unwrap();
+        assert_eq!(client.endpoint(), "/tmp/provenance.sock");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_provenance_client_discover_unavailable() {
+        let registry = DiscoveryRegistry::new("rhizoCrypt");
+        let result = ProvenanceClient::discover(&registry).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("No provenance provider"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_provenance_client_discover_success() {
+        let registry = DiscoveryRegistry::new("rhizoCrypt");
+        let addr: SocketAddr = "127.0.0.1:19900".parse().unwrap();
+        registry
+            .register_endpoint(crate::discovery::ServiceEndpoint::new(
+                "provenance-test",
+                addr,
+                vec![Capability::ProvenanceQuery],
+            ))
+            .await;
+
+        let client = ProvenanceClient::discover(&registry).await.unwrap();
+        assert_eq!(client.endpoint(), "127.0.0.1:19900");
+        assert_eq!(client.service_name(), Some("provenance-test"));
     }
 }

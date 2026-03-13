@@ -58,11 +58,6 @@ const TREE_FRONTIERS: &str = "frontiers";
 const TREE_GENESIS: &str = "genesis";
 const TREE_METADATA: &str = "metadata";
 
-/// All trees for iteration (reserved for future use).
-#[allow(dead_code)]
-const ALL_TREES: [&str; 5] =
-    [TREE_VERTICES, TREE_CHILDREN, TREE_FRONTIERS, TREE_GENESIS, TREE_METADATA];
-
 /// Sled-backed DAG store (100% Pure Rust).
 ///
 /// Provides persistent storage for vertices with tree separation
@@ -216,19 +211,6 @@ impl SledDagStore {
     #[allow(clippy::type_complexity)]
     pub fn export(&self) -> Vec<(Vec<u8>, Vec<u8>, impl Iterator<Item = Vec<Vec<u8>>>)> {
         self.db.export()
-    }
-
-    /// Get tree by name.
-    #[allow(dead_code)]
-    fn get_tree(&self, name: &str) -> Result<&Tree> {
-        match name {
-            TREE_VERTICES => Ok(&self.vertices),
-            TREE_CHILDREN => Ok(&self.children),
-            TREE_FRONTIERS => Ok(&self.frontiers),
-            TREE_GENESIS => Ok(&self.genesis),
-            TREE_METADATA => Ok(&self.metadata),
-            _ => Err(RhizoCryptError::storage(format!("Unknown tree: {name}"))),
-        }
     }
 }
 

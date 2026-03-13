@@ -140,6 +140,8 @@ curl "http://${RHIZOCRYPT_HOST}:${RHIZOCRYPT_PORT}/health"
 
 ---
 
-**Status**: ✅ All showcase demos can use this system  
-**Backward Compatible**: Demos work with or without sourcing
+**Status**: All showcase demos can use this system.
+**Backward Compatible**: Demos work with or without sourcing.
+
+> For the full environment variable reference, see [docs/ENV_VARS.md](../docs/ENV_VARS.md).
 

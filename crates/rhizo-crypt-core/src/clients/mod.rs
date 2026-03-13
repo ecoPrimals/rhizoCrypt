@@ -37,9 +37,11 @@ pub mod adapters;
 pub mod capabilities;
 pub mod factory; // Factory for creating and caching capability clients
 
-// HTTP/RPC client implementations
+// HTTP/RPC client implementations (reqwest-based, feature-gated)
+// For pure Rust builds, use Unix socket IPC via adapters::UnixSocketAdapter instead.
 #[cfg(feature = "live-clients")]
 pub mod beardog_http;
+#[cfg(feature = "http-clients")]
 pub mod loamspine_http;
 #[cfg(feature = "live-clients")]
 pub mod loamspine_rpc;
@@ -47,8 +49,7 @@ pub mod loamspine_rpc;
 pub mod nestgate_http;
 #[cfg(feature = "live-clients")]
 pub mod songbird_rpc;
-
-// HTTP client for ToadStool (compute)
+#[cfg(feature = "http-clients")]
 pub mod toadstool_http;
 
 // Universal adapter (bootstrap only)
@@ -60,7 +61,7 @@ pub use capabilities::{
     ComputeClient, PermanentStorageClient, ProvenanceClient, SigningClient, StorageClient,
 };
 
-pub use adapters::{AdapterFactory, ProtocolAdapter};
+pub use adapters::{AdapterFactory, ProtocolAdapter, UnixSocketAdapter};
 
 // Factory for creating and caching capability clients
 pub use factory::CapabilityClientFactory;

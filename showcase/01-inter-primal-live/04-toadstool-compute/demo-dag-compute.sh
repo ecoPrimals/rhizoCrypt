@@ -5,16 +5,19 @@
 
 set -euo pipefail
 
+# Paths (portable)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+BINS_DIR="${PRIMAL_BINS_DIR:-$REPO_ROOT/../../primalBins}"
+TOADSTOOL_BIN="${TOADSTOOL_BIN:-$BINS_DIR/toadstool-cli}"
+RHIZO_BIN="${RHIZO_BIN:-$REPO_ROOT/target/release/rhizocrypt}"
+
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
-
-# Paths
-TOADSTOOL_BIN="/path/to/ecoPrimals/primalBins/toadstool-cli"
-RHIZO_BIN="/path/to/ecoPrimals/phase2/rhizoCrypt/target/release/rhizocrypt"
 
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}  🍄 Demo: DAG-Driven Compute with ToadStool${NC}"
@@ -32,8 +35,7 @@ echo -e "${GREEN}✓ ToadStool binary found${NC}"
 
 if [ ! -f "$RHIZO_BIN" ]; then
     echo -e "${YELLOW}⚠  rhizoCrypt service not built, building now...${NC}"
-    cd ../../../ && cargo build --release -p rhizocrypt-service
-    cd -
+    (cd "$REPO_ROOT" && cargo build --release -p rhizocrypt-service)
 fi
 echo -e "${GREEN}✓ rhizoCrypt service ready${NC}"
 

@@ -16,8 +16,9 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BINS_DIR="/path/to/ecoPrimals/primalBins"
-BEARDOG="$BINS_DIR/beardog"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+BINS_DIR="${PRIMAL_BINS_DIR:-$REPO_ROOT/../../primalBins}"
+BEARDOG="${BEARDOG_BIN:-$BINS_DIR/beardog}"
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}   🔐 Real Signature Verification${NC}"

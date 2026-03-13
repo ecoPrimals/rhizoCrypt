@@ -87,8 +87,8 @@ mod tests {
 
     #[test]
     fn test_compute_client_with_endpoint() {
-        let client = ComputeClient::with_endpoint("http://localhost:9800").unwrap();
-        assert_eq!(client.endpoint(), "http://localhost:9800");
+        let client = ComputeClient::with_endpoint("127.0.0.1:9800").unwrap();
+        assert_eq!(client.endpoint(), "127.0.0.1:9800");
         assert!(client.service_name().is_none());
     }
 
@@ -100,7 +100,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_compute_client_availability() {
-        let client = ComputeClient::with_endpoint("http://localhost:9999").unwrap();
+        let client = ComputeClient::with_endpoint("127.0.0.1:9999").unwrap();
         let available = client.is_available().await;
         // Just testing that the method doesn't panic
         let _ = available;
@@ -131,14 +131,13 @@ mod tests {
         let result = ComputeClient::discover(&registry).await;
         assert!(result.is_ok());
         let client = result.unwrap();
-        // AdapterFactory adds http:// prefix
         assert!(client.endpoint().contains("127.0.0.1:9800"));
         assert_eq!(client.service_name(), Some("test-compute"));
     }
 
     #[test]
     fn test_compute_client_clone() {
-        let client = ComputeClient::with_endpoint("http://localhost:9800").unwrap();
+        let client = ComputeClient::with_endpoint("127.0.0.1:9800").unwrap();
         let cloned = client.clone();
         assert_eq!(client.endpoint(), cloned.endpoint());
         assert_eq!(client.service_name(), cloned.service_name());
@@ -146,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_compute_client_debug() {
-        let client = ComputeClient::with_endpoint("http://localhost:9800").unwrap();
+        let client = ComputeClient::with_endpoint("127.0.0.1:9800").unwrap();
         let debug_str = format!("{client:?}");
         assert!(debug_str.contains("ComputeClient"));
     }
@@ -178,7 +177,6 @@ mod tests {
         let result = ComputeClient::discover(&registry).await;
         assert!(result.is_ok());
         let client = result.unwrap();
-        // Should get one of the registered endpoints (AdapterFactory adds http:// prefix)
         assert!(
             client.endpoint().contains("127.0.0.1:9800")
                 || client.endpoint().contains("127.0.0.1:9801")
@@ -202,9 +200,10 @@ mod tests {
         assert!(client.endpoint().contains("127.0.0.1:9800"));
     }
 
+    #[cfg(feature = "http-clients")]
     #[test]
     fn test_compute_client_endpoint_formats() {
-        // Test various endpoint formats
+        // Test various HTTP endpoint formats
         let http_client = ComputeClient::with_endpoint("http://localhost:9800").unwrap();
         assert_eq!(http_client.endpoint(), "http://localhost:9800");
 
@@ -214,6 +213,17 @@ mod tests {
         // AdapterFactory auto-adds http:// for addresses without protocol
         let auto_http = ComputeClient::with_endpoint("localhost:9800").unwrap();
         assert!(auto_http.endpoint().contains("localhost:9800"));
+    }
+
+    #[cfg(not(feature = "http-clients"))]
+    #[test]
+    fn test_compute_client_endpoint_formats() {
+        // Test tarpc and unix formats (no http-clients)
+        let tarpc = ComputeClient::with_endpoint("127.0.0.1:9800").unwrap();
+        assert_eq!(tarpc.endpoint(), "127.0.0.1:9800");
+
+        let unix = ComputeClient::with_endpoint("unix:///run/rhizocrypt/compute.sock").unwrap();
+        assert_eq!(unix.endpoint(), "unix:///run/rhizocrypt/compute.sock");
     }
 
     #[tokio::test]
@@ -249,6 +259,7 @@ mod tests {
         assert!(client.service_name().unwrap().contains("compute"));
     }
 
+    #[cfg(feature = "http-clients")]
     #[test]
     fn test_compute_client_various_addresses() {
         // IPv4

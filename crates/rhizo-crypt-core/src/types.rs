@@ -332,6 +332,7 @@ pub fn hash_pair(left: &ContentHash, right: &ContentHash) -> ContentHash {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::merkle::MerkleRoot;
 
     #[test]
     fn test_vertex_id() {
@@ -378,5 +379,98 @@ mod tests {
     fn test_did() {
         let did = Did::new("did:key:z6MkTest");
         assert_eq!(did.as_str(), "did:key:z6MkTest");
+    }
+
+    #[test]
+    fn test_session_id_from_uuid() {
+        let uuid = uuid::Uuid::parse_str("018e1234-5678-7abc-def0-123456789abc").unwrap();
+        let session_id = SessionId::new(uuid);
+        assert_eq!(session_id.as_uuid(), &uuid);
+        assert_eq!(session_id.to_string(), uuid.to_string());
+    }
+
+    #[test]
+    fn test_session_id_as_bytes() {
+        let uuid = uuid::Uuid::parse_str("018e1234-5678-7abc-def0-123456789abc").unwrap();
+        let session_id = SessionId::new(uuid);
+        let bytes = session_id.as_bytes();
+        assert_eq!(bytes.len(), 16);
+        let roundtrip = uuid::Uuid::from_bytes(bytes.try_into().unwrap());
+        assert_eq!(roundtrip, uuid);
+    }
+
+    #[test]
+    fn test_vertex_id_from_bytes() {
+        let data = b"deterministic input";
+        let id1 = VertexId::from_bytes(data);
+        let id2 = VertexId::from_bytes(data);
+        assert_eq!(id1, id2);
+        assert_eq!(id1.as_bytes().len(), 32);
+        assert_ne!(id1, VertexId::from_bytes(b"different"));
+    }
+
+    #[test]
+    fn test_vertex_id_display() {
+        let id = VertexId::from_bytes(b"display test");
+        let s = format!("{id}");
+        assert_eq!(s.len(), 16);
+        assert!(s.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_timestamp_from_nanos() {
+        let ts = Timestamp::from_nanos(1_000_000_000);
+        assert_eq!(ts.as_nanos(), 1_000_000_000);
+        assert_eq!(ts.as_secs(), 1);
+    }
+
+    #[test]
+    fn test_timestamp_ordering() {
+        let ts1 = Timestamp::from_nanos(100);
+        let ts2 = Timestamp::from_nanos(200);
+        let ts3 = Timestamp::from_nanos(100);
+        assert!(ts1 < ts2);
+        assert!(ts2 > ts1);
+        assert_eq!(ts1, ts3);
+        assert!(ts1 <= ts3);
+    }
+
+    #[test]
+    fn test_payload_ref_from_bytes() {
+        let data = b"content-addressed hash";
+        let pref = PayloadRef::from_bytes(data);
+        assert_eq!(pref.size, data.len() as u64);
+        assert_eq!(pref.hash, *blake3::hash(data).as_bytes());
+        let pref2 = PayloadRef::from_bytes(data);
+        assert_eq!(pref.hash, pref2.hash);
+    }
+
+    #[test]
+    fn test_did_equality() {
+        let did1 = Did::new("did:key:z6MkTest");
+        let did2 = Did::new("did:key:z6MkTest");
+        let did3 = Did::new("did:key:other");
+        assert_eq!(did1, did2);
+        assert_ne!(did1, did3);
+    }
+
+    #[test]
+    fn test_slice_id() {
+        let slice_id = SliceId::now();
+        assert!(!slice_id.to_string().is_empty());
+        let uuid = uuid::Uuid::now_v7();
+        let from_uuid = SliceId::new(uuid);
+        assert_eq!(from_uuid.to_string(), uuid.to_string());
+    }
+
+    #[test]
+    fn test_merkle_root() {
+        let hash: ContentHash = [42u8; 32];
+        let root = MerkleRoot::new(hash);
+        assert_eq!(root.as_bytes(), &hash);
+        assert!(!root.to_hex().is_empty());
+        let s = format!("{root}");
+        assert_eq!(s.len(), 16);
+        assert_eq!(MerkleRoot::ZERO, MerkleRoot::new([0u8; 32]));
     }
 }

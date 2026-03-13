@@ -30,12 +30,16 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+#[cfg(feature = "http-clients")]
 pub mod http;
 pub mod tarpc;
+pub mod unix_socket;
 
 // Re-exports
+#[cfg(feature = "http-clients")]
 pub use http::HttpAdapter;
 pub use tarpc::TarpcAdapter;
+pub use unix_socket::UnixSocketAdapter;
 
 // ============================================================================
 // Protocol Adapter Trait
@@ -114,6 +118,14 @@ impl<T: ProtocolAdapter + ?Sized> ProtocolAdapterExt for T {}
 // ============================================================================
 
 /// Factory for creating protocol adapters.
+///
+/// Supports three transport types:
+///
+/// | Protocol | Transport | C deps | Use case |
+/// |----------|-----------|--------|----------|
+/// | `unix://` | Unix socket | None | Local IPC (Tower Atomic) |
+/// | `tarpc://` | TCP binary | None | High-perf binary RPC |
+/// | `http://` | HTTP/REST | ring | Legacy / remote (feature-gated) |
 pub struct AdapterFactory;
 
 impl AdapterFactory {
@@ -121,7 +133,11 @@ impl AdapterFactory {
     ///
     /// # Arguments
     ///
-    /// * `endpoint` - Service endpoint (e.g., "http://10.0.1.5:9500", "tarpc://10.0.1.6:9600")
+    /// * `endpoint` - Service endpoint:
+    ///   - `unix:///run/ecoPrimals/beardog.sock` — Unix socket IPC
+    ///   - `/run/ecoPrimals/beardog.sock` — bare path → Unix socket
+    ///   - `tarpc://10.0.1.6:9600` — tarpc binary protocol
+    ///   - `http://10.0.1.5:9500` — HTTP/REST (requires `http-clients` feature)
     ///
     /// # Errors
     ///
@@ -130,33 +146,61 @@ impl AdapterFactory {
     /// - Endpoint format is invalid
     /// - Adapter creation fails
     pub fn create(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
-        // Parse protocol from endpoint
+        // Bare path → Unix socket
+        if endpoint.starts_with('/') || endpoint.starts_with('.') {
+            return Ok(Box::new(UnixSocketAdapter::new(endpoint)?));
+        }
+
         if let Some((protocol, _)) = endpoint.split_once("://") {
             match protocol {
-                "http" | "https" => Ok(Box::new(HttpAdapter::new(endpoint)?)),
+                "unix" => Ok(Box::new(UnixSocketAdapter::from_endpoint(endpoint)?)),
                 "tarpc" => Ok(Box::new(TarpcAdapter::new(endpoint)?)),
+                #[cfg(feature = "http-clients")]
+                "http" | "https" => Ok(Box::new(HttpAdapter::new(endpoint)?)),
+                #[cfg(not(feature = "http-clients"))]
+                "http" | "https" => Err(RhizoCryptError::integration(
+                    "HTTP transport requires 'http-clients' feature. \
+                     Use unix:// for local IPC (Tower Atomic pattern).",
+                )),
                 unsupported => Err(RhizoCryptError::integration(format!(
-                    "Unsupported protocol: {unsupported}. Supported: http, https, tarpc"
+                    "Unsupported protocol: {unsupported}. Supported: unix, tarpc{}",
+                    if cfg!(feature = "http-clients") {
+                        ", http, https"
+                    } else {
+                        ""
+                    }
                 ))),
             }
         } else {
-            // No protocol specified, try to infer from port or default to HTTP
-            tracing::warn!(
-                endpoint,
-                "No protocol specified, defaulting to HTTP. \
-                 Consider using explicit protocol: http://{}",
-                endpoint
-            );
-            let http_endpoint = format!("http://{endpoint}");
-            Ok(Box::new(HttpAdapter::new(&http_endpoint)?))
+            // No protocol, no path → host:port assumed
+            #[cfg(feature = "http-clients")]
+            {
+                tracing::warn!(
+                    endpoint,
+                    "No protocol specified, defaulting to HTTP. \
+                     Consider: unix:// for local IPC or http://{endpoint}",
+                );
+                let http_endpoint = format!("http://{endpoint}");
+                Ok(Box::new(HttpAdapter::new(&http_endpoint)?))
+            }
+            #[cfg(not(feature = "http-clients"))]
+            {
+                tracing::info!(
+                    endpoint,
+                    "No protocol specified, defaulting to tarpc (pure Rust). \
+                     Consider: unix:// for local IPC or tarpc://{endpoint}",
+                );
+                Ok(Box::new(TarpcAdapter::new(endpoint)?))
+            }
         }
     }
 
-    /// Create an HTTP adapter.
+    /// Create an HTTP adapter (requires `http-clients` feature).
     ///
     /// # Errors
     ///
-    /// Returns an error if the HTTP adapter cannot be created (e.g., invalid endpoint URL).
+    /// Returns an error if the HTTP adapter cannot be created or feature is disabled.
+    #[cfg(feature = "http-clients")]
     pub fn http(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
         Ok(Box::new(HttpAdapter::new(endpoint)?))
     }
@@ -165,9 +209,18 @@ impl AdapterFactory {
     ///
     /// # Errors
     ///
-    /// Returns an error if the tarpc adapter cannot be created (e.g., invalid endpoint format).
+    /// Returns an error if the tarpc adapter cannot be created.
     pub fn tarpc(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
         Ok(Box::new(TarpcAdapter::new(endpoint)?))
+    }
+
+    /// Create a Unix socket adapter (Tower Atomic IPC).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the socket path is invalid.
+    pub fn unix(socket_path: &str) -> Result<Box<dyn ProtocolAdapter>> {
+        Ok(Box::new(UnixSocketAdapter::new(socket_path)?))
     }
 }
 
@@ -179,22 +232,40 @@ impl AdapterFactory {
 mod tests {
     use super::*;
 
+    #[cfg(feature = "http-clients")]
     #[test]
     fn test_factory_http() {
         let adapter = AdapterFactory::create("http://localhost:9500").unwrap();
         assert_eq!(adapter.protocol(), "http");
     }
 
+    #[cfg(feature = "http-clients")]
     #[test]
     fn test_factory_https() {
         let adapter = AdapterFactory::create("https://api.example.com:443").unwrap();
-        assert_eq!(adapter.protocol(), "http"); // HttpAdapter handles both
+        assert_eq!(adapter.protocol(), "http");
     }
 
+    #[cfg(feature = "http-clients")]
     #[test]
     fn test_factory_no_protocol_defaults_to_http() {
         let adapter = AdapterFactory::create("localhost:9500").unwrap();
         assert_eq!(adapter.protocol(), "http");
+    }
+
+    #[cfg(not(feature = "http-clients"))]
+    #[test]
+    fn test_factory_http_disabled() {
+        let result = AdapterFactory::create("http://localhost:9500");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("http-clients"));
+    }
+
+    #[cfg(not(feature = "http-clients"))]
+    #[test]
+    fn test_factory_no_protocol_defaults_to_tarpc() {
+        let adapter = AdapterFactory::create("localhost:9500").unwrap();
+        assert_eq!(adapter.protocol(), "tarpc");
     }
 
     #[test]
@@ -216,5 +287,52 @@ mod tests {
         let adapter = AdapterFactory::tarpc("localhost:7777").unwrap();
         assert_eq!(adapter.protocol(), "tarpc");
         assert_eq!(adapter.endpoint(), "localhost:7777");
+    }
+
+    #[test]
+    fn test_factory_unix_with_protocol() {
+        let adapter = AdapterFactory::create("unix:///run/ecoPrimals/beardog.sock").unwrap();
+        assert_eq!(adapter.protocol(), "unix");
+        assert_eq!(adapter.endpoint(), "/run/ecoPrimals/beardog.sock");
+    }
+
+    #[test]
+    fn test_factory_unix_bare_path() {
+        let adapter = AdapterFactory::create("/run/ecoPrimals/beardog.sock").unwrap();
+        assert_eq!(adapter.protocol(), "unix");
+    }
+
+    #[test]
+    fn test_factory_unix_relative_path() {
+        let adapter = AdapterFactory::create("./sockets/beardog.sock").unwrap();
+        assert_eq!(adapter.protocol(), "unix");
+    }
+
+    #[test]
+    fn test_unix_factory_method() {
+        let adapter = AdapterFactory::unix("/tmp/test.sock").unwrap();
+        assert_eq!(adapter.protocol(), "unix");
+        assert_eq!(adapter.endpoint(), "/tmp/test.sock");
+    }
+
+    #[cfg(feature = "http-clients")]
+    #[test]
+    fn test_http_factory_method() {
+        let adapter = AdapterFactory::http("http://localhost:9500").unwrap();
+        assert_eq!(adapter.protocol(), "http");
+        assert_eq!(adapter.endpoint(), "http://localhost:9500");
+    }
+
+    #[test]
+    fn test_factory_unsupported_protocol_ws() {
+        let result = AdapterFactory::create("ws://localhost:9500");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Unsupported protocol"));
+    }
+
+    #[test]
+    fn test_factory_unsupported_protocol_ftps() {
+        let result = AdapterFactory::create("ftps://localhost:21");
+        assert!(result.is_err());
     }
 }

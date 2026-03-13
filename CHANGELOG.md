@@ -5,6 +5,38 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-13
+
+### Changed
+
+#### Pure Rust Storage Evolution
+- **redb default**: Switched default storage backend from `sled` to `redb` (100% Pure Rust)
+- **ecoBin compliant**: Default build now has zero C dependencies
+- **Feature-gated**: `sled` backend remains available via `--features sled`
+
+#### Test Coverage: 80.6% → 90.02%
+- 600 tests passing (was 491) — +114 new unit tests across 14 modules
+- `rpc/client.rs`: 0% → 81% (22 new tests)
+- `rhizocrypt.rs`: 80% → 92% (14 new tests including full lifecycle, dehydration)
+- `store_redb.rs`: 62% → 79% (14 new tests including diamond DAG, persistence)
+- `event.rs`: 68% → 100% (serialization roundtrips for all variants)
+- `rpc/jsonrpc/mod.rs`: 20% → 77% (5 Axum endpoint integration tests)
+
+#### Client Method Negotiation
+- LoamSpine HTTP client now tries native method names (`commit.session`) first
+- Falls back to compatibility names (`permanent-storage.commitSession`) on -32601
+- Negotiation outcome cached via `AtomicU8` for zero-overhead subsequent calls
+
+#### Discovery Registry Evolution
+- `DiscoveryRegistry::discover()` now queries Songbird via HTTP/1.1 over TCP
+- Parses `discovery.resolve` JSON-RPC responses and caches results
+- New `parse_capability()` helper converts string names to `Capability` variants
+
+#### JSON-RPC Handler Coverage
+- 12 new handler unit tests covering all session, event, vertex, Merkle, slice, and system methods
+
+---
+
 ## [0.13.0-dev] - 2026-03-12
 
 ### Changed
@@ -38,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cleaned 22 root-level session artifacts to `phase2/archive/`
 - Completed dehydration implementation (payload sizes, event counting, role assignment)
 
-### Metrics
+### Metrics (March 12)
 - 491 tests passing (0 failed)
 - `cargo clippy --workspace --all-targets --all-features -- -D warnings`: clean
 - `cargo fmt --check --all`: clean

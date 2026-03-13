@@ -287,6 +287,51 @@ async fn test_connect_already_registered() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_connect_success() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let config = SongbirdConfig::with_address(addr.to_string());
+    let client = SongbirdClient::new(config);
+
+    let accept_handle = tokio::spawn(async move {
+        let _ = listener.accept().await;
+    });
+
+    let result = client.connect().await;
+    assert!(result.is_ok(), "connect failed: {result:?}");
+    assert_eq!(client.state().await, ClientState::Connected);
+    assert!(client.endpoint().await.is_some());
+
+    accept_handle.await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_connect_timeout() {
+    let mut config = SongbirdConfig::with_address("192.0.2.1:9999");
+    config.timeout_ms = 1;
+    let client = SongbirdClient::new(config);
+
+    let result = client.connect().await;
+    assert!(result.is_err());
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("timeout") || err_msg.contains("Cannot reach"),
+        "expected timeout or connection error, got: {err_msg}"
+    );
+    assert_eq!(client.state().await, ClientState::Failed);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_connect_connection_refused() {
+    let config = SongbirdConfig::with_address("127.0.0.1:49151");
+    let client = SongbirdClient::new(config);
+
+    let result = client.connect().await;
+    assert!(result.is_err());
+    assert_eq!(client.state().await, ClientState::Failed);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_register_not_connected() {
     let config = SongbirdConfig::with_address("127.0.0.1:8091");
     let client = SongbirdClient::new(config);

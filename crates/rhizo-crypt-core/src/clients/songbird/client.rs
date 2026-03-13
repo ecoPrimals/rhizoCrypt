@@ -31,7 +31,6 @@
 //! └─────────────────────────────────────────────────────────────────┘
 //! ```
 
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -40,125 +39,15 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
-use crate::discovery::{Capability, DiscoveryRegistry, ServiceEndpoint};
 use crate::error::{Result, RhizoCryptError};
 
-// Import types from songbird_types module
 use super::super::songbird_types::{
     ClientState, FederationStatus, RegistrationResult, ServiceInfo,
 };
+use super::config::SongbirdConfig;
 
-// Import tarpc types when live-clients feature is enabled
 #[cfg(feature = "live-clients")]
 use super::super::songbird_rpc::{RpcServiceRegistration, SongbirdRpcClient};
-
-/// Configuration for Songbird client.
-///
-/// Songbird is special: it's the bootstrap for discovery, so its address
-/// is the only one that should be configured directly.
-#[derive(Debug, Clone)]
-pub struct SongbirdConfig {
-    /// Songbird orchestrator address.
-    /// This is the bootstrap address - discovered from environment or config.
-    pub address: Cow<'static, str>,
-
-    /// Service name for registration.
-    pub service_name: Cow<'static, str>,
-
-    /// Capabilities to advertise.
-    pub capabilities: Vec<Cow<'static, str>>,
-
-    /// Metadata to include in registration.
-    pub metadata: HashMap<String, String>,
-
-    /// Connection timeout in milliseconds.
-    pub timeout_ms: u64,
-
-    /// Enable automatic reconnection.
-    pub auto_reconnect: bool,
-}
-
-impl Default for SongbirdConfig {
-    fn default() -> Self {
-        Self::from_env()
-    }
-}
-
-impl SongbirdConfig {
-    /// Create a new config with no address configured.
-    ///
-    /// This is the preferred constructor - requires explicit address configuration.
-    /// Songbird is the discovery bootstrap; its address is discovered from
-    /// environment, never hardcoded.
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            address: Cow::Borrowed(""),
-            service_name: Cow::Borrowed("rhizoCrypt"),
-            capabilities: vec![
-                Cow::Borrowed("dag-engine"),
-                Cow::Borrowed("session-management"),
-                Cow::Borrowed("merkle-proofs"),
-                Cow::Borrowed("slice-checkout"),
-                Cow::Borrowed("dehydration"),
-            ],
-            metadata: HashMap::new(),
-            timeout_ms: 5000,
-            auto_reconnect: true,
-        }
-    }
-
-    /// Check if this config has a valid address configured.
-    #[must_use]
-    pub fn is_configured(&self) -> bool {
-        !self.address.is_empty()
-    }
-}
-
-impl SongbirdConfig {
-    /// Create config from environment variables.
-    ///
-    /// Environment variables (checked in order):
-    /// - `DISCOVERY_ENDPOINT` or `DISCOVERY_SERVICE_ENDPOINT`: Discovery capability endpoint (preferred)
-    /// - `SONGBIRD_ADDRESS`: Legacy orchestrator address (acceptable - Songbird is the universal adapter)
-    /// - `SONGBIRD_HOST` + `SONGBIRD_PORT`: Alternative host/port specification
-    /// - `RHIZOCRYPT_SERVICE_NAME`: Service name for registration
-    ///
-    /// If no discovery address is configured, the address remains empty and
-    /// `connect()` will fail with a clear error. No hardcoded fallbacks.
-    #[must_use]
-    pub fn from_env() -> Self {
-        use crate::safe_env::CapabilityEnv;
-        let mut config = Self::new();
-
-        if let Some(addr) = CapabilityEnv::discovery_endpoint() {
-            config.address = Cow::Owned(addr);
-        } else if let (Ok(host), Ok(port)) =
-            (std::env::var("SONGBIRD_HOST"), std::env::var("SONGBIRD_PORT"))
-        {
-            config.address = Cow::Owned(format!("{host}:{port}"));
-        } else {
-            warn!(
-                "No discovery endpoint configured. \
-                 Set DISCOVERY_ENDPOINT, SONGBIRD_ADDRESS, or SONGBIRD_HOST+SONGBIRD_PORT"
-            );
-        }
-
-        if let Ok(name) = std::env::var("RHIZOCRYPT_SERVICE_NAME") {
-            config.service_name = Cow::Owned(name);
-        }
-
-        config
-    }
-
-    /// Create config with explicit address (for testing or explicit configuration).
-    #[must_use]
-    pub fn with_address(address: impl Into<Cow<'static, str>>) -> Self {
-        let mut config = Self::new();
-        config.address = address.into();
-        config
-    }
-}
 
 /// Songbird client for service mesh integration.
 ///
@@ -192,19 +81,19 @@ impl SongbirdConfig {
 /// When compiled with `--features live-clients`, this client uses
 /// actual tarpc connections to the Songbird orchestrator.
 pub struct SongbirdClient {
-    config: SongbirdConfig,
-    state: Arc<RwLock<ClientState>>,
-    service_id: Arc<RwLock<Option<String>>>,
-    discovered_services: Arc<RwLock<HashMap<String, Vec<ServiceInfo>>>>,
+    pub(crate) config: SongbirdConfig,
+    pub(crate) state: Arc<RwLock<ClientState>>,
+    pub(crate) service_id: Arc<RwLock<Option<String>>>,
+    pub(crate) discovered_services: Arc<RwLock<HashMap<String, Vec<ServiceInfo>>>>,
     /// Resolved endpoint for tarpc.
-    resolved_endpoint: Arc<RwLock<Option<SocketAddr>>>,
+    pub(crate) resolved_endpoint: Arc<RwLock<Option<SocketAddr>>>,
     /// tarpc client (when live-clients feature is enabled).
     #[cfg(feature = "live-clients")]
-    tarpc_client: Arc<RwLock<Option<SongbirdRpcClient>>>,
+    pub(crate) tarpc_client: Arc<RwLock<Option<SongbirdRpcClient>>>,
     /// Our registered endpoint (for heartbeat refreshes).
-    our_endpoint: Arc<RwLock<Option<String>>>,
+    pub(crate) our_endpoint: Arc<RwLock<Option<String>>>,
     /// Heartbeat task handle (if running).
-    heartbeat_handle: Arc<RwLock<Option<tokio::task::JoinHandle<()>>>>,
+    pub(crate) heartbeat_handle: Arc<RwLock<Option<tokio::task::JoinHandle<()>>>>,
 }
 
 impl SongbirdClient {
@@ -247,138 +136,6 @@ impl SongbirdClient {
     /// Check if connected to Songbird.
     pub async fn is_connected(&self) -> bool {
         matches!(*self.state.read().await, ClientState::Connected | ClientState::Registered)
-    }
-
-    /// Connect to the Songbird orchestrator.
-    ///
-    /// # Errors
-    ///
-    /// Returns `RhizoCryptError::Integration` if:
-    /// - No address is configured (SONGBIRD_ADDRESS not set)
-    /// - The configured address is invalid
-    /// - Connection times out
-    /// - TCP connection fails
-    pub async fn connect(&self) -> Result<()> {
-        let current_state = *self.state.read().await;
-        if matches!(current_state, ClientState::Connected | ClientState::Registered) {
-            return Ok(());
-        }
-
-        // Check for unconfigured address
-        if !self.config.is_configured() {
-            return Err(RhizoCryptError::integration(
-                "Songbird address not configured. Set SONGBIRD_ADDRESS environment variable \
-                 or use SongbirdConfig::with_address() for explicit configuration. \
-                 For development, set RHIZOCRYPT_ENV=development to use localhost fallback.",
-            ));
-        }
-
-        *self.state.write().await = ClientState::Connecting;
-        info!(address = %self.config.address, "Connecting to Songbird orchestrator");
-
-        // Parse address
-        let addr: SocketAddr = self.config.address.parse().map_err(|e| {
-            RhizoCryptError::integration(format!(
-                "Invalid Songbird address '{}': {e}",
-                self.config.address
-            ))
-        })?;
-
-        // Attempt connection with timeout
-        #[cfg(not(feature = "live-clients"))]
-        {
-            let connect_result = tokio::time::timeout(
-                std::time::Duration::from_millis(self.config.timeout_ms),
-                Self::try_connect(addr),
-            )
-            .await;
-
-            match connect_result {
-                Ok(Ok(())) => {
-                    *self.resolved_endpoint.write().await = Some(addr);
-                    *self.state.write().await = ClientState::Connected;
-                    info!(address = %addr, "Connected to Songbird orchestrator (scaffolded mode)");
-                    Ok(())
-                }
-                Ok(Err(e)) => {
-                    *self.state.write().await = ClientState::Failed;
-                    error!(error = %e, "Failed to connect to Songbird");
-                    Err(e)
-                }
-                Err(_) => {
-                    *self.state.write().await = ClientState::Failed;
-                    error!("Connection to Songbird timed out");
-                    Err(RhizoCryptError::integration("Songbird connection timeout"))
-                }
-            }
-        }
-
-        #[cfg(feature = "live-clients")]
-        {
-            let connect_result = tokio::time::timeout(
-                std::time::Duration::from_millis(self.config.timeout_ms),
-                Self::try_connect_tarpc(addr),
-            )
-            .await;
-
-            match connect_result {
-                Ok(Ok(client)) => {
-                    *self.resolved_endpoint.write().await = Some(addr);
-                    *self.tarpc_client.write().await = Some(client);
-                    *self.state.write().await = ClientState::Connected;
-                    info!(address = %addr, "Connected to Songbird orchestrator (live tarpc)");
-                    Ok(())
-                }
-                Ok(Err(e)) => {
-                    *self.state.write().await = ClientState::Failed;
-                    error!(error = %e, "Failed to connect to Songbird");
-                    Err(e)
-                }
-                Err(_) => {
-                    *self.state.write().await = ClientState::Failed;
-                    error!("Connection to Songbird timed out");
-                    Err(RhizoCryptError::integration("Songbird connection timeout"))
-                }
-            }
-        }
-    }
-
-    /// Internal connection attempt (scaffolded mode).
-    #[cfg(not(feature = "live-clients"))]
-    async fn try_connect(addr: SocketAddr) -> Result<()> {
-        // Try to establish TCP connection to verify reachability
-        match tokio::net::TcpStream::connect(addr).await {
-            Ok(_stream) => {
-                debug!(addr = %addr, "TCP connection established (scaffolded mode)");
-                Ok(())
-            }
-            Err(e) => {
-                Err(RhizoCryptError::integration(format!("Cannot reach Songbird at {addr}: {e}")))
-            }
-        }
-    }
-
-    /// Internal connection attempt with tarpc client establishment.
-    #[cfg(feature = "live-clients")]
-    async fn try_connect_tarpc(addr: SocketAddr) -> Result<SongbirdRpcClient> {
-        use tarpc::client;
-        use tarpc::tokio_serde::formats::Bincode;
-
-        debug!(addr = %addr, "Establishing tarpc connection to Songbird");
-
-        // Connect TCP stream
-        let stream = tokio::net::TcpStream::connect(addr).await.map_err(|e| {
-            RhizoCryptError::integration(format!("Cannot reach Songbird at {addr}: {e}"))
-        })?;
-
-        // Create tarpc transport
-        let transport = tarpc::serde_transport::Transport::from((stream, Bincode::default()));
-
-        // Create tarpc client
-        let client = SongbirdRpcClient::new(client::Config::default(), transport).spawn();
-
-        info!(addr = %addr, "tarpc connection established to Songbird");
-        Ok(client)
     }
 
     /// Register this service with Songbird.
@@ -584,148 +341,6 @@ impl SongbirdClient {
         }
     }
 
-    /// Discover services by capability.
-    ///
-    /// # Errors
-    ///
-    /// Returns `RhizoCryptError::Integration` if:
-    /// - Not connected to Songbird
-    /// - Discovery query fails
-    pub async fn discover(&self, capability: &str) -> Result<Vec<ServiceInfo>> {
-        if !self.is_connected().await {
-            return Err(RhizoCryptError::integration("Not connected to Songbird"));
-        }
-
-        debug!(capability = %capability, "Discovering services");
-
-        // Check cache first
-        {
-            let cache = self.discovered_services.read().await;
-            if let Some(services) = cache.get(capability) {
-                debug!(count = services.len(), "Returning cached discovery results");
-                return Ok(services.clone());
-            }
-        }
-
-        #[cfg(feature = "live-clients")]
-        {
-            let client_guard = self.tarpc_client.read().await;
-            if let Some(client) = client_guard.as_ref() {
-                let rpc_services = client
-                    .discover(tarpc::context::current(), capability.to_string())
-                    .await
-                    .map_err(|e| RhizoCryptError::integration(format!("tarpc error: {e}")))?;
-
-                // Convert RpcServiceInfo to ServiceInfo
-                let services: Vec<ServiceInfo> = rpc_services
-                    .into_iter()
-                    .map(|s| ServiceInfo {
-                        id: s.id,
-                        name: s.capability.clone(),
-                        endpoint: s.endpoint,
-                        capabilities: vec![s.capability],
-                        status: s.status,
-                        metadata: HashMap::new(),
-                    })
-                    .collect();
-
-                // Cache the results
-                self.discovered_services
-                    .write()
-                    .await
-                    .insert(capability.to_string(), services.clone());
-
-                return Ok(services);
-            }
-        }
-
-        // Scaffolded mode: return empty for capabilities we don't have cached
-        Ok(Vec::new())
-    }
-
-    /// Discover a service providing signing/DID capability.
-    ///
-    /// Returns the first available provider of the `signing` capability.
-    /// Capability-based: any primal implementing `signing` qualifies.
-    ///
-    /// # Errors
-    ///
-    /// Returns `RhizoCryptError::Integration` if not connected or discovery fails.
-    pub async fn discover_signing_provider(&self) -> Result<Option<ServiceInfo>> {
-        let services = self.discover("signing").await?;
-        Ok(services.into_iter().next())
-    }
-
-    /// Discover a service providing permanent-storage capability.
-    ///
-    /// Returns the first available provider of the `permanent-storage` capability.
-    /// Capability-based: any primal implementing `permanent-storage` qualifies.
-    ///
-    /// # Errors
-    ///
-    /// Returns `RhizoCryptError::Integration` if not connected or discovery fails.
-    pub async fn discover_permanent_storage_provider(&self) -> Result<Option<ServiceInfo>> {
-        let services = self.discover("permanent-storage").await?;
-        Ok(services.into_iter().next())
-    }
-
-    /// Discover a service providing payload-storage capability.
-    ///
-    /// Returns the first available provider of the `payload-storage` capability.
-    /// Capability-based: any primal implementing `payload-storage` qualifies.
-    ///
-    /// # Errors
-    ///
-    /// Returns `RhizoCryptError::Integration` if not connected or discovery fails.
-    pub async fn discover_payload_storage_provider(&self) -> Result<Option<ServiceInfo>> {
-        let services = self.discover("payload-storage").await?;
-        Ok(services.into_iter().next())
-    }
-
-    /// Populate the discovery registry with discovered services.
-    ///
-    /// This bridges Songbird discovery to the capability-based registry.
-    ///
-    /// # Errors
-    ///
-    /// Returns `RhizoCryptError::Integration` if:
-    /// - Not connected to Songbird
-    /// - Discovery fails
-    pub async fn populate_registry(&self, registry: &DiscoveryRegistry) -> Result<()> {
-        if !self.is_connected().await {
-            return Err(RhizoCryptError::integration("Not connected to Songbird"));
-        }
-
-        let capability_mappings: &[(&str, &[Capability])] = &[
-            ("signing", &[Capability::DidVerification, Capability::Signing]),
-            (
-                "permanent-storage",
-                &[
-                    Capability::PermanentCommit,
-                    Capability::SliceCheckout,
-                    Capability::SliceResolution,
-                ],
-            ),
-            ("payload-storage", &[Capability::PayloadStorage, Capability::PayloadRetrieval]),
-        ];
-
-        for (domain, capabilities) in capability_mappings {
-            for service in self.discover(domain).await? {
-                if let Ok(addr) = service.endpoint.parse() {
-                    registry
-                        .register_endpoint(ServiceEndpoint::new(
-                            service.name,
-                            addr,
-                            capabilities.to_vec(),
-                        ))
-                        .await;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
     /// Get federation status.
     ///
     /// # Errors
@@ -785,16 +400,6 @@ impl SongbirdClient {
     /// Get our registered service ID.
     pub async fn service_id(&self) -> Option<String> {
         self.service_id.read().await.clone()
-    }
-
-    /// Update cached discovery results.
-    pub async fn cache_discovery(&self, capability: &str, services: Vec<ServiceInfo>) {
-        self.discovered_services.write().await.insert(capability.to_string(), services);
-    }
-
-    /// Clear discovery cache.
-    pub async fn clear_cache(&self) {
-        self.discovered_services.write().await.clear();
     }
 
     /// Get the resolved endpoint address.

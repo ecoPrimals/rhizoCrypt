@@ -6,11 +6,13 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-only |
-| Tests | 491 passing |
+| Tests | 600 passing |
+| Coverage | 90% line coverage (llvm-cov) |
 | Clippy | 0 warnings (pedantic + nursery) |
 | Unsafe | `#![forbid(unsafe_code)]` workspace-wide |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
 | IPC | JSON-RPC 2.0 (HTTP) + tarpc (bincode) |
+| Storage | redb (Pure Rust, default) / sled (optional) |
 
 ---
 
@@ -58,8 +60,9 @@ rhizoCrypt (Ephemeral DAG Engine)
 
 All inter-primal communication uses the Universal IPC Standard:
 JSON-RPC 2.0 over HTTP (required) with tarpc/bincode (optional, high-performance).
-Method names follow semantic capability naming: `permanent-storage.commitSession`,
-`signing.verify`, etc.
+Method names follow semantic capability naming: `commit.session`,
+`signing.verify`, etc. Clients use method negotiation (native → compatibility
+fallback) for forward/backward compatibility.
 
 ---
 
@@ -120,9 +123,9 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 | Standard | Status | Notes |
 |----------|--------|-------|
 | UniBin | Compliant | Single `rhizocrypt` binary with clap subcommands |
-| ecoBin | Partial | `sled` backend uses `zstd-sys` (C); feature-gated, `redb` migration planned |
+| ecoBin | Compliant | Default `redb` backend is 100% Pure Rust; `sled` available as optional feature |
 | Universal IPC v3 | Compliant | JSON-RPC 2.0 + tarpc, semantic method names |
-| Semantic Naming | Compliant | `permanent-storage.*`, `signing.*` domains |
+| Semantic Naming | Compliant | Native (`commit.*`) + compat (`permanent-storage.*`) with negotiation |
 | `#![forbid(unsafe_code)]` | Compliant | Workspace-wide |
 | AGPL-3.0-only | Compliant | SPDX headers on all source files |
 

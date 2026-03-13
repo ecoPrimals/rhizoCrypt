@@ -15,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 rhizo-crypt-core = { path = "../rhizo-crypt-core" }
+thiserror = { workspace = true }
 rhizo-crypt-rpc = { path = "../rhizo-crypt-rpc" }
 tokio = { workspace = true }
 tracing = { workspace = true }

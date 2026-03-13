@@ -565,7 +565,7 @@ impl RhizoCrypt {
     ) -> Result<LoamCommitRef> {
         use crate::clients::PermanentStorageClient;
 
-        let registry = DiscoveryRegistry::new("rhizoCrypt");
+        let registry = DiscoveryRegistry::new(crate::constants::PRIMAL_NAME);
 
         match PermanentStorageClient::discover(&registry).await {
             Ok(client) => {
@@ -705,6 +705,296 @@ impl PrimalHealth for RhizoCrypt {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::event::EventType;
+    use crate::session::{SessionBuilder, SessionType};
+    use crate::slice::{ResolutionOutcome, SliceBuilder, SliceMode, SliceOrigin};
+    use crate::vertex::VertexBuilder;
+
+    async fn running_primal() -> RhizoCrypt {
+        let config = RhizoCryptConfig::default();
+        let mut primal = RhizoCrypt::new(config);
+        primal.start().await.unwrap();
+        primal
+    }
+
+    fn test_slice_origin(owner: Did) -> SliceOrigin {
+        SliceOrigin {
+            spine_id: "spine-test".to_string(),
+            entry_hash: [0u8; 32],
+            entry_index: 0,
+            certificate_id: None,
+            owner,
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_session_operations() {
+        let primal = running_primal().await;
+
+        let session = SessionBuilder::new(SessionType::General).with_name("test").build();
+        let session_id = primal.create_session(session).unwrap();
+
+        let got = primal.get_session(session_id).unwrap();
+        assert_eq!(got.name, Some("test".to_string()));
+
+        let sessions = primal.list_sessions();
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(primal.session_count(), 1);
+        assert_eq!(primal.total_vertex_count(), 0);
+
+        primal.discard_session(session_id).await.unwrap();
+        assert!(primal.get_session(session_id).is_err());
+        assert_eq!(primal.session_count(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_session_not_running() {
+        let config = RhizoCryptConfig::default();
+        let primal = RhizoCrypt::new(config);
+
+        let session = SessionBuilder::new(SessionType::General).build();
+        assert!(primal.create_session(session).is_err());
+
+        let session = SessionBuilder::new(SessionType::General).build();
+        let session_id = session.id;
+        // Need a running primal to create session first, then stop to test discard
+        let mut primal = running_primal().await;
+        primal.create_session(session).unwrap();
+        primal.stop().await.unwrap();
+        assert!(primal.discard_session(session_id).await.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_max_sessions_exceeded() {
+        let config = RhizoCryptConfig::default().with_max_sessions(2);
+        let mut primal = RhizoCrypt::new(config);
+        primal.start().await.unwrap();
+
+        let s1 = SessionBuilder::new(SessionType::General).build();
+        let s2 = SessionBuilder::new(SessionType::General).build();
+        primal.create_session(s1).unwrap();
+        primal.create_session(s2).unwrap();
+
+        let s3 = SessionBuilder::new(SessionType::General).build();
+        assert!(primal.create_session(s3).is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_vertex_operations() {
+        let primal = running_primal().await;
+
+        let session = SessionBuilder::new(SessionType::General).build();
+        let session_id = primal.create_session(session).unwrap();
+
+        let vertex = VertexBuilder::new(EventType::SessionStart).build();
+        let vertex_id = primal.append_vertex(session_id, vertex).await.unwrap();
+
+        let got = primal.get_vertex(session_id, vertex_id).await.unwrap();
+        assert_eq!(got.event_type, EventType::SessionStart);
+
+        let all = primal.get_all_vertices(session_id).await.unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].event_type, EventType::SessionStart);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_vertex_not_running() {
+        let config = RhizoCryptConfig::default();
+        let primal = RhizoCrypt::new(config);
+        let session_id = SessionId::now();
+        let vertex = VertexBuilder::new(EventType::SessionStart).build();
+        assert!(primal.append_vertex(session_id, vertex).await.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_vertex_session_not_found() {
+        let primal = running_primal().await;
+        let session_id = SessionId::now();
+        let vertex = VertexBuilder::new(EventType::SessionStart).build();
+        assert!(primal.append_vertex(session_id, vertex).await.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_query_vertices() {
+        let primal = running_primal().await;
+
+        let session = SessionBuilder::new(SessionType::General).build();
+        let session_id = primal.create_session(session).unwrap();
+
+        let v1 = VertexBuilder::new(EventType::SessionStart).build();
+        let v2 = VertexBuilder::new(EventType::DataCreate {
+            schema: None,
+        })
+        .build();
+        let v3 = VertexBuilder::new(EventType::AgentJoin {
+            role: crate::event::AgentRole::Participant,
+        })
+        .build();
+
+        primal.append_vertex(session_id, v1).await.unwrap();
+        primal.append_vertex(session_id, v2).await.unwrap();
+        primal.append_vertex(session_id, v3).await.unwrap();
+
+        let data_only = primal
+            .query_vertices(
+                session_id,
+                Some(&[EventType::DataCreate {
+                    schema: None,
+                }]),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(data_only.len(), 1);
+        assert_eq!(
+            data_only[0].event_type,
+            EventType::DataCreate {
+                schema: None
+            }
+        );
+
+        let limited = primal.query_vertices(session_id, None, None, Some(2)).await.unwrap();
+        assert_eq!(limited.len(), 2);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_merkle_operations() {
+        let primal = running_primal().await;
+
+        let session = SessionBuilder::new(SessionType::General).build();
+        let session_id = primal.create_session(session).unwrap();
+
+        let v1 = VertexBuilder::new(EventType::SessionStart).build();
+        let v2 = VertexBuilder::new(EventType::DataCreate {
+            schema: None,
+        })
+        .build();
+        primal.append_vertex(session_id, v1).await.unwrap();
+        let vertex_id = primal.append_vertex(session_id, v2).await.unwrap();
+
+        let root = primal.compute_merkle_root(session_id).await.unwrap();
+        assert!(!root.as_bytes().iter().all(|&b| b == 0));
+
+        let proof = primal.generate_merkle_proof(session_id, vertex_id).await.unwrap();
+        let vertex = primal.get_vertex(session_id, vertex_id).await.unwrap();
+        assert!(proof.verify(&vertex));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_slice_operations() {
+        let primal = running_primal().await;
+
+        let session = SessionBuilder::new(SessionType::General).build();
+        let session_id = primal.create_session(session).unwrap();
+
+        let vertex = VertexBuilder::new(EventType::SessionStart).build();
+        let vertex_id = primal.append_vertex(session_id, vertex).await.unwrap();
+
+        let owner = Did::new("did:test:owner");
+        let holder = Did::new("did:test:user");
+        let slice = SliceBuilder::new(
+            test_slice_origin(owner),
+            holder,
+            SliceMode::Copy {
+                allow_recopy: false,
+            },
+            session_id,
+            vertex_id,
+        )
+        .build();
+
+        let slice_id = primal.checkout_slice(slice).unwrap();
+
+        let got = primal.get_slice(slice_id).unwrap();
+        assert_eq!(got.session_id, session_id);
+
+        let slices = primal.list_slices();
+        assert_eq!(slices.len(), 1);
+
+        primal.resolve_slice(slice_id, ResolutionOutcome::ReturnedUnchanged).unwrap();
+        let resolved = primal.get_slice(slice_id).unwrap();
+        assert!(resolved.is_resolved());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_slice_not_running() {
+        let config = RhizoCryptConfig::default();
+        let primal = RhizoCrypt::new(config);
+        let owner = Did::new("did:test:owner");
+        let slice = SliceBuilder::new(
+            test_slice_origin(owner),
+            Did::new("did:test:user"),
+            SliceMode::Copy {
+                allow_recopy: false,
+            },
+            SessionId::now(),
+            VertexId::from_bytes(b"checkout"),
+        )
+        .build();
+        assert!(primal.checkout_slice(slice).is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_dehydrate() {
+        let primal = running_primal().await;
+
+        let session = SessionBuilder::new(SessionType::General).build();
+        let session_id = primal.create_session(session).unwrap();
+
+        let v1 = VertexBuilder::new(EventType::SessionStart).build();
+        let v2 = VertexBuilder::new(EventType::DataCreate {
+            schema: None,
+        })
+        .build();
+        primal.append_vertex(session_id, v1).await.unwrap();
+        primal.append_vertex(session_id, v2).await.unwrap();
+
+        let root = primal.dehydrate(session_id).await.unwrap();
+        assert!(!root.as_bytes().iter().all(|&b| b == 0));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_dehydration_status() {
+        let primal = running_primal().await;
+
+        let session = SessionBuilder::new(SessionType::General).build();
+        let session_id = primal.create_session(session).unwrap();
+
+        let status_before = primal.get_dehydration_status(session_id);
+        assert!(matches!(status_before, crate::dehydration::DehydrationStatus::Pending));
+
+        primal.dehydrate(session_id).await.unwrap();
+
+        let status_after = primal.get_dehydration_status(session_id);
+        assert!(matches!(status_after, crate::dehydration::DehydrationStatus::Completed { .. }));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_health_report() {
+        let primal = running_primal().await;
+
+        let report = primal.health_check().await.unwrap();
+        assert!(report.status.is_healthy());
+        assert!(report.uptime_secs.is_some());
+        assert_eq!(report.name, "RhizoCrypt");
+        assert!(!report.version.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_restart() {
+        let config = RhizoCryptConfig::default();
+        let mut primal = RhizoCrypt::new(config);
+
+        primal.start().await.unwrap();
+        assert_eq!(primal.state(), PrimalState::Running);
+
+        primal.stop().await.unwrap();
+        assert_eq!(primal.state(), PrimalState::Stopped);
+
+        primal.start().await.unwrap();
+        assert_eq!(primal.state(), PrimalState::Running);
+    }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_rhizocrypt_lifecycle() {

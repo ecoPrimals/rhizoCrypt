@@ -24,6 +24,18 @@
 use std::time::Duration;
 
 // ============================================================================
+// PRIMAL IDENTITY
+// ============================================================================
+
+/// This primal's canonical name.
+///
+/// Used for discovery registration and service identification.
+pub const PRIMAL_NAME: &str = "rhizoCrypt";
+
+/// This primal's role description.
+pub const PRIMAL_ROLE: &str = "Ephemeral DAG Engine";
+
+// ============================================================================
 // NETWORK CONSTANTS
 // ============================================================================
 
@@ -73,6 +85,12 @@ pub const HEALTH_CHECK_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Discovery adapter connection timeout.
 pub const DISCOVERY_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Default capability client timeout (milliseconds).
+///
+/// Used by ecosystem type clients (compute, provenance, etc.)
+/// when no explicit timeout is configured.
+pub const DEFAULT_CAPABILITY_TIMEOUT_MS: u64 = 5000;
 
 // ============================================================================
 // RESOURCE LIMITS
@@ -147,6 +165,31 @@ pub const DEFAULT_RETRY_BACKOFF_MS: u64 = 100;
 ///
 /// Payloads smaller than this are not compressed.
 pub const DEFAULT_COMPRESSION_THRESHOLD: usize = 1024;
+
+// ============================================================================
+// UNIX SOCKET CONSTANTS (Tower Atomic IPC)
+// ============================================================================
+
+/// Default directory for primal Unix sockets.
+///
+/// Each primal creates a socket at `{SOCKET_DIR}/{primal_name}.sock`.
+pub const DEFAULT_SOCKET_DIR: &str = "/run/ecoPrimals";
+
+/// File extension for Unix domain sockets.
+pub const SOCKET_FILE_EXTENSION: &str = ".sock";
+
+// ============================================================================
+// API PATH CONSTANTS
+// ============================================================================
+
+/// JSON-RPC API path suffix.
+pub const JSON_RPC_PATH: &str = "/rpc";
+
+/// REST API version prefix.
+pub const API_VERSION_PREFIX: &str = "/api/v1";
+
+/// Health check endpoint path.
+pub const HEALTH_CHECK_PATH: &str = "/api/v1/health";
 
 // ============================================================================
 // TEST CONSTANTS

@@ -73,7 +73,7 @@ spec:
         - configMapRef:
             name: rhizocrypt-config
         env:
-        - name: RHIZOCRYPT_DISCOVERY_ADDRESS
+        - name: RHIZOCRYPT_DISCOVERY_ADAPTER
           valueFrom:
             configMapKeyRef:
               name: songbird-config

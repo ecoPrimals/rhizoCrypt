@@ -353,7 +353,7 @@ async fn test_service_multiple_instances_different_ports() {
         .expect("Failed to start service 1");
 
     let mut child2 = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19407")
+        .env("RHIZOCRYPT_PORT", "19408")
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -361,7 +361,7 @@ async fn test_service_multiple_instances_different_ports() {
         .expect("Failed to start service 2");
 
     let mut child3 = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19408")
+        .env("RHIZOCRYPT_PORT", "19410")
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())

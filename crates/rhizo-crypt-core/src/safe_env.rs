@@ -399,6 +399,8 @@ impl CapabilityEnv {
 mod tests {
     use super::*;
 
+    static ENV_LOCK: parking_lot::Mutex<()> = parking_lot::Mutex::new(());
+
     #[test]
     fn test_get_or_default() {
         // Use a unique key to avoid test interference
@@ -416,9 +418,11 @@ mod tests {
 
     #[test]
     fn test_is_development_default() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("RHIZOCRYPT_ENV");
         // By default, should be production (not development)
-        // Note: This test may be affected by environment state
-        // In a clean environment, is_development() should be false
+        assert!(!SafeEnv::is_development());
+        assert!(SafeEnv::is_production());
     }
 
     #[test]
@@ -438,6 +442,7 @@ mod tests {
 
     #[test]
     fn test_get_or_default_with_value() {
+        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_WITH_VALUE";
         std::env::set_var(key, "custom_value");
         let result = SafeEnv::get_or_default(key, "fallback");
@@ -447,6 +452,7 @@ mod tests {
 
     #[test]
     fn test_get_optional_with_value() {
+        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_OPTIONAL_WITH_VALUE";
         std::env::set_var(key, "some_value");
         let result = SafeEnv::get_optional(key);
@@ -456,6 +462,7 @@ mod tests {
 
     #[test]
     fn test_parse_with_valid_value() {
+        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_VALID";
         std::env::set_var(key, "9999");
         let result: u16 = SafeEnv::parse(key, 8080);
@@ -465,6 +472,7 @@ mod tests {
 
     #[test]
     fn test_parse_with_invalid_value() {
+        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_INVALID";
         std::env::set_var(key, "not_a_number");
         let result: u16 = SafeEnv::parse(key, 8080);
@@ -474,6 +482,7 @@ mod tests {
 
     #[test]
     fn test_parse_optional_with_valid() {
+        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_OPT_VALID";
         std::env::set_var(key, "7777");
         let result: Option<u16> = SafeEnv::parse_optional(key);
@@ -483,6 +492,7 @@ mod tests {
 
     #[test]
     fn test_parse_optional_with_invalid() {
+        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_OPT_INVALID";
         std::env::set_var(key, "invalid");
         let result: Option<u16> = SafeEnv::parse_optional(key);
@@ -498,7 +508,98 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_empty_string() {
+        let _guard = ENV_LOCK.lock();
+        let key = "RHIZOCRYPT_TEST_PARSE_EMPTY";
+        std::env::set_var(key, "");
+        let result: u16 = SafeEnv::parse(key, 8080);
+        assert_eq!(result, 8080, "Empty string should use default");
+        std::env::remove_var(key);
+    }
+
+    #[test]
+    fn test_parse_whitespace() {
+        let _guard = ENV_LOCK.lock();
+        let key = "RHIZOCRYPT_TEST_PARSE_WHITESPACE";
+        std::env::set_var(key, "   ");
+        let result: u16 = SafeEnv::parse(key, 8080);
+        assert_eq!(result, 8080, "Whitespace-only should use default");
+        std::env::remove_var(key);
+    }
+
+    #[test]
+    fn test_parse_optional_empty_string() {
+        let _guard = ENV_LOCK.lock();
+        let key = "RHIZOCRYPT_TEST_PARSE_OPT_EMPTY";
+        std::env::set_var(key, "");
+        let result: Option<u16> = SafeEnv::parse_optional(key);
+        assert_eq!(result, None);
+        std::env::remove_var(key);
+    }
+
+    #[test]
+    fn test_parse_bool_type() {
+        let _guard = ENV_LOCK.lock();
+        let key = "RHIZOCRYPT_TEST_PARSE_BOOL";
+        std::env::set_var(key, "true");
+        let result: bool = SafeEnv::parse(key, false);
+        assert!(result);
+        std::env::remove_var(key);
+    }
+
+    #[test]
+    fn test_get_discovery_address_rhizocrypt_adapter() {
+        let _guard = ENV_LOCK.lock();
+        std::env::set_var("RHIZOCRYPT_DISCOVERY_ADAPTER", "adapter.example.com:7500");
+        let result = SafeEnv::get_discovery_address();
+        assert_eq!(result, Some("adapter.example.com:7500".to_string()));
+        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
+    }
+
+    #[test]
+    fn test_get_discovery_address_priority() {
+        let _guard = ENV_LOCK.lock();
+        std::env::set_var("RHIZOCRYPT_DISCOVERY_ADAPTER", "primary.example.com:7500");
+        std::env::set_var("DISCOVERY_ENDPOINT", "fallback.example.com:8091");
+        let result = SafeEnv::get_discovery_address();
+        assert_eq!(result, Some("primary.example.com:7500".to_string()));
+        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
+        std::env::remove_var("DISCOVERY_ENDPOINT");
+    }
+
+    #[test]
+    fn test_get_rpc_port_legacy() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("RHIZOCRYPT_RPC_PORT");
+        std::env::set_var("RHIZOCRYPT_PORT", "8888");
+        let result = SafeEnv::get_rpc_port(1000);
+        assert_eq!(result, 8888);
+        std::env::remove_var("RHIZOCRYPT_PORT");
+    }
+
+    #[test]
+    fn test_get_rpc_port_max_both_set() {
+        let _guard = ENV_LOCK.lock();
+        std::env::set_var("RHIZOCRYPT_RPC_PORT", "9500");
+        std::env::set_var("RHIZOCRYPT_PORT", "9400");
+        let result = SafeEnv::get_rpc_port(9000);
+        assert_eq!(result, 9500);
+        std::env::remove_var("RHIZOCRYPT_RPC_PORT");
+        std::env::remove_var("RHIZOCRYPT_PORT");
+    }
+
+    #[test]
+    fn test_get_capability_endpoint_with_address_suffix() {
+        let _guard = ENV_LOCK.lock();
+        std::env::set_var("CRYPTO_SIGNING_ADDRESS", "signing-addr.example.com:9500");
+        let result = SafeEnv::get_capability_endpoint("crypto:signing");
+        assert_eq!(result, Some("signing-addr.example.com:9500".to_string()));
+        std::env::remove_var("CRYPTO_SIGNING_ADDRESS");
+    }
+
+    #[test]
     fn test_is_development_true() {
+        let _guard = ENV_LOCK.lock();
         std::env::set_var("RHIZOCRYPT_ENV", "development");
         assert!(SafeEnv::is_development());
         assert!(!SafeEnv::is_production());
@@ -507,6 +608,7 @@ mod tests {
 
     #[test]
     fn test_is_development_case_insensitive() {
+        let _guard = ENV_LOCK.lock();
         // Save current value
         let original = std::env::var("RHIZOCRYPT_ENV").ok();
 
@@ -525,6 +627,7 @@ mod tests {
 
     #[test]
     fn test_is_production_default() {
+        let _guard = ENV_LOCK.lock();
         // Ensure no env var set
         std::env::remove_var("RHIZOCRYPT_ENV");
         assert!(SafeEnv::is_production());
@@ -533,6 +636,7 @@ mod tests {
 
     #[test]
     fn test_is_production_explicit() {
+        let _guard = ENV_LOCK.lock();
         std::env::set_var("RHIZOCRYPT_ENV", "production");
         assert!(SafeEnv::is_production());
         assert!(!SafeEnv::is_development());
@@ -541,6 +645,7 @@ mod tests {
 
     #[test]
     fn test_get_endpoint_with_endpoint_suffix() {
+        let _guard = ENV_LOCK.lock();
         let prefix = "TEST_SERVICE";
         std::env::set_var("TEST_SERVICE_ENDPOINT", "service.example.com:9000");
         let result = SafeEnv::get_endpoint(prefix);
@@ -550,6 +655,7 @@ mod tests {
 
     #[test]
     fn test_get_endpoint_with_address_suffix() {
+        let _guard = ENV_LOCK.lock();
         let prefix = "TEST_SERVICE";
         std::env::set_var("TEST_SERVICE_ADDRESS", "service.example.com:9001");
         let result = SafeEnv::get_endpoint(prefix);
@@ -559,6 +665,7 @@ mod tests {
 
     #[test]
     fn test_get_endpoint_priority_endpoint_over_address() {
+        let _guard = ENV_LOCK.lock();
         let prefix = "TEST_SERVICE";
         std::env::set_var("TEST_SERVICE_ENDPOINT", "endpoint.example.com:9000");
         std::env::set_var("TEST_SERVICE_ADDRESS", "address.example.com:9001");
@@ -577,6 +684,7 @@ mod tests {
 
     #[test]
     fn test_get_capability_endpoint() {
+        let _guard = ENV_LOCK.lock();
         std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "signing.example.com:9500");
         let result = SafeEnv::get_capability_endpoint("crypto:signing");
         assert_eq!(result, Some("signing.example.com:9500".to_string()));
@@ -585,6 +693,7 @@ mod tests {
 
     #[test]
     fn test_get_discovery_address() {
+        let _guard = ENV_LOCK.lock();
         std::env::set_var("DISCOVERY_ENDPOINT", "discovery.example.com:8091");
         let result = SafeEnv::get_discovery_address();
         assert_eq!(result, Some("discovery.example.com:8091".to_string()));
@@ -593,6 +702,7 @@ mod tests {
 
     #[test]
     fn test_get_rpc_port_default() {
+        let _guard = ENV_LOCK.lock();
         std::env::remove_var("RHIZOCRYPT_RPC_PORT");
         let result = SafeEnv::get_rpc_port(9400);
         assert_eq!(result, 9400);
@@ -600,6 +710,7 @@ mod tests {
 
     #[test]
     fn test_get_rpc_port_custom() {
+        let _guard = ENV_LOCK.lock();
         std::env::set_var("RHIZOCRYPT_RPC_PORT", "9999");
         let result = SafeEnv::get_rpc_port(9400);
         assert_eq!(result, 9999);
@@ -608,6 +719,7 @@ mod tests {
 
     #[test]
     fn test_get_rpc_host_default() {
+        let _guard = ENV_LOCK.lock();
         std::env::remove_var("RHIZOCRYPT_RPC_HOST");
         let result = SafeEnv::get_rpc_host();
         assert_eq!(result, "0.0.0.0");
@@ -615,6 +727,7 @@ mod tests {
 
     #[test]
     fn test_get_rpc_host_custom() {
+        let _guard = ENV_LOCK.lock();
         std::env::set_var("RHIZOCRYPT_RPC_HOST", "127.0.0.1");
         let result = SafeEnv::get_rpc_host();
         assert_eq!(result, "127.0.0.1");
@@ -623,6 +736,7 @@ mod tests {
 
     #[test]
     fn test_get_metrics_port_default() {
+        let _guard = ENV_LOCK.lock();
         std::env::remove_var("RHIZOCRYPT_METRICS_PORT");
         let result = SafeEnv::get_metrics_port(9401);
         assert_eq!(result, 9401);
@@ -630,6 +744,7 @@ mod tests {
 
     #[test]
     fn test_get_metrics_port_custom() {
+        let _guard = ENV_LOCK.lock();
         std::env::set_var("RHIZOCRYPT_METRICS_PORT", "8888");
         let result = SafeEnv::get_metrics_port(9401);
         assert_eq!(result, 8888);
@@ -639,6 +754,7 @@ mod tests {
     // CapabilityEnv tests
     #[test]
     fn test_signing_endpoint_primary() {
+        let _guard = ENV_LOCK.lock();
         std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "signing.example.com:9500");
         let result = CapabilityEnv::signing_endpoint();
         assert_eq!(result, Some("signing.example.com:9500".to_string()));
@@ -647,6 +763,9 @@ mod tests {
 
     #[test]
     fn test_signing_endpoint_short_form() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
+        std::env::remove_var("CRYPTO_SIGNING_ADDRESS");
         std::env::set_var("SIGNING_ENDPOINT", "signing.example.com:9500");
         let result = CapabilityEnv::signing_endpoint();
         assert_eq!(result, Some("signing.example.com:9500".to_string()));
@@ -655,6 +774,11 @@ mod tests {
 
     #[test]
     fn test_signing_endpoint_legacy() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
+        std::env::remove_var("CRYPTO_SIGNING_ADDRESS");
+        std::env::remove_var("SIGNING_ENDPOINT");
+        std::env::remove_var("SIGNING_ADDRESS");
         std::env::set_var("BEARDOG_ADDRESS", "beardog.example.com:9500");
         let result = CapabilityEnv::signing_endpoint();
         assert_eq!(result, Some("beardog.example.com:9500".to_string()));
@@ -662,7 +786,8 @@ mod tests {
     }
 
     #[test]
-    fn test_did_verification_endpoint() {
+    fn test_did_verification_endpoint_primary() {
+        let _guard = ENV_LOCK.lock();
         std::env::set_var("DID_VERIFICATION_ENDPOINT", "did.example.com:9500");
         let result = CapabilityEnv::did_verification_endpoint();
         assert_eq!(result, Some("did.example.com:9500".to_string()));
@@ -670,7 +795,32 @@ mod tests {
     }
 
     #[test]
-    fn test_payload_storage_endpoint() {
+    fn test_did_verification_endpoint_short_form() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("DID_VERIFICATION_ENDPOINT");
+        std::env::remove_var("DID_VERIFICATION_ADDRESS");
+        std::env::set_var("DID_ENDPOINT", "did-short.example.com:9500");
+        let result = CapabilityEnv::did_verification_endpoint();
+        assert_eq!(result, Some("did-short.example.com:9500".to_string()));
+        std::env::remove_var("DID_ENDPOINT");
+    }
+
+    #[test]
+    fn test_did_verification_endpoint_legacy() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("DID_VERIFICATION_ENDPOINT");
+        std::env::remove_var("DID_VERIFICATION_ADDRESS");
+        std::env::remove_var("DID_ENDPOINT");
+        std::env::remove_var("DID_ADDRESS");
+        std::env::set_var("BEARDOG_ADDRESS", "beardog-did.example.com:9500");
+        let result = CapabilityEnv::did_verification_endpoint();
+        assert_eq!(result, Some("beardog-did.example.com:9500".to_string()));
+        std::env::remove_var("BEARDOG_ADDRESS");
+    }
+
+    #[test]
+    fn test_payload_storage_endpoint_primary() {
+        let _guard = ENV_LOCK.lock();
         std::env::set_var("PAYLOAD_STORAGE_ENDPOINT", "storage.example.com:9600");
         let result = CapabilityEnv::payload_storage_endpoint();
         assert_eq!(result, Some("storage.example.com:9600".to_string()));
@@ -678,7 +828,46 @@ mod tests {
     }
 
     #[test]
-    fn test_permanent_commit_endpoint() {
+    fn test_payload_storage_endpoint_short_form() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT");
+        std::env::remove_var("PAYLOAD_STORAGE_ADDRESS");
+        std::env::set_var("PAYLOAD_ENDPOINT", "payload-short.example.com:9600");
+        let result = CapabilityEnv::payload_storage_endpoint();
+        assert_eq!(result, Some("payload-short.example.com:9600".to_string()));
+        std::env::remove_var("PAYLOAD_ENDPOINT");
+    }
+
+    #[test]
+    fn test_payload_storage_endpoint_legacy() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT");
+        std::env::remove_var("PAYLOAD_STORAGE_ADDRESS");
+        std::env::remove_var("PAYLOAD_ENDPOINT");
+        std::env::remove_var("PAYLOAD_ADDRESS");
+        std::env::set_var("NESTGATE_ADDRESS", "nestgate.example.com:9600");
+        let result = CapabilityEnv::payload_storage_endpoint();
+        assert_eq!(result, Some("nestgate.example.com:9600".to_string()));
+        std::env::remove_var("NESTGATE_ADDRESS");
+    }
+
+    #[test]
+    fn test_permanent_commit_endpoint_primary() {
+        let _guard = ENV_LOCK.lock();
+        std::env::set_var(
+            "STORAGE_PERMANENT_COMMIT_ENDPOINT",
+            "permanent-primary.example.com:9700",
+        );
+        let result = CapabilityEnv::permanent_commit_endpoint();
+        assert_eq!(result, Some("permanent-primary.example.com:9700".to_string()));
+        std::env::remove_var("STORAGE_PERMANENT_COMMIT_ENDPOINT");
+    }
+
+    #[test]
+    fn test_permanent_commit_endpoint_short_form() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("STORAGE_PERMANENT_COMMIT_ENDPOINT");
+        std::env::remove_var("STORAGE_PERMANENT_COMMIT_ADDRESS");
         std::env::set_var("PERMANENT_STORAGE_ENDPOINT", "permanent.example.com:9700");
         let result = CapabilityEnv::permanent_commit_endpoint();
         assert_eq!(result, Some("permanent.example.com:9700".to_string()));
@@ -686,7 +875,32 @@ mod tests {
     }
 
     #[test]
-    fn test_compute_endpoint() {
+    fn test_permanent_commit_endpoint_legacy() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("STORAGE_PERMANENT_COMMIT_ENDPOINT");
+        std::env::remove_var("STORAGE_PERMANENT_COMMIT_ADDRESS");
+        std::env::remove_var("PERMANENT_STORAGE_ENDPOINT");
+        std::env::remove_var("PERMANENT_STORAGE_ADDRESS");
+        std::env::set_var("LOAMSPINE_ADDRESS", "loamspine.example.com:9700");
+        let result = CapabilityEnv::permanent_commit_endpoint();
+        assert_eq!(result, Some("loamspine.example.com:9700".to_string()));
+        std::env::remove_var("LOAMSPINE_ADDRESS");
+    }
+
+    #[test]
+    fn test_compute_endpoint_preferred() {
+        let _guard = ENV_LOCK.lock();
+        std::env::set_var("COMPUTE_ORCHESTRATION_ENDPOINT", "compute-pref.example.com:9800");
+        let result = CapabilityEnv::compute_endpoint();
+        assert_eq!(result, Some("compute-pref.example.com:9800".to_string()));
+        std::env::remove_var("COMPUTE_ORCHESTRATION_ENDPOINT");
+    }
+
+    #[test]
+    fn test_compute_endpoint_short_form() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("COMPUTE_ORCHESTRATION_ENDPOINT");
+        std::env::remove_var("COMPUTE_ORCHESTRATION_ADDRESS");
         std::env::set_var("COMPUTE_ENDPOINT", "compute.example.com:9800");
         let result = CapabilityEnv::compute_endpoint();
         assert_eq!(result, Some("compute.example.com:9800".to_string()));
@@ -694,7 +908,19 @@ mod tests {
     }
 
     #[test]
-    fn test_provenance_endpoint() {
+    fn test_provenance_endpoint_preferred() {
+        let _guard = ENV_LOCK.lock();
+        std::env::set_var("PROVENANCE_QUERY_ENDPOINT", "provenance-pref.example.com:9900");
+        let result = CapabilityEnv::provenance_endpoint();
+        assert_eq!(result, Some("provenance-pref.example.com:9900".to_string()));
+        std::env::remove_var("PROVENANCE_QUERY_ENDPOINT");
+    }
+
+    #[test]
+    fn test_provenance_endpoint_short_form() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("PROVENANCE_QUERY_ENDPOINT");
+        std::env::remove_var("PROVENANCE_QUERY_ADDRESS");
         std::env::set_var("PROVENANCE_ENDPOINT", "provenance.example.com:9900");
         let result = CapabilityEnv::provenance_endpoint();
         assert_eq!(result, Some("provenance.example.com:9900".to_string()));
@@ -702,7 +928,30 @@ mod tests {
     }
 
     #[test]
-    fn test_discovery_endpoint() {
+    fn test_discovery_endpoint_rhizocrypt_adapter() {
+        let _guard = ENV_LOCK.lock();
+        std::env::set_var("RHIZOCRYPT_DISCOVERY_ADAPTER", "adapter.example.com:7500");
+        let result = CapabilityEnv::discovery_endpoint();
+        assert_eq!(result, Some("adapter.example.com:7500".to_string()));
+        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
+    }
+
+    #[test]
+    fn test_discovery_endpoint_discovery_service() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
+        std::env::set_var("DISCOVERY_SERVICE_ENDPOINT", "discovery-svc.example.com:8091");
+        let result = CapabilityEnv::discovery_endpoint();
+        assert_eq!(result, Some("discovery-svc.example.com:8091".to_string()));
+        std::env::remove_var("DISCOVERY_SERVICE_ENDPOINT");
+    }
+
+    #[test]
+    fn test_discovery_endpoint_short_form() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
+        std::env::remove_var("DISCOVERY_SERVICE_ENDPOINT");
+        std::env::remove_var("DISCOVERY_SERVICE_ADDRESS");
         std::env::set_var("DISCOVERY_ENDPOINT", "discovery.example.com:8091");
         let result = CapabilityEnv::discovery_endpoint();
         assert_eq!(result, Some("discovery.example.com:8091".to_string()));
@@ -710,7 +959,22 @@ mod tests {
     }
 
     #[test]
+    fn test_discovery_endpoint_songbird_legacy() {
+        let _guard = ENV_LOCK.lock();
+        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
+        std::env::remove_var("DISCOVERY_SERVICE_ENDPOINT");
+        std::env::remove_var("DISCOVERY_SERVICE_ADDRESS");
+        std::env::remove_var("DISCOVERY_ENDPOINT");
+        std::env::remove_var("DISCOVERY_ADDRESS");
+        std::env::set_var("SONGBIRD_ADDRESS", "songbird.example.com:7500");
+        let result = CapabilityEnv::discovery_endpoint();
+        assert_eq!(result, Some("songbird.example.com:7500".to_string()));
+        std::env::remove_var("SONGBIRD_ADDRESS");
+    }
+
+    #[test]
     fn test_capability_endpoint_priority() {
+        let _guard = ENV_LOCK.lock();
         // Test that primary takes precedence over short form
         std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "primary.example.com:9500");
         std::env::set_var("SIGNING_ENDPOINT", "short.example.com:9500");
@@ -727,6 +991,7 @@ mod tests {
 
     #[test]
     fn test_capability_endpoint_none() {
+        let _guard = ENV_LOCK.lock();
         // Ensure clean state - remove all possible variants
         std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
         std::env::remove_var("CRYPTO_SIGNING_ADDRESS");
@@ -736,5 +1001,61 @@ mod tests {
 
         let result = CapabilityEnv::signing_endpoint();
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_all_capability_endpoints() {
+        let _guard = ENV_LOCK.lock();
+        std::env::set_var("SIGNING_ENDPOINT", "signing.example.com:9500");
+        std::env::set_var("DID_ENDPOINT", "did.example.com:9500");
+        std::env::set_var("PAYLOAD_STORAGE_ENDPOINT", "payload.example.com:9600");
+
+        let map = CapabilityEnv::all_capability_endpoints();
+        assert!(map.contains_key("signing"));
+        assert_eq!(map.get("signing").unwrap(), "signing.example.com:9500");
+        assert!(map.contains_key("did_verification"));
+        assert!(map.contains_key("payload_storage"));
+
+        std::env::remove_var("SIGNING_ENDPOINT");
+        std::env::remove_var("DID_ENDPOINT");
+        std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT");
+    }
+
+    #[test]
+    fn test_is_infant_discovery_mode_empty() {
+        let _guard = ENV_LOCK.lock();
+        // Clear all capability-related env vars
+        for key in [
+            "CRYPTO_SIGNING_ENDPOINT",
+            "SIGNING_ENDPOINT",
+            "BEARDOG_ADDRESS",
+            "DID_VERIFICATION_ENDPOINT",
+            "DID_ENDPOINT",
+            "PAYLOAD_STORAGE_ENDPOINT",
+            "PAYLOAD_ENDPOINT",
+            "NESTGATE_ADDRESS",
+            "STORAGE_PERMANENT_COMMIT_ENDPOINT",
+            "PERMANENT_STORAGE_ENDPOINT",
+            "LOAMSPINE_ADDRESS",
+            "COMPUTE_ORCHESTRATION_ENDPOINT",
+            "COMPUTE_ENDPOINT",
+            "PROVENANCE_QUERY_ENDPOINT",
+            "PROVENANCE_ENDPOINT",
+            "RHIZOCRYPT_DISCOVERY_ADAPTER",
+            "DISCOVERY_SERVICE_ENDPOINT",
+            "DISCOVERY_ENDPOINT",
+            "SONGBIRD_ADDRESS",
+        ] {
+            std::env::remove_var(key);
+        }
+        assert!(CapabilityEnv::is_infant_discovery_mode());
+    }
+
+    #[test]
+    fn test_is_infant_discovery_mode_with_endpoint() {
+        let _guard = ENV_LOCK.lock();
+        std::env::set_var("SIGNING_ENDPOINT", "signing.example.com:9500");
+        assert!(!CapabilityEnv::is_infant_discovery_mode());
+        std::env::remove_var("SIGNING_ENDPOINT");
     }
 }

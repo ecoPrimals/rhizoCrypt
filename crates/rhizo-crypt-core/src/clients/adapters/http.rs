@@ -50,7 +50,7 @@ impl HttpAdapter {
 
     /// Build full URL for a method.
     fn build_url(&self, method: &str) -> String {
-        format!("{}/api/v1/{}", self.base_url, method)
+        format!("{}{}/{}", self.base_url, crate::constants::API_VERSION_PREFIX, method)
     }
 }
 

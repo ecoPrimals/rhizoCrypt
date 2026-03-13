@@ -9,12 +9,64 @@
 use crate::clients::adapters::ProtocolAdapter;
 use crate::error::{Result, RhizoCryptError};
 use async_trait::async_trait;
-use serde_json::Value;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
+
+#[cfg(feature = "live-clients")]
+use serde_json::Value;
+#[cfg(feature = "live-clients")]
 use tokio::time::timeout;
+
+// ============================================================================
+// ecoPrimals JSON-RPC tarpc Trait (live-clients only)
+// ============================================================================
+
+/// Standard JSON-RPC tarpc trait for ecoPrimals interop.
+///
+/// Any primal that implements this trait can interoperate with the TarpcAdapter.
+/// The adapter calls `call(method, params)` with JSON-serialized arguments and
+/// receives a JSON-serialized response.
+#[cfg(feature = "live-clients")]
+#[tarpc::service]
+pub trait EcoPrimalJsonRpc {
+    /// Execute a JSON-RPC style call.
+    ///
+    /// # Arguments
+    ///
+    /// * `method` - Method name (e.g., "sign", "store", "commit")
+    /// * `params` - JSON-serialized parameters
+    ///
+    /// # Returns
+    ///
+    /// JSON-serialized result on success, or error string on failure.
+    async fn call(method: String, params: String) -> std::result::Result<String, String>;
+}
+
+// ============================================================================
+// TarpcConnection (feature-gated)
+// ============================================================================
+
+/// Internal connection wrapper holding the tarpc client handle.
+#[cfg(feature = "live-clients")]
+#[derive(Debug)]
+struct TarpcConnection {
+    /// Spawned tarpc client for EcoPrimalJsonRpc.
+    client: EcoPrimalJsonRpcClient,
+}
+
+/// Stub connection when live-clients feature is disabled.
+#[cfg(not(feature = "live-clients"))]
+#[derive(Debug, Clone)]
+struct TarpcConnection {
+    /// Placeholder for stub mode.
+    _stub: (),
+}
+
+// ============================================================================
+// TarpcAdapter
+// ============================================================================
 
 /// tarpc protocol adapter.
 ///
@@ -26,7 +78,7 @@ use tokio::time::timeout;
 /// ## Architecture
 ///
 /// This adapter is intentionally **generic**:
-/// - Works with ANY tarpc service that speaks JSON-RPC
+/// - Works with ANY tarpc service that implements `EcoPrimalJsonRpc`
 /// - Capability-based: doesn't hardcode specific service types
 /// - Discovery-driven: services found at runtime
 ///
@@ -39,6 +91,12 @@ use tokio::time::timeout;
 /// let result_json = adapter.call_json("sign", args_json).await?;
 /// ```
 ///
+/// ## Feature Gate
+///
+/// When the `live-clients` feature is disabled, `call_json` and `call_oneway_json`
+/// return an error indicating the feature is required. Adapter creation and
+/// health checks still work.
+///
 /// ## Connection Pooling
 ///
 /// The adapter maintains a single connection per endpoint. For high-throughput
@@ -48,22 +106,10 @@ use tokio::time::timeout;
 pub struct TarpcAdapter {
     endpoint: String,
     addr: SocketAddr,
-    // Connection state (lazy-initialized, cached)
+    /// Connection state (lazy-initialized, cached).
     connection: Arc<RwLock<Option<TarpcConnection>>>,
-    timeout_duration: Duration,
-}
-
-/// Internal connection wrapper for tarpc client.
-///
-/// Note: For a fully generic JSON-RPC over tarpc implementation, we would
-/// need the remote service to expose a `call_json(method, args) -> result`
-/// endpoint. Since we don't have a standardized JSON-RPC tarpc trait yet
-/// across the ecosystem, this connection type is prepared but the actual
-/// implementation waits for ecosystem standardization.
-#[derive(Debug, Clone)]
-struct TarpcConnection {
-    _endpoint: String,
-    // In future: would hold Arc<dyn JsonRpcClient> or similar
+    /// Timeout for RPC calls.
+    pub timeout_duration: Duration,
 }
 
 impl TarpcAdapter {
@@ -87,7 +133,6 @@ impl TarpcAdapter {
             addr
         } else {
             // Not an IP address, try to resolve hostname
-            // For new() we need blocking resolution, so we use std::net
             use std::net::ToSocketAddrs as StdToSocketAddrs;
 
             addr_str.to_socket_addrs()
@@ -159,26 +204,40 @@ impl TarpcAdapter {
         let mut conn = self.connection.write().await;
 
         if conn.is_none() {
-            tracing::debug!(endpoint = %self.addr, "Establishing tarpc connection");
+            #[cfg(feature = "live-clients")]
+            {
+                tracing::debug!(endpoint = %self.addr, "Establishing tarpc connection");
 
-            // In a fully generic implementation, we would:
-            // 1. Create TCP connection to self.addr
-            // 2. Wrap in tarpc transport (Bincode or JSON codec)
-            // 3. Spawn client with appropriate tarpc trait
-            //
-            // However, tarpc requires compile-time trait knowledge.
-            // For truly generic JSON-RPC, we'd need:
-            // - A standardized JsonRpc trait across the ecosystem, OR
-            // - Dynamic client generation, OR
-            // - HTTP-based JSON-RPC (easier but loses tarpc benefits)
-            //
-            // For now, we implement the structure and document the path forward.
+                let transport = tarpc::serde_transport::tcp::connect(
+                    self.addr,
+                    tarpc::tokio_serde::formats::Bincode::default,
+                )
+                .await
+                .map_err(|e| {
+                    RhizoCryptError::integration(format!(
+                        "Failed to connect to tarpc service at {}: {e}",
+                        self.addr
+                    ))
+                })?;
 
-            *conn = Some(TarpcConnection {
-                _endpoint: self.endpoint.clone(),
-            });
+                let client =
+                    EcoPrimalJsonRpcClient::new(tarpc::client::Config::default(), transport)
+                        .spawn();
 
-            tracing::info!(endpoint = %self.addr, "tarpc connection established (stub)");
+                *conn = Some(TarpcConnection {
+                    client,
+                });
+
+                tracing::info!(endpoint = %self.addr, "tarpc connection established");
+            }
+
+            #[cfg(not(feature = "live-clients"))]
+            {
+                tracing::debug!(endpoint = %self.addr, "tarpc stub connection (live-clients disabled)");
+                *conn = Some(TarpcConnection {
+                    _stub: (),
+                });
+            }
         }
 
         Ok(())
@@ -192,124 +251,97 @@ impl ProtocolAdapter for TarpcAdapter {
     }
 
     async fn call_json(&self, method: &str, args_json: String) -> Result<String> {
-        // Ensure we have a connection
-        self.ensure_connected().await?;
+        #[cfg(not(feature = "live-clients"))]
+        {
+            let _ = (method, args_json);
+            return Err(RhizoCryptError::integration(
+                "tarpc support requires 'live-clients' feature",
+            ));
+        }
 
-        // Parse args for validation
-        let _args: Value = serde_json::from_str(&args_json)
-            .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
+        #[cfg(feature = "live-clients")]
+        {
+            self.ensure_connected().await?;
 
-        tracing::debug!(
-            method = %method,
-            endpoint = %self.addr,
-            "Calling tarpc method"
-        );
+            // Parse args for validation
+            let _args: Value = serde_json::from_str(&args_json)
+                .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
 
-        // Wrap the call with timeout
-        let call_future = async {
-            // ================================================================
-            // Path Forward for Full Implementation:
-            // ================================================================
-            //
-            // Option 1: Ecosystem JSON-RPC Trait
-            // ------------------------------------
-            // Define a standard trait across ecoPrimals:
-            //
-            // ```rust
-            // #[tarpc::service]
-            // pub trait JsonRpcService {
-            //     async fn call(method: String, args: String) -> Result<String, String>;
-            // }
-            // ```
-            //
-            // All primals that want tarpc interop implement this trait.
-            // Then this adapter becomes:
-            //
-            // ```rust
-            // let transport = tarpc::serde_transport::tcp::connect(&self.addr, Bincode::default()).await?;
-            // let client = JsonRpcServiceClient::new(client::Config::default(), transport).spawn();
-            // let result = client.call(context::current(), method.to_string(), args_json).await??;
-            // return Ok(result);
-            // ```
-            //
-            // Option 2: HTTP JSON-RPC Fallback
-            // ----------------------------------
-            // For services without standardized tarpc JSON-RPC trait,
-            // fall back to HTTP-based JSON-RPC (still capability-based):
-            //
-            // ```rust
-            // let http_endpoint = format!("http://{}/rpc", self.addr);
-            // // Use reqwest to call JSON-RPC endpoint
-            // ```
-            //
-            // Option 3: Per-Service Adapters
-            // -------------------------------
-            // Create specific adapters for each primal:
-            // - `BearDogTarpcAdapter` (implements ProtocolAdapter, uses BearDog's tarpc trait)
-            // - `LoamSpineTarpcAdapter` (uses LoamSpine's tarpc trait)
-            // These live in integration crates, not core.
-            //
-            // ================================================================
+            tracing::debug!(
+                method = %method,
+                endpoint = %self.addr,
+                "Calling tarpc method"
+            );
 
-            Err(RhizoCryptError::integration(format!(
-                "tarpc adapter: Generic JSON-RPC over tarpc requires ecosystem standardization.\n\
-                 Method: {method}, Endpoint: {}\n\
-                 \n\
-                 Implementation paths:\n\
-                 1. Define ecosystem-wide JsonRpcService trait (recommended)\n\
-                 2. Use HTTP JSON-RPC as intermediate protocol\n\
-                 3. Create service-specific tarpc adapters\n\
-                 \n\
-                 For now, use HTTP adapter for cross-primal communication.",
-                self.addr
-            )))
-        };
+            let method = method.to_string();
+            let conn = self.connection.read().await;
+            let tarpc_conn = conn
+                .as_ref()
+                .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?;
 
-        timeout(self.timeout_duration, call_future).await.map_err(|_| {
-            RhizoCryptError::integration(format!(
-                "tarpc call timed out after {:?}: method={}, endpoint={}",
-                self.timeout_duration, method, self.addr
-            ))
-        })?
+            let call_future = tarpc_conn.client.call(
+                tarpc::context::current(),
+                method.clone(),
+                args_json.clone(),
+            );
+
+            let result = timeout(self.timeout_duration, call_future).await.map_err(|_| {
+                RhizoCryptError::integration(format!(
+                    "tarpc call timed out after {:?}: method={}, endpoint={}",
+                    self.timeout_duration, method, self.addr
+                ))
+            })?;
+
+            result
+                .map_err(|e| RhizoCryptError::integration(format!("tarpc call failed: {e}")))?
+                .map_err(|e| RhizoCryptError::integration(format!("Remote error: {e}")))
+        }
     }
 
     async fn call_oneway_json(&self, method: &str, args_json: String) -> Result<()> {
-        // Ensure we have a connection
-        self.ensure_connected().await?;
+        #[cfg(not(feature = "live-clients"))]
+        {
+            let _ = (method, args_json);
+            return Err(RhizoCryptError::integration(
+                "tarpc support requires 'live-clients' feature",
+            ));
+        }
 
-        // Parse args for validation
-        let _args: Value = serde_json::from_str(&args_json)
-            .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
+        #[cfg(feature = "live-clients")]
+        {
+            // EcoPrimalJsonRpc has no oneway method; fire-and-forget by spawning
+            // and discarding the response future.
+            self.ensure_connected().await?;
 
-        tracing::debug!(
-            method = %method,
-            endpoint = %self.addr,
-            "Calling tarpc method (oneway)"
-        );
+            let _args: Value = serde_json::from_str(&args_json)
+                .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
 
-        // For one-way calls, we would:
-        // 1. Send RPC without waiting for response
-        // 2. Return immediately
-        //
-        // This requires fire-and-forget capability in the tarpc client,
-        // which is typically done via tokio::spawn of the response future
-        // and immediate return.
+            tracing::debug!(
+                method = %method,
+                endpoint = %self.addr,
+                "Calling tarpc method (oneway)"
+            );
 
-        Err(RhizoCryptError::integration(format!(
-            "tarpc adapter oneway: Requires ecosystem JsonRpcService trait.\n\
-             Method: {method}, Endpoint: {}\n\
-             See call_json() documentation for implementation paths.",
-            self.addr
-        )))
+            let method = method.to_string();
+            let conn = self.connection.read().await;
+            let tarpc_conn = conn
+                .as_ref()
+                .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?;
+
+            // Clone client handle for spawn; tarpc client is a cheap cloneable handle.
+            let client = tarpc_conn.client.clone();
+            tokio::spawn(async move {
+                let _ = client.call(tarpc::context::current(), method, args_json).await;
+            });
+
+            Ok(())
+        }
     }
 
     async fn is_healthy(&self) -> bool {
-        // Try to establish connection
         match self.ensure_connected().await {
             Ok(()) => {
                 tracing::debug!(endpoint = %self.addr, "tarpc adapter connection healthy");
-                // In full implementation, would also ping service
-                // For now, connection establishment is the health check
                 true
             }
             Err(e) => {
@@ -368,28 +400,53 @@ mod tests {
     #[tokio::test]
     async fn test_ensure_connected() {
         let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
-        // Connection establishment should succeed (stub implementation)
+        // When live-clients disabled: stub connection; when enabled: real TCP (may fail)
         let result = adapter.ensure_connected().await;
-        assert!(result.is_ok());
-
-        // Should cache connection
-        assert!(adapter.connection.read().await.is_some());
+        #[cfg(feature = "live-clients")]
+        {
+            // With live-clients, connection may fail (no server) or succeed
+            let _ = result;
+        }
+        #[cfg(not(feature = "live-clients"))]
+        {
+            assert!(result.is_ok());
+            assert!(adapter.connection.read().await.is_some());
+        }
     }
 
     #[tokio::test]
     async fn test_is_healthy() {
         let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
-        // Should be healthy after connection (stub returns Ok)
-        assert!(adapter.is_healthy().await);
+        #[cfg(not(feature = "live-clients"))]
+        {
+            assert!(adapter.is_healthy().await);
+        }
+        #[cfg(feature = "live-clients")]
+        {
+            // With live-clients, health depends on whether 127.0.0.1:7777 is reachable
+            let _ = adapter.is_healthy().await;
+        }
     }
 
     #[tokio::test]
-    async fn test_call_json_requires_ecosystem_trait() {
+    async fn test_call_json_feature_gated() {
         let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
         let result = adapter.call_json("test_method", "{}".to_string()).await;
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
-        assert!(err.contains("ecosystem standardization") || err.contains("JsonRpcService"));
+        #[cfg(not(feature = "live-clients"))]
+        assert!(err.contains("live-clients"), "expected feature-gate error: {err}");
+        #[cfg(feature = "live-clients")]
+        {
+            // With live-clients: connection error or timeout (no server)
+            assert!(
+                err.contains("live-clients")
+                    || err.contains("connect")
+                    || err.contains("timed out")
+                    || err.contains("tarpc"),
+                "expected connection/timeout/feature error: {err}"
+            );
+        }
     }
 
     #[tokio::test]
@@ -397,13 +454,11 @@ mod tests {
         let adapter =
             TarpcAdapter::new("127.0.0.1:7777").unwrap().with_timeout(Duration::from_millis(1));
         let result = adapter.call_json("test_method", "{}".to_string()).await;
-        // Should either timeout or return not-implemented error
         assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_connect_async() {
-        // Test async connect method
         let result = TarpcAdapter::connect("127.0.0.1:7777").await;
         assert!(result.is_ok());
         let adapter = result.unwrap();

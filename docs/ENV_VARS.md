@@ -248,12 +248,11 @@ PERMANENT_STORAGE_ENDPOINT=$(kubectl get secret storage-endpoint -o jsonpath='{.
 
 ---
 
-## 📚 Related Documentation
+## Related Documentation
 
-- [INFANT_DISCOVERY_MIGRATION.md](./INFANT_DISCOVERY_MIGRATION.md) - Full migration strategy
-- [START_HERE.md](./START_HERE.md) - Developer guide
-- [ARCHITECTURE.md](./specs/ARCHITECTURE.md) - Primal-agnostic design
-- [SafeEnv module](./crates/rhizo-crypt-core/src/safe_env.rs) - Implementation details
+- [specs/ARCHITECTURE.md](../specs/ARCHITECTURE.md) — Primal-agnostic design
+- [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) — Production deployment guide
+- [VERIFICATION_CHECKLIST.md](./VERIFICATION_CHECKLIST.md) — Quality verification
 
 ---
 

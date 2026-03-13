@@ -2,7 +2,7 @@
 # Multi-stage build for rhizoCrypt service
 
 # Stage 1: Builder
-FROM rust:1.82-slim AS builder
+FROM rust:1.92-slim AS builder
 
 WORKDIR /build
 

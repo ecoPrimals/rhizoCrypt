@@ -115,7 +115,8 @@ impl RpcServer {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use rhizo_crypt_core::RhizoCryptConfig;
+    use rhizo_crypt_core::{PrimalLifecycle, RhizoCryptConfig};
+    use std::borrow::Cow;
 
     #[test]
     fn test_server_creation() {
@@ -130,8 +131,6 @@ mod tests {
 
     #[test]
     fn test_server_custom_port() {
-        use std::borrow::Cow;
-
         let mut config = RhizoCryptConfig::default();
         config.rpc.port = 9500;
         config.rpc.host = Cow::Borrowed("0.0.0.0");
@@ -158,5 +157,92 @@ mod tests {
 
         // Receiver should see the change
         assert!(rx.has_changed().unwrap_or(false) || *rx.borrow_and_update());
+    }
+
+    #[test]
+    fn test_server_builder_options() {
+        use rhizo_crypt_core::RpcConfig;
+
+        // Test RpcConfig::with_addr
+        let rpc = RpcConfig::with_addr("127.0.0.1", 9400);
+        assert_eq!(rpc.port, 9400);
+        assert!(rpc.enabled);
+        assert_eq!(rpc.max_connections, 1000);
+
+        // Test RpcConfig::localhost_auto (port 0 for OS assignment)
+        let rpc = RpcConfig::localhost_auto();
+        assert_eq!(rpc.port, 0);
+        assert!(rpc.enabled);
+
+        // Test RhizoCryptConfig builder options
+        let config = RhizoCryptConfig::new("TestPrimal")
+            .with_max_sessions(500)
+            .with_gc_interval(std::time::Duration::from_secs(120));
+        assert_eq!(config.name, "TestPrimal");
+        assert_eq!(config.max_sessions, 500);
+        assert_eq!(config.gc_interval, std::time::Duration::from_secs(120));
+
+        // Create server with custom config
+        let addr = config.rpc.parse_addr().expect("parse addr");
+        let primal = Arc::new(RhizoCrypt::new(config));
+        let server = RpcServer::new(primal, addr);
+        assert_eq!(server.addr(), addr);
+    }
+
+    #[tokio::test]
+    async fn test_server_start_binds_port() {
+        let addr = "127.0.0.1:0".parse().expect("parse addr");
+        let mut primal = RhizoCrypt::new(RhizoCryptConfig::default());
+        primal.start().await.unwrap();
+        let primal = Arc::new(primal);
+
+        let server = RpcServer::new(primal, addr);
+        let server_addr = server.addr();
+        assert_eq!(server_addr.port(), 0);
+
+        // Start server in background and immediately shutdown
+        let server_handle = tokio::spawn(async move { server.serve().await });
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Server should have bound (we can't easily verify the port without more setup,
+        // but serve() should not error immediately)
+        drop(server_handle);
+    }
+
+    #[tokio::test]
+    async fn test_server_with_metrics() {
+        use crate::service::RhizoCryptRpcServer;
+
+        let mut primal = RhizoCrypt::new(RhizoCryptConfig::default());
+        primal.start().await.unwrap();
+        let primal = Arc::new(primal);
+
+        let server = RhizoCryptRpcServer::new(primal);
+        let ctx = tarpc::context::current();
+        let metrics = server.clone().metrics(ctx).await.unwrap();
+
+        // All metrics are u64, verify they are accessible
+        let _ = metrics.sessions_created;
+        let _ = metrics.sessions_resolved;
+        let _ = metrics.vertices_appended;
+        let _ = metrics.queries_executed;
+        let _ = metrics.slices_checked_out;
+        let _ = metrics.dehydrations_completed;
+    }
+
+    #[test]
+    fn test_server_config_defaults() {
+        let config = RhizoCryptConfig::default();
+        assert_eq!(config.name, "RhizoCrypt");
+        assert_eq!(config.max_sessions, 1000);
+
+        let rpc = &config.rpc;
+        assert!(rpc.enabled);
+        assert_eq!(rpc.max_connections, 1000);
+
+        let rpc_default = rhizo_crypt_core::RpcConfig::with_addr("127.0.0.1", 0);
+        let addr = rpc_default.parse_addr().expect("parse");
+        assert_eq!(addr.port(), 0);
+        assert_eq!(addr.ip().to_string(), "127.0.0.1");
     }
 }

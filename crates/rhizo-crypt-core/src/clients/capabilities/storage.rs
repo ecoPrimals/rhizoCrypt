@@ -247,8 +247,8 @@ mod tests {
 
     #[test]
     fn test_storage_client_with_endpoint() {
-        let client = StorageClient::with_endpoint("http://localhost:9600").unwrap();
-        assert_eq!(client.endpoint(), "http://localhost:9600");
+        let client = StorageClient::with_endpoint("127.0.0.1:9600").unwrap();
+        assert_eq!(client.endpoint(), "127.0.0.1:9600");
         assert!(client.service_name().is_none());
     }
 
@@ -260,7 +260,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_storage_client_availability() {
-        let client = StorageClient::with_endpoint("http://localhost:9999").unwrap();
+        let client = StorageClient::with_endpoint("127.0.0.1:9999").unwrap();
         let available = client.is_available().await;
         // Just testing that the method doesn't panic
         let _ = available;
@@ -291,7 +291,6 @@ mod tests {
         let result = StorageClient::discover(&registry).await;
         assert!(result.is_ok());
         let client = result.unwrap();
-        // AdapterFactory adds http:// prefix
         assert!(client.endpoint().contains("127.0.0.1:9600"));
         assert_eq!(client.service_name(), Some("test-storage"));
     }
@@ -402,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_storage_client_clone() {
-        let client = StorageClient::with_endpoint("http://localhost:9600").unwrap();
+        let client = StorageClient::with_endpoint("127.0.0.1:9600").unwrap();
         let cloned = client.clone();
         assert_eq!(client.endpoint(), cloned.endpoint());
         assert_eq!(client.service_name(), cloned.service_name());
@@ -410,7 +409,7 @@ mod tests {
 
     #[test]
     fn test_storage_client_debug() {
-        let client = StorageClient::with_endpoint("http://localhost:9600").unwrap();
+        let client = StorageClient::with_endpoint("127.0.0.1:9600").unwrap();
         let debug_str = format!("{client:?}");
         assert!(debug_str.contains("StorageClient"));
     }
@@ -442,7 +441,7 @@ mod tests {
         let result = StorageClient::discover(&registry).await;
         assert!(result.is_ok());
         let client = result.unwrap();
-        // Should get one of the registered endpoints (AdapterFactory adds http:// prefix)
+        // Should get one of the registered endpoints
         assert!(
             client.endpoint().contains("127.0.0.1:9600")
                 || client.endpoint().contains("127.0.0.1:9601")
@@ -467,8 +466,9 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "http-clients")]
     fn test_storage_client_endpoint_formats() {
-        // Test various endpoint formats
+        // Test various endpoint formats (http/https only when http-clients is enabled)
         let http_client = StorageClient::with_endpoint("http://localhost:9600").unwrap();
         assert_eq!(http_client.endpoint(), "http://localhost:9600");
 
@@ -500,5 +500,63 @@ mod tests {
         let deserialized: StoreRequest = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized.data.len(), 1024 * 1024);
         assert_eq!(deserialized.data[0], 42);
+    }
+
+    #[tokio::test]
+    async fn test_storage_client_discover_with_multiple_capabilities() {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+
+        // Register endpoint that provides both PayloadStorage and Signing
+        let addr: SocketAddr = "127.0.0.1:9600".parse().unwrap();
+        let endpoint = ServiceEndpoint::new(
+            "multi-cap-storage".to_string(),
+            addr,
+            vec![Capability::PayloadStorage, Capability::Signing],
+        );
+        registry.register_endpoint(endpoint).await;
+
+        let result = StorageClient::discover(&registry).await;
+        assert!(result.is_ok());
+        let client = result.unwrap();
+        assert_eq!(client.service_name(), Some("multi-cap-storage"));
+        assert!(client.endpoint().contains("127.0.0.1:9600"));
+    }
+
+    #[test]
+    fn test_store_request_with_empty_data() {
+        let request = StoreRequest {
+            data: vec![],
+        };
+        let serialized = serde_json::to_string(&request).unwrap();
+        let deserialized: StoreRequest = serde_json::from_str(&serialized).unwrap();
+        assert!(deserialized.data.is_empty());
+    }
+
+    #[test]
+    fn test_retrieve_request_roundtrip() {
+        let hash = [99u8; 32];
+        let request = RetrieveRequest {
+            hash,
+        };
+        let serialized = serde_json::to_string(&request).unwrap();
+        let deserialized: RetrieveRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.hash, hash);
+    }
+
+    #[test]
+    fn test_payload_ref_creation_roundtrip() {
+        let data = b"test payload for roundtrip";
+        let payload_ref = PayloadRef::from_bytes(data);
+        let reconstructed = PayloadRef::new(payload_ref.hash, payload_ref.size);
+        assert_eq!(payload_ref.hash, reconstructed.hash);
+        assert_eq!(payload_ref.size, reconstructed.size);
+    }
+
+    #[test]
+    fn test_payload_ref_from_hash() {
+        let hash = [42u8; 32];
+        let payload_ref = PayloadRef::from_hash(&hash);
+        assert_eq!(payload_ref.hash, hash);
+        assert_eq!(payload_ref.size, 0);
     }
 }

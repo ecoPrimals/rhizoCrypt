@@ -87,6 +87,8 @@ pub mod types_ecosystem;
 pub mod vertex;
 
 // Optional storage backends
+#[cfg(feature = "redb")]
+pub mod store_redb;
 #[cfg(feature = "sled")]
 pub mod store_sled;
 
@@ -150,6 +152,8 @@ pub use store::{
     DagStore, InMemoryDagStore, InMemoryPayloadStore, PayloadStore, StorageHealth, StorageStats,
 };
 
+#[cfg(feature = "redb")]
+pub use store_redb::RedbDagStore;
 #[cfg(feature = "sled")]
 pub use store_sled::SledDagStore;
 

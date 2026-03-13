@@ -131,7 +131,7 @@ impl SigningClient {
     ///
     /// # Arguments
     ///
-    /// * `endpoint` - Service endpoint (e.g., "http://localhost:9500")
+    /// * `endpoint` - Service endpoint (e.g., "127.0.0.1:9500" for tarpc, or "http://..." when http-clients enabled)
     ///
     /// # Errors
     ///
@@ -364,8 +364,8 @@ mod tests {
 
     #[test]
     fn test_signing_client_with_endpoint() {
-        let client = SigningClient::with_endpoint("http://localhost:9500").unwrap();
-        assert_eq!(client.endpoint(), "http://localhost:9500");
+        let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
+        assert_eq!(client.endpoint(), "127.0.0.1:9500");
         assert!(client.service_name().is_none());
     }
 
@@ -377,7 +377,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_signing_client_availability() {
-        let client = SigningClient::with_endpoint("http://localhost:9999").unwrap();
+        let client = SigningClient::with_endpoint("127.0.0.1:9999").unwrap();
         // Should return false for non-existent service
         let available = client.is_available().await;
         // Note: This might be true or false depending on what's running
@@ -407,7 +407,6 @@ mod tests {
         let result = SigningClient::discover(&registry).await;
         assert!(result.is_ok());
         let client = result.unwrap();
-        // AdapterFactory adds http:// prefix when no protocol specified
         assert!(client.endpoint().contains("127.0.0.1:9500"));
         assert_eq!(client.service_name(), Some("test-signer"));
     }
@@ -517,8 +516,72 @@ mod tests {
     }
 
     #[test]
+    fn test_attest_response_serialization() {
+        use crate::dehydration::{Attestation, AttestationStatement};
+        use crate::types::ContentHash;
+
+        let attestation = Attestation {
+            attester: Did::new("did:key:attester"),
+            statement: AttestationStatement::SessionSummary {
+                summary_hash: ContentHash::from([1u8; 32]),
+            },
+            signature: vec![1, 2, 3, 4],
+            attested_at: crate::types::Timestamp::now(),
+            verified: true,
+        };
+        let response = AttestResponse {
+            attestation: attestation.clone(),
+        };
+
+        let serialized = serde_json::to_string(&response).unwrap();
+        let deserialized: AttestResponse = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.attestation.attester, attestation.attester);
+        assert!(deserialized.attestation.verified);
+    }
+
+    #[test]
+    fn test_verify_did_response_serialization() {
+        let response = VerifyDidResponse {
+            valid: true,
+        };
+        let serialized = serde_json::to_string(&response).unwrap();
+        let deserialized: VerifyDidResponse = serde_json::from_str(&serialized).unwrap();
+        assert!(deserialized.valid);
+
+        let response_false = VerifyDidResponse {
+            valid: false,
+        };
+        let serialized = serde_json::to_string(&response_false).unwrap();
+        let deserialized: VerifyDidResponse = serde_json::from_str(&serialized).unwrap();
+        assert!(!deserialized.valid);
+    }
+
+    #[test]
+    fn test_sign_request_roundtrip() {
+        let did = Did::new("did:key:roundtrip");
+        let request = SignRequest {
+            data: vec![10, 20, 30],
+            signer: did.clone(),
+        };
+        let serialized = serde_json::to_string(&request).unwrap();
+        let deserialized: SignRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.data, vec![10, 20, 30]);
+        assert_eq!(deserialized.signer, did);
+    }
+
+    #[test]
+    fn test_sign_response_roundtrip() {
+        let response = SignResponse {
+            signature: vec![1, 2, 3, 4, 5, 6],
+        };
+        let serialized = serde_json::to_string(&response).unwrap();
+        let deserialized: SignResponse = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.signature, response.signature);
+    }
+
+    #[test]
     fn test_signing_client_clone() {
-        let client = SigningClient::with_endpoint("http://localhost:9500").unwrap();
+        let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
         let cloned = client.clone();
         assert_eq!(client.endpoint(), cloned.endpoint());
         assert_eq!(client.service_name(), cloned.service_name());
@@ -526,7 +589,7 @@ mod tests {
 
     #[test]
     fn test_signing_client_debug() {
-        let client = SigningClient::with_endpoint("http://localhost:9500").unwrap();
+        let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
         let debug_str = format!("{client:?}");
         assert!(debug_str.contains("SigningClient"));
     }
@@ -558,7 +621,6 @@ mod tests {
         let result = SigningClient::discover(&registry).await;
         assert!(result.is_ok());
         let client = result.unwrap();
-        // Should get one of the registered endpoints (AdapterFactory adds http:// prefix)
         assert!(
             client.endpoint().contains("127.0.0.1:9500")
                 || client.endpoint().contains("127.0.0.1:9501")
@@ -586,9 +648,56 @@ mod tests {
         assert!(client.endpoint().contains("127.0.0.1:9500"));
     }
 
+    #[tokio::test]
+    async fn test_verify_vertex_no_signature_or_agent() {
+        use crate::event::EventType;
+        use crate::vertex::VertexBuilder;
+
+        let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
+        let vertex = VertexBuilder::new(EventType::SessionStart).build();
+        assert!(vertex.signature.is_none());
+        assert!(vertex.agent.is_none());
+
+        let result = client.verify_vertex(&vertex).await;
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_verify_vertex_no_signature_with_agent() {
+        use crate::event::EventType;
+        use crate::vertex::VertexBuilder;
+
+        let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
+        let vertex = VertexBuilder::new(EventType::SessionStart)
+            .with_agent(Did::new("did:key:test"))
+            .build();
+        assert!(vertex.signature.is_none());
+        assert!(vertex.agent.is_some());
+
+        let result = client.verify_vertex(&vertex).await;
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_signing_client_discover_failed() {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+        registry.set_discovery_source("127.0.0.1:1".parse().unwrap()).await;
+
+        let result = SigningClient::discover(&registry).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Discovery failed") || err_msg.contains("No signing provider"),
+            "Expected discovery failure, got: {err_msg}"
+        );
+    }
+
     #[test]
+    #[cfg(feature = "http-clients")]
     fn test_signing_client_endpoint_formats() {
-        // Test various endpoint formats
+        // Test various endpoint formats (HTTP/HTTPS - requires http-clients feature)
         let http_client = SigningClient::with_endpoint("http://localhost:9500").unwrap();
         assert_eq!(http_client.endpoint(), "http://localhost:9500");
 

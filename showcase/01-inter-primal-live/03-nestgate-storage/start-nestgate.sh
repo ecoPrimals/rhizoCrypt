@@ -35,10 +35,10 @@ cat << 'EOF'
 EOF
 echo -e "${NC}"
 
-# Get paths
+# Get paths (portable)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Use primalBins from ecoPrimals root
-BINS_DIR="/path/to/ecoPrimals/primalBins"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+BINS_DIR="${PRIMAL_BINS_DIR:-$REPO_ROOT/../../primalBins}"
 NESTGATE_BIN="$BINS_DIR/nestgate"
 
 # Verify binary exists

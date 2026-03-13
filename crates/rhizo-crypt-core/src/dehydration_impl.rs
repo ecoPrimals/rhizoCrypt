@@ -147,7 +147,7 @@ impl RhizoCrypt {
         let summary_bytes: &[u8] = &summary_hash;
 
         // Create discovery registry
-        let registry = discovery::DiscoveryRegistry::new("rhizoCrypt");
+        let registry = discovery::DiscoveryRegistry::new(crate::constants::PRIMAL_NAME);
 
         // Try to discover signing provider (capability-based!)
         let signing_client = match SigningClient::discover(&registry).await {
@@ -255,7 +255,7 @@ impl RhizoCrypt {
         summary: &dehydration::DehydrationSummary,
     ) -> Result<session::LoamCommitRef> {
         // Create a discovery registry for capability-based lookup
-        let registry = discovery::DiscoveryRegistry::new("rhizoCrypt");
+        let registry = discovery::DiscoveryRegistry::new(crate::constants::PRIMAL_NAME);
 
         // Try to discover permanent storage provider
         use crate::clients::PermanentStorageClient;

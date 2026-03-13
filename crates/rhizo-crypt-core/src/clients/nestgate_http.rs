@@ -147,7 +147,7 @@ impl NestGateHttpClient {
 
         let response = self
             .client
-            .post(format!("{}/api/v1/blobs", self.base_url))
+            .post(format!("{}{}/blobs", self.base_url, crate::constants::API_VERSION_PREFIX))
             .json(&request)
             .send()
             .await
@@ -177,7 +177,12 @@ impl NestGateHttpClient {
 
         let response = self
             .client
-            .get(format!("{}/api/v1/blobs/{}", self.base_url, reference))
+            .get(format!(
+                "{}{}/blobs/{}",
+                self.base_url,
+                crate::constants::API_VERSION_PREFIX,
+                reference
+            ))
             .send()
             .await
             .map_err(NestGateHttpError::Request)?;
@@ -204,7 +209,12 @@ impl NestGateHttpClient {
     pub async fn exists(&self, reference: &str) -> Result<bool, NestGateHttpError> {
         let response = self
             .client
-            .head(format!("{}/api/v1/blobs/{}", self.base_url, reference))
+            .head(format!(
+                "{}{}/blobs/{}",
+                self.base_url,
+                crate::constants::API_VERSION_PREFIX,
+                reference
+            ))
             .send()
             .await
             .map_err(NestGateHttpError::Request)?;
@@ -220,7 +230,12 @@ impl NestGateHttpClient {
     pub async fn metadata(&self, reference: &str) -> Result<HttpBlobMetadata, NestGateHttpError> {
         let response = self
             .client
-            .get(format!("{}/api/v1/blobs/{}/metadata", self.base_url, reference))
+            .get(format!(
+                "{}{}/blobs/{}/metadata",
+                self.base_url,
+                crate::constants::API_VERSION_PREFIX,
+                reference
+            ))
             .send()
             .await
             .map_err(NestGateHttpError::Request)?;
@@ -244,7 +259,7 @@ impl NestGateHttpClient {
     pub async fn health(&self) -> Result<HttpHealthResponse, NestGateHttpError> {
         let response = self
             .client
-            .get(format!("{}/api/v1/health", self.base_url))
+            .get(format!("{}{}", self.base_url, crate::constants::HEALTH_CHECK_PATH))
             .send()
             .await
             .map_err(NestGateHttpError::Request)?;

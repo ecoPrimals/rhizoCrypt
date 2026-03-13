@@ -400,4 +400,64 @@ mod tests {
     fn test_storage_backend_default() {
         assert_eq!(StorageBackend::default(), StorageBackend::Memory);
     }
+
+    #[test]
+    fn test_config_with_all_options() {
+        let config = RhizoCryptConfig::new("FullConfig")
+            .with_max_sessions(2000)
+            .with_gc_interval(Duration::from_secs(90))
+            .with_storage(StorageConfig {
+                backend: StorageBackend::Sled,
+                path: Some("/tmp/rhizo".to_string()),
+                max_memory_bytes: Some(2 * 1024 * 1024 * 1024),
+            });
+
+        assert_eq!(config.name, "FullConfig");
+        assert_eq!(config.max_sessions, 2000);
+        assert_eq!(config.gc_interval, Duration::from_secs(90));
+        assert_eq!(config.storage.backend, StorageBackend::Sled);
+        assert_eq!(config.storage.path.as_deref(), Some("/tmp/rhizo"));
+        assert_eq!(config.storage.max_memory_bytes, Some(2 * 1024 * 1024 * 1024));
+    }
+
+    #[test]
+    fn test_config_from_env() {
+        std::env::set_var("RHIZOCRYPT_RPC_HOST", "0.0.0.0");
+        std::env::set_var("RHIZOCRYPT_RPC_PORT", "9090");
+        std::env::set_var("RHIZOCRYPT_RPC_ENABLED", "false");
+
+        let rpc = RpcConfig::from_env_or_default();
+        assert_eq!(rpc.host.as_ref(), "0.0.0.0");
+        assert_eq!(rpc.port, 9090);
+        assert!(!rpc.enabled);
+
+        std::env::remove_var("RHIZOCRYPT_RPC_HOST");
+        std::env::remove_var("RHIZOCRYPT_RPC_PORT");
+        std::env::remove_var("RHIZOCRYPT_RPC_ENABLED");
+    }
+
+    #[test]
+    fn test_storage_backend_variants() {
+        assert_eq!(StorageBackend::Memory, StorageBackend::Memory);
+        assert_eq!(StorageBackend::Sled, StorageBackend::Sled);
+        assert_eq!(StorageBackend::Lmdb, StorageBackend::Lmdb);
+        assert_ne!(StorageBackend::Memory, StorageBackend::Sled);
+    }
+
+    #[test]
+    fn test_config_validation() {
+        let config = RhizoCryptConfig::default();
+        assert!(!config.name.is_empty());
+        assert!(config.max_sessions > 0);
+        assert!(config.gc_interval.as_secs() > 0);
+    }
+
+    #[test]
+    fn test_config_clone() {
+        let config = RhizoCryptConfig::new("CloneTest").with_max_sessions(100);
+        let cloned = config.clone();
+        assert_eq!(config.name, cloned.name);
+        assert_eq!(config.max_sessions, cloned.max_sessions);
+        assert_eq!(config.storage.backend, cloned.storage.backend);
+    }
 }

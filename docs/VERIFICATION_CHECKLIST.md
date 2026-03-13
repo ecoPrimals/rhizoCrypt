@@ -31,16 +31,17 @@ $ cargo build --workspace --release
 $ cargo test --workspace
 ```
 
-**Result**: ✅ **486/486 tests passing (100%)**
+**Result**: ✅ **600/600 tests passing (100%)**
 
 **Test Breakdown**:
-- [x] rhizo-crypt-core: 401 tests ✅
+- [x] rhizo-crypt-core: 504 tests ✅
 - [x] Integration tests: 26 tests ✅
-- [x] E2E tests: 8 tests ✅
+- [x] E2E tests: 14 tests ✅
 - [x] Chaos tests: 17 tests ✅
-- [x] RPC tests: 22 tests ✅
+- [x] Property tests: 17 tests ✅
+- [x] RPC tests: 96 tests ✅
 - [x] RPC integration: 10 tests ✅
-- [x] Doc tests: 2 tests ✅
+- [x] Doc tests: 3 tests ✅
 
 **Test Types Verified**:
 - [x] Unit tests
@@ -317,7 +318,7 @@ $ find crates -name '*.rs' -exec wc -l {} \; | awk '{if ($1 > 1000) print $0}'
 | Check | Target | Actual | Status | Verified |
 |-------|--------|--------|--------|----------|
 | **Compilation** | Pass | Pass | ✅ | 2025-12-26 |
-| **Tests** | >95% | 100% (486/486) | ✅ | 2025-12-26 |
+| **Tests** | >95% | 100% (600/600) | ✅ | 2026-03-13 |
 | **Coverage** | >60% | 86.17% | ✅ | 2025-12-26 |
 | **Unsafe Code** | 0 | 0 | ✅ | 2025-12-26 |
 | **Clippy** | 0 warnings | 0 | ✅ | 2025-12-26 |
@@ -391,8 +392,8 @@ I certify that rhizoCrypt v0.12.0 has undergone comprehensive verification acros
 
 **Signatures**:
 - ✅ Code compiles cleanly
-- ✅ All 486 tests pass
-- ✅ Coverage measured at 86.17%
+- ✅ All 600 tests pass
+- ✅ Coverage measured at 90.02%
 - ✅ Zero unsafe code
 - ✅ Zero clippy warnings
 - ✅ Production infrastructure ready

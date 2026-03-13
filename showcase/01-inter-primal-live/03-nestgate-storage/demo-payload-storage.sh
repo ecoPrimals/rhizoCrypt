@@ -9,7 +9,8 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BINS_DIR="/path/to/ecoPrimals/primalBins"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+BINS_DIR="${PRIMAL_BINS_DIR:-$REPO_ROOT/../../primalBins}"
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}   💾 Payload Storage with NestGate${NC}"

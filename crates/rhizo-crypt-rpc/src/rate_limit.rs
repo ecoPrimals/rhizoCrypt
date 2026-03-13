@@ -10,6 +10,13 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+#[cfg(test)]
+use std::sync::Mutex;
+
+/// Lock for env-based tests to prevent parallel execution from corrupting env vars.
+#[cfg(test)]
+static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
 use tokio::sync::RwLock;
 
 /// Rate limit configuration.
@@ -398,5 +405,163 @@ mod tests {
 
         let dev = RateLimitConfig::development();
         assert_eq!(dev.read_rps, 10000);
+    }
+
+    #[test]
+    fn test_config_default() {
+        let config = RateLimitConfig::default();
+        assert_eq!(config.read_rps, 1000);
+        assert_eq!(config.write_rps, 100);
+        assert_eq!(config.expensive_rps, 10);
+        assert_eq!(config.burst_multiplier, 2);
+    }
+
+    #[test]
+    fn test_config_from_env() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+        std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS");
+        std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_WRITE_RPS");
+        std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS");
+
+        std::env::set_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS", "42");
+        std::env::set_var("RHIZOCRYPT_RATE_LIMIT_WRITE_RPS", "21");
+        std::env::set_var("RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS", "7");
+
+        let config = RateLimitConfig::from_env();
+        assert_eq!(config.read_rps, 42);
+        assert_eq!(config.write_rps, 21);
+        assert_eq!(config.expensive_rps, 7);
+
+        std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS");
+        std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_WRITE_RPS");
+        std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS");
+    }
+
+    #[test]
+    fn test_config_from_env_invalid_ignored() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+        std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS");
+        std::env::set_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS", "not-a-number");
+        let config = RateLimitConfig::from_env();
+        assert_eq!(config.read_rps, 1000);
+        std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_rate_limiter_very_short_window() {
+        let config = RateLimitConfig {
+            read_rps: 1,
+            write_rps: 1,
+            expensive_rps: 1,
+            burst_multiplier: 1,
+            cleanup_interval: Duration::from_secs(60),
+        };
+
+        let limiter = RateLimiter::new(config);
+        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
+
+        assert!(limiter.check(client, OperationType::Read).await);
+        assert!(!limiter.check(client, OperationType::Read).await);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_rate_limiter_reset_after_window() {
+        let config = RateLimitConfig {
+            read_rps: 1,
+            write_rps: 1,
+            expensive_rps: 1,
+            burst_multiplier: 1,
+            cleanup_interval: Duration::from_secs(60),
+        };
+
+        let limiter = RateLimiter::new(config);
+        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
+
+        assert!(limiter.check(client, OperationType::Read).await);
+        assert!(!limiter.check(client, OperationType::Read).await);
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        assert!(limiter.check(client, OperationType::Read).await);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_rate_limiter_write_and_expensive() {
+        let config = RateLimitConfig {
+            read_rps: 100,
+            write_rps: 2,
+            expensive_rps: 1,
+            burst_multiplier: 1,
+            cleanup_interval: Duration::from_secs(60),
+        };
+
+        let limiter = RateLimiter::new(config);
+        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
+
+        assert!(limiter.check(client, OperationType::Write).await);
+        assert!(limiter.check(client, OperationType::Write).await);
+        assert!(!limiter.check(client, OperationType::Write).await);
+
+        assert!(limiter.check(client, OperationType::Expensive).await);
+        assert!(!limiter.check(client, OperationType::Expensive).await);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_rate_limiter_enable_disable() {
+        let mut limiter = RateLimiter::disabled();
+        assert!(!limiter.is_enabled());
+
+        limiter.enable();
+        assert!(limiter.is_enabled());
+
+        limiter.disable();
+        assert!(!limiter.is_enabled());
+
+        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
+        assert!(limiter.check(client, OperationType::Expensive).await);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_rate_limiter_regular_cleanup() {
+        let config = RateLimitConfig {
+            read_rps: 10,
+            write_rps: 5,
+            expensive_rps: 2,
+            burst_multiplier: 2,
+            cleanup_interval: Duration::from_secs(1),
+        };
+
+        let limiter = RateLimiter::new(config);
+        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
+
+        limiter.check(client, OperationType::Read).await;
+        assert_eq!(limiter.client_count().await, 1);
+
+        limiter.cleanup().await;
+        assert_eq!(limiter.client_count().await, 1);
+
+        limiter.cleanup_with_threshold(Duration::from_nanos(0)).await;
+        assert_eq!(limiter.client_count().await, 0);
+    }
+
+    #[test]
+    fn test_rate_limit_exceeded_display() {
+        let err = RateLimitExceeded {
+            operation: OperationType::Write,
+            client: IpAddr::V4(Ipv4Addr::LOCALHOST),
+        };
+        let s = err.to_string();
+        assert!(s.contains("Write"));
+        assert!(s.contains("127.0.0.1"));
+    }
+
+    #[test]
+    fn test_rate_limit_exceeded_error() {
+        use std::error::Error;
+        let err = RateLimitExceeded {
+            operation: OperationType::Read,
+            client: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
+        };
+        assert!(err.source().is_none());
     }
 }

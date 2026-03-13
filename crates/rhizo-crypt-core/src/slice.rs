@@ -575,4 +575,142 @@ mod tests {
         assert!(!constraints.allow_reslice);
         assert!(constraints.forbidden_operations.is_empty());
     }
+
+    #[test]
+    fn test_slice_state_transitions() {
+        let origin = make_origin();
+        let holder = Did::new("did:key:holder");
+        let session_id = SessionId::now();
+        let checkout_vertex = VertexId::from_bytes(b"checkout");
+
+        let mut slice = SliceBuilder::new(
+            origin,
+            holder,
+            SliceMode::Transfer {
+                new_owner: Did::new("did:key:new"),
+            },
+            session_id,
+            checkout_vertex,
+        )
+        .build();
+
+        assert!(slice.is_active());
+        assert!(!slice.is_resolved());
+
+        slice.state = SliceState::Resolving {
+            started_at: Timestamp::now(),
+        };
+        assert!(!slice.is_active());
+        assert!(!slice.is_resolved());
+
+        slice.state = SliceState::Resolved {
+            outcome: ResolutionOutcome::ReturnedUnchanged,
+            resolved_at: Timestamp::now(),
+        };
+        assert!(!slice.is_active());
+        assert!(slice.is_resolved());
+    }
+
+    #[test]
+    fn test_slice_is_active() {
+        let origin = make_origin();
+        let holder = Did::new("did:key:holder");
+        let session_id = SessionId::now();
+        let checkout_vertex = VertexId::from_bytes(b"checkout");
+
+        let slice = SliceBuilder::new(
+            origin,
+            holder,
+            SliceMode::Copy {
+                allow_recopy: false,
+            },
+            session_id,
+            checkout_vertex,
+        )
+        .build();
+
+        assert!(slice.is_active());
+        assert!(!slice.is_resolved());
+    }
+
+    #[test]
+    fn test_slice_with_duration() {
+        let origin = make_origin();
+        let holder = Did::new("did:key:holder");
+        let session_id = SessionId::now();
+        let checkout_vertex = VertexId::from_bytes(b"checkout");
+
+        let slice = SliceBuilder::new(
+            origin,
+            holder,
+            SliceMode::Loan {
+                terms: LoanTerms::default(),
+                allow_subloan: false,
+            },
+            session_id,
+            checkout_vertex,
+        )
+        .expires_in(Duration::from_secs(3600))
+        .build();
+
+        assert!(slice.expires_at.is_some());
+    }
+
+    #[test]
+    fn test_slice_origin_serialization() {
+        let origin = SliceOrigin {
+            spine_id: "spine-99".to_string(),
+            entry_hash: [5u8; 32],
+            entry_index: 123,
+            certificate_id: Some("cert-1".to_string()),
+            owner: Did::new("did:key:owner"),
+        };
+        let json = serde_json::to_string(&origin).unwrap();
+        let parsed: SliceOrigin = serde_json::from_str(&json).unwrap();
+        assert_eq!(origin.spine_id, parsed.spine_id);
+        assert_eq!(origin.entry_hash, parsed.entry_hash);
+        assert_eq!(origin.entry_index, parsed.entry_index);
+        assert_eq!(origin.certificate_id, parsed.certificate_id);
+    }
+
+    #[test]
+    fn test_resolution_outcome_variants() {
+        let returned = ResolutionOutcome::ReturnedUnchanged;
+        assert_eq!(returned, ResolutionOutcome::ReturnedUnchanged);
+
+        let committed = ResolutionOutcome::Committed {
+            new_entry: [2u8; 32],
+        };
+        assert!(matches!(committed, ResolutionOutcome::Committed { .. }));
+
+        let transferred = ResolutionOutcome::Transferred {
+            new_spine: "spine-new".to_string(),
+            new_entry: [3u8; 32],
+            new_owner: Did::new("did:key:buyer"),
+        };
+        assert!(matches!(transferred, ResolutionOutcome::Transferred { .. }));
+
+        let anchored = ResolutionOutcome::Anchored {
+            waypoint_spine: "waypoint".to_string(),
+            waypoint_entry: [4u8; 32],
+        };
+        assert!(matches!(anchored, ResolutionOutcome::Anchored { .. }));
+
+        let consumed = ResolutionOutcome::Consumed;
+        assert_eq!(consumed, ResolutionOutcome::Consumed);
+    }
+
+    #[test]
+    fn test_slice_constraints_custom() {
+        let constraints = SliceConstraints {
+            max_duration: Some(Duration::from_secs(86400)),
+            allow_reslice: true,
+            max_reslice_depth: Some(5),
+            forbidden_operations: vec!["delete".to_string(), "transfer".to_string()],
+        };
+        assert_eq!(constraints.max_duration, Some(Duration::from_secs(86400)));
+        assert!(constraints.allow_reslice);
+        assert_eq!(constraints.max_reslice_depth, Some(5));
+        assert_eq!(constraints.forbidden_operations.len(), 2);
+    }
 }

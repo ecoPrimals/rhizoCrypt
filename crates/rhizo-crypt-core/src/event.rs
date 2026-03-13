@@ -436,6 +436,132 @@ pub enum ResolutionType {
 mod tests {
     use super::*;
 
+    /// Collect all EventType variants for exhaustive testing.
+    fn all_event_types() -> Vec<EventType> {
+        vec![
+            EventType::SessionStart,
+            EventType::SessionEnd {
+                outcome: SessionOutcome::Success,
+            },
+            EventType::AgentJoin {
+                role: AgentRole::Participant,
+            },
+            EventType::AgentLeave {
+                reason: LeaveReason::Normal,
+            },
+            EventType::AgentAction {
+                action: "test".into(),
+            },
+            EventType::DataCreate {
+                schema: None,
+            },
+            EventType::DataModify {
+                delta_type: "patch".into(),
+            },
+            EventType::DataDelete,
+            EventType::DataTransfer {
+                to: Did::new("did:key:recipient"),
+            },
+            EventType::SliceCheckout {
+                slice_id: SliceId::now(),
+                mode: SliceMode::Copy {
+                    allow_recopy: false,
+                },
+            },
+            EventType::SliceOperation {
+                slice_id: SliceId::now(),
+                operation: "read".into(),
+            },
+            EventType::SliceResolve {
+                slice_id: SliceId::now(),
+                resolution: ResolutionType::ReturnToOrigin,
+            },
+            EventType::GameEvent {
+                game_type: "rpg".into(),
+                event_name: "level_up".into(),
+            },
+            EventType::ItemLoot {
+                item_type: "weapon".into(),
+            },
+            EventType::ItemDrop,
+            EventType::ItemTransfer {
+                to: Did::new("did:key:recipient"),
+            },
+            EventType::Combat {
+                target: Did::new("did:key:target"),
+                outcome: "win".into(),
+            },
+            EventType::Extraction {
+                success: true,
+            },
+            EventType::ExperimentStart {
+                protocol: "test".into(),
+            },
+            EventType::Observation {
+                instrument: "microscope".into(),
+            },
+            EventType::Analysis {
+                method: "pca".into(),
+            },
+            EventType::Result {
+                confidence_percent: 95,
+            },
+            EventType::DocumentEdit {
+                operation: "insert".into(),
+            },
+            EventType::CommentAdd,
+            EventType::ApprovalGrant,
+            EventType::ApprovalRevoke,
+            EventType::Custom {
+                domain: "custom".into(),
+                event_name: "custom_event".into(),
+            },
+        ]
+    }
+
+    #[test]
+    fn test_all_event_type_names() {
+        for event in all_event_types() {
+            let name = event.name();
+            assert!(!name.is_empty(), "variant {event:?} has empty name");
+        }
+    }
+
+    #[test]
+    fn test_all_event_type_domains() {
+        for event in all_event_types() {
+            let domain = event.domain();
+            assert!(!domain.is_empty(), "variant {event:?} has empty domain");
+        }
+    }
+
+    #[test]
+    fn test_event_type_serialization_roundtrip() {
+        for event in all_event_types() {
+            let json = serde_json::to_string(&event).unwrap();
+            let parsed: EventType = serde_json::from_str(&json).unwrap();
+            assert_eq!(event, parsed, "roundtrip failed for {event:?}");
+        }
+    }
+
+    #[test]
+    fn test_session_outcome_all_variants() {
+        let variants = vec![
+            SessionOutcome::Success,
+            SessionOutcome::Failure {
+                reason: "error".into(),
+            },
+            SessionOutcome::Timeout,
+            SessionOutcome::Cancelled,
+            SessionOutcome::Rollback,
+        ];
+        for outcome in variants {
+            let json = serde_json::to_string(&outcome).unwrap();
+            let parsed: SessionOutcome = serde_json::from_str(&json).unwrap();
+            assert_eq!(outcome, parsed);
+        }
+    }
+
     #[test]
     fn test_event_type_domain() {
         assert_eq!(EventType::SessionStart.domain(), "session");

@@ -9,8 +9,9 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BINS_DIR="/path/to/ecoPrimals/primalBins"
-SONGBIRD_BIN="$BINS_DIR/songbird-rendezvous"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+BINS_DIR="${PRIMAL_BINS_DIR:-$REPO_ROOT/../../primalBins}"
+SONGBIRD_BIN="${SONGBIRD_BIN:-$BINS_DIR/songbird-rendezvous}"
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}   👶 Infant Boot: Start with Zero Knowledge${NC}"

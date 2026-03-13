@@ -11,7 +11,7 @@ keywords = ["dag", "rpc", "tarpc", "distributed", "ephemeral"]
 categories = ["network-programming", "asynchronous", "cryptography"]
 
 [dependencies]
-# Core library (with default sled backend, no rocksdb)
+# Core library (default redb backend, sled optional)
 rhizo-crypt-core = { path = "../rhizo-crypt-core", default-features = true }
 
 # Async
@@ -37,8 +37,15 @@ tracing.workspace = true
 # Concurrency
 parking_lot.workspace = true
 
+# HTTP (JSON-RPC server)
+axum.workspace = true
+tower-http.workspace = true
+hex = "0.4"
+uuid = { workspace = true }
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tower = { version = "0.5", features = ["util"] }
 tracing-subscriber.workspace = true
 
 [lints]

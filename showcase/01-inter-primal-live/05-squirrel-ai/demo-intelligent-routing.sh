@@ -5,15 +5,18 @@
 
 set -euo pipefail
 
+# Paths (portable)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+BINS_DIR="${PRIMAL_BINS_DIR:-$REPO_ROOT/../../primalBins}"
+SQUIRREL_BIN="${SQUIRREL_BIN:-$BINS_DIR/squirrel-cli}"
+
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
-
-# Paths
-SQUIRREL_BIN="/path/to/ecoPrimals/primalBins/squirrel-cli"
 
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}  🐿️  Demo: Intelligent Routing with Squirrel AI${NC}"

@@ -4,6 +4,10 @@
 //! Songbird client submodules.
 
 mod client;
+mod config;
+mod connection;
+mod discovery;
 
-// Re-export main types
-pub use client::{SongbirdClient, SongbirdConfig};
+// Re-export main types (same public API)
+pub use client::SongbirdClient;
+pub use config::SongbirdConfig;
