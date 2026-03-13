@@ -119,8 +119,8 @@ pub struct Attestation {
     /// What is being attested.
     pub statement: AttestationStatement,
 
-    /// Signature over the statement.
-    pub signature: Vec<u8>,
+    /// Signature over the statement (zero-copy via `Bytes`).
+    pub signature: bytes::Bytes,
 
     /// When the attestation was made.
     pub attested_at: Timestamp,
@@ -458,7 +458,7 @@ mod tests {
             statement: AttestationStatement::SessionSummary {
                 summary_hash: [0u8; 32],
             },
-            signature: vec![],
+            signature: bytes::Bytes::new(),
             attested_at: Timestamp::now(),
             verified: true,
         };

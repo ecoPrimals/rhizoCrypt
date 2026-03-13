@@ -462,4 +462,262 @@ mod tests {
         assert!((usage.cpu_usage - 0.5).abs() < f64::EPSILON);
         assert_eq!(usage.memory_bytes, 1_048_576);
     }
+
+    #[test]
+    fn test_parse_deployment_id_short_hex() {
+        assert!(parse_deployment_id("ab").is_none());
+    }
+
+    #[test]
+    fn test_parse_deployment_id_invalid() {
+        assert!(parse_deployment_id("not-a-uuid-or-hex").is_none());
+        assert!(parse_deployment_id("").is_none());
+        assert!(parse_deployment_id("zzzzzzzzzzzzzzzz").is_none());
+    }
+
+    #[test]
+    fn test_client_new() {
+        let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+        assert_eq!(client.base_url, "http://localhost:8084");
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_deployment_to_event_pending() {
+        let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+        let did = Did::new("did:key:test");
+        let deployment = DeploymentResponse {
+            deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            status: DeploymentStatus::Pending,
+            biome_name: None,
+            created_at: None,
+            completed_at: None,
+            error: None,
+            result: None,
+        };
+        let event = client.deployment_to_event(&deployment, &did);
+        assert!(event.is_some());
+        assert!(matches!(event.unwrap(), ComputeEvent::TaskCreated { .. }));
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_deployment_to_event_running() {
+        let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+        let did = Did::new("did:key:test");
+        let deployment = DeploymentResponse {
+            deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            status: DeploymentStatus::Running,
+            biome_name: Some("test-biome".to_string()),
+            created_at: None,
+            completed_at: None,
+            error: None,
+            result: None,
+        };
+        let event = client.deployment_to_event(&deployment, &did);
+        assert!(matches!(event.unwrap(), ComputeEvent::TaskStarted { .. }));
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_deployment_to_event_completed() {
+        let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+        let did = Did::new("did:key:test");
+        let deployment = DeploymentResponse {
+            deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            status: DeploymentStatus::Completed,
+            biome_name: None,
+            created_at: None,
+            completed_at: None,
+            error: None,
+            result: Some(serde_json::json!({"output": "data"})),
+        };
+        let event = client.deployment_to_event(&deployment, &did);
+        assert!(matches!(event.unwrap(), ComputeEvent::TaskCompleted { .. }));
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_deployment_to_event_failed() {
+        let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+        let did = Did::new("did:key:test");
+        let deployment = DeploymentResponse {
+            deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            status: DeploymentStatus::Failed,
+            biome_name: None,
+            created_at: None,
+            completed_at: None,
+            error: Some("out of memory".to_string()),
+            result: None,
+        };
+        let event = client.deployment_to_event(&deployment, &did);
+        match event.unwrap() {
+            ComputeEvent::TaskFailed {
+                error,
+                ..
+            } => {
+                assert_eq!(error, "out of memory");
+            }
+            _ => panic!("expected TaskFailed"),
+        }
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_deployment_to_event_failed_no_error_msg() {
+        let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+        let did = Did::new("did:key:test");
+        let deployment = DeploymentResponse {
+            deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            status: DeploymentStatus::Failed,
+            biome_name: None,
+            created_at: None,
+            completed_at: None,
+            error: None,
+            result: None,
+        };
+        let event = client.deployment_to_event(&deployment, &did);
+        match event.unwrap() {
+            ComputeEvent::TaskFailed {
+                error,
+                ..
+            } => {
+                assert_eq!(error, "Unknown error");
+            }
+            _ => panic!("expected TaskFailed"),
+        }
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_deployment_to_event_stopped() {
+        let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+        let did = Did::new("did:key:test");
+        let deployment = DeploymentResponse {
+            deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            status: DeploymentStatus::Stopped,
+            biome_name: None,
+            created_at: None,
+            completed_at: None,
+            error: None,
+            result: None,
+        };
+        let event = client.deployment_to_event(&deployment, &did);
+        assert!(matches!(event.unwrap(), ComputeEvent::TaskCancelled { .. }));
+    }
+
+    #[test]
+    fn test_deployment_to_event_invalid_id() {
+        let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+        let did = Did::new("did:key:test");
+        let deployment = DeploymentResponse {
+            deployment_id: "bad".to_string(),
+            status: DeploymentStatus::Running,
+            biome_name: None,
+            created_at: None,
+            completed_at: None,
+            error: None,
+            result: None,
+        };
+        assert!(client.deployment_to_event(&deployment, &did).is_none());
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_poll_events_from_deployments() {
+        let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+        let did = Did::new("did:key:test");
+        let deployments = vec![
+            DeploymentResponse {
+                deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+                status: DeploymentStatus::Running,
+                biome_name: None,
+                created_at: None,
+                completed_at: None,
+                error: None,
+                result: None,
+            },
+            DeploymentResponse {
+                deployment_id: "bad-id".to_string(),
+                status: DeploymentStatus::Running,
+                biome_name: None,
+                created_at: None,
+                completed_at: None,
+                error: None,
+                result: None,
+            },
+        ];
+        let events = poll_events_from_deployments(&client, &deployments, &did);
+        assert_eq!(events.len(), 1);
+    }
+
+    #[test]
+    fn test_poll_events_empty() {
+        let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+        let did = Did::new("did:key:test");
+        let events = poll_events_from_deployments(&client, &[], &did);
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_deployment_response_serde() {
+        let json = serde_json::json!({
+            "deployment_id": "abc-123",
+            "status": "running",
+            "biome_name": "test-biome",
+            "created_at": "2024-01-01T00:00:00Z",
+            "completed_at": null,
+            "error": null,
+            "result": null
+        });
+        let resp: DeploymentResponse = serde_json::from_value(json).unwrap();
+        assert_eq!(resp.deployment_id, "abc-123");
+        assert!(matches!(resp.status, DeploymentStatus::Running));
+        assert_eq!(resp.biome_name.as_deref(), Some("test-biome"));
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_stop_deployment_response_serde() {
+        let json = r#"{"deployment_id":"abc","message":"stopped"}"#;
+        let resp: StopDeploymentResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.deployment_id, "abc");
+        assert_eq!(resp.message, "stopped");
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_byob_health_response_serde() {
+        let json = r#"{"status":"healthy","message":"BYOB API operational"}"#;
+        let resp: ByobHealthResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.status, "healthy");
+    }
+
+    #[test]
+    fn test_deployment_status_all_variants() {
+        for (json, expected) in [
+            (r#""pending""#, "Pending"),
+            (r#""running""#, "Running"),
+            (r#""completed""#, "Completed"),
+            (r#""failed""#, "Failed"),
+            (r#""stopped""#, "Stopped"),
+        ] {
+            let status: DeploymentStatus = serde_json::from_str(json).unwrap();
+            assert_eq!(format!("{status:?}"), expected);
+        }
+    }
+
+    #[test]
+    fn test_toadstool_error_display() {
+        let err = ToadStoolHttpError::InvalidResponse("bad json".to_string());
+        assert!(err.to_string().contains("bad json"));
+
+        let err = ToadStoolHttpError::Server {
+            status: 500,
+            message: "internal".to_string(),
+        };
+        assert!(err.to_string().contains("500"));
+        assert!(err.to_string().contains("internal"));
+    }
 }

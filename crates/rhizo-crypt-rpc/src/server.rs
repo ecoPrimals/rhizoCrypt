@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn test_server_config_defaults() {
         let config = RhizoCryptConfig::default();
-        assert_eq!(config.name, "RhizoCrypt");
+        assert_eq!(config.name, rhizo_crypt_core::constants::PRIMAL_NAME);
         assert_eq!(config.max_sessions, 1000);
 
         let rpc = &config.rpc;

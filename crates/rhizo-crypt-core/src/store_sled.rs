@@ -700,18 +700,242 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_pure_rust_excellence() {
-        // This test exists to celebrate 100% Pure Rust achievement!
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+        let vertex = VertexBuilder::new(EventType::SessionStart).build();
+        store.put_vertex(session_id, vertex).await.unwrap();
+        assert!(matches!(store.health().await, StorageHealth::Healthy));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_path() {
+        let (store, dir) = create_test_store();
+        assert_eq!(store.path(), dir.path());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_debug_impl() {
+        let (store, _dir) = create_test_store();
+        let debug = format!("{store:?}");
+        assert!(debug.contains("SledDagStore"));
+        assert!(debug.contains("read_ops"));
+        assert!(debug.contains("write_ops"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_export() {
         let (store, _dir) = create_test_store();
         let session_id = SessionId::now();
 
-        // Add data
+        let vertex = VertexBuilder::new(EventType::SessionStart).build();
+        store.put_vertex(session_id, vertex).await.unwrap();
+        store.flush().await.unwrap();
+
+        let export_data = store.export();
+        assert!(!export_data.is_empty(), "export should return tree data");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_exists() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+
+        let vertex = VertexBuilder::new(EventType::SessionStart).build();
+        let mut vc = vertex.clone();
+        let vid = vc.id().unwrap();
+        store.put_vertex(session_id, vertex).await.unwrap();
+
+        assert!(store.exists(session_id, vid).await.unwrap());
+
+        let fake_id = VertexId::from_bytes(&[0u8; 32]);
+        assert!(!store.exists(session_id, fake_id).await.unwrap());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_vertices_batch() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+
+        let v1 = VertexBuilder::new(EventType::SessionStart).build();
+        let mut v1c = v1.clone();
+        let v1_id = v1c.id().unwrap();
+        store.put_vertex(session_id, v1).await.unwrap();
+
+        let v2 = VertexBuilder::new(EventType::DataCreate {
+            schema: None,
+        })
+        .with_parent(v1_id)
+        .build();
+        let mut v2c = v2.clone();
+        let v2_id = v2c.id().unwrap();
+        store.put_vertex(session_id, v2).await.unwrap();
+
+        let fake_id = VertexId::from_bytes(&[0u8; 32]);
+        let results = store.get_vertices(session_id, &[v1_id, v2_id, fake_id]).await.unwrap();
+        assert_eq!(results.len(), 3);
+        assert!(results[0].is_some());
+        assert!(results[1].is_some());
+        assert!(results[2].is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_vertices_empty() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+        let results = store.get_vertices(session_id, &[]).await.unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_vertex_not_found() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+        let result = store.get_vertex(session_id, VertexId::from_bytes(&[0u8; 32])).await.unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_update_frontier() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+
+        let v1 = VertexBuilder::new(EventType::SessionStart).build();
+        let mut v1c = v1.clone();
+        let v1_id = v1c.id().unwrap();
+        store.put_vertex(session_id, v1).await.unwrap();
+
+        let frontier = store.get_frontier(session_id).await.unwrap();
+        assert!(frontier.contains(&v1_id));
+
+        let new_id = VertexId::from_bytes(&[0u8; 32]);
+        store.update_frontier(session_id, new_id, &[v1_id]).await.unwrap();
+
+        let frontier = store.get_frontier(session_id).await.unwrap();
+        assert!(frontier.contains(&new_id));
+        assert!(!frontier.contains(&v1_id));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_update_frontier_empty_consumed() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+
+        let new_id = VertexId::from_bytes(&[0u8; 32]);
+        store.update_frontier(session_id, new_id, &[]).await.unwrap();
+
+        let frontier = store.get_frontier(session_id).await.unwrap();
+        assert!(frontier.contains(&new_id));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_children_empty() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+        let children =
+            store.get_children(session_id, VertexId::from_bytes(&[0u8; 32])).await.unwrap();
+        assert!(children.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_genesis_empty() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+        let genesis = store.get_genesis(session_id).await.unwrap();
+        assert!(genesis.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_frontier_empty() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+        let frontier = store.get_frontier(session_id).await.unwrap();
+        assert!(frontier.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_count_vertices_empty() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+        assert_eq!(store.count_vertices(session_id).await.unwrap(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_delete_session_nonexistent() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+        store.delete_session(session_id).await.unwrap();
+        assert_eq!(store.count_vertices(session_id).await.unwrap(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_multiple_sessions() {
+        let (store, _dir) = create_test_store();
+        let s1 = SessionId::now();
+        let s2 = SessionId::now();
+
+        let v1 = VertexBuilder::new(EventType::SessionStart).build();
+        let v2 = VertexBuilder::new(EventType::SessionStart).build();
+        store.put_vertex(s1, v1).await.unwrap();
+        store.put_vertex(s2, v2).await.unwrap();
+
+        assert_eq!(store.count_vertices(s1).await.unwrap(), 1);
+        assert_eq!(store.count_vertices(s2).await.unwrap(), 1);
+
+        store.delete_session(s1).await.unwrap();
+        assert_eq!(store.count_vertices(s1).await.unwrap(), 0);
+        assert_eq!(store.count_vertices(s2).await.unwrap(), 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_stats_after_operations() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+
+        let initial_stats = store.stats().await;
+        let initial_reads = initial_stats.read_ops;
+        let initial_writes = initial_stats.write_ops;
+
         let vertex = VertexBuilder::new(EventType::SessionStart).build();
         store.put_vertex(session_id, vertex).await.unwrap();
 
-        // Verify health
-        assert!(matches!(store.health().await, StorageHealth::Healthy));
+        let _ = store.get_vertex(session_id, VertexId::from_bytes(&[0u8; 32])).await;
 
-        // 🦀 No C++ code. No bindgen. No libclang. Pure Rust. 🦀
-        // Test passed - 100% Pure Rust storage backend operational!
+        let stats = store.stats().await;
+        assert!(stats.write_ops > initial_writes);
+        assert!(stats.read_ops > initial_reads);
+        assert!(stats.bytes_used > 0);
+        assert_eq!(stats.vertices, 1);
+        assert_eq!(stats.sessions, 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_concurrent_reads() {
+        let (store, _dir) = create_test_store();
+        let session_id = SessionId::now();
+
+        let vertex = VertexBuilder::new(EventType::SessionStart).build();
+        let mut vc = vertex.clone();
+        let vid = vc.id().unwrap();
+        store.put_vertex(session_id, vertex).await.unwrap();
+
+        let store = std::sync::Arc::new(store);
+        let mut handles = vec![];
+        for _ in 0..10 {
+            let s = std::sync::Arc::clone(&store);
+            handles.push(tokio::spawn(async move {
+                s.get_vertex(session_id, vid).await.unwrap().is_some()
+            }));
+        }
+        for h in handles {
+            assert!(h.await.unwrap());
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_open_creates_parent_dirs() {
+        let dir = TempDir::new().unwrap();
+        let nested = dir.path().join("deep").join("nested").join("path");
+        let store = SledDagStore::open(&nested).unwrap();
+        assert!(store.path().exists());
     }
 }

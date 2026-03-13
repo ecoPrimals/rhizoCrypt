@@ -81,7 +81,7 @@ cd 00-local-primal
 
 **Prerequisites**: Phase 1 binaries in `../bins/`
 
-**Start**: `cd 01-inter-primal-live && cat 00_START_HERE.md`
+**Start**: `cd 01-inter-primal-live && cat README.md`
 
 ---
 
@@ -97,7 +97,7 @@ cd 00-local-primal
 
 **Prerequisites**: All Phase 1 primals running
 
-**Start**: `cd 02-complete-workflows && cat 00_START_HERE.md`
+**Start**: `cd 01-inter-primal-live/05-complete-workflows && cat README.md`
 
 ---
 
@@ -364,8 +364,7 @@ By the end of this showcase, you'll understand:
 - **Main Documentation**: `../README.md`
 - **Technical Specs**: `../specs/RHIZOCRYPT_SPECIFICATION.md`
 - **Architecture**: `../specs/ARCHITECTURE.md`
-- **Handoff Guide**: `../HANDOFF_FINAL_DEC_26_2025.md`
-- **Evolution Plan**: `./SHOWCASE_EVOLUTION_PLAN_DEC_26_2025.md`
+- **Changelog**: `../CHANGELOG.md`
 
 ---
 
@@ -378,13 +377,13 @@ A: QUICK_START.sh is 5 minutes. Full Level 0 is 30 minutes. All levels is ~3 hou
 A: Not for Level 0. Yes for Levels 1 & 2.
 
 **Q: What if I get stuck?**  
-A: Each demo has a README with troubleshooting. Check `GAPS_DISCOVERED.md` for known issues.
+A: Each demo has a README with troubleshooting.
 
 **Q: Can I skip levels?**  
 A: Not recommended. Concepts build on each other.
 
 **Q: Is this production-ready?**  
-A: Yes! 600 tests passing, 90% coverage, zero unsafe code, production infrastructure ready.
+A: Yes! 862 tests passing, 87.78% coverage, zero unsafe code, production infrastructure ready.
 
 ---
 

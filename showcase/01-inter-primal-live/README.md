@@ -326,12 +326,11 @@ NestGate's STATUS.md shows this is a known issue.
 
 ---
 
-## 🔗 Related Documents
+## Related Documents
 
-- [Phase 1 Bins README](../../../bins/README.md) - Binary versions and usage
-- [SHOWCASE_ENHANCEMENT_PLAN](../../SHOWCASE_ENHANCEMENT_PLAN_DEC_24_2025.md) - Overall strategy
-- [SHOWCASE_ACTION_PLAN](../../SHOWCASE_ACTION_PLAN_DEC_24_2025.md) - Sprint details
-- [SHOWCASE_STATUS](../../SHOWCASE_STATUS_DEC_24_2025.md) - Current progress
+- [rhizoCrypt README](../../README.md) — Project overview
+- [CHANGELOG](../../CHANGELOG.md) — Version history
+- [specs/](../../specs/) — Formal specifications
 
 ---
 

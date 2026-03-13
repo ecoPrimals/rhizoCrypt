@@ -102,7 +102,7 @@ impl SigningProvider for MockSigningProvider {
             statement: AttestationStatement::SessionSummary {
                 summary_hash: summary.compute_hash(),
             },
-            signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
+            signature: bytes::Bytes::from_static(&[0xDE, 0xAD, 0xBE, 0xEF]),
             attested_at: Timestamp::now(),
             verified: self.signatures_valid,
         })

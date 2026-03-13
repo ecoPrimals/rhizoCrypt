@@ -97,17 +97,17 @@ Now that you've seen the basics, explore by **progressive complexity**:
 - 🏰 NestGate Storage (payload management)
 - 🍄 ToadStool Compute (task execution)
 
-### 🚀 Level 3: Complete Workflows (2 hours)
-**Path**: `showcase/05-complete-workflows/`
-- 📄 Document Collaboration
-- 🤖 ML Pipeline
-- 📦 Supply Chain Tracking
+### Level 3: Complete Workflows (2 hours)
+**Path**: `01-inter-primal-live/05-complete-workflows/`
+- Document Collaboration
+- ML Pipeline
+- Supply Chain Tracking
 
-### 🏭 Level 4: Production Features (1 hour)
-**Path**: `showcase/08-production-features/`
-- 📊 Metrics & Monitoring
-- 🏥 Health Checks
-- 🔁 Error Recovery
+### Level 4: Production Features (1 hour)
+**Path**: `00-local-primal/08-production-features/`
+- Metrics & Monitoring
+- Health Checks
+- Error Recovery
 
 ---
 
@@ -120,10 +120,10 @@ Now that you've seen the basics, explore by **progressive complexity**:
 4. Build with `01-inter-primal-live/` (ecosystem)
 
 ### For Architects:
-1. Read `00_SHOWCASE_INDEX.md` (overview)
-2. Review `06-real-world-scenarios/` (use cases)
-3. Study `05-complete-workflows/` (end-to-end)
-4. Explore `08-production-features/` (deployment)
+1. Read `00_START_HERE.md` (overview)
+2. Review `00-local-primal/06-real-world-scenarios/` (use cases)
+3. Study `01-inter-primal-live/05-complete-workflows/` (end-to-end)
+4. Explore `00-local-primal/08-production-features/` (deployment)
 
 ### For Security Engineers:
 1. Check `03-merkle-proofs/` (cryptographic foundations)

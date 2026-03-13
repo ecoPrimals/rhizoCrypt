@@ -151,7 +151,7 @@ async fn test_service_custom_configuration() {
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19401")
+        .env("RHIZOCRYPT_PORT", "19410")
         .env("RHIZOCRYPT_HOST", "127.0.0.1")
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
@@ -177,7 +177,7 @@ async fn test_service_cli_port_override() {
     let binary_path = service_binary_path();
 
     let mut child = Command::new(&binary_path)
-        .args(["server", "--port", "19411"])
+        .args(["server", "--port", "19420"])
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -202,10 +202,12 @@ async fn test_service_without_discovery() {
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19402")
+        .env("RHIZOCRYPT_PORT", "19430")
         .env("RUST_LOG", "info")
         .env_remove("SONGBIRD_ADDRESS")
         .env_remove("RHIZOCRYPT_DISCOVERY_ADAPTER")
+        .env_remove("DISCOVERY_ENDPOINT")
+        .env_remove("DISCOVERY_ADDRESS")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -229,7 +231,7 @@ async fn test_service_graceful_shutdown_sigterm() {
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19403")
+        .env("RHIZOCRYPT_PORT", "19440")
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -270,7 +272,7 @@ async fn test_service_graceful_shutdown_sigterm() {
 async fn test_service_port_already_in_use() {
     build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
-    let test_port = "19404";
+    let test_port = "19450";
 
     let mut child1 = server_command(&binary_path)
         .env("RHIZOCRYPT_PORT", test_port)
@@ -318,7 +320,7 @@ async fn test_service_environment_variable_parsing() {
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19405")
+        .env("RHIZOCRYPT_PORT", "19460")
         .env("RHIZOCRYPT_HOST", "0.0.0.0")
         .env("RHIZOCRYPT_ENV", "development")
         .env("RUST_LOG", "error")
@@ -345,7 +347,7 @@ async fn test_service_multiple_instances_different_ports() {
     let binary_path = service_binary_path();
 
     let mut child1 = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19406")
+        .env("RHIZOCRYPT_PORT", "19470")
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -353,7 +355,7 @@ async fn test_service_multiple_instances_different_ports() {
         .expect("Failed to start service 1");
 
     let mut child2 = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19408")
+        .env("RHIZOCRYPT_PORT", "19480")
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -361,7 +363,7 @@ async fn test_service_multiple_instances_different_ports() {
         .expect("Failed to start service 2");
 
     let mut child3 = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19410")
+        .env("RHIZOCRYPT_PORT", "19490")
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -392,7 +394,7 @@ async fn test_service_signal_handling() {
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19409")
+        .env("RHIZOCRYPT_PORT", "19500")
         .env("RUST_LOG", "info")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -425,7 +427,7 @@ async fn test_service_with_discovery_fallback() {
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19410")
+        .env("RHIZOCRYPT_PORT", "19510")
         .env("SONGBIRD_ADDRESS", "invalid.nonexistent:9999")
         .env("RUST_LOG", "info")
         .stdout(Stdio::piped())

@@ -95,18 +95,15 @@ impl StorageClient {
         tracing::debug!(size = data.len(), "Storing payload");
 
         let request = StoreRequest {
-            data: data.to_vec(),
+            data,
         };
 
         let response: StoreResponse = self.adapter.call("store", request).await?;
 
-        Ok(PayloadRef::new(
-            response
-                .hash
-                .try_into()
-                .map_err(|_| RhizoCryptError::integration("Invalid hash length in response"))?,
-            response.size,
-        ))
+        let hash: [u8; 32] = response.hash[..]
+            .try_into()
+            .map_err(|_| RhizoCryptError::integration("Invalid hash length in response"))?;
+        Ok(PayloadRef::new(hash, response.size))
     }
 
     /// Retrieve payload by reference.
@@ -129,7 +126,7 @@ impl StorageClient {
 
         let response: RetrieveResponse = self.adapter.call("retrieve", request).await?;
 
-        Ok(response.data.map(bytes::Bytes::from))
+        Ok(response.data)
     }
 
     /// Check if payload exists.
@@ -198,12 +195,12 @@ impl StorageClient {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StoreRequest {
-    data: Vec<u8>,
+    data: bytes::Bytes,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StoreResponse {
-    hash: Vec<u8>,
+    hash: bytes::Bytes,
     size: u64,
 }
 
@@ -214,7 +211,7 @@ struct RetrieveRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RetrieveResponse {
-    data: Option<Vec<u8>>,
+    data: Option<bytes::Bytes>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -298,17 +295,17 @@ mod tests {
     #[test]
     fn test_store_request_serialization() {
         let request = StoreRequest {
-            data: vec![1, 2, 3, 4, 5],
+            data: bytes::Bytes::from_static(&[1, 2, 3, 4, 5]),
         };
 
         let serialized = serde_json::to_string(&request).unwrap();
         let deserialized: StoreRequest = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized.data, vec![1, 2, 3, 4, 5]);
+        assert_eq!(&deserialized.data[..], &[1, 2, 3, 4, 5]);
     }
 
     #[test]
     fn test_store_response_serialization() {
-        let hash = vec![0u8; 32];
+        let hash = bytes::Bytes::from(vec![0u8; 32]);
         let response = StoreResponse {
             hash,
             size: 12345,
@@ -335,12 +332,12 @@ mod tests {
     #[test]
     fn test_retrieve_response_serialization() {
         let response = RetrieveResponse {
-            data: Some(vec![1, 2, 3]),
+            data: Some(bytes::Bytes::from_static(&[1, 2, 3])),
         };
 
         let serialized = serde_json::to_string(&response).unwrap();
         let deserialized: RetrieveResponse = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized.data, Some(vec![1, 2, 3]));
+        assert_eq!(deserialized.data.as_deref(), Some([1, 2, 3].as_slice()));
 
         let response_none = RetrieveResponse {
             data: None,
@@ -490,8 +487,7 @@ mod tests {
 
     #[test]
     fn test_large_payload_serialization() {
-        // Test with large payload data
-        let large_data = vec![42u8; 1024 * 1024]; // 1MB
+        let large_data = bytes::Bytes::from(vec![42u8; 1024 * 1024]);
         let request = StoreRequest {
             data: large_data,
         };
@@ -525,7 +521,7 @@ mod tests {
     #[test]
     fn test_store_request_with_empty_data() {
         let request = StoreRequest {
-            data: vec![],
+            data: bytes::Bytes::new(),
         };
         let serialized = serde_json::to_string(&request).unwrap();
         let deserialized: StoreRequest = serde_json::from_str(&serialized).unwrap();

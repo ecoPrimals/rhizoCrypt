@@ -6,13 +6,15 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-only |
-| Tests | 600 passing |
-| Coverage | 90% line coverage (llvm-cov) |
+| Tests | 862 passing |
+| Coverage | 87.78% line coverage (llvm-cov) |
 | Clippy | 0 warnings (pedantic + nursery) |
 | Unsafe | `#![forbid(unsafe_code)]` workspace-wide |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
 | IPC | JSON-RPC 2.0 (HTTP) + tarpc (bincode) |
 | Storage | redb (Pure Rust, default) / sled (optional) |
+| Deps | ecoBin compliant — zero application C dependencies |
+| Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
 
 ---
 
@@ -71,8 +73,8 @@ fallback) for forward/backward compatibility.
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, clients |
-| `rhizo-crypt-rpc` | tarpc service definition, rate limiting, metrics |
-| `rhizocrypt-service` | UniBin service binary (subcommands: `server`, `status`, `version`) |
+| `rhizo-crypt-rpc` | tarpc service definition, JSON-RPC handler, rate limiting, metrics |
+| `rhizocrypt-service` | UniBin service binary and library (subcommands: `server`, `status`, `version`) |
 
 ---
 
@@ -135,10 +137,10 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — Environment variable reference
 - [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) — Production deployment
-- [docs/VERIFICATION_CHECKLIST.md](docs/VERIFICATION_CHECKLIST.md) — Quality verification
 - [specs/](specs/) — Formal specifications (architecture, data model, protocols)
-- [showcase/](showcase/) — Progressive demo suite (35+ working demos)
+- [showcase/](showcase/) — Progressive demo suite (70+ working demos)
 - [CHANGELOG.md](CHANGELOG.md) — Version history
+- [deny.toml](deny.toml) — Dependency audit policy (`cargo-deny`)
 
 ---
 

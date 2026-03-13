@@ -5,6 +5,7 @@
 //!
 //! This module defines the fundamental types used throughout the DAG engine.
 
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -233,14 +234,23 @@ impl Default for Did {
 }
 
 /// Cryptographic signature.
+///
+/// Uses `bytes::Bytes` internally for O(1) cloning — signatures are
+/// often shared across threads and passed through RPC layers.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Signature(pub Vec<u8>);
+pub struct Signature(pub Bytes);
 
 impl Signature {
-    /// Create a new signature from bytes.
+    /// Create a new signature from a byte vector.
     #[must_use]
-    pub const fn new(bytes: Vec<u8>) -> Self {
-        Self(bytes)
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(Bytes::from(bytes))
+    }
+
+    /// Create a signature from a static byte slice (zero-copy).
+    #[must_use]
+    pub const fn from_static(bytes: &'static [u8]) -> Self {
+        Self(Bytes::from_static(bytes))
     }
 
     /// Get the signature bytes.
@@ -248,11 +258,29 @@ impl Signature {
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
+
+    /// Get the inner `Bytes` (zero-copy clone).
+    #[must_use]
+    pub fn into_bytes(self) -> Bytes {
+        self.0
+    }
 }
 
 impl fmt::Debug for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Signature({} bytes)", self.0.len())
+    }
+}
+
+impl From<Vec<u8>> for Signature {
+    fn from(v: Vec<u8>) -> Self {
+        Self(Bytes::from(v))
+    }
+}
+
+impl From<Bytes> for Signature {
+    fn from(b: Bytes) -> Self {
+        Self(b)
     }
 }
 
@@ -472,5 +500,123 @@ mod tests {
         let s = format!("{root}");
         assert_eq!(s.len(), 16);
         assert_eq!(MerkleRoot::ZERO, MerkleRoot::new([0u8; 32]));
+    }
+
+    #[test]
+    fn test_signature_new_and_access() {
+        let sig = Signature::new(vec![1, 2, 3, 4]);
+        assert_eq!(sig.as_bytes(), &[1, 2, 3, 4]);
+        let bytes = sig.into_bytes();
+        assert_eq!(&bytes[..], &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_signature_from_static() {
+        let sig = Signature::from_static(&[0xDE, 0xAD]);
+        assert_eq!(sig.as_bytes(), &[0xDE, 0xAD]);
+    }
+
+    #[test]
+    fn test_signature_from_impls() {
+        let from_vec: Signature = vec![10, 20].into();
+        assert_eq!(from_vec.as_bytes(), &[10, 20]);
+
+        let from_bytes: Signature = bytes::Bytes::from_static(&[30, 40]).into();
+        assert_eq!(from_bytes.as_bytes(), &[30, 40]);
+    }
+
+    #[test]
+    fn test_signature_debug() {
+        let sig = Signature::new(vec![1, 2, 3]);
+        let dbg = format!("{sig:?}");
+        assert!(dbg.contains("3 bytes"));
+    }
+
+    #[test]
+    fn test_signature_clone_is_cheap() {
+        let sig = Signature::new(vec![0u8; 1024]);
+        let cloned = sig.clone();
+        assert_eq!(sig, cloned);
+    }
+
+    #[test]
+    fn test_payload_ref_new_and_as_bytes() {
+        let hash = [99u8; 32];
+        let pref = PayloadRef::new(hash, 512);
+        assert_eq!(pref.as_bytes(), &hash);
+        assert_eq!(pref.size, 512);
+    }
+
+    #[test]
+    fn test_payload_ref_from_hash_short() {
+        let short_hash = &[1, 2, 3];
+        let pref = PayloadRef::from_hash(short_hash);
+        assert_eq!(&pref.hash[..3], &[1, 2, 3]);
+        assert_eq!(&pref.hash[3..], &[0u8; 29]);
+        assert_eq!(pref.size, 0);
+    }
+
+    #[test]
+    fn test_payload_ref_from_hash_exact() {
+        let exact = [42u8; 32];
+        let pref = PayloadRef::from_hash(&exact);
+        assert_eq!(pref.hash, exact);
+    }
+
+    #[test]
+    fn test_payload_ref_from_hash_long() {
+        let long = vec![7u8; 64];
+        let pref = PayloadRef::from_hash(&long);
+        assert_eq!(pref.hash, [7u8; 32]);
+    }
+
+    #[test]
+    fn test_payload_ref_to_hex() {
+        let pref = PayloadRef::from_bytes(b"hex test");
+        let hex = pref.to_hex();
+        assert_eq!(hex.len(), 64);
+        assert!(hex.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_payload_ref_debug_display() {
+        let pref = PayloadRef::from_bytes(b"debug test");
+        let dbg = format!("{pref:?}");
+        assert!(dbg.contains("PayloadRef("));
+        assert!(dbg.contains("bytes)"));
+        let disp = format!("{pref}");
+        assert_eq!(disp.len(), 64);
+    }
+
+    #[test]
+    fn test_did_default() {
+        let did = Did::default();
+        assert_eq!(did.as_str(), "did:key:anonymous");
+    }
+
+    #[test]
+    fn test_did_debug_display() {
+        let did = Did::new("did:key:test");
+        let dbg = format!("{did:?}");
+        assert!(dbg.contains("Did(did:key:test)"));
+        let disp = format!("{did}");
+        assert_eq!(disp, "did:key:test");
+    }
+
+    #[test]
+    fn test_slice_id_debug_display() {
+        let uuid = uuid::Uuid::now_v7();
+        let sid = SliceId::new(uuid);
+        let dbg = format!("{sid:?}");
+        assert!(dbg.contains("SliceId("));
+        let disp = format!("{sid}");
+        assert_eq!(disp, uuid.to_string());
+    }
+
+    #[test]
+    fn test_hex_encode_roundtrip() {
+        let data = [0xAB, 0xCD, 0xEF, 0x01];
+        let hex = hex_encode(&data);
+        assert_eq!(hex, "abcdef01");
     }
 }

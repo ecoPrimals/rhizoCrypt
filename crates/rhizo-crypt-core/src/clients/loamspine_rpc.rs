@@ -103,3 +103,92 @@ pub struct RpcHealthResponse {
     /// Spine count.
     pub spine_count: u64,
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_commit_request_roundtrip() {
+        let request = RpcCommitSessionRequest {
+            session_id: "session-001".to_string(),
+            merkle_root: "abc123".to_string(),
+            summary: RpcDehydrationSummary {
+                session_type: "general".to_string(),
+                vertex_count: 42,
+                leaf_count: 10,
+                started_at: 1_000_000,
+                ended_at: 2_000_000,
+                outcome: "completed".to_string(),
+            },
+            committer_did: "did:key:test".to_string(),
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+        let decoded: RpcCommitSessionRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.session_id, "session-001");
+        assert_eq!(decoded.summary.vertex_count, 42);
+        assert_eq!(decoded.committer_did, "did:key:test");
+    }
+
+    #[test]
+    fn test_commit_response_success() {
+        let response = RpcCommitSessionResponse {
+            accepted: true,
+            commit_id: Some("commit-001".to_string()),
+            spine_entry_hash: Some("hash-abc".to_string()),
+            error: None,
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        let decoded: RpcCommitSessionResponse = serde_json::from_str(&json).unwrap();
+        assert!(decoded.accepted);
+        assert_eq!(decoded.commit_id.as_deref(), Some("commit-001"));
+        assert!(decoded.error.is_none());
+    }
+
+    #[test]
+    fn test_commit_response_error() {
+        let response = RpcCommitSessionResponse {
+            accepted: false,
+            commit_id: None,
+            spine_entry_hash: None,
+            error: Some("Session already committed".to_string()),
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        let decoded: RpcCommitSessionResponse = serde_json::from_str(&json).unwrap();
+        assert!(!decoded.accepted);
+        assert!(decoded.commit_id.is_none());
+        assert!(decoded.error.is_some());
+    }
+
+    #[test]
+    fn test_commit_status_roundtrip() {
+        let response = RpcCommitStatusResponse {
+            commit_id: "commit-001".to_string(),
+            status: "committed".to_string(),
+            spine_entry_hash: Some("hash-def".to_string()),
+            error: None,
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        let decoded: RpcCommitStatusResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.status, "committed");
+    }
+
+    #[test]
+    fn test_health_response_roundtrip() {
+        let response = RpcHealthResponse {
+            status: "ok".to_string(),
+            version: "0.13.0".to_string(),
+            spine_count: 7,
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        let decoded: RpcHealthResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.status, "ok");
+        assert_eq!(decoded.spine_count, 7);
+    }
+}

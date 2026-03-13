@@ -279,7 +279,7 @@ rhizoCrypt v0.11.0 is now:
 ---
 
 For more details, see:
-- [README.md](../README.md) - Project overview
-- [INFANT_DISCOVERY.md](../INFANT_DISCOVERY.md) - Capability-based discovery
-- [crates/rhizocrypt-service/src/main.rs](../crates/rhizocrypt-service/src/main.rs) - Service implementation
+- [README.md](../../README.md) — Project overview
+- [CHANGELOG.md](../../CHANGELOG.md) — Version history
+- [docs/ENV_VARS.md](../../docs/ENV_VARS.md) — Environment variable reference
 

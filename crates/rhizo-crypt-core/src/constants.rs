@@ -45,6 +45,11 @@ pub const PRIMAL_ROLE: &str = "Ephemeral DAG Engine";
 /// preventing port conflicts in testing and development.
 pub const DEFAULT_RPC_PORT: u16 = 0;
 
+/// Production RPC port.
+///
+/// Used when `RHIZOCRYPT_ENV` is not "development" and no port override is set.
+pub const PRODUCTION_RPC_PORT: u16 = 9400;
+
 /// Default RPC host for local development.
 ///
 /// Binds to localhost only for security in development mode.

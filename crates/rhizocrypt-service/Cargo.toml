@@ -9,6 +9,10 @@ description = "Standalone RPC service for rhizoCrypt - Ephemeral DAG Engine"
 keywords = ["dag", "ephemeral", "rpc", "primal", "ecoprimal"]
 categories = ["cryptography", "network-programming", "data-structures"]
 
+[lib]
+name = "rhizocrypt_service"
+path = "src/lib.rs"
+
 [[bin]]
 name = "rhizocrypt"
 path = "src/main.rs"

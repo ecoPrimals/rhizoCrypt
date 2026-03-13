@@ -159,14 +159,21 @@ impl LoamSpineHttpClient {
     ) -> Result<R> {
         let method = self.resolve_method(native_method, compat_method);
 
+        // Fast path: server preference already cached — no clone needed
+        if method != native_method {
+            return self
+                .call_jsonrpc_raw(method, params)
+                .await
+                .map_err(NegotiableError::into_rhizo_error);
+        }
+
+        // Negotiation path: clone only when retry is possible
         match self.call_jsonrpc_raw(method, params.clone()).await {
             Ok(result) => {
-                if method == native_method {
-                    self.record_support(MethodSupport::Native);
-                }
+                self.record_support(MethodSupport::Native);
                 Ok(result)
             }
-            Err(NegotiableError::MethodNotFound) if method == native_method => {
+            Err(NegotiableError::MethodNotFound) => {
                 tracing::info!(
                     native = %native_method,
                     compat = %compat_method,
@@ -182,16 +189,19 @@ impl LoamSpineHttpClient {
     }
 
     /// Raw JSON-RPC 2.0 call, returning negotiable errors.
+    ///
+    /// Validates response protocol version ("2.0") and request/response ID matching.
     async fn call_jsonrpc_raw<T: Serialize, R: for<'de> Deserialize<'de>>(
         &self,
         method: &str,
         params: T,
     ) -> std::result::Result<R, NegotiableError> {
+        let request_id = self.next_request_id();
         let request = JsonRpcRequest {
             jsonrpc: "2.0",
             method,
             params,
-            id: self.next_request_id(),
+            id: request_id,
         };
 
         tracing::debug!(
@@ -221,23 +231,7 @@ impl LoamSpineHttpClient {
             )))
         })?;
 
-        match json_response {
-            JsonRpcResponse::Success {
-                result,
-                ..
-            } => Ok(result),
-            JsonRpcResponse::Error {
-                error,
-                ..
-            } if error.code == METHOD_NOT_FOUND_CODE => Err(NegotiableError::MethodNotFound),
-            JsonRpcResponse::Error {
-                error,
-                ..
-            } => Err(NegotiableError::Other(RhizoCryptError::integration(format!(
-                "Permanent storage RPC error [{}]: {}",
-                error.code, error.message
-            )))),
-        }
+        json_response.into_result(request_id)
     }
 
     /// Health check to verify permanent storage is available.
@@ -355,7 +349,15 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
                         "Verification endpoint not available, falling back to health check"
                     );
                     match self.health_check().await {
-                        Ok(_) => Ok(true),
+                        Ok(hc) => {
+                            tracing::debug!(
+                                status = %hc.status,
+                                version = %hc.version,
+                                spine_count = hc.spine_count,
+                                "Health check response from LoamSpine"
+                            );
+                            Ok(hc.is_healthy())
+                        }
                         Err(_) => Ok(false),
                     }
                 }
@@ -529,6 +531,7 @@ impl MethodSupport {
 }
 
 /// Distinguishes "method not found" from other errors during negotiation.
+#[derive(Debug)]
 enum NegotiableError {
     MethodNotFound,
     Other(RhizoCryptError),
@@ -561,19 +564,68 @@ struct JsonRpcRequest<'a, T> {
 #[serde(untagged)]
 enum JsonRpcResponse<T> {
     Success {
-        #[allow(dead_code)]
         jsonrpc: String,
         result: T,
-        #[allow(dead_code)]
         id: u64,
     },
     Error {
-        #[allow(dead_code)]
         jsonrpc: String,
         error: JsonRpcError,
-        #[allow(dead_code)]
         id: u64,
     },
+}
+
+impl<T> JsonRpcResponse<T> {
+    /// Validate JSON-RPC 2.0 protocol conformance and extract the result.
+    ///
+    /// Checks that the response version is "2.0" and the response ID matches
+    /// the request ID, per the JSON-RPC 2.0 specification.
+    fn into_result(self, expected_id: u64) -> std::result::Result<T, NegotiableError> {
+        match self {
+            Self::Success {
+                jsonrpc,
+                result,
+                id,
+            } => {
+                Self::validate_protocol(&jsonrpc, id, expected_id)?;
+                Ok(result)
+            }
+            Self::Error {
+                jsonrpc,
+                error,
+                id,
+            } => {
+                Self::validate_protocol(&jsonrpc, id, expected_id)?;
+                if error.code == METHOD_NOT_FOUND_CODE {
+                    return Err(NegotiableError::MethodNotFound);
+                }
+                let detail =
+                    error.data.as_ref().map(|d| format!(" (data: {d})")).unwrap_or_default();
+                Err(NegotiableError::Other(RhizoCryptError::integration(format!(
+                    "Permanent storage RPC error [{}]: {}{detail}",
+                    error.code, error.message
+                ))))
+            }
+        }
+    }
+
+    fn validate_protocol(
+        jsonrpc: &str,
+        id: u64,
+        expected_id: u64,
+    ) -> std::result::Result<(), NegotiableError> {
+        if jsonrpc != "2.0" {
+            return Err(NegotiableError::Other(RhizoCryptError::integration(format!(
+                "Invalid JSON-RPC version: expected \"2.0\", got \"{jsonrpc}\""
+            ))));
+        }
+        if id != expected_id {
+            return Err(NegotiableError::Other(RhizoCryptError::integration(format!(
+                "JSON-RPC response ID mismatch: expected {expected_id}, got {id}"
+            ))));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -581,7 +633,6 @@ struct JsonRpcError {
     code: i32,
     message: String,
     #[serde(default)]
-    #[allow(dead_code)]
     data: Option<serde_json::Value>,
 }
 
@@ -635,97 +686,18 @@ struct CheckoutSliceResponse {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct HealthCheckResponse {
     status: String,
     version: String,
     spine_count: u64,
 }
 
-#[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_client_creation() {
-        let client = LoamSpineHttpClient::new("http://localhost:8080").unwrap();
-        assert_eq!(client.base_url, "http://localhost:8080/rpc");
-
-        let client2 = LoamSpineHttpClient::new("http://localhost:8080/").unwrap();
-        assert_eq!(client2.base_url, "http://localhost:8080/rpc");
-
-        let client3 = LoamSpineHttpClient::new("http://localhost:8080/rpc").unwrap();
-        assert_eq!(client3.base_url, "http://localhost:8080/rpc");
-    }
-
-    #[test]
-    fn test_request_id_increment() {
-        let client = LoamSpineHttpClient::new("http://localhost:8080").unwrap();
-        assert_eq!(client.next_request_id(), 1);
-        assert_eq!(client.next_request_id(), 2);
-        assert_eq!(client.next_request_id(), 3);
-    }
-
-    #[test]
-    fn test_method_negotiation_state() {
-        let client = LoamSpineHttpClient::new("http://localhost:8080").unwrap();
-
-        // Starts unknown
-        assert_eq!(
-            MethodSupport::from_u8(client.native_methods.load(Ordering::Relaxed)),
-            MethodSupport::Unknown
-        );
-
-        // Unknown resolves to native (try native first)
-        assert_eq!(
-            client.resolve_method("commit.session", "permanent-storage.commitSession"),
-            "commit.session"
-        );
-
-        // After recording native support
-        client.record_support(MethodSupport::Native);
-        assert_eq!(
-            client.resolve_method("commit.session", "permanent-storage.commitSession"),
-            "commit.session"
-        );
-
-        // After recording compat support
-        client.record_support(MethodSupport::Compat);
-        assert_eq!(
-            client.resolve_method("commit.session", "permanent-storage.commitSession"),
-            "permanent-storage.commitSession"
-        );
-    }
-
-    #[test]
-    fn test_method_support_roundtrip() {
-        assert_eq!(MethodSupport::from_u8(0), MethodSupport::Unknown);
-        assert_eq!(MethodSupport::from_u8(1), MethodSupport::Native);
-        assert_eq!(MethodSupport::from_u8(2), MethodSupport::Compat);
-        assert_eq!(MethodSupport::from_u8(255), MethodSupport::Unknown);
-    }
-
-    #[test]
-    fn test_native_method_names() {
-        assert_eq!(methods::native::COMMIT_SESSION, "commit.session");
-        assert_eq!(methods::native::VERIFY_COMMIT, "commit.verify");
-        assert_eq!(methods::native::GET_COMMIT, "commit.get");
-        assert_eq!(methods::native::CHECKOUT_SLICE, "slice.checkout");
-        assert_eq!(methods::native::RESOLVE_SLICE, "slice.resolve");
-        assert_eq!(methods::native::HEALTH_CHECK, "system.health");
-    }
-
-    #[test]
-    fn test_compat_method_names() {
-        assert_eq!(methods::compat::COMMIT_SESSION, "permanent-storage.commitSession");
-        assert_eq!(methods::compat::VERIFY_COMMIT, "permanent-storage.verifyCommit");
-    }
-
-    #[tokio::test]
-    async fn test_health_check_unavailable() {
-        let client = LoamSpineHttpClient::new("http://invalid-endpoint-12345:99999").unwrap();
-        let result = client.health_check().await;
-        assert!(result.is_err());
+impl HealthCheckResponse {
+    fn is_healthy(&self) -> bool {
+        self.status == "ok" || self.status == "healthy"
     }
 }
+
+#[cfg(test)]
+#[path = "loamspine_http_tests.rs"]
+mod tests;

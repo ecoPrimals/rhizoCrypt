@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# cargo-deny configuration for rhizoCrypt
+# https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+targets = []
+all-features = true
+
+[advisories]
+ignore = [
+    # Transitive dependencies from tarpc; awaiting tarpc update
+    { id = "RUSTSEC-2024-0384", reason = "instant is a transitive dep from tarpc" },
+    { id = "RUSTSEC-2024-0387", reason = "opentelemetry_api is a transitive dep from tarpc" },
+    { id = "RUSTSEC-2025-0057", reason = "fxhash is a transitive dep from tarpc" },
+    { id = "RUSTSEC-2025-0141", reason = "bincode v1 is a transitive dep from tarpc" },
+    { id = "RUSTSEC-2026-0007", reason = "opentelemetry_sdk is a transitive dep from tarpc" },
+]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+    "BSL-1.0",
+    "AGPL-3.0-only",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.8
+exceptions = []
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

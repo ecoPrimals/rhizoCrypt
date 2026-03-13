@@ -167,7 +167,7 @@ impl SigningClient {
         );
 
         let request = SignRequest {
-            data: data.to_vec(),
+            data: bytes::Bytes::copy_from_slice(data),
             signer: signer.clone(),
         };
 
@@ -195,8 +195,8 @@ impl SigningClient {
         );
 
         let request = VerifyRequest {
-            data: data.to_vec(),
-            signature: signature.as_bytes().to_vec(),
+            data: bytes::Bytes::copy_from_slice(data),
+            signature: signature.0.clone(),
             signer: signer.clone(),
         };
 
@@ -310,7 +310,7 @@ impl SigningClient {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SignRequest {
-    data: Vec<u8>,
+    data: bytes::Bytes,
     signer: Did,
 }
 
@@ -321,8 +321,8 @@ struct SignResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct VerifyRequest {
-    data: Vec<u8>,
-    signature: Vec<u8>,
+    data: bytes::Bytes,
+    signature: bytes::Bytes,
     signer: Did,
 }
 
@@ -415,7 +415,7 @@ mod tests {
     fn test_signing_request_serialization() {
         let did = Did::new("did:key:test");
         let request = SignRequest {
-            data: vec![1, 2, 3],
+            data: bytes::Bytes::from_static(&[1, 2, 3]),
             signer: did,
         };
 
@@ -423,7 +423,7 @@ mod tests {
         assert!(serialized.contains("did:key:test"));
 
         let deserialized: SignRequest = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized.data, vec![1, 2, 3]);
+        assert_eq!(&deserialized.data[..], &[1, 2, 3]);
     }
 
     #[test]
@@ -441,15 +441,15 @@ mod tests {
     fn test_verify_request_serialization() {
         let did = Did::new("did:key:verifier");
         let request = VerifyRequest {
-            data: vec![5, 6, 7],
-            signature: vec![8, 9, 10],
+            data: bytes::Bytes::from_static(&[5, 6, 7]),
+            signature: bytes::Bytes::from_static(&[8, 9, 10]),
             signer: did,
         };
 
         let serialized = serde_json::to_string(&request).unwrap();
         let deserialized: VerifyRequest = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized.data, vec![5, 6, 7]);
-        assert_eq!(deserialized.signature, vec![8, 9, 10]);
+        assert_eq!(&deserialized.data[..], &[5, 6, 7]);
+        assert_eq!(&deserialized.signature[..], &[8, 9, 10]);
     }
 
     #[test]
@@ -525,7 +525,7 @@ mod tests {
             statement: AttestationStatement::SessionSummary {
                 summary_hash: ContentHash::from([1u8; 32]),
             },
-            signature: vec![1, 2, 3, 4],
+            signature: bytes::Bytes::from_static(&[1, 2, 3, 4]),
             attested_at: crate::types::Timestamp::now(),
             verified: true,
         };
@@ -560,12 +560,12 @@ mod tests {
     fn test_sign_request_roundtrip() {
         let did = Did::new("did:key:roundtrip");
         let request = SignRequest {
-            data: vec![10, 20, 30],
+            data: bytes::Bytes::from_static(&[10, 20, 30]),
             signer: did.clone(),
         };
         let serialized = serde_json::to_string(&request).unwrap();
         let deserialized: SignRequest = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized.data, vec![10, 20, 30]);
+        assert_eq!(&deserialized.data[..], &[10, 20, 30]);
         assert_eq!(deserialized.signer, did);
     }
 

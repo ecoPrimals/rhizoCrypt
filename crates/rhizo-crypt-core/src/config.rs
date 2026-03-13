@@ -11,6 +11,7 @@
 //! - **Zero-knowledge initialization** — Works with no external configuration
 //! - **Environment-aware** — Can be customized via environment variables
 
+use crate::constants;
 use crate::session::SessionConfig;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -56,7 +57,7 @@ pub struct RhizoCryptConfig {
 impl Default for RhizoCryptConfig {
     fn default() -> Self {
         Self {
-            name: "RhizoCrypt".to_string(),
+            name: constants::PRIMAL_NAME.to_string(),
             default_session: SessionConfig::default(),
             max_sessions: 1000,
             gc_interval: Duration::from_secs(60),
@@ -263,9 +264,9 @@ impl Default for RpcConfig {
 
 impl RpcConfig {
     /// Default host for local development.
-    const DEFAULT_HOST: &'static str = "127.0.0.1";
+    const DEFAULT_HOST: &'static str = constants::DEFAULT_RPC_HOST;
     /// Default port (0 = OS-assigned for automatic selection).
-    const DEFAULT_PORT: u16 = 0;
+    const DEFAULT_PORT: u16 = constants::DEFAULT_RPC_PORT;
 
     /// Create config from environment variables or use defaults.
     ///
@@ -372,7 +373,7 @@ mod tests {
     #[test]
     fn test_config_default() {
         let config = RhizoCryptConfig::default();
-        assert_eq!(config.name, "RhizoCrypt");
+        assert_eq!(config.name, constants::PRIMAL_NAME);
         assert_eq!(config.max_sessions, 1000);
         assert_eq!(config.storage.backend, StorageBackend::Memory);
     }

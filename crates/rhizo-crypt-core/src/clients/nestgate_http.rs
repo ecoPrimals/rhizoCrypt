@@ -310,3 +310,132 @@ impl std::error::Error for NestGateHttpError {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_client_new() {
+        let client = NestGateHttpClient::new("http://localhost:9200", 5000).unwrap();
+        assert_eq!(client.base_url, "http://localhost:9200");
+    }
+
+    #[test]
+    fn test_store_blob_request_serde() {
+        let req = HttpStoreBlobRequest {
+            data: "aGVsbG8=".to_string(),
+            content_type: "text/plain".to_string(),
+            metadata: std::collections::HashMap::new(),
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["data"], "aGVsbG8=");
+        assert_eq!(json["content_type"], "text/plain");
+    }
+
+    #[test]
+    fn test_store_blob_request_default_content_type() {
+        let json = r#"{"data":"aGVsbG8="}"#;
+        let req: HttpStoreBlobRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.content_type, "application/octet-stream");
+    }
+
+    #[test]
+    fn test_store_blob_response_serde() {
+        let json = r#"{"reference":"abc123","size":100}"#;
+        let resp: HttpStoreBlobResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.reference, "abc123");
+        assert_eq!(resp.size, 100);
+        assert!(resp.success);
+    }
+
+    #[test]
+    fn test_store_blob_response_explicit_success() {
+        let json = r#"{"reference":"abc123","size":100,"success":false}"#;
+        let resp: HttpStoreBlobResponse = serde_json::from_str(json).unwrap();
+        assert!(!resp.success);
+    }
+
+    #[test]
+    fn test_retrieve_blob_response_serde() {
+        let json = r#"{"data":"aGVsbG8=","content_type":"text/plain","size":5}"#;
+        let resp: HttpRetrieveBlobResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.data, "aGVsbG8=");
+        assert_eq!(resp.content_type, "text/plain");
+        assert_eq!(resp.size, 5);
+    }
+
+    #[test]
+    fn test_blob_metadata_serde() {
+        let json = serde_json::json!({
+            "reference": "hash123",
+            "content_type": "application/octet-stream",
+            "size": 1024,
+            "created_at": "2024-01-01T00:00:00Z",
+            "metadata": {"key": "value"}
+        });
+        let meta: HttpBlobMetadata = serde_json::from_value(json).unwrap();
+        assert_eq!(meta.reference, "hash123");
+        assert_eq!(meta.size, 1024);
+        assert_eq!(meta.created_at.as_deref(), Some("2024-01-01T00:00:00Z"));
+        assert_eq!(meta.metadata.get("key").unwrap(), "value");
+    }
+
+    #[test]
+    fn test_blob_metadata_minimal() {
+        let json = r#"{"reference":"h","content_type":"a/b","size":0}"#;
+        let meta: HttpBlobMetadata = serde_json::from_str(json).unwrap();
+        assert!(meta.created_at.is_none());
+        assert!(meta.metadata.is_empty());
+    }
+
+    #[test]
+    fn test_health_response_serde() {
+        let json = r#"{"status":"healthy","available_bytes":1000000,"used_bytes":500000}"#;
+        let resp: HttpHealthResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.status, "healthy");
+        assert_eq!(resp.available_bytes, 1_000_000);
+        assert_eq!(resp.used_bytes, 500_000);
+    }
+
+    #[test]
+    fn test_health_response_defaults() {
+        let json = r#"{"status":"ok"}"#;
+        let resp: HttpHealthResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.available_bytes, 0);
+        assert_eq!(resp.used_bytes, 0);
+    }
+
+    #[test]
+    fn test_error_display() {
+        assert_eq!(NestGateHttpError::Status(404).to_string(), "HTTP status 404");
+        assert_eq!(NestGateHttpError::StoreFailed.to_string(), "Store operation failed");
+        assert_eq!(NestGateHttpError::NotFound.to_string(), "Blob not found");
+        assert_eq!(NestGateHttpError::InvalidData.to_string(), "Invalid data format");
+    }
+
+    #[test]
+    fn test_error_source() {
+        use std::error::Error;
+        assert!(NestGateHttpError::StoreFailed.source().is_none());
+        assert!(NestGateHttpError::NotFound.source().is_none());
+        assert!(NestGateHttpError::InvalidData.source().is_none());
+        assert!(NestGateHttpError::Status(500).source().is_none());
+    }
+
+    #[test]
+    fn test_store_blob_request_roundtrip() {
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("author".to_string(), "test".to_string());
+        let req = HttpStoreBlobRequest {
+            data: "dGVzdA==".to_string(),
+            content_type: "text/plain".to_string(),
+            metadata,
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        let req2: HttpStoreBlobRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(req2.data, req.data);
+        assert_eq!(req2.metadata.get("author").unwrap(), "test");
+    }
+}

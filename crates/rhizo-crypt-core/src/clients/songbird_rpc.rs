@@ -109,3 +109,91 @@ pub struct RpcVersionInfo {
     /// Supported capabilities.
     pub capabilities: Vec<String>,
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_service_info_roundtrip() {
+        let info = RpcServiceInfo {
+            id: "svc-001".to_string(),
+            capability: "dag-engine".to_string(),
+            endpoint: "127.0.0.1:9400".to_string(),
+            status: "healthy".to_string(),
+            metadata: Some(serde_json::json!({"version": "0.13.0"})),
+        };
+
+        let json = serde_json::to_string(&info).unwrap();
+        let decoded: RpcServiceInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.id, "svc-001");
+        assert_eq!(decoded.capability, "dag-engine");
+        assert!(decoded.metadata.is_some());
+    }
+
+    #[test]
+    fn test_registration_roundtrip() {
+        let reg = RpcServiceRegistration {
+            service_id: "rhizocrypt-001".to_string(),
+            service_name: "rhizoCrypt".to_string(),
+            capability: "dag-engine".to_string(),
+            endpoint: "127.0.0.1:9400".to_string(),
+            metadata: HashMap::from([("version".to_string(), "0.13.0".to_string())]),
+        };
+
+        let json = serde_json::to_string(&reg).unwrap();
+        let decoded: RpcServiceRegistration = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.service_name, "rhizoCrypt");
+        assert_eq!(decoded.metadata.get("version").unwrap(), "0.13.0");
+    }
+
+    #[test]
+    fn test_registration_default_metadata() {
+        let json = r#"{"service_id":"s1","service_name":"svc","capability":"cap","endpoint":"ep"}"#;
+        let decoded: RpcServiceRegistration = serde_json::from_str(json).unwrap();
+        assert!(decoded.metadata.is_empty());
+    }
+
+    #[test]
+    fn test_registration_result_roundtrip() {
+        let result = RpcRegistrationResult {
+            success: true,
+            message: "Registered".to_string(),
+        };
+
+        let json = serde_json::to_string(&result).unwrap();
+        let decoded: RpcRegistrationResult = serde_json::from_str(&json).unwrap();
+        assert!(decoded.success);
+        assert_eq!(decoded.message, "Registered");
+    }
+
+    #[test]
+    fn test_health_status_roundtrip() {
+        let health = RpcHealthStatus {
+            status: "healthy".to_string(),
+            version: "0.5.0".to_string(),
+            uptime_seconds: 3600,
+            services_count: 12,
+        };
+
+        let json = serde_json::to_string(&health).unwrap();
+        let decoded: RpcHealthStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.uptime_seconds, 3600);
+        assert_eq!(decoded.services_count, 12);
+    }
+
+    #[test]
+    fn test_version_info_roundtrip() {
+        let version = RpcVersionInfo {
+            version: "0.5.0".to_string(),
+            protocol: "tarpc-1.0".to_string(),
+            capabilities: vec!["discovery".to_string(), "mesh".to_string()],
+        };
+
+        let json = serde_json::to_string(&version).unwrap();
+        let decoded: RpcVersionInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.protocol, "tarpc-1.0");
+        assert_eq!(decoded.capabilities.len(), 2);
+    }
+}

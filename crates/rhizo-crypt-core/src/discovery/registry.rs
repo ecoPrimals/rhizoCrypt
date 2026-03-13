@@ -498,7 +498,6 @@ mod tests {
     async fn test_registry_sweetgrass() {
         let registry = DiscoveryRegistry::new("rhizoCrypt");
 
-        // Register SweetGrass
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "sweetGrass",
@@ -507,15 +506,135 @@ mod tests {
             ))
             .await;
 
-        // SweetGrass capabilities should be discoverable
         assert!(registry.is_available(&Capability::ProvenanceQuery).await);
         assert!(registry.is_available(&Capability::Attribution).await);
 
-        // Verify endpoint details
         let endpoint = registry.get_endpoint(&Capability::ProvenanceQuery).await;
         assert!(endpoint.is_some());
         let ep = endpoint.unwrap();
         assert_eq!(ep.service_id.as_ref(), "sweetGrass");
         assert_eq!(ep.addr.port(), 9004);
+    }
+
+    #[test]
+    fn test_parse_capability_all_variants() {
+        assert!(matches!(parse_capability("DidVerification"), Some(Capability::DidVerification)));
+        assert!(matches!(parse_capability("did_verification"), Some(Capability::DidVerification)));
+        assert!(matches!(parse_capability("Signing"), Some(Capability::Signing)));
+        assert!(matches!(parse_capability("signing"), Some(Capability::Signing)));
+        assert!(matches!(
+            parse_capability("SignatureVerification"),
+            Some(Capability::SignatureVerification)
+        ));
+        assert!(matches!(
+            parse_capability("signature_verification"),
+            Some(Capability::SignatureVerification)
+        ));
+        assert!(matches!(parse_capability("Attestation"), Some(Capability::Attestation)));
+        assert!(matches!(parse_capability("attestation"), Some(Capability::Attestation)));
+        assert!(matches!(parse_capability("ServiceDiscovery"), Some(Capability::ServiceDiscovery)));
+        assert!(matches!(
+            parse_capability("service_discovery"),
+            Some(Capability::ServiceDiscovery)
+        ));
+        assert!(matches!(parse_capability("PayloadStorage"), Some(Capability::PayloadStorage)));
+        assert!(matches!(parse_capability("payload_storage"), Some(Capability::PayloadStorage)));
+        assert!(matches!(parse_capability("PayloadRetrieval"), Some(Capability::PayloadRetrieval)));
+        assert!(matches!(
+            parse_capability("payload_retrieval"),
+            Some(Capability::PayloadRetrieval)
+        ));
+        assert!(matches!(parse_capability("PermanentCommit"), Some(Capability::PermanentCommit)));
+        assert!(matches!(parse_capability("permanent_commit"), Some(Capability::PermanentCommit)));
+        assert!(matches!(parse_capability("SliceCheckout"), Some(Capability::SliceCheckout)));
+        assert!(matches!(parse_capability("slice_checkout"), Some(Capability::SliceCheckout)));
+        assert!(matches!(parse_capability("SliceResolution"), Some(Capability::SliceResolution)));
+        assert!(matches!(parse_capability("slice_resolution"), Some(Capability::SliceResolution)));
+        assert!(matches!(
+            parse_capability("ComputeOrchestration"),
+            Some(Capability::ComputeOrchestration)
+        ));
+        assert!(matches!(
+            parse_capability("compute_orchestration"),
+            Some(Capability::ComputeOrchestration)
+        ));
+        assert!(matches!(parse_capability("ComputeEvents"), Some(Capability::ComputeEvents)));
+        assert!(matches!(parse_capability("compute_events"), Some(Capability::ComputeEvents)));
+        assert!(matches!(parse_capability("ProvenanceQuery"), Some(Capability::ProvenanceQuery)));
+        assert!(matches!(parse_capability("provenance_query"), Some(Capability::ProvenanceQuery)));
+        assert!(matches!(parse_capability("Attribution"), Some(Capability::Attribution)));
+        assert!(matches!(parse_capability("attribution"), Some(Capability::Attribution)));
+    }
+
+    #[test]
+    fn test_parse_capability_custom_and_empty() {
+        let custom = parse_capability("MyCustomCapability");
+        assert!(custom.is_some());
+        match custom.unwrap() {
+            Capability::Custom(name) => assert_eq!(name, "MyCustomCapability"),
+            _ => panic!("Expected Custom variant"),
+        }
+
+        assert!(parse_capability("").is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_discover_unhealthy_endpoints_filtered() {
+        let registry = DiscoveryRegistry::new("rhizoCrypt");
+
+        let mut endpoint = ServiceEndpoint::new(
+            "bearDog",
+            "127.0.0.1:9000".parse().unwrap(),
+            vec![Capability::Signing],
+        );
+        endpoint.last_healthy =
+            std::time::Instant::now().checked_sub(std::time::Duration::from_secs(300)).unwrap();
+
+        registry.register_endpoint(endpoint).await;
+
+        let status = registry.discover(&Capability::Signing).await;
+        assert!(!status.is_available(), "Unhealthy endpoints should be filtered out");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_discover_with_source_connection_refused() {
+        let registry = DiscoveryRegistry::new("rhizoCrypt");
+        registry.set_discovery_source("127.0.0.1:1".parse().unwrap()).await;
+
+        let status = registry.discover(&Capability::Signing).await;
+        match status {
+            DiscoveryStatus::Failed(msg) => {
+                assert!(
+                    msg.contains("connection")
+                        || msg.contains("Connection")
+                        || msg.contains("timed out"),
+                    "Expected connection error, got: {msg}"
+                );
+            }
+            _ => panic!("Expected Failed status from unreachable discovery source"),
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_endpoint_with_multiple() {
+        let registry = DiscoveryRegistry::new("rhizoCrypt");
+
+        registry
+            .register_endpoint(ServiceEndpoint::new(
+                "bearDog1",
+                "127.0.0.1:9000".parse().unwrap(),
+                vec![Capability::Signing],
+            ))
+            .await;
+        registry
+            .register_endpoint(ServiceEndpoint::new(
+                "bearDog2",
+                "127.0.0.1:9001".parse().unwrap(),
+                vec![Capability::Signing],
+            ))
+            .await;
+
+        let ep = registry.get_endpoint(&Capability::Signing).await;
+        assert!(ep.is_some());
     }
 }

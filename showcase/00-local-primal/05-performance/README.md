@@ -198,7 +198,7 @@ verify_proof:        1.4 µs
 
 **Completed all local capabilities?** Move to ecosystem:
 ```bash
-cd ../../03-inter-primal
+cd ../../01-inter-primal-live
 cat README.md
 ```
 

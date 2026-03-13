@@ -116,40 +116,43 @@ async fn handle_jsonrpc(
         }
     };
 
-    if let Some(arr) = value.as_array() {
-        if arr.is_empty() {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(
-                    serde_json::to_value(error_response(
-                        None,
-                        codes::INVALID_REQUEST,
-                        "Batch request must not be empty",
-                        None,
-                    ))
-                    .unwrap_or_default(),
-                ),
-            )
-                .into_response();
+    match value {
+        serde_json::Value::Array(arr) => {
+            if arr.is_empty() {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(
+                        serde_json::to_value(error_response(
+                            None,
+                            codes::INVALID_REQUEST,
+                            "Batch request must not be empty",
+                            None,
+                        ))
+                        .unwrap_or_default(),
+                    ),
+                )
+                    .into_response();
+            }
+            let mut results = Vec::with_capacity(arr.len());
+            for item in arr {
+                let response = process_single_request(Arc::clone(&state.primal), item).await;
+                results.push(response);
+            }
+            (StatusCode::OK, Json(serde_json::json!(results))).into_response()
         }
-        let mut results = Vec::with_capacity(arr.len());
-        for item in arr {
-            let response = process_single_request(Arc::clone(&state.primal), item).await;
-            results.push(response);
+        value => {
+            let response = process_single_request(state.primal, value).await;
+            (StatusCode::OK, Json(response)).into_response()
         }
-        return (StatusCode::OK, Json(serde_json::json!(results))).into_response();
     }
-
-    let response = process_single_request(state.primal, &value).await;
-    (StatusCode::OK, Json(response)).into_response()
 }
 
 /// Process a single JSON-RPC request.
 async fn process_single_request(
     primal: Arc<RhizoCrypt>,
-    value: &serde_json::Value,
+    value: serde_json::Value,
 ) -> serde_json::Value {
-    let request: JsonRpcRequest = match serde_json::from_value(value.clone()) {
+    let request: JsonRpcRequest = match serde_json::from_value(value) {
         Ok(r) => r,
         Err(e) => {
             return serde_json::to_value(error_response(
@@ -188,20 +191,16 @@ async fn process_single_request(
     match handler::handle_request(primal, request).await {
         Ok(result) => serde_json::to_value(success(id, result)).unwrap_or_default(),
         Err(e) => {
-            let (code, message) = match &e {
-                handler::HandlerError::InvalidParams(msg) => (codes::INVALID_PARAMS, msg.clone()),
+            let detail = serde_json::json!(e.to_string());
+            let (code, message) = match e {
+                handler::HandlerError::InvalidParams(msg) => (codes::INVALID_PARAMS, msg),
                 handler::HandlerError::MethodNotFound(m) => {
                     (codes::METHOD_NOT_FOUND, format!("Method not found: {m}"))
                 }
                 handler::HandlerError::Rpc(rpc_err) => (codes::INTERNAL_ERROR, rpc_err.to_string()),
             };
-            serde_json::to_value(error_response(
-                Some(id),
-                code,
-                &message,
-                Some(serde_json::json!(e.to_string())),
-            ))
-            .unwrap_or_default()
+            serde_json::to_value(error_response(Some(id), code, &message, Some(detail)))
+                .unwrap_or_default()
         }
     }
 }
@@ -363,5 +362,199 @@ mod tests {
         let _server = JsonRpcServer::new(primal, addr);
         let _router = JsonRpcServer::router(Arc::new(RhizoCrypt::new(config)));
         assert_eq!(rhizo_crypt_core::constants::JSON_RPC_PATH, "/rpc");
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_invalid_utf8() {
+        let primal = create_test_primal().await;
+        let app = JsonRpcServer::router(primal);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/rpc")
+                    .header("content-type", "application/json")
+                    .body(Body::from(vec![0xFF, 0xFE, 0xFD]))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 400);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let err = json.get("error").unwrap().as_object().unwrap();
+        assert_eq!(err.get("code").and_then(serde_json::Value::as_i64), Some(-32700));
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_empty_batch() {
+        let primal = create_test_primal().await;
+        let app = JsonRpcServer::router(primal);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/rpc")
+                    .header("content-type", "application/json")
+                    .body(Body::from("[]"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 400);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let err = json.get("error").unwrap().as_object().unwrap();
+        assert_eq!(err.get("code").and_then(serde_json::Value::as_i64), Some(-32600));
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_batch_request() {
+        let primal = create_test_primal().await;
+        let app = JsonRpcServer::router(primal);
+
+        let batch = serde_json::json!([
+            {"jsonrpc": "2.0", "method": "system.health", "params": {}, "id": 1},
+            {"jsonrpc": "2.0", "method": "system.metrics", "params": {}, "id": 2}
+        ]);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/rpc")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&batch).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 200);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let arr = json.as_array().unwrap();
+        assert_eq!(arr.len(), 2);
+        assert!(arr[0].get("result").is_some());
+        assert!(arr[1].get("result").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_wrong_version() {
+        let primal = create_test_primal().await;
+        let app = JsonRpcServer::router(primal);
+
+        let request_body = serde_json::json!({
+            "jsonrpc": "1.0",
+            "method": "system.health",
+            "params": {},
+            "id": 1
+        });
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/rpc")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&request_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 200);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let err = json.get("error").unwrap().as_object().unwrap();
+        assert_eq!(err.get("code").and_then(serde_json::Value::as_i64), Some(-32600));
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_missing_id() {
+        let primal = create_test_primal().await;
+        let app = JsonRpcServer::router(primal);
+
+        let request_body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "system.health",
+            "params": {}
+        });
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/rpc")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&request_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 200);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let err = json.get("error").unwrap().as_object().unwrap();
+        assert_eq!(err.get("code").and_then(serde_json::Value::as_i64), Some(-32600));
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_invalid_params() {
+        let primal = create_test_primal().await;
+        let app = JsonRpcServer::router(primal);
+
+        let request_body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "dag.session.get",
+            "params": {"session_id": "not-a-uuid"},
+            "id": 1
+        });
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/rpc")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&request_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 200);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let err = json.get("error").unwrap().as_object().unwrap();
+        assert_eq!(err.get("code").and_then(serde_json::Value::as_i64), Some(-32602));
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_not_an_object_request() {
+        let primal = create_test_primal().await;
+        let app = JsonRpcServer::router(primal);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/rpc")
+                    .header("content-type", "application/json")
+                    .body(Body::from("42"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 200);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert!(json.get("error").is_some());
     }
 }

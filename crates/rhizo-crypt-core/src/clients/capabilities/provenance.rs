@@ -3,9 +3,13 @@
 
 //! Generic provenance client - works with ANY provenance provider.
 
-use crate::clients::adapters::{AdapterFactory, ProtocolAdapter};
+use crate::clients::adapters::{AdapterFactory, ProtocolAdapter, ProtocolAdapterExt};
 use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::{Result, RhizoCryptError};
+use crate::types_ecosystem::provenance::{
+    ProvenanceChain, SessionAttribution, VertexQuery, VertexRef,
+};
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// Generic provenance client - works with ANY provider.
@@ -77,6 +81,89 @@ impl ProvenanceClient {
     pub fn service_name(&self) -> Option<&str> {
         self.service_name.as_deref()
     }
+
+    /// Get all vertices related to a content hash.
+    ///
+    /// Queries the provenance provider for any vertices that reference
+    /// the given data hash (e.g. via payload references).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the service is unavailable or the query fails.
+    pub async fn get_vertices_for_data(&self, data_hash: [u8; 32]) -> Result<Vec<VertexRef>> {
+        tracing::debug!("Querying vertices for data hash");
+        let request = DataHashQuery {
+            data_hash,
+        };
+        self.adapter.call("provenance.vertices_for_data", request).await
+    }
+
+    /// Get the full provenance chain for a vertex.
+    ///
+    /// Returns the causal ancestry of the given vertex, including all
+    /// agents and data hashes involved.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the service is unavailable or the query fails.
+    pub async fn get_provenance_chain(
+        &self,
+        vertex_id: crate::types::VertexId,
+    ) -> Result<ProvenanceChain> {
+        tracing::debug!(?vertex_id, "Querying provenance chain");
+        let request = ProvenanceChainQuery {
+            vertex_id: vertex_id.as_bytes().to_vec(),
+        };
+        self.adapter.call("provenance.chain", request).await
+    }
+
+    /// Query vertices by parameters (agent, event types, time range).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the service is unavailable or the query fails.
+    pub async fn query_vertices(&self, query: VertexQuery) -> Result<Vec<VertexRef>> {
+        tracing::debug!("Querying vertices by parameters");
+        self.adapter.call("provenance.query", query).await
+    }
+
+    /// Get session attribution for a given session.
+    ///
+    /// Returns the full attribution breakdown: which agents contributed,
+    /// what data was input/output, and the session's merkle root.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the service is unavailable or the query fails.
+    pub async fn get_session_attribution(
+        &self,
+        session_id: crate::types::SessionId,
+    ) -> Result<SessionAttribution> {
+        tracing::debug!(%session_id, "Querying session attribution");
+        let request = SessionAttributionQuery {
+            session_id: session_id.to_string(),
+        };
+        self.adapter.call("provenance.session_attribution", request).await
+    }
+}
+
+// ============================================================================
+// Request DTOs
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DataHashQuery {
+    data_hash: [u8; 32],
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ProvenanceChainQuery {
+    vertex_id: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SessionAttributionQuery {
+    session_id: String,
 }
 
 #[cfg(test)]

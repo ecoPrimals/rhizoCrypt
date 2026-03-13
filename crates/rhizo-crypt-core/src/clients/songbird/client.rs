@@ -35,7 +35,6 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
@@ -192,14 +191,11 @@ impl SongbirdClient {
 
         #[cfg(not(feature = "live-clients"))]
         let result = {
-            let _registration = ServiceRegistration {
-                service_name: self.config.service_name.to_string(),
-                endpoint: our_endpoint.to_string(),
-                capabilities: self.config.capabilities.iter().map(ToString::to_string).collect(),
-                metadata: self.config.metadata.clone(),
-            };
-
-            // Scaffolded mode: simulate successful registration
+            tracing::debug!(
+                service = %self.config.service_name,
+                endpoint = %our_endpoint,
+                "Scaffolded registration (live-clients feature disabled)"
+            );
             RegistrationResult {
                 success: true,
                 message: "Registration pending live integration".to_string(),
@@ -422,16 +418,6 @@ impl Clone for SongbirdClient {
             heartbeat_handle: Arc::clone(&self.heartbeat_handle),
         }
     }
-}
-
-/// Service registration request.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
-struct ServiceRegistration {
-    service_name: String,
-    endpoint: String,
-    capabilities: Vec<String>,
-    metadata: HashMap<String, String>,
 }
 
 // Tests are in tests.rs (as a sibling module with access to private fields)

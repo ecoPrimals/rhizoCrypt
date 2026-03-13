@@ -280,14 +280,13 @@ Deployment is successful when:
 ## 📚 REFERENCES
 
 ### Documentation
-- **[README.md](./README.md)** — Project overview
+- **[README.md](../README.md)** — Project overview
 - **[CHANGELOG.md](../CHANGELOG.md)** — Version history and current metrics
-- **[showcase/](./showcase/)** — 41 demos for testing
+- **[showcase/](../showcase/)** — 70+ demos for testing
 
 ### Support
-- **[specs/](./specs/)** — Complete specifications
-- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** — Common issues (if exists)
-- **GitHub Issues** — For bugs or questions
+- **[specs/](../specs/)** — Complete specifications
+- **[ENV_VARS.md](./ENV_VARS.md)** — Environment variable reference
 
 ---
 
