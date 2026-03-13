@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! E2E tests for DAG operations.
 //!
 //! Tests vertex linking, frontier tracking, and DAG traversal.
@@ -18,7 +21,7 @@ async fn test_dag_frontier() {
 
     // Create a session
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Append genesis vertex
     let v1 = VertexBuilder::new(EventType::SessionStart).build();
@@ -58,7 +61,7 @@ async fn test_dag_branching() {
 
     // Create a session
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Create genesis
     let v1 = VertexBuilder::new(EventType::SessionStart).build();
@@ -114,7 +117,7 @@ async fn test_dag_children() {
 
     // Create a session
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Create parent
     let parent = VertexBuilder::new(EventType::SessionStart).build();

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Generic provenance client - works with ANY provenance provider.
 
 use crate::clients::adapters::{AdapterFactory, ProtocolAdapter};

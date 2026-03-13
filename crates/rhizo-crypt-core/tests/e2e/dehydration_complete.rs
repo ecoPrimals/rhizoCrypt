@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! E2E tests for complete dehydration workflow.
 //!
 //! Tests the full dehydration process from session creation through
@@ -19,7 +22,7 @@ async fn test_complete_dehydration_workflow() {
 
     // Create a session
     let session = SessionBuilder::new(SessionType::General).with_name("dehydration-test").build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Add vertices to create a DAG
     let v1 = VertexBuilder::new(EventType::SessionStart).build();
@@ -46,7 +49,7 @@ async fn test_complete_dehydration_workflow() {
     assert_ne!(*merkle_root.as_bytes(), [0u8; 32]);
 
     // Check dehydration status
-    let status = primal.get_dehydration_status(session_id).await;
+    let status = primal.get_dehydration_status(session_id);
     assert!(status.is_complete(), "Dehydration should be complete");
 
     // Verify commit ref was created
@@ -82,7 +85,7 @@ async fn test_dehydration_multi_agent() {
     })
     .with_name("multi-agent-session")
     .build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Add vertices from different agents
     let v1 = VertexBuilder::new(EventType::SessionStart).with_agent(agent1.clone()).build();
@@ -101,7 +104,7 @@ async fn test_dehydration_multi_agent() {
 
     assert_ne!(*merkle_root.as_bytes(), [0u8; 32]);
 
-    let status = primal.get_dehydration_status(session_id).await;
+    let status = primal.get_dehydration_status(session_id);
     assert!(status.is_complete());
 
     primal.stop().await.expect("primal should stop");
@@ -118,7 +121,7 @@ async fn test_dehydration_large_payload() {
     primal.start().await.expect("primal should start");
 
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Add vertex (no payload - would need PayloadRef)
     let v1 = VertexBuilder::new(EventType::DataCreate {
@@ -132,7 +135,7 @@ async fn test_dehydration_large_payload() {
 
     assert_ne!(*merkle_root.as_bytes(), [0u8; 32]);
 
-    let status = primal.get_dehydration_status(session_id).await;
+    let status = primal.get_dehydration_status(session_id);
     assert!(status.is_complete());
 
     primal.stop().await.expect("primal should stop");
@@ -146,14 +149,14 @@ async fn test_dehydration_status_progression() {
     primal.start().await.expect("primal should start");
 
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Add a vertex
     let v1 = VertexBuilder::new(EventType::SessionStart).build();
     primal.append_vertex(session_id, v1).await.expect("should append vertex");
 
     // Initial status should be Pending
-    let status = primal.get_dehydration_status(session_id).await;
+    let status = primal.get_dehydration_status(session_id);
     assert_eq!(status, DehydrationStatus::Pending);
     assert!(!status.is_in_progress());
 
@@ -161,7 +164,7 @@ async fn test_dehydration_status_progression() {
     let _merkle_root = primal.dehydrate(session_id).await.expect("dehydration should succeed");
 
     // Final status should be Completed
-    let status = primal.get_dehydration_status(session_id).await;
+    let status = primal.get_dehydration_status(session_id);
     assert!(status.is_complete());
     assert!(!status.is_failed());
 
@@ -176,7 +179,7 @@ async fn test_dehydration_empty_session() {
     primal.start().await.expect("primal should start");
 
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Dehydrate without adding any vertices
     let result = primal.dehydrate(session_id).await;
@@ -196,10 +199,10 @@ async fn test_dehydration_merkle_determinism() {
 
     // Create two identical sessions
     let session1 = SessionBuilder::new(SessionType::General).build();
-    let session1_id = primal.create_session(session1).await.expect("should create session1");
+    let session1_id = primal.create_session(session1).expect("should create session1");
 
     let session2 = SessionBuilder::new(SessionType::General).build();
-    let session2_id = primal.create_session(session2).await.expect("should create session2");
+    let session2_id = primal.create_session(session2).expect("should create session2");
 
     // Add identical vertices to both
     for session_id in [session1_id, session2_id] {

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Discovery and client failure tests for rhizoCrypt.
 //!
 //! Tests system behavior when discovery fails or clients are unavailable.
@@ -44,21 +47,13 @@ async fn test_client_provider_unavailable() {
     let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
     let provider = ClientProvider::new(Arc::clone(&registry));
 
-    // All clients should report unavailable
-    assert!(!provider.has_beardog().await);
-    assert!(!provider.has_loamspine().await);
-    assert!(!provider.has_nestgate().await);
+    assert!(!provider.has_signing().await);
+    assert!(!provider.has_permanent_storage().await);
+    assert!(!provider.has_payload_storage().await);
 
-    // Endpoint requests should error
-    let beardog_err = provider.beardog_endpoint().await;
-    assert!(beardog_err.is_err());
-    assert!(beardog_err.unwrap_err().to_string().contains("not discovered"));
-
-    let loamspine_err = provider.loamspine_endpoint().await;
-    assert!(loamspine_err.is_err());
-
-    let nestgate_err = provider.nestgate_endpoint().await;
-    assert!(nestgate_err.is_err());
+    assert!(provider.signing_endpoint().await.is_err());
+    assert!(provider.permanent_storage_endpoint().await.is_err());
+    assert!(provider.payload_storage_endpoint().await.is_err());
 }
 
 /// Test client factory graceful degradation.

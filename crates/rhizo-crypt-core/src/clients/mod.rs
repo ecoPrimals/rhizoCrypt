@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Client Modules - Capability-Based Service Discovery
 //!
 //! This module provides clients for interacting with services in the ecosystem.

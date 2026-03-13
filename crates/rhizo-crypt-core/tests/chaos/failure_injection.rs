@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Failure injection tests for rhizoCrypt.
 //!
 //! Tests system behavior when operations fail or timeout.
@@ -36,14 +39,14 @@ async fn test_operations_on_stopped_primal() {
 
     // Create a session while running
     let session = SessionBuilder::new(SessionType::General).build();
-    let _session_id = primal.create_session(session).await.expect("should create session");
+    let _session_id = primal.create_session(session).expect("should create session");
 
     // Stop the primal
     primal.stop().await.expect("primal should stop");
 
     // Try to create session on stopped primal
     let session = SessionBuilder::new(SessionType::General).build();
-    let result = primal.create_session(session).await;
+    let result = primal.create_session(session);
     assert!(result.is_err());
 }
 
@@ -83,12 +86,12 @@ async fn test_session_limit_boundary() {
     for i in 0..5 {
         let session =
             SessionBuilder::new(SessionType::General).with_name(format!("session-{i}")).build();
-        primal.create_session(session).await.expect("should create session within limit");
+        primal.create_session(session).expect("should create session within limit");
     }
 
     // Next should fail
     let session = SessionBuilder::new(SessionType::General).build();
-    assert!(primal.create_session(session).await.is_err());
+    assert!(primal.create_session(session).is_err());
 
     // Discard one
     let sessions = primal.list_sessions();
@@ -97,7 +100,7 @@ async fn test_session_limit_boundary() {
 
     // Now should succeed
     let session = SessionBuilder::new(SessionType::General).build();
-    assert!(primal.create_session(session).await.is_ok());
+    assert!(primal.create_session(session).is_ok());
 
     primal.stop().await.expect("primal should stop");
 }

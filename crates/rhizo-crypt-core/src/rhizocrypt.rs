@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! RhizoCrypt main implementation.
 //!
 //! The core DAG engine with lock-free concurrency for maximum performance.
@@ -121,8 +124,7 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the primal is not running or max sessions exceeded.
-    #[allow(clippy::unused_async)]
-    pub async fn create_session(&self, session: Session) -> Result<SessionId> {
+    pub fn create_session(&self, session: Session) -> Result<SessionId> {
         if !self.state.is_running() {
             return Err(RhizoCryptError::internal("primal not running"));
         }
@@ -223,7 +225,7 @@ impl RhizoCrypt {
         // Update frontier
         let parents: Vec<VertexId> = vertex.parents.clone();
         let mut v = vertex.clone();
-        let vertex_id = v.id();
+        let vertex_id = v.id()?;
         session.update_frontier(vertex_id, &parents);
 
         // Release session lock before expensive DAG operation
@@ -232,7 +234,7 @@ impl RhizoCrypt {
         // Store the vertex
         let dag_store = self.dag_store().await?;
         let mut v = vertex;
-        let vertex_id = v.id();
+        let vertex_id = v.id()?;
         dag_store.put_vertex(session_id, v).await?;
         self.metrics.inc_vertices_appended();
 
@@ -313,7 +315,7 @@ impl RhizoCrypt {
         let _ = self.get_session(session_id)?;
         let dag_store = self.dag_store().await?;
         let vertices = dag_store.get_all_vertices(session_id).await?;
-        Ok(MerkleRoot::compute(&vertices))
+        MerkleRoot::compute(&vertices)
     }
 
     /// Generate Merkle proof for a vertex.
@@ -333,10 +335,12 @@ impl RhizoCrypt {
             return Err(RhizoCryptError::vertex_not_found(vertex_id));
         }
 
-        let root = MerkleRoot::compute(&vertices);
-        let position = vertices
+        let root = MerkleRoot::compute(&vertices)?;
+        let ids: Vec<VertexId> =
+            vertices.iter().map(Vertex::compute_id).collect::<std::result::Result<Vec<_>, _>>()?;
+        let position = ids
             .iter()
-            .position(|v| v.compute_id() == vertex_id)
+            .position(|id| *id == vertex_id)
             .ok_or_else(|| RhizoCryptError::vertex_not_found(vertex_id))?;
 
         MerkleProof::generate(&vertices, position, root)
@@ -351,8 +355,7 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the primal is not running.
-    #[allow(clippy::unused_async)]
-    pub async fn checkout_slice(&self, slice: Slice) -> Result<SliceId> {
+    pub fn checkout_slice(&self, slice: Slice) -> Result<SliceId> {
         if !self.state.is_running() {
             return Err(RhizoCryptError::internal("primal not running"));
         }
@@ -395,8 +398,7 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the slice is not found or already resolved.
-    #[allow(clippy::unused_async)]
-    pub async fn resolve_slice(&self, slice_id: SliceId, outcome: ResolutionOutcome) -> Result<()> {
+    pub fn resolve_slice(&self, slice_id: SliceId, outcome: ResolutionOutcome) -> Result<()> {
         let mut slice_entry = self
             .slices
             .get_mut(&slice_id)
@@ -597,11 +599,7 @@ impl RhizoCrypt {
     }
 
     /// Get dehydration status for a session (lock-free).
-    #[allow(clippy::unused_async)]
-    pub async fn get_dehydration_status(
-        &self,
-        session_id: SessionId,
-    ) -> dehydration::DehydrationStatus {
+    pub fn get_dehydration_status(&self, session_id: SessionId) -> dehydration::DehydrationStatus {
         self.dehydration_status
             .get(&session_id)
             .map_or(dehydration::DehydrationStatus::Pending, |entry| entry.value().clone())

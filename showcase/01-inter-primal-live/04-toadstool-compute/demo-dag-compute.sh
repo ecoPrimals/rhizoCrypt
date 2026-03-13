@@ -14,7 +14,7 @@ NC='\033[0m'
 
 # Paths
 TOADSTOOL_BIN="/path/to/ecoPrimals/primalBins/toadstool-cli"
-RHIZO_BIN="/path/to/ecoPrimals/phase2/rhizoCrypt/target/release/rhizocrypt-service"
+RHIZO_BIN="/path/to/ecoPrimals/phase2/rhizoCrypt/target/release/rhizocrypt"
 
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}  🍄 Demo: DAG-Driven Compute with ToadStool${NC}"
@@ -32,7 +32,7 @@ echo -e "${GREEN}✓ ToadStool binary found${NC}"
 
 if [ ! -f "$RHIZO_BIN" ]; then
     echo -e "${YELLOW}⚠  rhizoCrypt service not built, building now...${NC}"
-    cd ../../../ && cargo build --release --bin rhizocrypt-service
+    cd ../../../ && cargo build --release -p rhizocrypt-service
     cd -
 fi
 echo -e "${GREEN}✓ rhizoCrypt service ready${NC}"

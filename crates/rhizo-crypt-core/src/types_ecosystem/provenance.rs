@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Provenance Provider Types - Lineage & Attribution
 //!
 //! Type definitions for provenance query capability providers.
@@ -156,32 +159,20 @@ impl Default for ProvenanceProviderConfig {
 impl ProvenanceProviderConfig {
     /// Create config from environment variables.
     ///
-    /// Environment variables (priority order):
-    /// - `PROVENANCE_ENDPOINT` or `PROVENANCE_QUERY_ENDPOINT`: Provenance capability endpoint (preferred)
-    /// - `SWEETGRASS_ADDRESS` or `SWEETGRASS_PUSH_ADDRESS`: Legacy fallback (deprecated, emits warning)
+    /// Environment variables:
+    /// - `PROVENANCE_ENDPOINT` or `PROVENANCE_QUERY_ENDPOINT`: Provenance capability endpoint
     /// - `PROVENANCE_TIMEOUT_MS`: Query timeout in milliseconds
-    /// - `SWEETGRASS_TIMEOUT_MS`: Legacy timeout (deprecated)
     #[must_use]
     pub fn from_env() -> Self {
         use crate::safe_env::CapabilityEnv;
         let mut config = Self::default();
 
-        // Use capability-based endpoint (with backward compatibility)
         if let Some(addr) = CapabilityEnv::provenance_endpoint() {
             config.push_address = Some(Cow::Owned(addr));
         }
 
-        // Timeout: prefer capability-based name
         if let Ok(timeout) = std::env::var("PROVENANCE_TIMEOUT_MS") {
             if let Ok(ms) = timeout.parse() {
-                config.timeout_ms = ms;
-            }
-        } else if let Ok(timeout) = std::env::var("SWEETGRASS_TIMEOUT_MS") {
-            if let Ok(ms) = timeout.parse() {
-                tracing::warn!(
-                    "Using deprecated SWEETGRASS_TIMEOUT_MS. \
-                     Please migrate to PROVENANCE_TIMEOUT_MS."
-                );
                 config.timeout_ms = ms;
             }
         }

@@ -1,4 +1,7 @@
-// ! tarpc adapter for capability clients
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
+//! tarpc adapter for capability clients
 //!
 //! This adapter allows capability-based clients (SigningProvider, StorageProvider, etc.)
 //! to communicate with rhizoCrypt or other primals using the tarpc protocol.

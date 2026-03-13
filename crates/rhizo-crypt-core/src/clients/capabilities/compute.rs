@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Generic compute client - works with ANY compute provider.
 
 use crate::clients::adapters::{AdapterFactory, ProtocolAdapter};
@@ -144,7 +147,7 @@ mod tests {
     #[test]
     fn test_compute_client_debug() {
         let client = ComputeClient::with_endpoint("http://localhost:9800").unwrap();
-        let debug_str = format!("{:?}", client);
+        let debug_str = format!("{client:?}");
         assert!(debug_str.contains("ComputeClient"));
     }
 
@@ -281,7 +284,7 @@ mod tests {
         let mut handles = vec![];
         for _ in 0..5 {
             let reg = Arc::clone(&registry);
-            let handle = tokio::spawn(async move { ComputeClient::discover(&*reg).await });
+            let handle = tokio::spawn(async move { ComputeClient::discover(&reg).await });
             handles.push(handle);
         }
 

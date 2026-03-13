@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Generic permanent storage client - works with ANY permanent storage provider.
 //!
 //! This client provides permanent/immutable storage commits without knowing
@@ -303,7 +306,7 @@ mod tests {
     #[test]
     fn test_permanent_storage_client_debug() {
         let client = PermanentStorageClient::with_endpoint("http://localhost:9700").unwrap();
-        let debug_str = format!("{:?}", client);
+        let debug_str = format!("{client:?}");
         assert!(debug_str.contains("PermanentStorageClient"));
     }
 
@@ -376,7 +379,7 @@ mod tests {
 
         for format in formats {
             let result = PermanentStorageClient::with_endpoint(format);
-            assert!(result.is_ok(), "Failed for format: {}", format);
+            assert!(result.is_ok(), "Failed for format: {format}");
         }
     }
 }

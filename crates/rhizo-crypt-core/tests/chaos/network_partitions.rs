@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Network partition and failure chaos tests.
 //!
 //! Tests system behavior under network failures and partitions.
@@ -33,7 +36,7 @@ async fn test_network_disconnect_graceful_degradation() {
     let session_id = {
         let p = primal.read().await;
         let session = SessionBuilder::new(SessionType::General).with_name("network-test").build();
-        p.create_session(session).await.expect("should create session")
+        p.create_session(session).expect("should create session")
     };
 
     // Simulate network partition by stopping primal
@@ -93,7 +96,7 @@ async fn test_network_instability_concurrent_operations() {
         let p = primal.read().await;
         let session =
             SessionBuilder::new(SessionType::General).with_name(format!("session-{i}")).build();
-        let sid = p.create_session(session).await.expect("should create session");
+        let sid = p.create_session(session).expect("should create session");
         session_ids.push(sid);
     }
 
@@ -198,7 +201,7 @@ async fn test_network_reconnection_after_outage() {
 
     // Create some state
     let session = SessionBuilder::new(SessionType::General).with_name("outage-test").build();
-    let session_id = primal.create_session(session).await.expect("should create");
+    let session_id = primal.create_session(session).expect("should create");
 
     // Simulate extended outage
     primal.stop().await.expect("primal should stop");
@@ -217,7 +220,7 @@ async fn test_network_reconnection_after_outage() {
 
     // Can create new sessions
     let session2 = SessionBuilder::new(SessionType::General).with_name("post-outage").build();
-    let result = primal.create_session(session2).await;
+    let result = primal.create_session(session2);
     assert!(result.is_ok(), "Should work after reconnection");
 
     // Should now have 2 sessions
@@ -239,13 +242,13 @@ async fn test_cascading_failure_isolation() {
     let session_id1 = {
         let p = primal.read().await;
         let session = SessionBuilder::new(SessionType::General).with_name("session-1").build();
-        p.create_session(session).await.expect("should create")
+        p.create_session(session).expect("should create")
     };
 
     let session_id2 = {
         let p = primal.read().await;
         let session = SessionBuilder::new(SessionType::General).with_name("session-2").build();
-        p.create_session(session).await.expect("should create")
+        p.create_session(session).expect("should create")
     };
 
     // Failure in one session shouldn't affect another
@@ -303,14 +306,14 @@ async fn test_memory_pressure_graceful_handling() {
     for i in 0..10 {
         let session =
             SessionBuilder::new(SessionType::General).with_name(format!("session-{i}")).build();
-        let sid = primal.create_session(session).await.expect("should create");
+        let sid = primal.create_session(session).expect("should create");
         session_ids.push(sid);
     }
 
     // Next session should fail gracefully
     let session_over_limit =
         SessionBuilder::new(SessionType::General).with_name("over-limit").build();
-    let result = primal.create_session(session_over_limit).await;
+    let result = primal.create_session(session_over_limit);
     assert!(result.is_err(), "Should fail gracefully at limit");
 
     let err_msg = result.unwrap_err().to_string();
@@ -321,7 +324,7 @@ async fn test_memory_pressure_graceful_handling() {
 
     let session_after_discard =
         SessionBuilder::new(SessionType::General).with_name("after-discard").build();
-    let result = primal.create_session(session_after_discard).await;
+    let result = primal.create_session(session_after_discard);
     assert!(result.is_ok(), "Should work after freeing space");
 }
 
@@ -341,6 +344,6 @@ async fn test_rapid_connection_cycles() {
     primal.start().await.expect("final start should work");
 
     let session = SessionBuilder::new(SessionType::General).with_name("after-cycles").build();
-    let result = primal.create_session(session).await;
+    let result = primal.create_session(session);
     assert!(result.is_ok(), "Should work after rapid cycles");
 }

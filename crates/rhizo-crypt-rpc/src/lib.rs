@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! # rhizo-crypt-rpc
 //!
 //! Pure Rust RPC layer for rhizoCrypt using tarpc.

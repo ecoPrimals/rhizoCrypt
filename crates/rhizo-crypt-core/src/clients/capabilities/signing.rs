@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Generic signing client - works with ANY signing provider.
 //!
 //! This client provides cryptographic signing capabilities without knowing
@@ -95,7 +98,7 @@ impl SigningClient {
                 return Err(RhizoCryptError::integration("Signing provider discovery in progress"));
             }
             crate::discovery::DiscoveryStatus::Failed(err) => {
-                return Err(RhizoCryptError::integration(format!("Discovery failed: {}", err)));
+                return Err(RhizoCryptError::integration(format!("Discovery failed: {err}")));
             }
             crate::discovery::DiscoveryStatus::Unavailable => {
                 return Err(RhizoCryptError::integration(
@@ -213,7 +216,7 @@ impl SigningClient {
     ///
     /// Returns error if signing fails.
     pub async fn sign_vertex(&self, vertex: &Vertex, signer: &Did) -> Result<Signature> {
-        let canonical_bytes = vertex.to_canonical_bytes();
+        let canonical_bytes = vertex.to_canonical_bytes()?;
         self.sign(&canonical_bytes, signer).await
     }
 
@@ -228,7 +231,7 @@ impl SigningClient {
     /// Returns error if verification fails.
     pub async fn verify_vertex(&self, vertex: &Vertex) -> Result<bool> {
         if let (Some(sig), Some(agent)) = (&vertex.signature, &vertex.agent) {
-            let canonical_bytes = vertex.to_canonical_bytes();
+            let canonical_bytes = vertex.to_canonical_bytes()?;
             self.verify(&canonical_bytes, sig, agent).await
         } else {
             Ok(false) // No signature or agent
@@ -524,7 +527,7 @@ mod tests {
     #[test]
     fn test_signing_client_debug() {
         let client = SigningClient::with_endpoint("http://localhost:9500").unwrap();
-        let debug_str = format!("{:?}", client);
+        let debug_str = format!("{client:?}");
         assert!(debug_str.contains("SigningClient"));
     }
 

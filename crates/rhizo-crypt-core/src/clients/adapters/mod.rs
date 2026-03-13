@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Protocol adapters for capability-based clients.
 //!
 //! This module provides protocol adapters that allow capability clients to

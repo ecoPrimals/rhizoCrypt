@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Property-Based Tests for rhizoCrypt Core
 //!
 //! Uses proptest to validate invariants across a wide range of inputs.
@@ -148,7 +151,7 @@ proptest! {
     ) {
         let vertex = VertexBuilder::new(event_type).build();
         // Vertex should have a valid computed ID
-        let id = vertex.compute_id();
+        let id = vertex.compute_id().unwrap();
         prop_assert!(!id.as_bytes().iter().all(|&b| b == 0));
     }
 
@@ -251,7 +254,7 @@ proptest! {
             }).build();
             builder.add_vertex(vertex);
         }
-        let root = builder.compute_root();
+        let root = builder.compute_root().unwrap();
 
         // Root should not be all zeros
         prop_assert!(!root.as_bytes().iter().all(|&b| b == 0));
@@ -270,8 +273,8 @@ proptest! {
             .collect();
 
         // Compute roots from same vertex sequence
-        let root1 = MerkleRoot::compute(&vertices1);
-        let root2 = MerkleRoot::compute(&vertices1);
+        let root1 = MerkleRoot::compute(&vertices1).unwrap();
+        let root2 = MerkleRoot::compute(&vertices1).unwrap();
 
         prop_assert_eq!(root1, root2);
     }

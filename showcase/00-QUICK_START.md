@@ -167,7 +167,7 @@ Think of it as:
 
 ### Demo fails with "Connection refused"
 **Problem**: Primal service not running  
-**Fix**: Check if service started: `ps aux | grep rhizocrypt-service`
+**Fix**: Check if service started: `ps aux | grep rhizocrypt`
 
 ### Demo fails with "Binary not found"
 **Problem**: Primal bins not available  

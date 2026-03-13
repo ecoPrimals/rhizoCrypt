@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Performance Benchmarks for rhizoCrypt Core
 //!
 //! Measures critical path performance for:
@@ -99,7 +102,7 @@ fn bench_content_addressing(c: &mut Criterion) {
     group.bench_function("compute_vertex_id", |b| {
         let vertex = VertexBuilder::new(EventType::SessionStart).build();
         b.iter(|| {
-            let id = vertex.compute_id();
+            let id = vertex.compute_id().unwrap();
             black_box(id)
         });
     });
@@ -144,7 +147,7 @@ fn bench_merkle_tree(c: &mut Criterion) {
             &vertices,
             |b, vertices| {
                 b.iter(|| {
-                    let root = MerkleRoot::compute(black_box(vertices));
+                    let root = MerkleRoot::compute(black_box(vertices)).unwrap();
                     black_box(root)
                 });
             },
@@ -172,7 +175,7 @@ fn bench_merkle_tree(c: &mut Criterion) {
             |b, builder| {
                 b.iter(|| {
                     // Generate proof for middle element
-                    let proof = builder.generate_proof(black_box((count / 2) as usize));
+                    let proof = builder.generate_proof(black_box((count / 2) as usize)).unwrap();
                     black_box(proof)
                 });
             },
@@ -276,7 +279,7 @@ fn bench_dag_store(c: &mut Criterion) {
             // Create a DAG with multiple frontier vertices
             let genesis = VertexBuilder::new(EventType::SessionStart).build();
             let mut genesis_clone = genesis.clone();
-            let genesis_id = genesis_clone.id();
+            let genesis_id = genesis_clone.id().unwrap();
             let _ = store.put_vertex(session_id, genesis).await;
 
             // Add several children to create a wider frontier
@@ -329,7 +332,7 @@ fn bench_dag_store(c: &mut Criterion) {
             // Create parent
             let parent = VertexBuilder::new(EventType::SessionStart).build();
             let mut parent_clone = parent.clone();
-            let parent_id = parent_clone.id();
+            let parent_id = parent_clone.id().unwrap();
             let _ = store.put_vertex(session_id, parent).await;
 
             // Add children

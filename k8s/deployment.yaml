@@ -44,7 +44,7 @@ metadata:
   namespace: rhizocrypt
   labels:
     app: rhizocrypt
-    version: v0.12.0
+    version: v0.13.0
 spec:
   replicas: 3
   selector:
@@ -54,7 +54,7 @@ spec:
     metadata:
       labels:
         app: rhizocrypt
-        version: v0.12.0
+        version: v0.13.0
     spec:
       serviceAccountName: rhizocrypt
       securityContext:
@@ -63,7 +63,7 @@ spec:
         fsGroup: 1000
       containers:
       - name: rhizocrypt
-        image: rhizocrypt:0.12.0
+        image: rhizocrypt:0.13.0
         imagePullPolicy: IfNotPresent
         ports:
         - name: rpc
@@ -89,8 +89,8 @@ spec:
         livenessProbe:
           exec:
             command:
-            - /app/rhizocrypt-service
-            - --health
+            - /app/rhizocrypt
+            - status
           initialDelaySeconds: 10
           periodSeconds: 30
           timeoutSeconds: 5
@@ -98,8 +98,8 @@ spec:
         readinessProbe:
           exec:
             command:
-            - /app/rhizocrypt-service
-            - --health
+            - /app/rhizocrypt
+            - status
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 3

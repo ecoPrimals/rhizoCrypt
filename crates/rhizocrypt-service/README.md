@@ -12,28 +12,27 @@ rhizoCrypt v0.11.0 now supports **dual-mode operation**:
 
 ```bash
 # Development build
-cargo build --bin rhizocrypt-service
+cargo build -p rhizocrypt-service
 
 # Release build (optimized)
-cargo build --release --bin rhizocrypt-service
+cargo build --release -p rhizocrypt-service
 
 # Binary location
-./target/release/rhizocrypt-service
+./target/release/rhizocrypt
 ```
 
 ### Running
 
 ```bash
 # Default configuration (port 9400)
-./rhizocrypt-service
+rhizocrypt server
 
 # Custom port
-RHIZOCRYPT_PORT=9400 ./rhizocrypt-service
+rhizocrypt server --port 9400
 
 # With discovery registration
-RHIZOCRYPT_PORT=9400 \
 RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500 \
-./rhizocrypt-service
+rhizocrypt server --port 9400
 ```
 
 ### Environment Variables
@@ -96,7 +95,7 @@ The standalone service exposes **24 RPC methods**:
 
 ```
 ┌──────────────────────────────────────────────┐
-│ rhizocrypt-service Binary                    │
+│ rhizocrypt Binary                            │
 │                                              │
 │  ┌────────────────────────────────────────┐ │
 │  │ tarpc RPC Server (port 9400)           │ │
@@ -130,7 +129,7 @@ The standalone service exposes **24 RPC methods**:
 ```bash
 # BiomeOS discovers and coordinates rhizoCrypt
 export RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.internal:7500
-./rhizocrypt-service
+rhizocrypt server
 
 # BiomeOS can now:
 # - Discover rhizoCrypt via capability query
@@ -144,7 +143,7 @@ export RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.internal:7500
 # Deploy as independent microservice
 docker run -p 9400:9400 \
   -e RHIZOCRYPT_DISCOVERY_ADAPTER=songbird:7500 \
-  rhizocrypt-service
+  rhizocrypt
 
 # Kubernetes deployment
 kubectl apply -f rhizocrypt-deployment.yaml
@@ -154,7 +153,7 @@ kubectl apply -f rhizocrypt-deployment.yaml
 
 ```bash
 # Local development server
-RHIZOCRYPT_PORT=9400 ./rhizocrypt-service &
+rhizocrypt server --port 9400 &
 
 # Test RPC calls
 # (use tarpc client to call methods)
@@ -239,8 +238,8 @@ INFO rhizo_crypt_rpc::server: rhizoCrypt RPC server listening on 0.0.0.0:9400
 
 Set log level via `RUST_LOG`:
 ```bash
-RUST_LOG=debug ./rhizocrypt-service
-RUST_LOG=rhizocrypt_service=trace ./rhizocrypt-service
+RUST_LOG=debug rhizocrypt server
+RUST_LOG=rhizocrypt_service=trace rhizocrypt server
 ```
 
 ---
@@ -251,18 +250,18 @@ RUST_LOG=rhizocrypt_service=trace ./rhizocrypt-service
 FROM rust:1.75 as builder
 WORKDIR /app
 COPY . .
-RUN cargo build --release --bin rhizocrypt-service
+RUN cargo build --release -p rhizocrypt-service
 
 FROM debian:bookworm-slim
-COPY --from=builder /app/target/release/rhizocrypt-service /usr/local/bin/
+COPY --from=builder /app/target/release/rhizocrypt /usr/local/bin/
 EXPOSE 9400
-CMD ["rhizocrypt-service"]
+CMD ["rhizocrypt", "server"]
 ```
 
 Build and run:
 ```bash
-docker build -t rhizocrypt-service .
-docker run -p 9400:9400 -e RHIZOCRYPT_DISCOVERY_ADAPTER=songbird:7500 rhizocrypt-service
+docker build -t rhizocrypt .
+docker run -p 9400:9400 -e RHIZOCRYPT_DISCOVERY_ADAPTER=songbird:7500 rhizocrypt
 ```
 
 ---

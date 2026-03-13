@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! NestGate HTTP API types and client.
 //!
 //! This module contains the HTTP request/response types for connecting

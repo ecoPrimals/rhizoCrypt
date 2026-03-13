@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Rate limiting infrastructure for RPC endpoints.
 //!
 //! Provides token bucket rate limiting per client, with configurable

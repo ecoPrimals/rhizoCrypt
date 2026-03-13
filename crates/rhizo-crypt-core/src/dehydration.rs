@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Dehydration protocol for committing DAG sessions to LoamSpine.
 //!
 //! Dehydration is the process of committing a RhizoCrypt DAG session to

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Concurrent stress tests for rhizoCrypt.
 //!
 //! Tests system behavior under high concurrency.
@@ -32,7 +35,7 @@ async fn test_concurrent_session_creation() {
             let session = SessionBuilder::new(SessionType::General)
                 .with_name(format!("concurrent-{i}"))
                 .build();
-            p.create_session(session).await
+            p.create_session(session)
         });
         handles.push(handle);
     }
@@ -77,7 +80,7 @@ async fn test_concurrent_vertex_appends() {
     let session_id = {
         let p = primal.read().await;
         let session = SessionBuilder::new(SessionType::General).build();
-        p.create_session(session).await.expect("should create session")
+        p.create_session(session).expect("should create session")
     };
 
     // Spawn concurrent vertex appenders
@@ -130,7 +133,7 @@ async fn test_high_throughput_appends() {
 
     // Create a session
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Append many vertices sequentially
     let start = std::time::Instant::now();

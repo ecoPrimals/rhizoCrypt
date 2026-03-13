@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Slice semantics for LoamSpine state checkout.
 //!
 //! A slice is a reference to LoamSpine state that is temporarily "lifted" into
@@ -427,10 +430,10 @@ impl SliceBuilder {
 
     /// Set expiration as duration from now.
     #[must_use]
-    #[allow(clippy::cast_possible_truncation)]
     pub fn expires_in(mut self, duration: Duration) -> Self {
         let now = Timestamp::now();
-        let expires = Timestamp::from_nanos(now.as_nanos() + duration.as_nanos() as u64);
+        let nanos = u64::try_from(duration.as_nanos()).unwrap_or(u64::MAX);
+        let expires = Timestamp::from_nanos(now.as_nanos().saturating_add(nanos));
         self.expires_at = Some(expires);
         self
     }

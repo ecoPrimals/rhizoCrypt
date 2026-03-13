@@ -1,0 +1,33 @@
+[package]
+name = "rhizo-crypt-core-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+license = "AGPL-3.0-only"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+ciborium = "0.2"
+
+[dependencies.rhizo-crypt-core]
+path = ".."
+features = ["test-utils"]
+
+[[bin]]
+name = "fuzz_vertex_cbor"
+path = "fuzz_targets/fuzz_vertex_cbor.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_merkle_compute"
+path = "fuzz_targets/fuzz_merkle_compute.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_session_builder"
+path = "fuzz_targets/fuzz_session_builder.rs"
+doc = false

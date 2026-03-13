@@ -50,7 +50,7 @@
 cargo build --release -p rhizocrypt-service
 
 # Run service
-./target/release/rhizocrypt-service --port 7777
+./target/release/rhizocrypt server --port 7777
 
 # Health check
 curl http://localhost:7777/health

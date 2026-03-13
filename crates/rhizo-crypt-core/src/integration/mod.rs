@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Integration traits for external services.
 //!
 //! This module provides integration interfaces for connecting with external
@@ -43,18 +46,11 @@ use std::sync::Arc;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod mocks;
 
-// Re-export capability-based providers (NEW, recommended)
 #[cfg(any(test, feature = "test-utils"))]
-pub use mocks::{MockPayloadStorageProvider, MockPermanentStorageProvider, MockSigningProvider};
-
-// Re-export deprecated aliases for backward compatibility
-#[cfg(any(test, feature = "test-utils"))]
-#[allow(deprecated)]
-pub use mocks::{MockBearDogClient, MockLoamSpineClient, MockNestGateClient};
-
-// Re-export new capability-based mocks
-#[cfg(any(test, feature = "test-utils"))]
-pub use mocks::{MockCapabilityFactory, MockProtocolAdapter};
+pub use mocks::{
+    MockCapabilityFactory, MockPayloadStorageProvider, MockPermanentStorageProvider,
+    MockProtocolAdapter, MockSigningProvider,
+};
 
 // ============================================================================
 // Signing Provider (Identity & Cryptographic Signing)

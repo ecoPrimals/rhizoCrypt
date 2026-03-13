@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Tests for Songbird client.
 
 use super::{SongbirdClient, SongbirdConfig};
@@ -316,25 +319,23 @@ async fn test_discover_specific_primal() {
         )
         .await;
 
-    // Discover using specific methods
-    let beardog = client.discover_beardog().await;
-    assert!(beardog.is_ok());
-    assert!(beardog.unwrap().is_some());
+    let signer = client.discover_signing_provider().await;
+    assert!(signer.is_ok());
+    assert!(signer.unwrap().is_some());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn test_discover_loamspine() {
+async fn test_discover_permanent_storage_provider() {
     let config = SongbirdConfig::with_address("127.0.0.1:8091");
     let client = SongbirdClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
-    // Cache a loamspine service
     client
         .cache_discovery(
             "permanent-storage",
             vec![ServiceInfo {
-                id: "loamspine-1".to_string(),
-                name: "loamspine-main".to_string(),
+                id: "storage-1".to_string(),
+                name: "permanent-storage-main".to_string(),
                 endpoint: "127.0.0.1:9600".to_string(),
                 capabilities: vec!["permanent-storage".to_string()],
                 status: "healthy".to_string(),
@@ -343,24 +344,23 @@ async fn test_discover_loamspine() {
         )
         .await;
 
-    let loamspine = client.discover_loamspine().await;
-    assert!(loamspine.is_ok());
-    assert!(loamspine.unwrap().is_some());
+    let storage = client.discover_permanent_storage_provider().await;
+    assert!(storage.is_ok());
+    assert!(storage.unwrap().is_some());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn test_discover_nestgate() {
+async fn test_discover_payload_storage_provider() {
     let config = SongbirdConfig::with_address("127.0.0.1:8091");
     let client = SongbirdClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
-    // Cache a nestgate service
     client
         .cache_discovery(
             "payload-storage",
             vec![ServiceInfo {
-                id: "nestgate-1".to_string(),
-                name: "nestgate-main".to_string(),
+                id: "payload-1".to_string(),
+                name: "payload-storage-main".to_string(),
                 endpoint: "127.0.0.1:9700".to_string(),
                 capabilities: vec!["payload-storage".to_string()],
                 status: "healthy".to_string(),
@@ -369,9 +369,9 @@ async fn test_discover_nestgate() {
         )
         .await;
 
-    let nestgate = client.discover_nestgate().await;
-    assert!(nestgate.is_ok());
-    assert!(nestgate.unwrap().is_some());
+    let storage = client.discover_payload_storage_provider().await;
+    assert!(storage.is_ok());
+    assert!(storage.unwrap().is_some());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

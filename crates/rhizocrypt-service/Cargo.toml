@@ -10,7 +10,7 @@ keywords = ["dag", "ephemeral", "rpc", "primal", "ecoprimal"]
 categories = ["cryptography", "network-programming", "data-structures"]
 
 [[bin]]
-name = "rhizocrypt-service"
+name = "rhizocrypt"
 path = "src/main.rs"
 
 [dependencies]
@@ -19,6 +19,10 @@ rhizo-crypt-rpc = { path = "../rhizo-crypt-rpc" }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+clap = { version = "4.5", features = ["derive"] }
+
+[lints]
+workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

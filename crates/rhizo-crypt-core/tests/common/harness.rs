@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Test harness for rhizoCrypt integration tests.
 //!
 //! Provides a standardized way to set up and tear down test environments.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Songbird tarpc RPC types and client.
 //!
 //! This module contains the tarpc service definition and related types

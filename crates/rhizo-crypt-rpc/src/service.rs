@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! RPC service trait definition using tarpc.
 //!
 //! This is the core RPC interface for rhizoCrypt. The `#[tarpc::service]` macro
@@ -302,7 +305,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         }
 
         let session = builder.build();
-        self.primal.create_session(session).await.map_err(|e| RpcError::Core(e.to_string()))
+        self.primal.create_session(session).map_err(|e| RpcError::Core(e.to_string()))
     }
 
     async fn get_session(
@@ -518,7 +521,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
             slice::SliceBuilder::new(origin, holder, request.mode, session_id, checkout_vertex)
                 .build();
 
-        self.primal.checkout_slice(slice).await.map_err(|e| RpcError::Core(e.to_string()))
+        self.primal.checkout_slice(slice).map_err(|e| RpcError::Core(e.to_string()))
     }
 
     async fn get_slice(
@@ -546,7 +549,6 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
 
         self.primal
             .resolve_slice(slice_id, ResolutionOutcome::ReturnedUnchanged)
-            .await
             .map_err(|e| RpcError::Core(e.to_string()))
     }
 
@@ -563,7 +565,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<rhizo_crypt_core::DehydrationStatus, RpcError> {
-        Ok(self.primal.get_dehydration_status(session_id).await)
+        Ok(self.primal.get_dehydration_status(session_id))
     }
 
     async fn health(self, _: tarpc::context::Context) -> Result<HealthStatus, RpcError> {

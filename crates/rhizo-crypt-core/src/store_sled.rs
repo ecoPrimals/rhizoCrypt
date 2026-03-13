@@ -1,11 +1,21 @@
-//! Sled persistent storage backend (100% Pure Rust).
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
+//! Sled persistent storage backend.
 //!
 //! This module provides a durable storage implementation using sled,
-//! a high-performance embedded database written entirely in Rust.
+//! a high-performance embedded database.
+//!
+//! ## ecoBin Compliance Note
+//!
+//! Sled 0.34 transitively depends on `zstd-sys` (C compression library),
+//! which does not meet the Pure Rust requirement of the ecoBin standard.
+//! This backend is behind an optional `sled` feature flag. A migration to
+//! a Pure Rust alternative (e.g., `redb`) is planned once the API stabilizes.
 //!
 //! ## Features
 //!
-//! - **100% Pure Rust** — No C/C++ dependencies, full safety guarantees
+//! - **Feature-gated** — Only compiled when `sled` feature is enabled
 //! - **Persistent storage** — Data survives process restarts
 //! - **Tree namespaces** — Separate trees for vertices, children, frontiers
 //! - **Atomic writes** — Batch operations for transactional updates
@@ -226,11 +236,11 @@ impl DagStore for SledDagStore {
     async fn put_vertex(&self, session_id: SessionId, mut vertex: Vertex) -> Result<()> {
         self.write_ops.fetch_add(1, Ordering::Relaxed);
 
-        let vertex_id = vertex.id();
+        let vertex_id = vertex.id()?;
         let key = Self::vertex_key(session_id, vertex_id);
 
         // Serialize vertex to CBOR
-        let value = vertex.to_canonical_bytes();
+        let value = vertex.to_canonical_bytes()?;
 
         // Create batches for atomic updates
         let mut vertices_batch = Batch::default();
@@ -567,7 +577,7 @@ mod tests {
 
         let vertex = VertexBuilder::new(EventType::SessionStart).build();
         let mut vertex_clone = vertex.clone();
-        let vertex_id = vertex_clone.id();
+        let vertex_id = vertex_clone.id().unwrap();
 
         store.put_vertex(session_id, vertex).await.unwrap();
 
@@ -575,7 +585,7 @@ mod tests {
         assert!(retrieved.is_some());
 
         let mut retrieved_vertex = retrieved.unwrap();
-        assert_eq!(retrieved_vertex.id(), vertex_id);
+        assert_eq!(retrieved_vertex.id().unwrap(), vertex_id);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -586,7 +596,7 @@ mod tests {
         // Add genesis vertex
         let v1 = VertexBuilder::new(EventType::SessionStart).build();
         let mut v1_clone = v1.clone();
-        let v1_id = v1_clone.id();
+        let v1_id = v1_clone.id().unwrap();
         store.put_vertex(session_id, v1).await.unwrap();
 
         // Check genesis
@@ -606,7 +616,7 @@ mod tests {
         .with_parent(v1_id)
         .build();
         let mut v2_clone = v2.clone();
-        let v2_id = v2_clone.id();
+        let v2_id = v2_clone.id().unwrap();
         store.put_vertex(session_id, v2).await.unwrap();
 
         // Frontier should now be v2 only
@@ -628,7 +638,7 @@ mod tests {
         // Add parent
         let parent = VertexBuilder::new(EventType::SessionStart).build();
         let mut parent_clone = parent.clone();
-        let parent_id = parent_clone.id();
+        let parent_id = parent_clone.id().unwrap();
         store.put_vertex(session_id, parent).await.unwrap();
 
         // Add children
@@ -693,7 +703,7 @@ mod tests {
             let store = SledDagStore::open(dir.path()).unwrap();
             let vertex = VertexBuilder::new(EventType::SessionStart).build();
             let mut vertex_clone = vertex.clone();
-            vertex_id = vertex_clone.id();
+            vertex_id = vertex_clone.id().unwrap();
             store.put_vertex(session_id, vertex).await.unwrap();
             store.flush().await.unwrap();
         }

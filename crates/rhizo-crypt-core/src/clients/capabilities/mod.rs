@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Capability-based clients - protocol and vendor agnostic.
 //!
 //! This module provides generic clients that work with ANY service providing

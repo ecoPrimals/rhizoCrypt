@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Dehydration implementation for RhizoCrypt.
 //!
 //! This module handles the complete dehydration workflow:
@@ -12,41 +15,69 @@ use crate::error::{Result, RhizoCryptError};
 use crate::event;
 use crate::merkle;
 use crate::session;
+use crate::store::PayloadStore;
 use crate::types::{SessionId, VertexId};
 use crate::RhizoCrypt;
 
 impl RhizoCrypt {
     /// Generate a dehydration summary for a session.
     ///
-    /// Extracts key information from the session DAG for permanent storage.
+    /// Extracts key information from the session DAG for permanent storage,
+    /// including actual payload sizes and per-agent vertex counts.
     pub(crate) async fn generate_dehydration_summary(
         &self,
         session_id: SessionId,
         merkle_root: merkle::MerkleRoot,
     ) -> Result<dehydration::DehydrationSummary> {
-        // Get session
         let session = self.get_session(session_id)?;
 
-        // Count total payload bytes by iterating vertices
-        let payload_bytes = 0u64; // Would need payload store for actual sizes
-        let mut results = Vec::new();
+        let all_vertices = self.get_all_vertices(session_id).await?;
 
-        // Collect frontier vertices as results (final outputs)
-        for vertex_id in &session.frontier {
-            if let Ok(vertex) = self.get_vertex(session_id, *vertex_id).await {
-                // Extract result entry from frontier vertex
-                let result = dehydration::ResultEntry {
-                    result_type: format!("{:?}", vertex.event_type),
-                    key: vertex_id.to_string(),
-                    value: serde_json::Value::Null, // Would need to fetch from payload store
-                    source_vertex: *vertex_id,
-                    payload_ref: vertex.payload,
-                };
-                results.push(result);
+        // Compute actual payload bytes from the payload store
+        let payload_store = self.payload_store().await.ok();
+        let mut payload_bytes = 0u64;
+        for vertex in &all_vertices {
+            if let (Some(pref), Some(store)) = (&vertex.payload, &payload_store) {
+                if let Ok(Some(data)) = store.get(pref).await {
+                    payload_bytes += data.len() as u64;
+                }
             }
         }
 
-        // Build agent summaries
+        // Collect frontier vertices as results
+        let mut results = Vec::new();
+        for vertex_id in &session.frontier {
+            if let Ok(vertex) = self.get_vertex(session_id, *vertex_id).await {
+                let value = match (&vertex.payload, &payload_store) {
+                    (Some(pref), Some(store)) => {
+                        if let Ok(Some(data)) = store.get(pref).await {
+                            serde_json::from_slice(&data).unwrap_or(serde_json::Value::Null)
+                        } else {
+                            serde_json::Value::Null
+                        }
+                    }
+                    _ => serde_json::Value::Null,
+                };
+
+                results.push(dehydration::ResultEntry {
+                    result_type: format!("{:?}", vertex.event_type),
+                    key: vertex_id.to_string(),
+                    value,
+                    source_vertex: *vertex_id,
+                    payload_ref: vertex.payload,
+                });
+            }
+        }
+
+        // Compute per-agent event counts from actual vertex data
+        let mut agent_event_counts: std::collections::HashMap<&crate::types::Did, u64> =
+            std::collections::HashMap::new();
+        for vertex in &all_vertices {
+            if let Some(agent) = &vertex.agent {
+                *agent_event_counts.entry(agent).or_default() += 1;
+            }
+        }
+
         let agents: Vec<dehydration::AgentSummary> = session
             .agents
             .iter()
@@ -54,12 +85,15 @@ impl RhizoCrypt {
                 agent: did.clone(),
                 joined_at: session.created_at,
                 left_at: None,
-                event_count: 0, // Would track in production
-                role: "participant".to_string(),
+                event_count: agent_event_counts.get(did).copied().unwrap_or(0),
+                role: if session.config.owner == *did {
+                    "owner".to_string()
+                } else {
+                    "participant".to_string()
+                },
             })
             .collect();
 
-        // Build summary using builder pattern
         let mut summary = dehydration::DehydrationSummaryBuilder::new(
             session_id,
             format!("{:?}", session.session_type),
@@ -70,12 +104,10 @@ impl RhizoCrypt {
         .with_vertex_count(session.vertex_count)
         .with_payload_bytes(payload_bytes);
 
-        // Add results
         for result in results {
             summary = summary.with_result(result);
         }
 
-        // Add agents
         for agent in agents {
             summary = summary.with_agent(agent);
         }
@@ -262,8 +294,7 @@ impl RhizoCrypt {
     }
 
     /// Get dehydration status for a session.
-    #[allow(clippy::unused_async)]
-    pub async fn get_dehydration_status(
+    pub fn get_dehydration_status(
         &self,
         session_id: SessionId,
     ) -> dehydration::DehydrationStatus {

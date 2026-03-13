@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Merkle tree structures for cryptographic proofs.
 //!
 //! This module provides Merkle root computation and proof generation/verification.
@@ -24,15 +27,20 @@ impl MerkleRoot {
     /// Compute Merkle root from vertices in topological order.
     ///
     /// The vertices must be provided in topological order (parents before children).
-    #[must_use]
-    pub fn compute(vertices: &[Vertex]) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any vertex fails to compute its ID.
+    pub fn compute(vertices: &[Vertex]) -> Result<Self> {
         if vertices.is_empty() {
-            return Self::ZERO;
+            return Ok(Self::ZERO);
         }
 
         // Compute leaf hashes
-        let mut hashes: Vec<ContentHash> =
-            vertices.iter().map(Vertex::compute_id).map(|id| id.0).collect();
+        let mut hashes: Vec<ContentHash> = vertices
+            .iter()
+            .map(|v| v.compute_id().map(|id| id.0))
+            .collect::<std::result::Result<Vec<_>, _>>()?;
 
         // Pad to power of 2 if needed
         let target_len = hashes.len().next_power_of_two();
@@ -45,7 +53,7 @@ impl MerkleRoot {
             hashes = hashes.chunks(2).map(|chunk| hash_pair(&chunk[0], &chunk[1])).collect();
         }
 
-        Self(hashes[0])
+        Ok(Self(hashes[0]))
     }
 
     /// Get the underlying hash.
@@ -111,7 +119,9 @@ impl MerkleProof {
     /// Returns true if the proof is valid.
     #[must_use]
     pub fn verify(&self, vertex: &Vertex) -> bool {
-        let vertex_hash = vertex.compute_id();
+        let Ok(vertex_hash) = vertex.compute_id() else {
+            return false;
+        };
         if vertex_hash != self.vertex_id {
             return false;
         }
@@ -142,11 +152,13 @@ impl MerkleProof {
         }
 
         let vertex = &vertices[position];
-        let vertex_id = vertex.compute_id();
+        let vertex_id = vertex.compute_id()?;
 
         // Compute leaf hashes
-        let mut hashes: Vec<ContentHash> =
-            vertices.iter().map(Vertex::compute_id).map(|id| id.0).collect();
+        let mut hashes: Vec<ContentHash> = vertices
+            .iter()
+            .map(|v| v.compute_id().map(|id| id.0))
+            .collect::<std::result::Result<Vec<_>, _>>()?;
 
         let original_len = hashes.len();
 
@@ -214,8 +226,11 @@ impl MerkleTreeBuilder {
     }
 
     /// Compute the Merkle root.
-    #[must_use]
-    pub fn compute_root(&self) -> MerkleRoot {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any vertex fails to compute its ID.
+    pub fn compute_root(&self) -> Result<MerkleRoot> {
         MerkleRoot::compute(&self.vertices)
     }
 
@@ -225,7 +240,7 @@ impl MerkleTreeBuilder {
     ///
     /// Returns an error if the position is out of bounds.
     pub fn generate_proof(&self, position: usize) -> Result<MerkleProof> {
-        let root = self.compute_root();
+        let root = self.compute_root()?;
         MerkleProof::generate(&self.vertices, position, root)
     }
 
@@ -260,22 +275,22 @@ mod tests {
 
     #[test]
     fn test_merkle_root_empty() {
-        let root = MerkleRoot::compute(&[]);
+        let root = MerkleRoot::compute(&[]).unwrap();
         assert_eq!(root, MerkleRoot::ZERO);
     }
 
     #[test]
     fn test_merkle_root_single() {
         let vertex = make_vertex(1);
-        let root = MerkleRoot::compute(&[vertex]);
+        let root = MerkleRoot::compute(&[vertex]).unwrap();
         assert_ne!(root, MerkleRoot::ZERO);
     }
 
     #[test]
     fn test_merkle_root_deterministic() {
         let vertices: Vec<Vertex> = (1..=4).map(make_vertex).collect();
-        let root1 = MerkleRoot::compute(&vertices);
-        let root2 = MerkleRoot::compute(&vertices);
+        let root1 = MerkleRoot::compute(&vertices).unwrap();
+        let root2 = MerkleRoot::compute(&vertices).unwrap();
         assert_eq!(root1, root2);
     }
 
@@ -284,8 +299,8 @@ mod tests {
         let v1 = make_vertex(1);
         let v2 = make_vertex(2);
 
-        let root1 = MerkleRoot::compute(&[v1.clone(), v2.clone()]);
-        let root2 = MerkleRoot::compute(&[v2, v1]);
+        let root1 = MerkleRoot::compute(&[v1.clone(), v2.clone()]).unwrap();
+        let root2 = MerkleRoot::compute(&[v2, v1]).unwrap();
 
         assert_ne!(root1, root2);
     }
@@ -293,7 +308,7 @@ mod tests {
     #[test]
     fn test_merkle_proof_generate_and_verify() {
         let vertices: Vec<Vertex> = (1..=4).map(make_vertex).collect();
-        let root = MerkleRoot::compute(&vertices);
+        let root = MerkleRoot::compute(&vertices).unwrap();
 
         for (i, vertex) in vertices.iter().enumerate() {
             let proof = MerkleProof::generate(&vertices, i, root).unwrap();
@@ -306,7 +321,7 @@ mod tests {
     #[test]
     fn test_merkle_proof_invalid_position() {
         let vertices: Vec<Vertex> = (1..=4).map(make_vertex).collect();
-        let root = MerkleRoot::compute(&vertices);
+        let root = MerkleRoot::compute(&vertices).unwrap();
 
         let result = MerkleProof::generate(&vertices, 10, root);
         assert!(result.is_err());
@@ -315,7 +330,7 @@ mod tests {
     #[test]
     fn test_merkle_proof_wrong_vertex() {
         let vertices: Vec<Vertex> = (1..=4).map(make_vertex).collect();
-        let root = MerkleRoot::compute(&vertices);
+        let root = MerkleRoot::compute(&vertices).unwrap();
 
         let proof = MerkleProof::generate(&vertices, 0, root).unwrap();
 
@@ -335,7 +350,7 @@ mod tests {
 
         assert_eq!(builder.len(), 8);
 
-        let root = builder.compute_root();
+        let root = builder.compute_root().unwrap();
         assert_ne!(root, MerkleRoot::ZERO);
 
         let proof = builder.generate_proof(3).unwrap();
@@ -345,7 +360,7 @@ mod tests {
     #[test]
     fn test_merkle_root_hex() {
         let vertex = make_vertex(1);
-        let root = MerkleRoot::compute(&[vertex]);
+        let root = MerkleRoot::compute(&[vertex]).unwrap();
         let hex = root.to_hex();
         assert_eq!(hex.len(), 64); // 32 bytes = 64 hex chars
     }

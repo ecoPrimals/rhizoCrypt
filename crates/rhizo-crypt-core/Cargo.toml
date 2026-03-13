@@ -41,8 +41,8 @@ parking_lot = { workspace = true }
 dashmap = { workspace = true }
 # Optional storage backends
 sled = { version = "0.34.7", optional = true }
-# HTTP client for adapters (always available)
-reqwest = { version = "0.12", features = ["json"] }
+# HTTP client for adapters — rustls-tls for ecoBin Pure Rust compliance (no openssl/native-tls)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 # Optional live client connections
 tarpc = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }

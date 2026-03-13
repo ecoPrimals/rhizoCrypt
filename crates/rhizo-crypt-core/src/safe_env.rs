@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Safe environment variable access for infant discovery.
 //!
 //! This module provides safe, consistent access to environment variables
@@ -296,46 +299,22 @@ impl CapabilityEnv {
 
     /// Get the endpoint for compute orchestration capability.
     ///
-    /// Priority order:
-    /// 1. `COMPUTE_ORCHESTRATION_ENDPOINT` (preferred, capability-based)
-    /// 2. `COMPUTE_ENDPOINT` (short form, capability-based)
-    /// 3. `TOADSTOOL_ADDRESS` (legacy, deprecated - emits warning)
+    /// Environment variables:
+    /// - `COMPUTE_ORCHESTRATION_ENDPOINT` (preferred)
+    /// - `COMPUTE_ENDPOINT` (short form)
     #[must_use]
     pub fn compute_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("COMPUTE_ORCHESTRATION")
-            .or_else(|| SafeEnv::get_endpoint("COMPUTE"))
-            .or_else(|| {
-                std::env::var("TOADSTOOL_ADDRESS").ok().map(|addr| {
-                    tracing::warn!(
-                        "Using deprecated TOADSTOOL_ADDRESS environment variable. \
-                         Please migrate to COMPUTE_ENDPOINT \
-                         for capability-based configuration."
-                    );
-                    addr
-                })
-            })
+        SafeEnv::get_endpoint("COMPUTE_ORCHESTRATION").or_else(|| SafeEnv::get_endpoint("COMPUTE"))
     }
 
     /// Get the endpoint for provenance query capability.
     ///
-    /// Priority order:
-    /// 1. `PROVENANCE_QUERY_ENDPOINT` (preferred, capability-based)
-    /// 2. `PROVENANCE_ENDPOINT` (short form, capability-based)
-    /// 3. `SWEETGRASS_PUSH_ADDRESS` (legacy, deprecated - emits warning)
+    /// Environment variables:
+    /// - `PROVENANCE_QUERY_ENDPOINT` (preferred)
+    /// - `PROVENANCE_ENDPOINT` (short form)
     #[must_use]
     pub fn provenance_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("PROVENANCE_QUERY")
-            .or_else(|| SafeEnv::get_endpoint("PROVENANCE"))
-            .or_else(|| {
-                std::env::var("SWEETGRASS_PUSH_ADDRESS").ok().map(|addr| {
-                    tracing::warn!(
-                        "Using deprecated SWEETGRASS_PUSH_ADDRESS environment variable. \
-                         Please migrate to PROVENANCE_ENDPOINT \
-                         for capability-based configuration."
-                    );
-                    addr
-                })
-            })
+        SafeEnv::get_endpoint("PROVENANCE_QUERY").or_else(|| SafeEnv::get_endpoint("PROVENANCE"))
     }
 
     /// Get the endpoint for service discovery capability.

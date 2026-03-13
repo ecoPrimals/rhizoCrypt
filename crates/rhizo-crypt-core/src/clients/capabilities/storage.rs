@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Generic storage client - works with ANY payload storage provider.
 //!
 //! This client provides content-addressed payload storage without knowing
@@ -45,8 +48,7 @@ impl StorageClient {
             }
             crate::discovery::DiscoveryStatus::Failed(err) => {
                 return Err(RhizoCryptError::integration(format!(
-                    "Storage discovery failed: {}",
-                    err
+                    "Storage discovery failed: {err}"
                 )));
             }
         };
@@ -409,7 +411,7 @@ mod tests {
     #[test]
     fn test_storage_client_debug() {
         let client = StorageClient::with_endpoint("http://localhost:9600").unwrap();
-        let debug_str = format!("{:?}", client);
+        let debug_str = format!("{client:?}");
         assert!(debug_str.contains("StorageClient"));
     }
 
@@ -491,7 +493,7 @@ mod tests {
         // Test with large payload data
         let large_data = vec![42u8; 1024 * 1024]; // 1MB
         let request = StoreRequest {
-            data: large_data.clone(),
+            data: large_data,
         };
 
         let serialized = serde_json::to_string(&request).unwrap();

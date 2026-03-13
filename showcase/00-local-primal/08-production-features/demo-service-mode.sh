@@ -50,7 +50,7 @@ echo "────────────────────────�
 echo ""
 
 echo "Command:"
-echo "  $ rhizocrypt-service --port 7777"
+echo "  $ rhizocrypt server --port 7777"
 echo ""
 
 sleep 1

@@ -1,5 +1,13 @@
 /target/
-Cargo.lock
 *.swp
 *.swo
 .DS_Store
+
+# Showcase runtime artifacts
+showcase/**/logs/
+showcase/**/receipts/
+showcase/**/*.pid
+
+# Fuzz artifacts
+**/fuzz/artifacts/
+**/fuzz/corpus/

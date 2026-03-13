@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Compute Provider Types - Task Events & Configuration
 //!
 //! Type definitions for compute orchestration capability providers.
@@ -233,32 +236,20 @@ impl Default for ComputeProviderConfig {
 impl ComputeProviderConfig {
     /// Create config from environment variables.
     ///
-    /// Environment variables (priority order):
-    /// - `COMPUTE_ENDPOINT` or `COMPUTE_ORCHESTRATION_ENDPOINT`: Compute capability endpoint (preferred)
-    /// - `TOADSTOOL_ADDRESS`: Legacy fallback (deprecated, emits warning)
+    /// Environment variables:
+    /// - `COMPUTE_ENDPOINT` or `COMPUTE_ORCHESTRATION_ENDPOINT`: Compute capability endpoint
     /// - `COMPUTE_TIMEOUT_MS`: Connection timeout in milliseconds
-    /// - `TOADSTOOL_TIMEOUT_MS`: Legacy timeout (deprecated)
     #[must_use]
     pub fn from_env() -> Self {
         use crate::safe_env::CapabilityEnv;
         let mut config = Self::default();
 
-        // Use capability-based endpoint (with backward compatibility)
         if let Some(addr) = CapabilityEnv::compute_endpoint() {
             config.fallback_address = Some(Cow::Owned(addr));
         }
 
-        // Timeout: prefer capability-based name
         if let Ok(timeout) = std::env::var("COMPUTE_TIMEOUT_MS") {
             if let Ok(ms) = timeout.parse() {
-                config.timeout_ms = ms;
-            }
-        } else if let Ok(timeout) = std::env::var("TOADSTOOL_TIMEOUT_MS") {
-            if let Ok(ms) = timeout.parse() {
-                tracing::warn!(
-                    "Using deprecated TOADSTOOL_TIMEOUT_MS. \
-                     Please migrate to COMPUTE_TIMEOUT_MS."
-                );
                 config.timeout_ms = ms;
             }
         }
@@ -852,7 +843,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_registry_access() {
         let registry = Arc::new(DiscoveryRegistry::new("test"));
-        let client = ComputeProviderClient::with_discovery(registry.clone());
+        let client = ComputeProviderClient::with_discovery(registry);
 
         let retrieved = client.registry();
         assert!(retrieved.is_some());
@@ -886,7 +877,7 @@ mod tests {
         // TaskStarted
         let event = ComputeEvent::TaskStarted {
             task_id,
-            worker: did.clone(),
+            worker: did,
             started_at: timestamp,
         };
         assert_eq!(event.event_type(), "task.started");

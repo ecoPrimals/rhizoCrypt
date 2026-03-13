@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Vertex data structure and builder.
 //!
 //! A vertex is a single event in the RhizoCrypt DAG. Each vertex is
@@ -42,20 +45,27 @@ impl Vertex {
     /// Compute the vertex ID from its content.
     ///
     /// The ID is the Blake3 hash of the canonical CBOR representation.
-    #[must_use]
-    pub fn compute_id(&self) -> VertexId {
-        let bytes = self.to_canonical_bytes();
-        VertexId::from_bytes(&bytes)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if serialization fails.
+    pub fn compute_id(&self) -> crate::error::Result<VertexId> {
+        let bytes = self.to_canonical_bytes()?;
+        Ok(VertexId::from_bytes(&bytes))
     }
 
     /// Get or compute the vertex ID.
-    pub fn id(&mut self) -> VertexId {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if serialization fails.
+    pub fn id(&mut self) -> crate::error::Result<VertexId> {
         if let Some(id) = self.id {
-            id
+            Ok(id)
         } else {
-            let id = self.compute_id();
+            let id = self.compute_id()?;
             self.id = Some(id);
-            id
+            Ok(id)
         }
     }
 
@@ -67,12 +77,10 @@ impl Vertex {
 
     /// Serialize to canonical CBOR bytes (for hashing).
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if CBOR serialization fails (should never happen for valid vertices).
-    #[must_use]
-    pub fn to_canonical_bytes(&self) -> Vec<u8> {
-        // Create a serializable form without the cached ID
+    /// Returns an error if CBOR serialization fails.
+    pub fn to_canonical_bytes(&self) -> crate::error::Result<Vec<u8>> {
         let serializable = SerializableVertex {
             parents: &self.parents,
             timestamp: self.timestamp,
@@ -83,11 +91,10 @@ impl Vertex {
         };
 
         let mut buf = Vec::new();
-        // SAFETY: Vertex serialization to CBOR should never fail for well-formed data
-        #[allow(clippy::expect_used)]
-        ciborium::into_writer(&serializable, &mut buf)
-            .expect("vertex serialization should not fail");
-        buf
+        ciborium::into_writer(&serializable, &mut buf).map_err(|e| {
+            crate::error::RhizoCryptError::internal(format!("vertex CBOR serialization: {e}"))
+        })?;
+        Ok(buf)
     }
 
     /// Deserialize from CBOR bytes.
@@ -310,8 +317,8 @@ mod tests {
         let mut vertex2 = VertexBuilder::new(EventType::SessionStart).build();
 
         // Different timestamps should produce different IDs
-        let id1 = vertex1.id();
-        let id2 = vertex2.id();
+        let id1 = vertex1.id().unwrap();
+        let id2 = vertex2.id().unwrap();
 
         // IDs should be cached
         assert_eq!(vertex1.cached_id(), Some(id1));
@@ -324,14 +331,14 @@ mod tests {
             .with_timestamp(Timestamp::from_nanos(12345))
             .build();
 
-        let bytes = vertex.to_canonical_bytes();
+        let bytes = vertex.to_canonical_bytes().unwrap();
         assert!(!bytes.is_empty());
 
         // Same vertex should produce same bytes
         let vertex2 = VertexBuilder::new(EventType::SessionStart)
             .with_timestamp(Timestamp::from_nanos(12345))
             .build();
-        assert_eq!(bytes, vertex2.to_canonical_bytes());
+        assert_eq!(bytes, vertex2.to_canonical_bytes().unwrap());
     }
 
     #[test]

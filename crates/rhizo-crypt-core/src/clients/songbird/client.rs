@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Songbird Client - Service Discovery and Registration
 //!
 //! Connects rhizoCrypt to the Songbird service mesh for:
@@ -82,16 +85,15 @@ impl Default for SongbirdConfig {
 }
 
 impl SongbirdConfig {
-    /// Default port for Songbird orchestrator (used only as last-resort fallback in development).
-    const DEVELOPMENT_FALLBACK_PORT: u16 = 8091;
-
     /// Create a new config with no address configured.
     ///
     /// This is the preferred constructor - requires explicit address configuration.
+    /// Songbird is the discovery bootstrap; its address is discovered from
+    /// environment, never hardcoded.
     #[must_use]
     pub fn new() -> Self {
         Self {
-            address: Cow::Borrowed(""), // Empty = not configured
+            address: Cow::Borrowed(""),
             service_name: Cow::Borrowed("rhizoCrypt"),
             capabilities: vec![
                 Cow::Borrowed("dag-engine"),
@@ -122,45 +124,24 @@ impl SongbirdConfig {
     /// - `SONGBIRD_HOST` + `SONGBIRD_PORT`: Alternative host/port specification
     /// - `RHIZOCRYPT_SERVICE_NAME`: Service name for registration
     ///
-    /// ## Production Requirement
-    ///
-    /// In production, `DISCOVERY_ENDPOINT` or `SONGBIRD_ADDRESS` MUST be set. The development fallback
-    /// (`localhost:8091`) is only available when `RHIZOCRYPT_ENV=development`.
+    /// If no discovery address is configured, the address remains empty and
+    /// `connect()` will fail with a clear error. No hardcoded fallbacks.
     #[must_use]
     pub fn from_env() -> Self {
         use crate::safe_env::CapabilityEnv;
         let mut config = Self::new();
 
-        // Primary: Check for capability-based endpoint
         if let Some(addr) = CapabilityEnv::discovery_endpoint() {
             config.address = Cow::Owned(addr);
         } else if let (Ok(host), Ok(port)) =
             (std::env::var("SONGBIRD_HOST"), std::env::var("SONGBIRD_PORT"))
         {
-            // Alternative: Host + Port components
             config.address = Cow::Owned(format!("{host}:{port}"));
         } else {
-            // Fallback: Only in development mode
-            let is_dev = std::env::var("RHIZOCRYPT_ENV")
-                .map(|v| v.eq_ignore_ascii_case("development") || v.eq_ignore_ascii_case("dev"))
-                .unwrap_or(false);
-
-            if is_dev {
-                warn!(
-                    "SONGBIRD_ADDRESS not set - using development fallback localhost:{}. \
-                     Set SONGBIRD_ADDRESS for production!",
-                    Self::DEVELOPMENT_FALLBACK_PORT
-                );
-                config.address =
-                    Cow::Owned(format!("127.0.0.1:{}", Self::DEVELOPMENT_FALLBACK_PORT));
-            } else {
-                // Production: Require explicit configuration
-                error!(
-                    "SONGBIRD_ADDRESS not set and not in development mode. \
-                     Set SONGBIRD_ADDRESS or RHIZOCRYPT_ENV=development"
-                );
-                // Leave address empty - will fail at connect() with clear error
-            }
+            warn!(
+                "No discovery endpoint configured. \
+                 Set DISCOVERY_ENDPOINT, SONGBIRD_ADDRESS, or SONGBIRD_HOST+SONGBIRD_PORT"
+            );
         }
 
         if let Ok(name) = std::env::var("RHIZOCRYPT_SERVICE_NAME") {
@@ -197,8 +178,8 @@ impl SongbirdConfig {
 /// // Start heartbeat to maintain registration (60s TTL)
 /// let heartbeat_handle = client.start_heartbeat().await?;
 ///
-/// // Discover other primals
-/// let beardog = client.discover_beardog().await?;
+/// // Discover capabilities (not specific primals)
+/// let signer = client.discover_signing_provider().await?;
 /// ```
 ///
 /// ## Heartbeat Mechanism
@@ -662,40 +643,43 @@ impl SongbirdClient {
         Ok(Vec::new())
     }
 
-    /// Discover BearDog service for signing/DID operations.
+    /// Discover a service providing signing/DID capability.
+    ///
+    /// Returns the first available provider of the `signing` capability.
+    /// Capability-based: any primal implementing `signing` qualifies.
     ///
     /// # Errors
     ///
-    /// Returns `RhizoCryptError::Integration` if:
-    /// - Not connected to Songbird
-    /// - Discovery fails
-    pub async fn discover_beardog(&self) -> Result<Option<ServiceInfo>> {
+    /// Returns `RhizoCryptError::Integration` if not connected or discovery fails.
+    pub async fn discover_signing_provider(&self) -> Result<Option<ServiceInfo>> {
         let services = self.discover("signing").await?;
-        Ok(services.into_iter().find(|s| s.name.contains("beardog")))
+        Ok(services.into_iter().next())
     }
 
-    /// Discover LoamSpine service for permanent commits.
+    /// Discover a service providing permanent-storage capability.
+    ///
+    /// Returns the first available provider of the `permanent-storage` capability.
+    /// Capability-based: any primal implementing `permanent-storage` qualifies.
     ///
     /// # Errors
     ///
-    /// Returns `RhizoCryptError::Integration` if:
-    /// - Not connected to Songbird
-    /// - Discovery fails
-    pub async fn discover_loamspine(&self) -> Result<Option<ServiceInfo>> {
+    /// Returns `RhizoCryptError::Integration` if not connected or discovery fails.
+    pub async fn discover_permanent_storage_provider(&self) -> Result<Option<ServiceInfo>> {
         let services = self.discover("permanent-storage").await?;
-        Ok(services.into_iter().find(|s| s.name.contains("loamspine")))
+        Ok(services.into_iter().next())
     }
 
-    /// Discover NestGate service for payload storage.
+    /// Discover a service providing payload-storage capability.
+    ///
+    /// Returns the first available provider of the `payload-storage` capability.
+    /// Capability-based: any primal implementing `payload-storage` qualifies.
     ///
     /// # Errors
     ///
-    /// Returns `RhizoCryptError::Integration` if:
-    /// - Not connected to Songbird
-    /// - Discovery fails
-    pub async fn discover_nestgate(&self) -> Result<Option<ServiceInfo>> {
+    /// Returns `RhizoCryptError::Integration` if not connected or discovery fails.
+    pub async fn discover_payload_storage_provider(&self) -> Result<Option<ServiceInfo>> {
         let services = self.discover("payload-storage").await?;
-        Ok(services.into_iter().find(|s| s.name.contains("nestgate")))
+        Ok(services.into_iter().next())
     }
 
     /// Populate the discovery registry with discovered services.
@@ -712,46 +696,30 @@ impl SongbirdClient {
             return Err(RhizoCryptError::integration("Not connected to Songbird"));
         }
 
-        // Discover and register BearDog
-        if let Some(beardog) = self.discover_beardog().await? {
-            if let Ok(addr) = beardog.endpoint.parse() {
-                registry
-                    .register_endpoint(ServiceEndpoint::new(
-                        beardog.name,
-                        addr,
-                        vec![Capability::DidVerification, Capability::Signing],
-                    ))
-                    .await;
-            }
-        }
+        let capability_mappings: &[(&str, &[Capability])] = &[
+            ("signing", &[Capability::DidVerification, Capability::Signing]),
+            (
+                "permanent-storage",
+                &[
+                    Capability::PermanentCommit,
+                    Capability::SliceCheckout,
+                    Capability::SliceResolution,
+                ],
+            ),
+            ("payload-storage", &[Capability::PayloadStorage, Capability::PayloadRetrieval]),
+        ];
 
-        // Discover and register LoamSpine
-        if let Some(loamspine) = self.discover_loamspine().await? {
-            if let Ok(addr) = loamspine.endpoint.parse() {
-                registry
-                    .register_endpoint(ServiceEndpoint::new(
-                        loamspine.name,
-                        addr,
-                        vec![
-                            Capability::PermanentCommit,
-                            Capability::SliceCheckout,
-                            Capability::SliceResolution,
-                        ],
-                    ))
-                    .await;
-            }
-        }
-
-        // Discover and register NestGate
-        if let Some(nestgate) = self.discover_nestgate().await? {
-            if let Ok(addr) = nestgate.endpoint.parse() {
-                registry
-                    .register_endpoint(ServiceEndpoint::new(
-                        nestgate.name,
-                        addr,
-                        vec![Capability::PayloadStorage, Capability::PayloadRetrieval],
-                    ))
-                    .await;
+        for (domain, capabilities) in capability_mappings {
+            for service in self.discover(domain).await? {
+                if let Ok(addr) = service.endpoint.parse() {
+                    registry
+                        .register_endpoint(ServiceEndpoint::new(
+                            service.name,
+                            addr,
+                            capabilities.to_vec(),
+                        ))
+                        .await;
+                }
             }
         }
 

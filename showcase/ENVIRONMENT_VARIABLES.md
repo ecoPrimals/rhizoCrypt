@@ -89,7 +89,7 @@ The `showcase-env.sh` script provides:
 ```bash
 # Start rhizoCrypt with OS-assigned port
 export RHIZOCRYPT_PORT=0
-cargo run --bin rhizocrypt-service
+cargo run -p rhizocrypt-service -- server
 ```
 
 ### With Songbird Discovery
@@ -97,7 +97,7 @@ cargo run --bin rhizocrypt-service
 ```bash
 # Start with Songbird as bootstrap
 export RHIZOCRYPT_DISCOVERY_ADAPTER="https://localhost:7500"
-cargo run --bin rhizocrypt-service
+cargo run -p rhizocrypt-service -- server
 ```
 
 ### With Direct Capability Endpoints
@@ -106,7 +106,7 @@ cargo run --bin rhizocrypt-service
 # For development/testing without discovery
 export SIGNING_ENDPOINT="http://localhost:9500"
 export PAYLOAD_STORAGE_ENDPOINT="http://localhost:8080"
-cargo run --bin rhizocrypt-service
+cargo run -p rhizocrypt-service -- server
 ```
 
 ---

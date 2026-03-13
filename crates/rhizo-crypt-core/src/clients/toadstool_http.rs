@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! ToadStool HTTP Client - Live Integration
 //!
 //! Provides HTTP client for the ToadStool BYOB server API.

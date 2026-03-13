@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Types for Songbird client.
 //!
 //! This module contains the core types used by the Songbird client for

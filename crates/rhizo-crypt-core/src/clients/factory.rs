@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Capability-based client factory for dependency injection and testing.
 //!
 //! This module provides a factory for creating capability-based clients that

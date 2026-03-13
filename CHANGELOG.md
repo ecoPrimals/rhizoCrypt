@@ -5,7 +5,49 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.14.1-dev] - 2026-01-09
+## [0.13.0-dev] - 2026-03-12
+
+### Changed
+
+#### wateringHole Standards Compliance
+- **AGPL-3.0-only**: Updated SPDX identifier, added headers to all 71 source files
+- **UniBin architecture**: Binary renamed to `rhizocrypt` with `clap` subcommands (`server`, `status`, `version`)
+- **Semantic method naming**: JSON-RPC methods evolved from `loamspine.*` to `permanent-storage.*`
+- **ecoBin**: `reqwest` switched to `rustls-tls` (no OpenSSL); sled `zstd-sys` dependency documented
+
+#### Capability-Based Discovery
+- Removed all hardcoded development fallback ports and addresses
+- Removed deprecated primal-specific discovery methods (`discover_beardog`, etc.)
+- Removed deprecated vendor env vars (`TOADSTOOL_ADDRESS`, `SWEETGRASS_PUSH_ADDRESS`)
+- All discovery is now capability-only at runtime
+
+#### Code Quality
+- Converted `create_session`, `checkout_slice`, `resolve_slice`, `get_dehydration_status` from `async` to sync
+- Converted `Vertex` methods to return `Result` (removed `expect()` from production code)
+- Fixed `cast_possible_truncation` with safe `u64::try_from` + saturating arithmetic
+- Optimized atomic ordering from `SeqCst` to `Relaxed` for request counters
+- Removed bulk `#[allow(clippy::*)]` suppressions, fixed all exposed violations
+- Deleted `legacy_aliases.rs` and deprecated mock type aliases
+- Reduced `discovery.rs` from 1001 to 854 lines (smart refactoring, not splitting)
+
+#### Infrastructure
+- Added 3 fuzz testing targets (`cargo-fuzz` + `libfuzzer-sys`)
+- Fixed test hang in `test_service_handles_invalid_port`
+- Updated Dockerfile and k8s deployment for UniBin binary
+- Updated CI workflow with doc checks and `actions/cache@v4`
+- Cleaned 22 root-level session artifacts to `phase2/archive/`
+- Completed dehydration implementation (payload sizes, event counting, role assignment)
+
+### Metrics
+- 491 tests passing (0 failed)
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings`: clean
+- `cargo fmt --check --all`: clean
+- `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`: clean
+- All files under 1000 lines (max: 981)
+
+---
+
+## [0.14.1-dev] - 2026-01-09 (archived)
 
 ### 🎉 Major Achievement: Deep Refactoring & Zero Technical Debt
 

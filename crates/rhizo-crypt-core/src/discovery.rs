@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Runtime primal discovery - capability-based service location.
 //!
 //! This module implements the ecoPrimals principle that primals have only self-knowledge
@@ -449,136 +452,6 @@ impl ClientProvider {
             .await
             .ok_or_else(|| RhizoCryptError::integration("No provenance service discovered"))
     }
-
-    // ============================================================================
-    // Deprecated Vendor-Specific Methods (Backward Compatibility)
-    // ============================================================================
-
-    /// **DEPRECATED**: Use `has_signing()` and `has_did_verification()` instead.
-    ///
-    /// Check if BearDog capabilities are available.
-    ///
-    /// **Migration:** Replace with capability-based discovery:
-    /// ```rust,ignore
-    /// // OLD:
-    /// if provider.has_beardog().await { ... }
-    ///
-    /// // NEW:
-    /// if provider.has_signing().await && provider.has_did_verification().await { ... }
-    /// ```
-    #[deprecated(
-        since = "0.15.0",
-        note = "Use has_signing() and has_did_verification() instead - vendor agnostic"
-    )]
-    pub async fn has_beardog(&self) -> bool {
-        self.has_signing().await && self.has_did_verification().await
-    }
-
-    /// **DEPRECATED**: Use `has_permanent_storage()` instead.
-    ///
-    /// Check if LoamSpine capabilities are available.
-    ///
-    /// **Migration:** Replace with capability-based discovery:
-    /// ```rust,ignore
-    /// // OLD:
-    /// if provider.has_loamspine().await { ... }
-    ///
-    /// // NEW:
-    /// if provider.has_permanent_storage().await { ... }
-    /// ```
-    #[deprecated(since = "0.15.0", note = "Use has_permanent_storage() instead - vendor agnostic")]
-    pub async fn has_loamspine(&self) -> bool {
-        self.has_permanent_storage().await
-    }
-
-    /// **DEPRECATED**: Use `has_payload_storage()` instead.
-    ///
-    /// Check if NestGate capabilities are available.
-    ///
-    /// **Migration:** Replace with capability-based discovery:
-    /// ```rust,ignore
-    /// // OLD:
-    /// if provider.has_nestgate().await { ... }
-    ///
-    /// // NEW:
-    /// if provider.has_payload_storage().await { ... }
-    /// ```
-    #[deprecated(since = "0.15.0", note = "Use has_payload_storage() instead - vendor agnostic")]
-    pub async fn has_nestgate(&self) -> bool {
-        self.has_payload_storage().await
-    }
-
-    /// **DEPRECATED**: Use `signing_endpoint()` or `did_verification_endpoint()` instead.
-    ///
-    /// Get the BearDog endpoint if available.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if BearDog has not been discovered.
-    ///
-    /// **Migration:** Replace with capability-based discovery:
-    /// ```rust,ignore
-    /// // OLD:
-    /// let endpoint = provider.beardog_endpoint().await?;
-    ///
-    /// // NEW:
-    /// let endpoint = provider.signing_endpoint().await?;
-    /// ```
-    #[deprecated(
-        since = "0.15.0",
-        note = "Use signing_endpoint() or did_verification_endpoint() instead - vendor agnostic"
-    )]
-    pub async fn beardog_endpoint(&self) -> Result<ServiceEndpoint> {
-        self.signing_endpoint().await
-    }
-
-    /// **DEPRECATED**: Use `permanent_storage_endpoint()` instead.
-    ///
-    /// Get the LoamSpine endpoint if available.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if LoamSpine has not been discovered.
-    ///
-    /// **Migration:** Replace with capability-based discovery:
-    /// ```rust,ignore
-    /// // OLD:
-    /// let endpoint = provider.loamspine_endpoint().await?;
-    ///
-    /// // NEW:
-    /// let endpoint = provider.permanent_storage_endpoint().await?;
-    /// ```
-    #[deprecated(
-        since = "0.15.0",
-        note = "Use permanent_storage_endpoint() instead - vendor agnostic"
-    )]
-    pub async fn loamspine_endpoint(&self) -> Result<ServiceEndpoint> {
-        self.permanent_storage_endpoint().await
-    }
-
-    /// **DEPRECATED**: Use `payload_storage_endpoint()` instead.
-    ///
-    /// Get the NestGate endpoint if available.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if NestGate has not been discovered.
-    ///
-    /// **Migration:** Replace with capability-based discovery:
-    /// ```rust,ignore
-    /// // OLD:
-    /// let endpoint = provider.nestgate_endpoint().await?;
-    ///
-    /// // NEW:
-    /// let endpoint = provider.payload_storage_endpoint().await?;
-    /// ```
-    #[deprecated(
-        since = "0.15.0",
-        note = "Use payload_storage_endpoint() instead - vendor agnostic"
-    )]
-    pub async fn nestgate_endpoint(&self) -> Result<ServiceEndpoint> {
-        self.payload_storage_endpoint().await
-    }
 }
 
 #[cfg(test)]
@@ -622,26 +495,18 @@ mod tests {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
         let provider = ClientProvider::new(Arc::clone(&registry));
 
-        // Nothing registered yet
-        #[allow(deprecated)]
-        {
-            assert!(!provider.has_beardog().await);
-        }
+        assert!(!provider.has_signing().await);
 
-        // Register BearDog
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "bearDog",
+                "signingService",
                 "127.0.0.1:9000".parse().unwrap(),
                 vec![Capability::DidVerification, Capability::Signing],
             ))
             .await;
 
-        #[allow(deprecated)]
-        {
-            assert!(provider.has_beardog().await);
-            assert!(provider.beardog_endpoint().await.is_ok());
-        }
+        assert!(provider.has_signing().await);
+        assert!(provider.signing_endpoint().await.is_ok());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -671,47 +536,43 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_client_provider_loamspine() {
+    async fn test_client_provider_permanent_storage() {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
         let provider = ClientProvider::new(Arc::clone(&registry));
 
-        // Nothing registered yet
-        assert!(!provider.has_loamspine().await);
-        assert!(provider.loamspine_endpoint().await.is_err());
+        assert!(!provider.has_permanent_storage().await);
+        assert!(provider.permanent_storage_endpoint().await.is_err());
 
-        // Register LoamSpine
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "loamSpine",
+                "permanentStore",
                 "127.0.0.1:9001".parse().unwrap(),
                 vec![Capability::PermanentCommit, Capability::SliceCheckout],
             ))
             .await;
 
-        assert!(provider.has_loamspine().await);
-        assert!(provider.loamspine_endpoint().await.is_ok());
+        assert!(provider.has_permanent_storage().await);
+        assert!(provider.permanent_storage_endpoint().await.is_ok());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_client_provider_nestgate() {
+    async fn test_client_provider_payload_storage() {
         let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
         let provider = ClientProvider::new(Arc::clone(&registry));
 
-        // Nothing registered yet
-        assert!(!provider.has_nestgate().await);
-        assert!(provider.nestgate_endpoint().await.is_err());
+        assert!(!provider.has_payload_storage().await);
+        assert!(provider.payload_storage_endpoint().await.is_err());
 
-        // Register NestGate
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "nestGate",
+                "payloadStore",
                 "127.0.0.1:9002".parse().unwrap(),
                 vec![Capability::PayloadStorage, Capability::PayloadRetrieval],
             ))
             .await;
 
-        assert!(provider.has_nestgate().await);
-        assert!(provider.nestgate_endpoint().await.is_ok());
+        assert!(provider.has_payload_storage().await);
+        assert!(provider.payload_storage_endpoint().await.is_ok());
     }
 
     #[test]

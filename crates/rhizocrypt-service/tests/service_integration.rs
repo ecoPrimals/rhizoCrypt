@@ -1,8 +1,11 @@
-//! Integration tests for rhizocrypt-service binary.
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
+//! Integration tests for rhizocrypt service.
 //!
 //! Tests the service configuration, startup behavior, and basic functionality.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::uninlined_format_args)]
 
 use rhizo_crypt_core::{PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, StorageBackend};
 use rhizo_crypt_rpc::server::RpcServer;
@@ -106,7 +109,7 @@ async fn test_service_primal_functionality() {
 
     // Create session
     let session = SessionBuilder::new(SessionType::General).with_name("test-session").build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Add vertex
     let vertex = VertexBuilder::new(EventType::SessionStart).build();
@@ -134,13 +137,13 @@ async fn test_service_concurrent_sessions() {
     for i in 0..10 {
         let session =
             SessionBuilder::new(SessionType::General).with_name(format!("session-{}", i)).build();
-        let task = primal.create_session(session);
-        tasks.push(task);
+        let result = primal.create_session(session);
+        tasks.push(result);
     }
 
     // Wait for all to complete
-    for task in tasks {
-        assert!(task.await.is_ok(), "Session creation should succeed");
+    for result in tasks {
+        assert!(result.is_ok(), "Session creation should succeed");
     }
 
     // Verify all sessions exist
@@ -194,7 +197,7 @@ async fn test_service_dehydration() {
 
     // Create session with vertices
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     let vertex = VertexBuilder::new(EventType::SessionStart).build();
     primal.append_vertex(session_id, vertex).await.expect("should append vertex");
@@ -204,7 +207,7 @@ async fn test_service_dehydration() {
     assert!(merkle_root.is_ok(), "Dehydration should succeed");
 
     // Check status
-    let status = primal.get_dehydration_status(session_id).await;
+    let status = primal.get_dehydration_status(session_id);
     assert!(status.is_complete(), "Dehydration should be complete");
 
     primal.stop().await.expect("primal should stop");
@@ -223,7 +226,7 @@ async fn test_service_in_memory_storage() {
 
     // Verify storage works
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     let vertex = VertexBuilder::new(EventType::SessionStart).build();
     let result = primal.append_vertex(session_id, vertex).await;

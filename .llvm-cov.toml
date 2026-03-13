@@ -2,8 +2,8 @@
 # See: https://github.com/taiki-e/cargo-llvm-cov
 
 [workspace]
-# Target coverage: 60% minimum, 80% goal
-target = 60
+# Target coverage: 90% minimum
+target = 90
 
 [report]
 # Generate HTML report

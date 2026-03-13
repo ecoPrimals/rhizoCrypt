@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Mock implementations for testing.
 //!
 //! **This module contains test-only code.** Production code should use
@@ -9,7 +12,7 @@
 //! #[cfg(test)]
 //! use rhizo_crypt_core::integration::mocks::*;
 //!
-//! let client = MockBearDogClient::permissive();
+//! let client = MockSigningProvider::permissive();
 //! assert!(client.verify_did(&did).await?);
 //! ```
 
@@ -106,12 +109,6 @@ impl SigningProvider for MockSigningProvider {
     }
 }
 
-/// Backward compatibility type alias (v0.12.x).
-///
-/// **DEPRECATED**: Use `MockSigningProvider` instead.
-#[deprecated(since = "0.13.0", note = "Use MockSigningProvider instead - this is capability-based")]
-pub type MockBearDogClient = MockSigningProvider;
-
 // ============================================================================
 // MockPermanentStorageProvider
 // ============================================================================
@@ -179,15 +176,6 @@ impl PermanentStorageProvider for MockPermanentStorageProvider {
     }
 }
 
-/// Backward compatibility type alias (v0.12.x).
-///
-/// **DEPRECATED**: Use `MockPermanentStorageProvider` instead.
-#[deprecated(
-    since = "0.13.0",
-    note = "Use MockPermanentStorageProvider instead - this is capability-based"
-)]
-pub type MockLoamSpineClient = MockPermanentStorageProvider;
-
 // ============================================================================
 // MockPayloadStorageProvider
 // ============================================================================
@@ -227,15 +215,6 @@ impl PayloadStorageProvider for MockPayloadStorageProvider {
     }
 }
 
-/// Backward compatibility type alias (v0.12.x).
-///
-/// **DEPRECATED**: Use `MockPayloadStorageProvider` instead.
-#[deprecated(
-    since = "0.13.0",
-    note = "Use MockPayloadStorageProvider instead - this is capability-based"
-)]
-pub type MockNestGateClient = MockPayloadStorageProvider;
-
 // ============================================================================
 // Tests
 // ============================================================================
@@ -254,7 +233,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_beardog_client() {
-        let client = MockBearDogClient::permissive();
+        let client = MockSigningProvider::permissive();
 
         let did = Did::new("did:key:test");
         assert!(client.verify_did(&did).await.unwrap());
@@ -267,7 +246,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_beardog_strict() {
-        let client = MockBearDogClient::strict();
+        let client = MockSigningProvider::strict();
 
         let did = Did::new("did:key:test");
         assert!(!client.verify_did(&did).await.unwrap());
@@ -275,7 +254,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_loamspine_client() {
-        let client = MockLoamSpineClient::new();
+        let client = MockPermanentStorageProvider::new();
 
         let summary = DehydrationSummaryBuilder::new(
             SessionId::now(),
@@ -296,7 +275,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_nestgate_client() {
-        let client = MockNestGateClient::new();
+        let client = MockPayloadStorageProvider::new();
 
         let data = bytes::Bytes::from("test payload");
         let payload_ref = client.put_payload(data.clone()).await.unwrap();
@@ -309,7 +288,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_beardog_sign_vertex() {
-        let client = MockBearDogClient::permissive();
+        let client = MockSigningProvider::permissive();
         let did = Did::new("did:key:test");
 
         let vertex = VertexBuilder::new(EventType::SessionStart).build();
@@ -320,8 +299,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_beardog_verify_vertex_signature() {
-        let permissive_client = MockBearDogClient::permissive();
-        let strict_client = MockBearDogClient::strict();
+        let permissive_client = MockSigningProvider::permissive();
+        let strict_client = MockSigningProvider::strict();
 
         let vertex = VertexBuilder::new(EventType::SessionStart).build();
 
@@ -331,7 +310,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_beardog_request_attestation() {
-        let client = MockBearDogClient::permissive();
+        let client = MockSigningProvider::permissive();
         let attester = Did::new("did:key:attester");
 
         let summary = DehydrationSummaryBuilder::new(
@@ -349,7 +328,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_loamspine_get_commit() {
-        let client = MockLoamSpineClient::new();
+        let client = MockPermanentStorageProvider::new();
 
         let commit_ref = LoamCommitRef {
             spine_id: "test-spine".to_string(),
@@ -364,7 +343,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_loamspine_checkout_resolve_slice() {
-        let client = MockLoamSpineClient::new();
+        let client = MockPermanentStorageProvider::new();
         let holder = Did::new("did:key:holder");
 
         // Test checkout
@@ -389,7 +368,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_loamspine_clone() {
-        let client1 = MockLoamSpineClient::new();
+        let client1 = MockPermanentStorageProvider::new();
 
         let summary = DehydrationSummaryBuilder::new(
             SessionId::now(),
@@ -410,7 +389,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_mock_nestgate_payload_not_found() {
-        let client = MockNestGateClient::new();
+        let client = MockPayloadStorageProvider::new();
 
         // Query for non-existent payload
         let fake_ref = PayloadRef::new([1u8; 32], 100);
@@ -474,7 +453,7 @@ impl MockProtocolAdapter {
     /// The response should be JSON-serializable.
     pub async fn set_response<T: serde::Serialize>(&self, method: &str, response: T) -> Result<()> {
         let json = serde_json::to_string(&response).map_err(|e| {
-            crate::error::RhizoCryptError::integration(format!("Mock serialization failed: {}", e))
+            crate::error::RhizoCryptError::integration(format!("Mock serialization failed: {e}"))
         })?;
 
         let mut responses = self.responses.write().await;
@@ -504,13 +483,12 @@ impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
 
         // Return default responses based on method
         match method {
-            "verify_did" => Ok("true".to_string()),
             "sign" => Ok(r#"{"bytes":[222,173,190,239]}"#.to_string()),
-            "verify_signature" => Ok("true".to_string()),
+            "verify_did" | "verify_signature" => Ok("true".to_string()),
             "put_payload" => Ok(r#"{"hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"size":0}"#.to_string()),
             "get_payload" => Ok("null".to_string()),
             "payload_exists" => Ok("false".to_string()),
-            _ => Err(crate::error::RhizoCryptError::integration(format!("Mock adapter: unknown method '{}'", method))),
+            _ => Err(crate::error::RhizoCryptError::integration(format!("Mock adapter: unknown method '{method}'"))),
         }
     }
 

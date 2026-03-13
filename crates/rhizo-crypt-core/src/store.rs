@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! DAG storage traits and implementations.
 //!
 //! This module defines the storage interface and provides an in-memory implementation.
@@ -213,7 +216,7 @@ impl DagStore for InMemoryDagStore {
         self.write_ops.fetch_add(1, Ordering::Relaxed);
 
         // Compute vertex ID if not already computed
-        let vertex_id = vertex.id();
+        let vertex_id = vertex.id()?;
 
         let mut sessions = self.sessions.write().await;
         let session = sessions.entry(session_id).or_default();
@@ -478,7 +481,7 @@ mod tests {
         // Create and store a vertex
         let vertex = VertexBuilder::new(EventType::SessionStart).build();
         let mut vertex_clone = vertex.clone();
-        let vertex_id = vertex_clone.id();
+        let vertex_id = vertex_clone.id().unwrap();
 
         store.put_vertex(session_id, vertex).await.unwrap();
 
@@ -502,7 +505,7 @@ mod tests {
         // Add genesis vertex
         let v1 = VertexBuilder::new(EventType::SessionStart).build();
         let mut v1_clone = v1.clone();
-        let v1_id = v1_clone.id();
+        let v1_id = v1_clone.id().unwrap();
         store.put_vertex(session_id, v1).await.unwrap();
 
         let genesis = store.get_genesis(session_id).await.unwrap();
@@ -520,7 +523,7 @@ mod tests {
         .with_parent(v1_id)
         .build();
         let mut v2_clone = v2.clone();
-        let v2_id = v2_clone.id();
+        let v2_id = v2_clone.id().unwrap();
         store.put_vertex(session_id, v2).await.unwrap();
 
         // Frontier should now be v2 only
@@ -542,7 +545,7 @@ mod tests {
         // Add parent
         let parent = VertexBuilder::new(EventType::SessionStart).build();
         let mut parent_clone = parent.clone();
-        let parent_id = parent_clone.id();
+        let parent_id = parent_clone.id().unwrap();
         store.put_vertex(session_id, parent).await.unwrap();
 
         // Add children
@@ -629,7 +632,7 @@ mod tests {
         // Add genesis
         let v1 = VertexBuilder::new(EventType::SessionStart).build();
         let mut v1_clone = v1.clone();
-        let v1_id = v1_clone.id();
+        let v1_id = v1_clone.id().unwrap();
         store.put_vertex(session_id, v1).await.unwrap();
 
         // Manually update frontier

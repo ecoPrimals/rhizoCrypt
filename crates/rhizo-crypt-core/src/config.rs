@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! RhizoCrypt configuration.
 //!
 //! This module defines the configuration structure for the RhizoCrypt primal.

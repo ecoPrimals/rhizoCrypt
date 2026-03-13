@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Session management for RhizoCrypt.
 //!
 //! A session is a scoped DAG with a defined lifecycle.

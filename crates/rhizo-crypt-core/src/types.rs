@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Core type definitions for RhizoCrypt.
 //!
 //! This module defines the fundamental types used throughout the DAG engine.
@@ -263,13 +266,11 @@ impl Timestamp {
     /// Uses zero as fallback if system time is somehow before Unix epoch.
     #[inline]
     #[must_use]
-    #[allow(clippy::cast_possible_truncation)]
     pub fn now() -> Self {
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0);
-        Self(nanos as u64)
+            .map_or(0, |d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX));
+        Self(nanos)
     }
 
     /// Create a timestamp from nanoseconds.

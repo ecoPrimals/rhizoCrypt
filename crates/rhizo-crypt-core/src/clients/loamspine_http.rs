@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! LoamSpine HTTP JSON-RPC client implementation.
 //!
 //! This module provides a complete HTTP client for LoamSpine permanent storage,
@@ -5,9 +8,9 @@
 //!
 //! ## Architecture
 //!
-//! - Uses JSON-RPC 2.0 over HTTP (port 8080 by default)
-//! - Falls back gracefully when LoamSpine unavailable
-//! - Capability-based discovery (not hardcoded to LoamSpine)
+//! - Uses JSON-RPC 2.0 over HTTP
+//! - Endpoint discovered via capability-based resolution at runtime
+//! - Falls back gracefully when permanent storage unavailable
 
 use crate::dehydration::DehydrationSummary;
 use crate::error::{Result, RhizoCryptError};
@@ -18,6 +21,17 @@ use crate::types::Did;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
+
+/// Semantic JSON-RPC method names per the Universal IPC Standard.
+/// Uses `{domain}.{operation}` where domain is the capability, not the primal name.
+mod methods {
+    pub const HEALTH_CHECK: &str = "permanent-storage.healthCheck";
+    pub const COMMIT_SESSION: &str = "permanent-storage.commitSession";
+    pub const VERIFY_COMMIT: &str = "permanent-storage.verifyCommit";
+    pub const GET_COMMIT: &str = "permanent-storage.getCommit";
+    pub const CHECKOUT_SLICE: &str = "permanent-storage.checkoutSlice";
+    pub const RESOLVE_SLICE: &str = "permanent-storage.resolveSlice";
+}
 
 /// HTTP client for LoamSpine permanent storage.
 ///
@@ -37,7 +51,7 @@ impl LoamSpineHttpClient {
     ///
     /// # Arguments
     ///
-    /// * `endpoint` - LoamSpine endpoint (e.g., "http://localhost:8080")
+    /// * `endpoint` - Permanent storage endpoint discovered at runtime
     ///
     /// # Errors
     ///
@@ -47,9 +61,9 @@ impl LoamSpineHttpClient {
         let base_url = if endpoint.ends_with("/rpc") {
             endpoint
         } else if endpoint.ends_with('/') {
-            format!("{}rpc", endpoint)
+            format!("{endpoint}rpc")
         } else {
-            format!("{}/rpc", endpoint)
+            format!("{endpoint}/rpc")
         };
 
         let client =
@@ -67,24 +81,30 @@ impl LoamSpineHttpClient {
     /// Create client from environment variables.
     ///
     /// Checks for:
-    /// 1. `PERMANENT_STORAGE_ENDPOINT`
+    /// 1. `PERMANENT_STORAGE_ENDPOINT` (capability-based)
     /// 2. `LOAMSPINE_ADDRESS` (legacy)
-    /// 3. Falls back to default localhost:8080
+    ///
+    /// Returns an error if no endpoint is configured. Primals discover
+    /// endpoints at runtime - no hardcoded fallbacks.
     pub fn from_env() -> Result<Self> {
         use crate::safe_env::CapabilityEnv;
 
-        let endpoint = CapabilityEnv::permanent_commit_endpoint()
-            .unwrap_or_else(|| "http://localhost:8080".to_string());
+        let endpoint = CapabilityEnv::permanent_commit_endpoint().ok_or_else(|| {
+            RhizoCryptError::integration(
+                "No permanent storage endpoint configured. \
+                 Set PERMANENT_STORAGE_ENDPOINT or LOAMSPINE_ADDRESS.",
+            )
+        })?;
 
         Self::new(endpoint)
     }
 
     /// Generate next JSON-RPC request ID.
     fn next_request_id(&self) -> u64 {
-        self.request_id.fetch_add(1, Ordering::SeqCst)
+        self.request_id.fetch_add(1, Ordering::Relaxed)
     }
 
-    /// Make a JSON-RPC 2.0 call to LoamSpine.
+    /// Make a JSON-RPC 2.0 call to permanent storage provider.
     async fn call_jsonrpc<T: Serialize, R: for<'de> Deserialize<'de>>(
         &self,
         method: &'static str,
@@ -100,7 +120,7 @@ impl LoamSpineHttpClient {
         tracing::debug!(
             method = %method,
             url = %self.base_url,
-            "Calling LoamSpine JSON-RPC"
+            "Calling permanent storage JSON-RPC"
         );
 
         let response = self
@@ -113,7 +133,7 @@ impl LoamSpineHttpClient {
 
         if !response.status().is_success() {
             return Err(RhizoCryptError::integration(format!(
-                "LoamSpine returned HTTP {}: {}",
+                "Permanent storage returned HTTP {}: {}",
                 response.status(),
                 response.text().await.unwrap_or_default()
             )));
@@ -133,15 +153,15 @@ impl LoamSpineHttpClient {
                 error,
                 ..
             } => Err(RhizoCryptError::integration(format!(
-                "LoamSpine RPC error [{}]: {}",
+                "Permanent storage RPC error [{}]: {}",
                 error.code, error.message
             ))),
         }
     }
 
-    /// Health check to verify LoamSpine is available.
+    /// Health check to verify permanent storage is available.
     async fn health_check(&self) -> Result<HealthCheckResponse> {
-        self.call_jsonrpc("loamspine.healthCheck", EmptyParams {}).await
+        self.call_jsonrpc(methods::HEALTH_CHECK, EmptyParams {}).await
     }
 }
 
@@ -168,7 +188,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
             };
 
             let response: CommitSessionResponse =
-                self.call_jsonrpc("loamspine.commitSession", request).await?;
+                self.call_jsonrpc(methods::COMMIT_SESSION, request).await?;
 
             if !response.accepted {
                 return Err(RhizoCryptError::integration(format!(
@@ -228,7 +248,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
                 index,
             };
 
-            match self.call_jsonrpc::<_, bool>("loamspine.verifyCommit", request).await {
+            match self.call_jsonrpc::<_, bool>(methods::VERIFY_COMMIT, request).await {
                 Ok(verified) => Ok(verified),
                 Err(e) => {
                     // If verification endpoint doesn't exist, try health check
@@ -273,7 +293,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
                 index,
             };
 
-            match self.call_jsonrpc::<_, CommitResponse>("loamspine.getCommit", request).await {
+            match self.call_jsonrpc::<_, CommitResponse>(methods::GET_COMMIT, request).await {
                 Ok(response) => Ok(Some(response.summary)),
                 Err(e) => {
                     // If endpoint doesn't exist or commit not found, return None
@@ -304,7 +324,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
             };
 
             let response: CheckoutSliceResponse =
-                self.call_jsonrpc("loamspine.checkoutSlice", request).await?;
+                self.call_jsonrpc(methods::CHECKOUT_SLICE, request).await?;
 
             Ok(SliceOrigin {
                 spine_id: response.spine_id,
@@ -344,7 +364,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
                 route: "return_to_origin".to_string(), // Default route
             };
 
-            match self.call_jsonrpc::<_, ()>("loamspine.resolveSlice", request).await {
+            match self.call_jsonrpc::<_, ()>(methods::RESOLVE_SLICE, request).await {
                 Ok(()) => {
                     tracing::info!(
                         slice_id = %slice_id,

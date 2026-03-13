@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Event types for the RhizoCrypt DAG.
 //!
 //! Events are the domain-specific actions that are recorded in the DAG.

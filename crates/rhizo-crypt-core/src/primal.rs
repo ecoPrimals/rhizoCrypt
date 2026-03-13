@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Primal lifecycle and health traits.
 //!
 //! These traits define the standard interface for ecoPrimals lifecycle

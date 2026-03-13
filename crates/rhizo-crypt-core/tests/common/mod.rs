@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! Common test utilities and helpers for rhizoCrypt E2E and chaos testing.
 //!
 //! This module provides shared infrastructure for integration testing across

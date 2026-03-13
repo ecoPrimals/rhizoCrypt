@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! # RhizoCrypt
 //!
 //! Core DAG Engine - Ephemeral Working Memory
@@ -52,18 +55,11 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::doc_markdown)]
-#![allow(clippy::uninlined_format_args)]
-#![allow(clippy::redundant_clone)]
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::unnecessary_literal_bound)]
-#![allow(clippy::match_same_arms)]
-#![allow(clippy::expect_fun_call)]
-#![allow(clippy::explicit_auto_deref)]
 #![allow(clippy::similar_names)]
-// Allow unwrap/expect in test code
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 #![cfg_attr(test, allow(clippy::expect_used))]
-// Nursery lint has known issues with async RwLock patterns
 #![allow(clippy::significant_drop_tightening)]
 
 // ============================================================================
@@ -89,10 +85,6 @@ pub mod store;
 pub mod types;
 pub mod types_ecosystem;
 pub mod vertex;
-
-// Legacy compatibility
-#[allow(deprecated)]
-pub mod legacy_aliases;
 
 // Optional storage backends
 #[cfg(feature = "sled")]
@@ -211,26 +203,6 @@ pub use integration::{
 };
 
 // ============================================================================
-// DEPRECATED: Legacy Primal-Specific Names
-// ============================================================================
-
-/// **DEPRECATED**: Legacy mock names.
-///
-/// Use capability-based mocks instead:
-/// - `MockBearDogClient` → `MockSigningProvider`
-/// - `MockLoamSpineClient` → `MockPermanentStorageProvider`
-/// - `MockNestGateClient` → `MockPayloadStorageProvider`
-///
-/// Will be removed in v1.0.0.
-#[cfg(any(test, feature = "test-utils"))]
-#[deprecated(
-    since = "0.13.0",
-    note = "Use MockSigningProvider, MockPermanentStorageProvider, MockPayloadStorageProvider instead"
-)]
-#[allow(deprecated)]
-pub use integration::{MockBearDogClient, MockLoamSpineClient, MockNestGateClient};
-
-// ============================================================================
 // Ecosystem Type Definitions
 // ============================================================================
 
@@ -243,10 +215,4 @@ pub use types_ecosystem::compute::{
 pub use types_ecosystem::provenance::{
     AgentContribution, ProvenanceChain, ProvenanceNotifier, ProvenanceProviderConfig,
     ProvenanceQueryable, SessionAttribution, VertexQuery, VertexRef,
-};
-
-// Legacy aliases (deprecated, for backward compatibility)
-#[allow(deprecated)]
-pub use legacy_aliases::{
-    SweetGrassConfig, SweetGrassNotifier, SweetGrassQueryable, ToadStoolClient, ToadStoolConfig,
 };

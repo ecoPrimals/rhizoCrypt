@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 //! E2E tests for session lifecycle.
 //!
 //! Tests the complete session flow: create → append → query → resolve.
@@ -18,7 +21,7 @@ async fn test_session_create_and_discard() {
 
     // Create a session
     let session = SessionBuilder::new(SessionType::General).with_name("test-session").build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Verify session exists
     let retrieved = primal.get_session(session_id).expect("should get session");
@@ -42,7 +45,7 @@ async fn test_session_vertex_append() {
 
     // Create a session
     let session = SessionBuilder::new(SessionType::General).build();
-    let session_id = primal.create_session(session).await.expect("should create session");
+    let session_id = primal.create_session(session).expect("should create session");
 
     // Append a vertex
     let vertex =
@@ -71,7 +74,7 @@ async fn test_multiple_sessions() {
     for i in 0..5 {
         let session =
             SessionBuilder::new(SessionType::General).with_name(format!("session-{i}")).build();
-        primal.create_session(session).await.expect("should create session");
+        primal.create_session(session).expect("should create session");
     }
 
     // Verify all exist
@@ -99,12 +102,12 @@ async fn test_session_limit() {
     for i in 0..2 {
         let session =
             SessionBuilder::new(SessionType::General).with_name(format!("session-{i}")).build();
-        primal.create_session(session).await.expect("should create session within limit");
+        primal.create_session(session).expect("should create session within limit");
     }
 
     // Third should fail
     let session = SessionBuilder::new(SessionType::General).build();
-    let result = primal.create_session(session).await;
+    let result = primal.create_session(session);
     assert!(result.is_err());
 
     primal.stop().await.expect("primal should stop");
