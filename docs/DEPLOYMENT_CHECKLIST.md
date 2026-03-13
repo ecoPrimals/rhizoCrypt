@@ -33,8 +33,8 @@
 
 ### Documentation ✅
 - [x] **README.md** (updated with latest metrics)
-- [x] **STATUS.md** (509 tests, 87% coverage)
-- [x] **SHIP_IT.md** (deployment recommendation)
+- [x] **README.md** (491 tests, production metrics)
+- [x] **CHANGELOG.md** (version history)
 - [x] **showcase/** (41 comprehensive demos)
 - [x] **specs/** (complete specifications)
 - [x] **00_START_HERE.md** (clear entry point)
@@ -282,8 +282,7 @@ Deployment is successful when:
 
 ### Documentation
 - **[README.md](./README.md)** — Project overview
-- **[STATUS.md](./STATUS.md)** — Current metrics (509 tests, 87% coverage)
-- **[SHIP_IT.md](./SHIP_IT.md)** — Deployment recommendation
+- **[CHANGELOG.md](../CHANGELOG.md)** — Version history and current metrics
 - **[showcase/](./showcase/)** — 41 demos for testing
 
 ### Support

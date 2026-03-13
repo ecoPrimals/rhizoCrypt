@@ -147,9 +147,7 @@ RhizoCrypt provides these sovereignty guarantees:
 
 ## 🏗️ Implementation Status
 
-See [../STATUS.md](../STATUS.md) for current implementation progress.
-
-See [../WHATS_NEXT.md](../WHATS_NEXT.md) for the development roadmap.
+See [../README.md](../README.md) for current implementation status and [../CHANGELOG.md](../CHANGELOG.md) for version history.
 
 ---
 

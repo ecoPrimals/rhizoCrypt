@@ -344,9 +344,8 @@ ls -la ../bins/
 ## 📚 Additional Resources
 
 - **[../README.md](../README.md)** — Project overview
+- **[../CHANGELOG.md](../CHANGELOG.md)** — Version history
 - **[../specs/](../specs/)** — Complete specifications
-- **[../SHIP_IT.md](../SHIP_IT.md)** — Production readiness report
-- **[../STATUS.md](../STATUS.md)** — Current project status
 
 ---
 

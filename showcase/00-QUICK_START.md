@@ -22,7 +22,7 @@ In the next 5 minutes you'll:
 - rhizoCrypt built (`cargo build --release`)
 
 ### Optional (for ecosystem demos):
-- Phase 1 primal binaries in `/path/to/ecoPrimals/primalBins/`
+- Phase 1 primal binaries available (set `ECOPRIMALS_PLASMID_BIN` or use `../../plasmidBin/`)
   - `songbird-cli` (discovery/rendezvous)
   - `beardog` (HSM/signing)
   - `nestgate` (storage/payloads)
@@ -183,7 +183,7 @@ Think of it as:
 
 - **Architecture**: `../../specs/ARCHITECTURE.md`
 - **API Reference**: `../../specs/RHIZOCRYPT_SPECIFICATION.md`
-- **Status**: `../../STATUS.md`
+- **Changelog**: `../../CHANGELOG.md`
 - **Full Index**: `00_SHOWCASE_INDEX.md`
 
 ---
