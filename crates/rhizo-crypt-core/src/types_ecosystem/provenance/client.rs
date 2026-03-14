@@ -102,7 +102,7 @@ impl ProvenanceNotifier {
 
     /// Notify provenance provider of a new session commit.
     ///
-    /// Sends a `contribution.recordSession` JSON-RPC call to the connected
+    /// Sends a `contribution.record_session` JSON-RPC call to the connected
     /// provenance provider with the session ID so it can begin attribution.
     ///
     /// # Errors
@@ -122,7 +122,7 @@ impl ProvenanceNotifier {
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",
-            "method": "contribution.recordSession",
+            "method": "contribution.record_session",
             "params": {
                 "session_id": session_id.to_string(),
                 "source_primal": crate::constants::PRIMAL_NAME,
@@ -152,7 +152,7 @@ impl ProvenanceNotifier {
 
     /// Notify provenance provider of a completed dehydration with full summary.
     ///
-    /// Sends a `contribution.recordDehydration` JSON-RPC call with the
+    /// Sends a `contribution.record_dehydration` JSON-RPC call with the
     /// `DehydrationSummary` so the provider can create attribution braids
     /// linking agents to their contributions.
     ///
@@ -180,13 +180,16 @@ impl ProvenanceNotifier {
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",
-            "method": "contribution.recordDehydration",
+            "method": "contribution.record_dehydration",
             "params": {
                 "session_id": summary.session_id.to_string(),
                 "source_primal": crate::constants::PRIMAL_NAME,
                 "merkle_root": summary.merkle_root.to_string(),
                 "vertex_count": summary.vertex_count,
+                "branch_count": summary.results.len() as u64,
                 "agents": agent_dids,
+                "session_start": summary.created_at.as_nanos(),
+                "dehydrated_at": summary.resolved_at.as_nanos(),
                 "session_type": summary.session_type,
                 "outcome": format!("{:?}", summary.outcome),
             },
