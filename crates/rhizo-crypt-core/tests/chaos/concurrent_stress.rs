@@ -21,10 +21,7 @@ async fn test_concurrent_session_creation() {
     let primal = Arc::new(RwLock::new(RhizoCrypt::new(config)));
 
     // Start primal
-    {
-        let mut p = primal.write().await;
-        p.start().await.expect("primal should start");
-    }
+    primal.write().await.start().await.expect("primal should start");
 
     // Spawn concurrent session creators
     let mut handles = Vec::new();
@@ -52,16 +49,10 @@ async fn test_concurrent_session_creation() {
     assert_eq!(successes, 10);
 
     // Verify count
-    {
-        let p = primal.read().await;
-        assert_eq!(p.session_count(), 10);
-    }
+    assert_eq!(primal.read().await.session_count(), 10);
 
     // Stop primal
-    {
-        let mut p = primal.write().await;
-        p.stop().await.expect("primal should stop");
-    }
+    primal.write().await.stop().await.expect("primal should stop");
 }
 
 /// Test concurrent vertex appends to same session.
@@ -71,10 +62,7 @@ async fn test_concurrent_vertex_appends() {
     let primal = Arc::new(RwLock::new(RhizoCrypt::new(config)));
 
     // Start primal
-    {
-        let mut p = primal.write().await;
-        p.start().await.expect("primal should start");
-    }
+    primal.write().await.start().await.expect("primal should start");
 
     // Create a session
     let session_id = {
@@ -112,16 +100,10 @@ async fn test_concurrent_vertex_appends() {
     assert_eq!(successes, 20);
 
     // Verify vertex count
-    {
-        let p = primal.read().await;
-        assert_eq!(p.total_vertex_count(), 20);
-    }
+    assert_eq!(primal.read().await.total_vertex_count(), 20);
 
     // Stop primal
-    {
-        let mut p = primal.write().await;
-        p.stop().await.expect("primal should stop");
-    }
+    primal.write().await.stop().await.expect("primal should stop");
 }
 
 /// Test high-throughput vertex appends.

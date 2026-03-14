@@ -665,3 +665,8 @@ mod tests;
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[path = "store_redb_tests_advanced.rs"]
 mod tests_advanced;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[path = "store_redb_tests_query.rs"]
+mod tests_query;

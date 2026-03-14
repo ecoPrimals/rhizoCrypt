@@ -3,7 +3,7 @@
 
 //! JSON-RPC 2.0 method handler.
 //!
-//! Dispatches semantic method names to RhizoCryptRpcServer operations.
+//! Dispatches semantic method names to `RhizoCryptRpcServer` operations.
 
 use crate::error::RpcError;
 use crate::jsonrpc::types::JsonRpcRequest;

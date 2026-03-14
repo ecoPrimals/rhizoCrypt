@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! `rhizoCrypt` service library — shared logic for the UniBin entry point.
+//! `rhizoCrypt` service library — shared logic for the `UniBin` entry point.
 //!
 //! Extracts server startup, discovery registration, and CLI types so they can
 //! be tested without spawning a subprocess.
@@ -9,6 +9,20 @@
 #![forbid(unsafe_code)]
 
 pub use rhizo_crypt_core;
+
+/// `UniBin` exit codes per the Architecture Standard.
+pub mod exit_codes {
+    /// Success.
+    pub const SUCCESS: i32 = 0;
+    /// General error.
+    pub const GENERAL_ERROR: i32 = 1;
+    /// Configuration error.
+    pub const CONFIG_ERROR: i32 = 2;
+    /// Network error.
+    pub const NETWORK_ERROR: i32 = 3;
+    /// Interrupted (SIGINT).
+    pub const INTERRUPTED: i32 = 130;
+}
 pub use rhizo_crypt_rpc;
 
 use clap::Subcommand;
@@ -55,7 +69,24 @@ pub enum ServiceError {
     AddrParse(#[from] std::net::AddrParseError),
 }
 
+impl ServiceError {
+    /// Map this error to a `UniBin` exit code.
+    #[must_use]
+    pub const fn exit_code(&self) -> i32 {
+        use crate::exit_codes;
+        match self {
+            Self::Config(_) | Self::AddrParse(_) => exit_codes::CONFIG_ERROR,
+            Self::Rpc(_) | Self::Discovery(_) => exit_codes::NETWORK_ERROR,
+        }
+    }
+}
+
 /// Run a client operation against a running rhizoCrypt server.
+///
+/// # Errors
+///
+/// Returns [`ServiceError::AddrParse`] if `address` is not a valid socket address.
+/// Returns [`ServiceError::Config`] if the RPC call fails.
 pub async fn run_client(address: &str, operation: ClientOperation) -> Result<(), ServiceError> {
     let addr: SocketAddr = address.parse()?;
 
@@ -100,6 +131,10 @@ pub async fn run_client(address: &str, operation: ClientOperation) -> Result<(),
 }
 
 /// Resolve the bind address from CLI overrides + environment.
+///
+/// # Errors
+///
+/// Returns [`ServiceError::AddrParse`] if the resulting host:port cannot be parsed.
 pub fn resolve_bind_addr(
     port_override: Option<u16>,
     host_override: Option<String>,
@@ -115,7 +150,40 @@ pub fn resolve_bind_addr(
     Ok(addr)
 }
 
+/// Wait for SIGTERM or SIGINT (Unix) or Ctrl+C (other platforms).
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+        let Ok(mut sigterm) = signal(SignalKind::terminate()) else {
+            warn!("Failed to register SIGTERM handler, falling back to ctrl_c");
+            let _ = tokio::signal::ctrl_c().await;
+            return;
+        };
+        let Ok(mut sigint) = signal(SignalKind::interrupt()) else {
+            warn!("Failed to register SIGINT handler, falling back to ctrl_c");
+            let _ = tokio::signal::ctrl_c().await;
+            return;
+        };
+        tokio::select! {
+            _ = sigterm.recv() => {}
+            _ = sigint.recv() => {}
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = tokio::signal::ctrl_c().await;
+    }
+}
+
 /// Start the RPC server (tarpc + JSON-RPC) with optional discovery registration.
+///
+/// # Errors
+///
+/// Returns [`ServiceError::AddrParse`] if the bind address is invalid.
+/// Returns [`ServiceError::Config`] if the DAG engine fails to start.
+/// Returns [`ServiceError::Rpc`] if the RPC server encounters a fatal I/O error.
 pub async fn run_server(
     port_override: Option<u16>,
     host_override: Option<String>,
@@ -169,19 +237,46 @@ pub async fn run_server(
 
     info!("rhizoCrypt service ready");
 
-    match server.serve().await {
-        Ok(()) => {
+    let shutdown_tx = server.shutdown_sender();
+    let serve_handle = tokio::spawn(async move { server.serve().await });
+
+    tokio::pin!(serve_handle);
+
+    tokio::select! {
+        result = &mut serve_handle => {
+            match result {
+                Ok(Ok(())) => {
+                    info!("rhizoCrypt service shutdown cleanly");
+                    Ok(())
+                }
+                Ok(Err(e)) => {
+                    error!(error = %e, "rhizoCrypt service error");
+                    Err(ServiceError::Rpc(e))
+                }
+                Err(e) => {
+                    error!(error = %e, "server task panicked");
+                    Err(ServiceError::Config(format!("server task panicked: {e}")))
+                }
+            }
+        }
+        () = shutdown_signal() => {
+            info!("Received shutdown signal, stopping gracefully");
+            let _ = shutdown_tx.send(true);
+            if let Ok(Err(e)) = serve_handle.await {
+                error!(error = %e, "rhizoCrypt service error during shutdown");
+                return Err(ServiceError::Rpc(e));
+            }
             info!("rhizoCrypt service shutdown cleanly");
             Ok(())
-        }
-        Err(e) => {
-            error!(error = %e, "rhizoCrypt service error");
-            Err(ServiceError::Rpc(e))
         }
     }
 }
 
 /// Register this primal instance with a Songbird discovery service.
+///
+/// # Errors
+///
+/// Returns [`ServiceError::Discovery`] if registration or heartbeat setup fails.
 pub async fn register_with_discovery(
     discovery_addr: String,
     our_addr: SocketAddr,
@@ -223,7 +318,7 @@ pub enum DoctorCheck {
     Fail,
 }
 
-/// Run health diagnostics per the UniBin Architecture Standard.
+/// Run health diagnostics per the `UniBin` Architecture Standard.
 ///
 /// Performs checks on DAG engine, storage, configuration, and optional
 /// discovery connectivity. Output is human-readable for operator inspection.
@@ -508,6 +603,40 @@ mod tests {
         let parse_err = "invalid".parse::<SocketAddr>().unwrap_err();
         let err: ServiceError = parse_err.into();
         assert!(matches!(err, ServiceError::AddrParse(_)));
+    }
+
+    #[test]
+    fn test_exit_code_constants() {
+        use crate::exit_codes;
+        assert_eq!(exit_codes::SUCCESS, 0);
+        assert_eq!(exit_codes::GENERAL_ERROR, 1);
+        assert_eq!(exit_codes::CONFIG_ERROR, 2);
+        assert_eq!(exit_codes::NETWORK_ERROR, 3);
+        assert_eq!(exit_codes::INTERRUPTED, 130);
+    }
+
+    #[test]
+    fn test_service_error_exit_code_mapping() {
+        use crate::exit_codes;
+        let config_err = ServiceError::Config("bad".to_string());
+        assert_eq!(config_err.exit_code(), exit_codes::CONFIG_ERROR);
+
+        let rpc_err = ServiceError::Rpc(std::io::Error::other("connection refused"));
+        assert_eq!(rpc_err.exit_code(), exit_codes::NETWORK_ERROR);
+
+        let discovery_err = ServiceError::Discovery("unreachable".to_string());
+        assert_eq!(discovery_err.exit_code(), exit_codes::NETWORK_ERROR);
+
+        let parse_err = "x:y:z".parse::<SocketAddr>().unwrap_err();
+        let addr_err = ServiceError::AddrParse(parse_err);
+        assert_eq!(addr_err.exit_code(), exit_codes::CONFIG_ERROR);
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_signal_does_not_panic() {
+        use tokio::time::{timeout, Duration};
+        let result = timeout(Duration::from_millis(100), super::shutdown_signal()).await;
+        assert!(result.is_err(), "shutdown_signal should block until signal (timeout expected)");
     }
 
     #[test]

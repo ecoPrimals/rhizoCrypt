@@ -67,15 +67,13 @@ impl TestHarness {
 
     /// Start the primal.
     pub async fn start(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut primal = self.primal.write().await;
-        primal.start().await?;
+        self.primal.write().await.start().await?;
         Ok(())
     }
 
     /// Stop the primal.
     pub async fn stop(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut primal = self.primal.write().await;
-        primal.stop().await?;
+        self.primal.write().await.stop().await?;
         Ok(())
     }
 

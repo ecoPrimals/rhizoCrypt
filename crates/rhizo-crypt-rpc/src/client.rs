@@ -27,6 +27,10 @@ pub struct RpcClient {
 
 impl RpcClient {
     /// Connect to a rhizoCrypt RPC server.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Connection` if the connection fails.
     pub async fn connect(addr: SocketAddr) -> RpcResult<Self> {
         let transport = tarpc::serde_transport::tcp::connect(&addr, Bincode::default)
             .await
@@ -46,6 +50,10 @@ impl RpcClient {
     // ========================================================================
 
     /// Create a new session.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn create_session(&self, request: CreateSessionRequest) -> RpcResult<SessionId> {
         self.inner
             .create_session(context::current(), request)
@@ -54,6 +62,10 @@ impl RpcClient {
     }
 
     /// Get session info.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn get_session(&self, session_id: SessionId) -> RpcResult<SessionInfo> {
         self.inner
             .get_session(context::current(), session_id)
@@ -62,6 +74,10 @@ impl RpcClient {
     }
 
     /// List all active sessions.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn list_sessions(&self) -> RpcResult<Vec<SessionInfo>> {
         self.inner
             .list_sessions(context::current())
@@ -70,6 +86,10 @@ impl RpcClient {
     }
 
     /// Discard a session.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn discard_session(&self, session_id: SessionId) -> RpcResult<()> {
         self.inner
             .discard_session(context::current(), session_id)
@@ -82,6 +102,10 @@ impl RpcClient {
     // ========================================================================
 
     /// Append an event to a session.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn append_event(&self, request: AppendEventRequest) -> RpcResult<VertexId> {
         self.inner
             .append_event(context::current(), request)
@@ -90,6 +114,10 @@ impl RpcClient {
     }
 
     /// Append multiple events in a batch.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn append_batch(
         &self,
         requests: Vec<AppendEventRequest>,
@@ -105,6 +133,10 @@ impl RpcClient {
     // ========================================================================
 
     /// Get a specific vertex by ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn get_vertex(
         &self,
         session_id: SessionId,
@@ -117,6 +149,10 @@ impl RpcClient {
     }
 
     /// Get the current frontier (DAG tips).
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn get_frontier(&self, session_id: SessionId) -> RpcResult<Vec<VertexId>> {
         self.inner
             .get_frontier(context::current(), session_id)
@@ -125,6 +161,10 @@ impl RpcClient {
     }
 
     /// Get genesis vertices (DAG roots).
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn get_genesis(&self, session_id: SessionId) -> RpcResult<Vec<VertexId>> {
         self.inner
             .get_genesis(context::current(), session_id)
@@ -133,6 +173,10 @@ impl RpcClient {
     }
 
     /// Query vertices with filters.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn query_vertices(&self, request: QueryRequest) -> RpcResult<Vec<Vertex>> {
         self.inner
             .query_vertices(context::current(), request)
@@ -141,6 +185,10 @@ impl RpcClient {
     }
 
     /// Get children of a vertex.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn get_children(
         &self,
         session_id: SessionId,
@@ -157,6 +205,10 @@ impl RpcClient {
     // ========================================================================
 
     /// Get the Merkle root for a session.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn get_merkle_root(&self, session_id: SessionId) -> RpcResult<MerkleRoot> {
         self.inner
             .get_merkle_root(context::current(), session_id)
@@ -165,6 +217,10 @@ impl RpcClient {
     }
 
     /// Generate inclusion proof for a vertex.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn get_merkle_proof(
         &self,
         session_id: SessionId,
@@ -177,6 +233,10 @@ impl RpcClient {
     }
 
     /// Verify a Merkle proof.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn verify_proof(&self, root: MerkleRoot, proof: MerkleProof) -> RpcResult<bool> {
         self.inner
             .verify_proof(context::current(), root, proof)
@@ -188,7 +248,11 @@ impl RpcClient {
     // Slice Operations
     // ========================================================================
 
-    /// Checkout a slice from LoamSpine.
+    /// Checkout a slice from `LoamSpine`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn checkout_slice(&self, request: CheckoutSliceRequest) -> RpcResult<SliceId> {
         self.inner
             .checkout_slice(context::current(), request)
@@ -197,6 +261,10 @@ impl RpcClient {
     }
 
     /// Get slice info.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn get_slice(&self, slice_id: SliceId) -> RpcResult<Slice> {
         self.inner
             .get_slice(context::current(), slice_id)
@@ -205,6 +273,10 @@ impl RpcClient {
     }
 
     /// List active slices.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn list_slices(&self) -> RpcResult<Vec<Slice>> {
         self.inner
             .list_slices(context::current())
@@ -212,7 +284,11 @@ impl RpcClient {
             .map_err(|e| RpcError::Transport(e.to_string()))?
     }
 
-    /// Resolve a slice (commit back to LoamSpine).
+    /// Resolve a slice (commit back to `LoamSpine`).
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn resolve_slice(&self, slice_id: SliceId, session_id: SessionId) -> RpcResult<()> {
         self.inner
             .resolve_slice(context::current(), slice_id, session_id)
@@ -224,7 +300,11 @@ impl RpcClient {
     // Dehydration Operations
     // ========================================================================
 
-    /// Trigger dehydration of a session to LoamSpine.
+    /// Trigger dehydration of a session to `LoamSpine`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn dehydrate(&self, session_id: SessionId) -> RpcResult<MerkleRoot> {
         self.inner
             .dehydrate(context::current(), session_id)
@@ -233,6 +313,10 @@ impl RpcClient {
     }
 
     /// Get dehydration status.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn get_dehydration_status(
         &self,
         session_id: SessionId,
@@ -248,6 +332,10 @@ impl RpcClient {
     // ========================================================================
 
     /// Health check.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn health(&self) -> RpcResult<HealthStatus> {
         self.inner
             .health(context::current())
@@ -256,6 +344,10 @@ impl RpcClient {
     }
 
     /// Get service metrics.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
     pub async fn metrics(&self) -> RpcResult<ServiceMetrics> {
         self.inner
             .metrics(context::current())

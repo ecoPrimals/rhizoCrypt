@@ -7,6 +7,7 @@
 //! to communicate with rhizoCrypt or other primals using the tarpc protocol.
 
 use crate::clients::adapters::ProtocolAdapter;
+use crate::constants::CONNECTION_TIMEOUT;
 use crate::error::{Result, RhizoCryptError};
 use async_trait::async_trait;
 use std::net::SocketAddr;
@@ -154,7 +155,7 @@ impl TarpcAdapter {
             endpoint: addr_str.to_string(),
             addr,
             connection: Arc::new(RwLock::new(None)),
-            timeout_duration: Duration::from_secs(30),
+            timeout_duration: CONNECTION_TIMEOUT,
         })
     }
 
@@ -188,7 +189,7 @@ impl TarpcAdapter {
             endpoint: socket_addr.to_string(),
             addr: socket_addr,
             connection: Arc::new(RwLock::new(None)),
-            timeout_duration: Duration::from_secs(30),
+            timeout_duration: CONNECTION_TIMEOUT,
         })
     }
 

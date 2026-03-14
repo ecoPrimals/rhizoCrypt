@@ -214,7 +214,7 @@ pub trait RhizoCryptRpc {
     // Slice Operations
     // ========================================================================
 
-    /// Checkout a slice from LoamSpine.
+    /// Checkout a slice from `LoamSpine`.
     async fn checkout_slice(request: CheckoutSliceRequest) -> Result<SliceId, RpcError>;
 
     /// Get slice info.
@@ -223,14 +223,14 @@ pub trait RhizoCryptRpc {
     /// List active slices.
     async fn list_slices() -> Result<Vec<rhizo_crypt_core::Slice>, RpcError>;
 
-    /// Resolve a slice (commit back to LoamSpine).
+    /// Resolve a slice (commit back to `LoamSpine`).
     async fn resolve_slice(slice_id: SliceId, session_id: SessionId) -> Result<(), RpcError>;
 
     // ========================================================================
     // Dehydration Operations
     // ========================================================================
 
-    /// Trigger dehydration of a session to LoamSpine.
+    /// Trigger dehydration of a session to `LoamSpine`.
     async fn dehydrate(session_id: SessionId) -> Result<MerkleRoot, RpcError>;
 
     /// Get dehydration status.
@@ -253,7 +253,7 @@ pub trait RhizoCryptRpc {
 // Server Implementation Helper
 // ============================================================================
 
-/// Convert a Session to SessionInfo.
+/// Convert a `Session` to `SessionInfo`.
 fn session_to_info(session: &Session) -> SessionInfo {
     SessionInfo {
         id: session.id,
@@ -275,7 +275,8 @@ pub struct RhizoCryptRpcServer {
 }
 
 impl RhizoCryptRpcServer {
-    /// Create a new RPC server wrapping a rhizoCrypt primal.
+    /// Create a new RPC server wrapping a `RhizoCrypt` primal.
+    #[must_use]
     pub fn new(primal: Arc<rhizo_crypt_core::RhizoCrypt>) -> Self {
         Self {
             primal,

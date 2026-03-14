@@ -184,7 +184,7 @@ Think of it as:
 - **Architecture**: `../../specs/ARCHITECTURE.md`
 - **API Reference**: `../../specs/RHIZOCRYPT_SPECIFICATION.md`
 - **Changelog**: `../../CHANGELOG.md`
-- **Full Index**: `00_SHOWCASE_INDEX.md`
+- **Full Index**: `00_START_HERE.md`
 
 ---
 

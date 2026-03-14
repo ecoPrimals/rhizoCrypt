@@ -27,10 +27,7 @@ async fn test_network_disconnect_graceful_degradation() {
     let primal = Arc::new(RwLock::new(RhizoCrypt::new(config)));
 
     // Start primal
-    {
-        let mut p = primal.write().await;
-        p.start().await.expect("primal should start");
-    }
+    primal.write().await.start().await.expect("primal should start");
 
     // Create session
     let session_id = {
@@ -41,42 +38,28 @@ async fn test_network_disconnect_graceful_degradation() {
 
     // Simulate network partition by stopping primal
     // (In real scenario, this would be external service unavailable)
-    {
-        let mut p = primal.write().await;
-        p.stop().await.expect("primal should stop");
-    }
+    primal.write().await.stop().await.expect("primal should stop");
 
     // Operations should fail gracefully
-    {
-        let p = primal.read().await;
-        let vertex = VertexBuilder::new(EventType::Custom {
-            domain: "test".into(),
-            event_name: "after-partition".to_string(),
-        })
-        .build();
-
-        let result = p.append_vertex(session_id, vertex).await;
-        assert!(result.is_err(), "Should fail gracefully when stopped");
-    }
+    let vertex = VertexBuilder::new(EventType::Custom {
+        domain: "test".into(),
+        event_name: "after-partition".to_string(),
+    })
+    .build();
+    let result = primal.read().await.append_vertex(session_id, vertex).await;
+    assert!(result.is_err(), "Should fail gracefully when stopped");
 
     // Restart primal (network recovery)
-    {
-        let mut p = primal.write().await;
-        p.start().await.expect("primal should restart");
-    }
+    primal.write().await.start().await.expect("primal should restart");
 
     // Operations should work again
-    {
-        let p = primal.read().await;
-        let vertex = VertexBuilder::new(EventType::Custom {
-            domain: "test".into(),
-            event_name: "after-recovery".to_string(),
-        })
-        .build();
-
-        let result = p.append_vertex(session_id, vertex).await;
-        assert!(result.is_ok(), "Should work after recovery");
-    }
+    let vertex = VertexBuilder::new(EventType::Custom {
+        domain: "test".into(),
+        event_name: "after-recovery".to_string(),
+    })
+    .build();
+    let result = primal.read().await.append_vertex(session_id, vertex).await;
+    assert!(result.is_ok(), "Should work after recovery");
 }
 
 /// Test concurrent operations during network instability.
@@ -85,18 +68,14 @@ async fn test_network_instability_concurrent_operations() {
     let config = RhizoCryptConfig::default();
     let primal = Arc::new(RwLock::new(RhizoCrypt::new(config)));
 
-    {
-        let mut p = primal.write().await;
-        p.start().await.expect("primal should start");
-    }
+    primal.write().await.start().await.expect("primal should start");
 
     // Create multiple sessions
     let mut session_ids = Vec::new();
     for i in 0..5 {
-        let p = primal.read().await;
         let session =
             SessionBuilder::new(SessionType::General).with_name(format!("session-{i}")).build();
-        let sid = p.create_session(session).expect("should create session");
+        let sid = primal.read().await.create_session(session).expect("should create session");
         session_ids.push(sid);
     }
 
@@ -105,9 +84,6 @@ async fn test_network_instability_concurrent_operations() {
     for (i, &session_id) in session_ids.iter().enumerate() {
         let primal_clone = Arc::clone(&primal);
         let handle = tokio::spawn(async move {
-            let p = primal_clone.read().await;
-
-            // Try multiple appends
             for j in 0..10 {
                 let vertex = VertexBuilder::new(EventType::Custom {
                     domain: "test".into(),
@@ -115,8 +91,7 @@ async fn test_network_instability_concurrent_operations() {
                 })
                 .build();
 
-                // Some may fail due to network issues, that's OK
-                let _ = p.append_vertex(session_id, vertex).await;
+                let _ = primal_clone.read().await.append_vertex(session_id, vertex).await;
             }
         });
         handles.push(handle);
@@ -127,11 +102,10 @@ async fn test_network_instability_concurrent_operations() {
         let primal_clone = Arc::clone(&primal);
         async move {
             tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-            let mut p = primal_clone.write().await;
-            let _ = p.stop().await;
+            let _ = primal_clone.write().await.stop().await;
 
             tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-            let _ = p.start().await;
+            let _ = primal_clone.write().await.start().await;
         }
     });
 
@@ -141,11 +115,8 @@ async fn test_network_instability_concurrent_operations() {
     }
 
     // System should still be functional
-    {
-        let p = primal.read().await;
-        let count = p.session_count();
-        assert_eq!(count, 5, "All sessions should still exist");
-    }
+    let count = primal.read().await.session_count();
+    assert_eq!(count, 5, "All sessions should still exist");
 }
 
 /// Test slow network connections (timeouts).
@@ -233,10 +204,7 @@ async fn test_cascading_failure_isolation() {
     let config = RhizoCryptConfig::default();
     let primal = Arc::new(RwLock::new(RhizoCrypt::new(config)));
 
-    {
-        let mut p = primal.write().await;
-        p.start().await.expect("primal should start");
-    }
+    primal.write().await.start().await.expect("primal should start");
 
     // Create sessions
     let session_id1 = {
@@ -252,44 +220,31 @@ async fn test_cascading_failure_isolation() {
     };
 
     // Failure in one session shouldn't affect another
-    {
-        let p = primal.read().await;
+    let vertex1 = VertexBuilder::new(EventType::Custom {
+        domain: "test".into(),
+        event_name: "session-1-op".to_string(),
+    })
+    .build();
+    primal.read().await.append_vertex(session_id1, vertex1).await.expect("should work");
 
-        // Session 1 operation
-        let vertex1 = VertexBuilder::new(EventType::Custom {
-            domain: "test".into(),
-            event_name: "session-1-op".to_string(),
-        })
-        .build();
-        p.append_vertex(session_id1, vertex1).await.expect("should work");
-
-        // Session 2 operation (independent)
-        let vertex2 = VertexBuilder::new(EventType::Custom {
-            domain: "test".into(),
-            event_name: "session-2-op".to_string(),
-        })
-        .build();
-        p.append_vertex(session_id2, vertex2).await.expect("should work");
-    }
+    let vertex2 = VertexBuilder::new(EventType::Custom {
+        domain: "test".into(),
+        event_name: "session-2-op".to_string(),
+    })
+    .build();
+    primal.read().await.append_vertex(session_id2, vertex2).await.expect("should work");
 
     // Discard session 1 (simulate failure)
-    {
-        let p = primal.read().await;
-        p.discard_session(session_id1).await.expect("should discard");
-    }
+    primal.read().await.discard_session(session_id1).await.expect("should discard");
 
     // Session 2 should still work (isolation)
-    {
-        let p = primal.read().await;
-        let vertex = VertexBuilder::new(EventType::Custom {
-            domain: "test".into(),
-            event_name: "after-cascade".to_string(),
-        })
-        .build();
-
-        let result = p.append_vertex(session_id2, vertex).await;
-        assert!(result.is_ok(), "Session 2 should be unaffected");
-    }
+    let vertex = VertexBuilder::new(EventType::Custom {
+        domain: "test".into(),
+        event_name: "after-cascade".to_string(),
+    })
+    .build();
+    let result = primal.read().await.append_vertex(session_id2, vertex).await;
+    assert!(result.is_ok(), "Session 2 should be unaffected");
 }
 
 /// Test behavior under memory pressure (simulated).

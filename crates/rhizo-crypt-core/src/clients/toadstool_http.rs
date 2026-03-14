@@ -18,8 +18,7 @@
 //! - `POST /byob/deployments/:id/stop` — Stop deployment
 //! - `GET /byob/deployments/:id/usage` — Get resource usage
 
-use std::time::Duration;
-
+use crate::constants::{CONNECTION_TIMEOUT, HEALTH_CHECK_TIMEOUT};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
@@ -146,8 +145,8 @@ impl ToadStoolHttpClient {
     /// Returns error if client creation fails.
     pub fn new(base_url: impl Into<String>) -> std::result::Result<Self, ToadStoolHttpError> {
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .connect_timeout(Duration::from_secs(5))
+            .timeout(CONNECTION_TIMEOUT)
+            .connect_timeout(HEALTH_CHECK_TIMEOUT)
             .build()?;
 
         Ok(Self {

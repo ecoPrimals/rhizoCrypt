@@ -484,7 +484,6 @@ assert!(mock.sign(data, &did).await.is_ok());
 - **Discovery**: `crates/rhizo-crypt-core/src/discovery/`
 - **Capability Clients**: `crates/rhizo-crypt-core/src/clients/capabilities/`
 - **Environment Reference**: `docs/ENV_VARS.md`
-- **Verification Checklist**: `docs/VERIFICATION_CHECKLIST.md`
 
 ---
 

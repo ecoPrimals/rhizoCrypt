@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Integration tests for rhizocrypt binary (UniBin)
+//! Integration tests for rhizocrypt binary (`UniBin`)
 //!
 //! Tests the main service entry point, configuration, startup, shutdown,
 //! and error handling scenarios using the `server` subcommand.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::cast_possible_wrap)]
 
+use rhizocrypt_service::exit_codes;
 use std::process::{Command, Stdio};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -29,6 +30,20 @@ async fn test_service_binary_exists() {
         std::path::Path::new(&binary_path).exists(),
         "Service binary should exist at: {binary_path}",
     );
+}
+
+#[tokio::test]
+async fn test_client_invalid_address_exit_code() {
+    let binary_path = service_binary_path();
+
+    let output = Command::new(&binary_path)
+        .args(["client", "--address", "not-a-valid-address", "health"])
+        .output()
+        .expect("Failed to run client with invalid address");
+
+    assert!(!output.status.success(), "Should fail with invalid address");
+    let code = output.status.code().expect("process should have exit code");
+    assert_eq!(code, exit_codes::CONFIG_ERROR, "AddrParse should map to CONFIG_ERROR (2)");
 }
 
 #[tokio::test]

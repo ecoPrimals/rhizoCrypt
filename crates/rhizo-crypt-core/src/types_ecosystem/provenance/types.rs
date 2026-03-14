@@ -11,6 +11,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
+use crate::constants::{DEFAULT_CAPABILITY_TIMEOUT_MS, PROVENANCE_DEFAULT_MAX_RESULTS};
 use crate::types::{Did, PayloadRef, SessionId, Timestamp, VertexId};
 
 /// Reference to a vertex for external queries.
@@ -127,8 +128,8 @@ impl Default for ProvenanceProviderConfig {
     fn default() -> Self {
         Self {
             push_address: None,
-            timeout_ms: 5000,
-            max_results: 1000,
+            timeout_ms: DEFAULT_CAPABILITY_TIMEOUT_MS,
+            max_results: PROVENANCE_DEFAULT_MAX_RESULTS,
             cache_enabled: true,
             cache_ttl_secs: 300,
         }

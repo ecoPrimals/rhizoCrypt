@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! JSON-RPC 2.0 server for rhizoCrypt.
+//! JSON-RPC 2.0 server for `rhizoCrypt`.
 //!
-//! Implements the ecoPrimals UNIVERSAL_IPC_STANDARD JSON-RPC 2.0 protocol
+//! Implements the ecoPrimals `UNIVERSAL_IPC_STANDARD` JSON-RPC 2.0 protocol
 //! with semantic method naming: `{domain}.{operation}[.{variant}]`.
 
 mod handler;
@@ -27,7 +27,7 @@ struct JsonRpcState {
 /// JSON-RPC 2.0 server.
 ///
 /// Serves JSON-RPC requests at the configured path, sharing the same
-/// RhizoCrypt primal instance as the tarpc server.
+/// `RhizoCrypt` primal instance as the tarpc server.
 pub struct JsonRpcServer {
     primal: Arc<RhizoCrypt>,
     addr: SocketAddr,
@@ -35,6 +35,7 @@ pub struct JsonRpcServer {
 
 impl JsonRpcServer {
     /// Create a new JSON-RPC server.
+    #[must_use]
     pub const fn new(primal: Arc<RhizoCrypt>, addr: SocketAddr) -> Self {
         Self {
             primal,
@@ -45,6 +46,10 @@ impl JsonRpcServer {
     /// Start the JSON-RPC server.
     ///
     /// Binds to the configured address and serves POST requests at the RPC path.
+    ///
+    /// # Errors
+    ///
+    /// Returns `std::io::Error` if binding or serving fails.
     pub async fn serve(self) -> Result<(), std::io::Error> {
         let listener = tokio::net::TcpListener::bind(self.addr).await?;
         let local_addr = listener.local_addr()?;
@@ -56,7 +61,7 @@ impl JsonRpcServer {
 
     /// Build the axum router for embedding in larger applications.
     ///
-    /// Serves JSON-RPC at the path from `rhizo_crypt_core::constants::JSON_RPC_PATH`.
+    /// Serves JSON-RPC at the path from [`rhizo_crypt_core::constants::JSON_RPC_PATH`].
     pub fn router(primal: Arc<RhizoCrypt>) -> Router {
         let state = JsonRpcState {
             primal,

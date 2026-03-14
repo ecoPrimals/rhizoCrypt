@@ -3,9 +3,9 @@
 
 //! # rhizo-crypt-rpc
 //!
-//! Pure Rust RPC layer for rhizoCrypt using tarpc.
+//! Pure Rust RPC layer for `rhizoCrypt` using `tarpc`.
 //!
-//! This crate provides compile-time type-safe RPC for rhizoCrypt operations,
+//! This crate provides compile-time type-safe RPC for `rhizoCrypt` operations,
 //! following the ecoPrimals pattern of leaning into the Rust compiler rather
 //! than external code generation (protobuf/gRPC).
 //!
@@ -13,8 +13,8 @@
 //!
 //! - **Pure Rust**: No `.proto` files, no code generation
 //! - **Compile-time safety**: Trait-based RPC, all types checked at compile time
-//! - **tarpc**: High-performance async RPC built on Rust's type system
-//! - **Ecosystem alignment**: Matches songBird's RPC patterns
+//! - **`tarpc`**: High-performance async RPC built on Rust's type system
+//! - **Ecosystem alignment**: Matches `songBird`'s RPC patterns
 //!
 //! ## Usage
 //!
@@ -23,7 +23,7 @@
 //! # use rhizo_crypt_core::{SessionType, EventType};
 //! # use std::net::SocketAddr;
 //! # tokio::runtime::Runtime::new().unwrap().block_on(async {
-//! // Connect to a rhizoCrypt service
+//! // Connect to a `rhizoCrypt` service
 //! let addr: SocketAddr = "127.0.0.1:9400".parse().unwrap();
 //! let client = RpcClient::connect(addr).await?;
 //!

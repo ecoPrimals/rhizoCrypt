@@ -7,6 +7,7 @@
 //! rather than having hardcoded knowledge of addresses.
 
 use super::{Capability, ServiceEndpoint};
+use crate::constants::{DISCOVERY_QUERY_TIMEOUT, DISCOVERY_RESPONSE_BUFFER_SIZE};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -185,7 +186,7 @@ impl DiscoveryRegistry {
             body_bytes.len()
         );
 
-        let timeout = tokio::time::Duration::from_secs(5);
+        let timeout = DISCOVERY_QUERY_TIMEOUT;
 
         let mut stream = tokio::time::timeout(timeout, TcpStream::connect(source_addr))
             .await
@@ -195,7 +196,7 @@ impl DiscoveryRegistry {
         stream.write_all(header.as_bytes()).await.map_err(|e| e.to_string())?;
         stream.write_all(&body_bytes).await.map_err(|e| e.to_string())?;
 
-        let mut response_buf = Vec::with_capacity(4096);
+        let mut response_buf = Vec::with_capacity(DISCOVERY_RESPONSE_BUFFER_SIZE);
         tokio::time::timeout(timeout, stream.read_to_end(&mut response_buf))
             .await
             .map_err(|_| "Discovery source read timed out".to_string())?

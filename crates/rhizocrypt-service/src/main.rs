@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! `rhizoCrypt` — Ephemeral DAG Engine (UniBin)
+//! `rhizoCrypt` — Ephemeral DAG Engine (`UniBin`)
 //!
-//! Single binary, multiple modes via subcommands per the UniBin architecture standard.
+//! Single binary, multiple modes via subcommands per the `UniBin` architecture standard.
 //!
 //! ## Usage
 //!
@@ -29,7 +29,7 @@
 #![forbid(unsafe_code)]
 
 use clap::{Parser, Subcommand};
-use rhizocrypt_service::{ClientOperation, ServiceError};
+use rhizocrypt_service::ClientOperation;
 
 /// rhizoCrypt — Ephemeral DAG Engine for the ecoPrimals ecosystem.
 ///
@@ -54,11 +54,11 @@ struct Cli {
 enum Commands {
     /// Start the RPC service.
     Server {
-        /// Port to bind to (overrides RHIZOCRYPT_PORT env var).
+        /// Port to bind to (overrides `RHIZOCRYPT_PORT` env var).
         #[arg(short, long)]
         port: Option<u16>,
 
-        /// Host address to bind to (overrides RHIZOCRYPT_HOST env var).
+        /// Host address to bind to (overrides `RHIZOCRYPT_HOST` env var).
         #[arg(long)]
         host: Option<String>,
     },
@@ -69,7 +69,7 @@ enum Commands {
     /// Print version and build information.
     Version,
 
-    /// Run health diagnostics (UniBin Architecture Standard).
+    /// Run health diagnostics (`UniBin` Architecture Standard).
     Doctor {
         /// Run detailed checks including discovery connectivity.
         #[arg(long)]
@@ -89,10 +89,10 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ServiceError> {
+async fn main() {
     let cli = Cli::parse();
 
-    match cli.command {
+    let result = match cli.command {
         Commands::Server {
             port,
             host,
@@ -115,5 +115,10 @@ async fn main() -> Result<(), ServiceError> {
             address,
             operation,
         } => rhizocrypt_service::run_client(&address, operation).await,
+    };
+
+    if let Err(e) = result {
+        eprintln!("Error: {e}");
+        std::process::exit(e.exit_code());
     }
 }

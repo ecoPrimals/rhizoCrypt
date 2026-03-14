@@ -8,4 +8,6 @@
 
 pub mod dag_operations;
 pub mod dehydration_complete;
+pub mod merkle_operations;
 pub mod session_lifecycle;
+pub mod slice_workflows;

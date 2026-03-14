@@ -106,9 +106,9 @@ impl RateLimitConfig {
 /// Operation type for rate limiting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OperationType {
-    /// Read operations (get_vertex, get_frontier, etc.).
+    /// Read operations (`get_vertex`, `get_frontier`, etc.).
     Read,
-    /// Write operations (append_event, create_session, etc.).
+    /// Write operations (`append_event`, `create_session`, etc.).
     Write,
     /// Expensive operations (merkle proofs, dehydration).
     Expensive,
@@ -227,11 +227,12 @@ impl RateLimiter {
             return true;
         }
 
-        let mut clients = self.clients.write().await;
-
-        let state = clients.entry(client).or_insert_with(|| ClientState::new(&self.config));
-
-        state.try_consume(op)
+        self.clients
+            .write()
+            .await
+            .entry(client)
+            .or_insert_with(|| ClientState::new(&self.config))
+            .try_consume(op)
     }
 
     /// Get the number of tracked clients.

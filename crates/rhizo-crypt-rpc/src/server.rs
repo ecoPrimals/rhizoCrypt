@@ -43,6 +43,10 @@ impl RpcServer {
     ///
     /// This will bind to the configured address and serve RPC requests.
     /// The server runs until `shutdown()` is called or the process is interrupted.
+    ///
+    /// # Errors
+    ///
+    /// Returns `std::io::Error` if binding to the address fails.
     pub async fn serve(self) -> Result<(), std::io::Error> {
         let listener = tarpc::serde_transport::tcp::listen(&self.addr, Bincode::default).await?;
         let local_addr = listener.local_addr();
@@ -88,6 +92,14 @@ impl RpcServer {
         if self.shutdown_tx.send(true).is_err() {
             warn!("Server already shut down or shutdown channel closed");
         }
+    }
+
+    /// Get a clone of the shutdown sender for external signal handling.
+    ///
+    /// Call `send(true)` on the returned sender to trigger graceful shutdown.
+    #[must_use]
+    pub fn shutdown_sender(&self) -> watch::Sender<bool> {
+        self.shutdown_tx.clone()
     }
 
     /// Check if the server is currently running.

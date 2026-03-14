@@ -5,6 +5,61 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-14 (session 5)
+
+### Changed
+
+#### Pedantic Clippy Clean (0 warnings with pedantic + nursery)
+- Fixed 45+ clippy errors: `significant_drop_tightening`, `doc_markdown`, `must_use_candidate`, `missing_errors_doc`
+- All public Result-returning functions now have `# Errors` doc sections
+- All identifiers in doc comments wrapped in backticks
+- Lock scopes tightened across RPC and test harness code
+
+#### Magic Numbers Centralized
+- Added 7 new constants to `constants.rs`: `SLED_CACHE_SIZE_BYTES`, `SLED_FLUSH_INTERVAL_MS`, `DISCOVERY_QUERY_TIMEOUT`, `DISCOVERY_RESPONSE_BUFFER_SIZE`, `PROVENANCE_CONNECTION_TIMEOUT`, `PROVENANCE_RESPONSE_TIMEOUT`, `PROVENANCE_DEFAULT_MAX_RESULTS`
+- Updated `store_sled.rs`, `discovery/registry.rs`, `adapters/tarpc.rs`, `toadstool_http.rs`, provenance clients
+
+#### Smart File Refactoring
+- `store_sled.rs`: 949 → 552 lines (tests extracted to `store_sled_tests.rs`)
+- `store_redb_tests_advanced.rs`: 994 → 846 lines (query tests to `store_redb_tests_query.rs`)
+- All files now well under 1000-line limit (max: 858)
+
+#### UniBin Exit Codes & Signal Handling
+- Added `exit_codes` module: `SUCCESS` (0), `GENERAL_ERROR` (1), `CONFIG_ERROR` (2), `NETWORK_ERROR` (3), `INTERRUPTED` (130)
+- `ServiceError::exit_code()` maps errors to proper exit codes
+- Added `shutdown_signal()`: SIGTERM + SIGINT on Unix, Ctrl+C on other platforms
+- Server graceful shutdown via `tokio::select!` with `tokio::pin!`
+
+#### ecoBin Compliance Hardened
+- Default build confirmed pure Rust (no `ring`); `ring` only via opt-in `http-clients`
+- `deny.toml`: explicit bans for `openssl-sys`, `native-tls`, `aws-lc-sys` and 4 other C-backed crates
+- `ring` documented as tolerated opt-in only, pending `rustls-rustcrypto` stabilization
+
+#### Test Expansion
+- **1092 tests passing** (was 1075) — +17 new tests
+- **90.83% line coverage** (was 91.02% — slight shift from refactoring)
+- New E2E: `slice_workflows.rs` (5 tests), `merkle_operations.rs` (4 tests)
+- New chaos: `resource_exhaustion.rs` (4 tests)
+- New service: exit codes + signal handling (4 tests)
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery) | Clean (0 warnings) |
+| `cargo doc --workspace --all-features --no-deps` | Clean (0 warnings) |
+| `cargo test --workspace --all-features` | 1092 pass, 0 fail |
+| `cargo test --doc --workspace --all-features` | 30 pass, 0 ignored |
+| `cargo llvm-cov --all-features` | 90.83% lines, 92.31% regions |
+| `cargo deny check` | advisories ok, bans ok, licenses ok, sources ok |
+| `#![forbid(unsafe_code)]` | Workspace-wide |
+| SPDX headers | All `.rs` files |
+| Max file size | All under 1000 lines (max 858) |
+| No production TODOs/FIXMEs | Verified |
+
+---
+
 ## [0.13.0-dev] - 2026-03-14 (session 4)
 
 ### Changed

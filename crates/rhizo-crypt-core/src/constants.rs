@@ -164,6 +164,39 @@ pub const DEFAULT_MAX_RETRIES: u8 = 3;
 pub const DEFAULT_RETRY_BACKOFF_MS: u64 = 100;
 
 // ============================================================================
+// SLED STORAGE CONSTANTS
+// ============================================================================
+
+/// Sled database cache capacity (128 MB).
+pub const SLED_CACHE_SIZE_BYTES: u64 = 128 * 1024 * 1024;
+
+/// Sled flush interval in milliseconds.
+pub const SLED_FLUSH_INTERVAL_MS: u64 = 1000;
+
+// ============================================================================
+// DISCOVERY CONSTANTS
+// ============================================================================
+
+/// Discovery source connection/query timeout.
+pub const DISCOVERY_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Discovery response buffer initial capacity (bytes).
+pub const DISCOVERY_RESPONSE_BUFFER_SIZE: usize = 4096;
+
+// ============================================================================
+// PROVENANCE CONSTANTS
+// ============================================================================
+
+/// Provenance provider connection timeout.
+pub const PROVENANCE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Provenance provider response timeout.
+pub const PROVENANCE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Default maximum results per provenance query.
+pub const PROVENANCE_DEFAULT_MAX_RESULTS: usize = 1000;
+
+// ============================================================================
 // COMPRESSION CONSTANTS
 // ============================================================================
 

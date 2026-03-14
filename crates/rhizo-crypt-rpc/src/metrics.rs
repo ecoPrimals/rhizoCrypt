@@ -3,7 +3,7 @@
 
 //! Prometheus metrics for RPC layer.
 //!
-//! Provides observability into rhizoCrypt's RPC operations including:
+//! Provides observability into `rhizoCrypt`'s RPC operations including:
 //! - Request counts and latencies
 //! - Session and vertex statistics
 //! - Error rates by type

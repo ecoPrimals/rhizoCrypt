@@ -13,6 +13,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
+use crate::constants::{PROVENANCE_CONNECTION_TIMEOUT, PROVENANCE_RESPONSE_TIMEOUT};
 use crate::dehydration::DehydrationSummary;
 use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::{Result, RhizoCryptError};
@@ -240,7 +241,7 @@ impl ProvenanceNotifier {
         use tokio::net::TcpStream;
 
         let stream =
-            tokio::time::timeout(std::time::Duration::from_secs(5), TcpStream::connect(endpoint))
+            tokio::time::timeout(PROVENANCE_CONNECTION_TIMEOUT, TcpStream::connect(endpoint))
                 .await
                 .map_err(|_| format!("Connection timeout to {endpoint}"))?
                 .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
@@ -253,13 +254,10 @@ impl ProvenanceNotifier {
         let mut buf_reader = BufReader::new(reader);
         let mut response = String::new();
 
-        tokio::time::timeout(
-            std::time::Duration::from_secs(10),
-            buf_reader.read_line(&mut response),
-        )
-        .await
-        .map_err(|_| "Response timeout".to_string())?
-        .map_err(|e| format!("Read failed: {e}"))?;
+        tokio::time::timeout(PROVENANCE_RESPONSE_TIMEOUT, buf_reader.read_line(&mut response))
+            .await
+            .map_err(|_| "Response timeout".to_string())?
+            .map_err(|e| format!("Read failed: {e}"))?;
 
         Ok(response)
     }

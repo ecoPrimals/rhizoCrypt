@@ -252,7 +252,6 @@ PERMANENT_STORAGE_ENDPOINT=$(kubectl get secret storage-endpoint -o jsonpath='{.
 
 - [specs/ARCHITECTURE.md](../specs/ARCHITECTURE.md) — Primal-agnostic design
 - [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) — Production deployment guide
-- [VERIFICATION_CHECKLIST.md](./VERIFICATION_CHECKLIST.md) — Quality verification
 
 ---
 

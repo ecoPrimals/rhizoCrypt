@@ -113,7 +113,7 @@ async fn test_dehydration_multi_agent() {
 /// Test dehydration with large payload.
 ///
 /// Note: This test creates a vertex with metadata instead of payload
-/// since payloads now use PayloadRef (content-addressed references).
+/// since payloads now use `PayloadRef` (content-addressed references).
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_dehydration_large_payload() {
     let config = RhizoCryptConfig::default();
