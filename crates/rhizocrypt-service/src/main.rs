@@ -13,6 +13,8 @@
 //! rhizocrypt status                    # Check service health
 //! rhizocrypt doctor                    # Health diagnostics (UniBin standard)
 //! rhizocrypt doctor --comprehensive    # Detailed checks including discovery
+//! rhizocrypt client health             # Check server health (UniBin standard)
+//! rhizocrypt client --address HOST:PORT list-sessions  # List sessions
 //! rhizocrypt --version                 # Version info
 //! rhizocrypt --help                    # Help
 //! ```
@@ -27,7 +29,7 @@
 #![forbid(unsafe_code)]
 
 use clap::{Parser, Subcommand};
-use rhizocrypt_service::ServiceError;
+use rhizocrypt_service::{ClientOperation, ServiceError};
 
 /// rhizoCrypt — Ephemeral DAG Engine for the ecoPrimals ecosystem.
 ///
@@ -73,6 +75,17 @@ enum Commands {
         #[arg(long)]
         comprehensive: bool,
     },
+
+    /// Connect to a running rhizoCrypt server and execute RPC commands.
+    Client {
+        /// Server address to connect to.
+        #[arg(short, long, default_value = "127.0.0.1:9400")]
+        address: String,
+
+        /// Client operation to perform.
+        #[command(subcommand)]
+        operation: ClientOperation,
+    },
 }
 
 #[tokio::main]
@@ -98,5 +111,9 @@ async fn main() -> Result<(), ServiceError> {
             rhizocrypt_service::run_doctor(comprehensive).await;
             Ok(())
         }
+        Commands::Client {
+            address,
+            operation,
+        } => rhizocrypt_service::run_client(&address, operation).await,
     }
 }

@@ -5,6 +5,54 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-14 (session 4)
+
+### Changed
+
+#### Sovereignty: Capability-Based Error Types
+- Removed primal-specific error variants `BearDog(String)`, `LoamSpine(String)`, `NestGate(String)`
+- Added `CapabilityProvider { capability, message }` — structured, capability-based variant
+- Removed deprecated trait aliases `BearDogClient`, `LoamSpineClient`, `NestGateClient`
+- Updated `is_recoverable()` to cover `Integration` and `CapabilityProvider`
+
+#### JSON-RPC Zero-Copy: from_str → from_slice
+- Replaced two-step `from_utf8` + `from_str` with single `serde_json::from_slice(&body)`
+- Combines UTF-8 validation and JSON parsing in one pass, eliminating intermediate `&str`
+
+#### Doc Tests Rewritten (26 ignore → no_run)
+- All 26 `ignore`d doc tests rewritten to match current API surface
+- **30 doc tests passing, 0 ignored** (was 4 passing, 26 ignored)
+- Doc examples now serve as compilable API reference
+
+#### Coverage & Test Expansion
+- **1075 tests passing** (was 1022) — +53 new tests
+- **91.02% line coverage** (was 90.12%), 87.61% function, 92.38% region
+- `store_redb_tests_advanced.rs`: `parse_vertex_set` edge cases, `Clone` independence, `StorageStats` debug
+- `error.rs`: `CapabilityProvider` construction, display, recoverability
+- `songbird_rpc.rs`: function coverage 52% → 96%
+
+#### Root Docs & crate README Modernized
+- Root `README.md`: metrics updated (1075 tests, 91.02% coverage), `client` subcommand added
+- `rhizo-crypt-core/README.md`: rewritten — removed RocksDB/BearDog references, updated to redb/sled, capability-based clients
+- New wateringHole handoff for session 4
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy --workspace --all-features --all-targets -- -D warnings` | Clean |
+| `cargo doc --workspace --all-features --no-deps` | Clean (0 warnings) |
+| `cargo test --workspace --all-features` | 1075 pass, 0 fail |
+| `cargo test --doc --workspace --all-features` | 30 pass, 0 ignored |
+| `cargo llvm-cov --all-features` | 91.02% lines, 92.38% regions |
+| `cargo deny check` | advisories ok, bans ok, licenses ok, sources ok |
+| `#![forbid(unsafe_code)]` | Workspace-wide |
+| SPDX headers | All `.rs` files |
+| Max file size | All under 1000 lines |
+
+---
+
 ## [0.13.0-dev] - 2026-03-14 (session 3)
 
 ### Changed
@@ -247,7 +295,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
-- **0.13.0-dev** (2026-03-14): 90% coverage, 1022 tests, platform-agnostic transport, doctor subcommand, zero-copy handler
+- **0.13.0-dev** (2026-03-14 s4): Sovereignty cleanup, 1075 tests, 91% coverage, doc tests rewritten, capability-based errors
+- **0.13.0-dev** (2026-03-14 s3): 90% coverage, 1022 tests, platform-agnostic transport, doctor subcommand, zero-copy handler
 - **0.13.0-dev** (2026-03-13): Deep debt, 862 tests, cargo-deny, service lib extraction
 - **0.13.0-dev** (2026-03-12): wateringHole standards, capability discovery, UniBin
 - **0.12.0** (2025-12-26): Lock-free concurrency (DashMap), Songbird registration

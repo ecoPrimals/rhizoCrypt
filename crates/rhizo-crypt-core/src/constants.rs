@@ -214,7 +214,7 @@ pub fn socket_dir() -> Option<PathBuf> {
     let fallback = if cfg!(target_os = "linux") {
         PathBuf::from(DEFAULT_SOCKET_DIR)
     } else {
-        PathBuf::from("/tmp/ecoPrimals")
+        std::env::temp_dir().join("ecoPrimals")
     };
     Some(fallback)
 }

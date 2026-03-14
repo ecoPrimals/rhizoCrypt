@@ -11,14 +11,24 @@
 //!
 //! Generic clients that work with ANY service providing a capability:
 //!
-//! ```ignore
-//! use rhizo_crypt_core::clients::capabilities::{SigningClient, StorageClient};
-//!
+//! ```no_run
+//! # use rhizo_crypt_core::clients::capabilities::SigningClient;
+//! # use rhizo_crypt_core::types::Did;
+//! # use std::sync::Arc;
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
+//! # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
+//! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
+//! #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+//! #     vec![rhizo_crypt_core::discovery::Capability::Signing],
+//! # )).await;
 //! // Discover ANY signing provider at runtime
 //! let signer = SigningClient::discover(&registry).await?;
 //!
 //! // Works with BearDog, YubiKey, CloudKMS, HSM, etc.
-//! let signature = signer.sign(data, &did).await?;
+//! let did = Did::new("did:key:test");
+//! let signature = signer.sign(b"data", &did).await?;
+//! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+//! # });
 //! ```
 //!
 //! ## Infant Discovery

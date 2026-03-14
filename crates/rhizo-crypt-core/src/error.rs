@@ -166,17 +166,17 @@ pub enum RhizoCryptError {
     CommitExists(String),
 
     // === Integration Errors ===
-    /// BearDog integration error.
-    #[error("BearDog error: {0}")]
-    BearDog(String),
-
-    /// LoamSpine integration error.
-    #[error("LoamSpine error: {0}")]
-    LoamSpine(String),
-
-    /// NestGate integration error.
-    #[error("NestGate error: {0}")]
-    NestGate(String),
+    /// Capability provider error (signing, storage, commit, etc.).
+    ///
+    /// Capability-based: rhizoCrypt only knows about capabilities it discovers
+    /// at runtime, never specific primal names.
+    #[error("capability provider error ({capability}): {message}")]
+    CapabilityProvider {
+        /// The capability that failed (e.g., "signing", "permanent_storage").
+        capability: String,
+        /// Error detail.
+        message: String,
+    },
 
     /// Integration error (service not discovered or unavailable).
     #[error("integration error: {0}")]
@@ -251,7 +251,22 @@ impl RhizoCryptError {
     /// Returns true if this is a recoverable error.
     #[must_use]
     pub const fn is_recoverable(&self) -> bool {
-        matches!(self, Self::Timeout(_) | Self::Storage(_) | Self::BearDog(_) | Self::LoamSpine(_))
+        matches!(
+            self,
+            Self::Timeout(_)
+                | Self::Storage(_)
+                | Self::Integration(_)
+                | Self::CapabilityProvider { .. }
+        )
+    }
+
+    /// Create a capability provider error.
+    #[must_use]
+    pub fn capability_provider(capability: impl Into<String>, message: impl Into<String>) -> Self {
+        Self::CapabilityProvider {
+            capability: capability.into(),
+            message: message.into(),
+        }
     }
 
     /// Returns true if this is a not-found error.
@@ -292,7 +307,17 @@ mod tests {
     fn test_is_recoverable() {
         assert!(RhizoCryptError::Timeout(1000).is_recoverable());
         assert!(RhizoCryptError::storage("disk full").is_recoverable());
+        assert!(RhizoCryptError::integration("service unavailable").is_recoverable());
+        assert!(RhizoCryptError::capability_provider("signing", "timeout").is_recoverable());
         assert!(!RhizoCryptError::config("invalid").is_recoverable());
+    }
+
+    #[test]
+    fn test_capability_provider_error() {
+        let err = RhizoCryptError::capability_provider("signing", "key not found");
+        assert!(err.to_string().contains("signing"));
+        assert!(err.to_string().contains("key not found"));
+        assert!(err.is_recoverable());
     }
 
     #[test]

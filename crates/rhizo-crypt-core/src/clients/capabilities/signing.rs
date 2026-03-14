@@ -14,17 +14,28 @@
 //!
 //! ## Usage
 //!
-//! ```ignore
-//! use rhizo_crypt_core::clients::capabilities::SigningClient;
-//!
+//! ```no_run
+//! # use rhizo_crypt_core::clients::capabilities::SigningClient;
+//! # use rhizo_crypt_core::types::Did;
+//! # use std::sync::Arc;
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
+//! # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
+//! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
+//! #     "test-signer",
+//! #     "127.0.0.1:9500".parse().unwrap(),
+//! #     vec![rhizo_crypt_core::discovery::Capability::Signing],
+//! # )).await;
 //! // Discover ANY signing provider
 //! let signer = SigningClient::discover(&registry).await?;
 //!
 //! // Sign data (works with any provider)
+//! let did = Did::new("did:key:test");
 //! let signature = signer.sign(b"data", &did).await?;
 //!
 //! // Verify signature
 //! let valid = signer.verify(b"data", &signature, &did).await?;
+//! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+//! # });
 //! ```
 
 use crate::clients::adapters::{AdapterFactory, ProtocolAdapter, ProtocolAdapterExt};
@@ -79,8 +90,18 @@ impl SigningClient {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # use rhizo_crypt_core::clients::capabilities::SigningClient;
+    /// # use std::sync::Arc;
+    /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+    /// # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
+    /// # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
+    /// #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+    /// #     vec![rhizo_crypt_core::discovery::Capability::Signing],
+    /// # )).await;
     /// let signer = SigningClient::discover(&registry).await?;
+    /// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+    /// # });
     /// ```
     pub async fn discover(registry: &DiscoveryRegistry) -> Result<Self> {
         tracing::info!("🔍 Discovering signing capability provider...");

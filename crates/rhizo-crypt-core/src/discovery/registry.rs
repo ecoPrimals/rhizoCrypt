@@ -177,7 +177,7 @@ impl DiscoveryRegistry {
 
         let header = format!(
             "POST /rpc HTTP/1.1\r\n\
-             Host: localhost\r\n\
+             Host: {source_addr}\r\n\
              Content-Type: application/json\r\n\
              Content-Length: {}\r\n\
              Connection: close\r\n\

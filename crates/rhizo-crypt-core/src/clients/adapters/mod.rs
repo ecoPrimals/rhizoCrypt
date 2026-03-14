@@ -15,14 +15,18 @@
 //!
 //! ## Usage
 //!
-//! ```ignore
-//! use rhizo_crypt_core::clients::adapters::{ProtocolAdapter, AdapterFactory};
-//!
-//! // Create adapter based on service endpoint metadata
-//! let adapter = AdapterFactory::create_for_endpoint(&endpoint)?;
+//! ```no_run
+//! # use rhizo_crypt_core::clients::adapters::{ProtocolAdapter, AdapterFactory};
+//! # use rhizo_crypt_core::types::Signature;
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
+//! // Create adapter based on service endpoint
+//! let adapter = AdapterFactory::create("127.0.0.1:9500")?;
 //!
 //! // Use adapter to make calls (protocol-independent)
-//! let result: Signature = adapter.call("sign", (data, did)).await?;
+//! let args_json = r#"{"data":[],"signer":"did:key:test"}"#.to_string();
+//! let _result_json = adapter.call_json("sign", args_json).await?;
+//! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+//! # });
 //! ```
 
 use crate::error::{Result, RhizoCryptError};

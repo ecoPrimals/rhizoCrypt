@@ -831,8 +831,8 @@ RhizoCrypt sessions are stored in a fast, ephemeral store optimized for:
 
 **Recommended backends:**
 - **In-memory** — For short sessions with high throughput
-- **RocksDB** — For longer sessions requiring persistence
-- **LMDB** — For memory-mapped performance with durability
+- **redb** — Default persistent backend (100% Pure Rust, ecoBin compliant)
+- **sled** — Alternative persistent backend (optional, uses libc for file locking)
 
 ```rust
 /// DAG Store trait
@@ -1163,7 +1163,7 @@ paths:
 - [ ] Session lifecycle management
 
 ### Phase 2: Persistence (2 weeks)
-- [ ] RocksDB DAG store backend
+- [x] redb DAG store backend (Pure Rust, default)
 - [ ] Content-addressed payload store
 - [ ] Session serialization/deserialization
 

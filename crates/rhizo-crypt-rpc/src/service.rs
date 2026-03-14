@@ -305,7 +305,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         }
 
         let session = builder.build();
-        self.primal.create_session(session).map_err(|e| RpcError::Core(e.to_string()))
+        self.primal.create_session(session).map_err(RpcError::from)
     }
 
     async fn get_session(
@@ -313,11 +313,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<SessionInfo, RpcError> {
-        let session = self
-            .primal
-            .get_session(session_id)
-            .map_err(|e| RpcError::SessionNotFound(e.to_string()))?;
-
+        let session = self.primal.get_session(session_id).map_err(RpcError::from)?;
         Ok(session_to_info(&session))
     }
 
@@ -331,7 +327,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<(), RpcError> {
-        self.primal.discard_session(session_id).await.map_err(|e| RpcError::Core(e.to_string()))
+        self.primal.discard_session(session_id).await.map_err(RpcError::from)
     }
 
     async fn append_event(
@@ -354,10 +350,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         }
 
         let vertex = builder.build();
-        self.primal
-            .append_vertex(request.session_id, vertex)
-            .await
-            .map_err(|e| RpcError::Core(e.to_string()))
+        self.primal.append_vertex(request.session_id, vertex).await.map_err(RpcError::from)
     }
 
     async fn append_batch(
@@ -382,7 +375,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
                 .primal
                 .append_vertex(request.session_id, vertex)
                 .await
-                .map_err(|e| RpcError::Core(e.to_string()))?;
+                .map_err(RpcError::from)?;
             results.push(id);
         }
         Ok(results)
@@ -397,7 +390,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         tracing::debug!("get_vertex called: session={session_id:?}, vertex={vertex_id:?}");
         let result = self.primal.get_vertex(session_id, vertex_id).await;
         tracing::debug!("get_vertex result: {result:?}");
-        result.map_err(|e| RpcError::VertexNotFound(e.to_string()))
+        result.map_err(RpcError::from)
     }
 
     async fn get_frontier(
@@ -405,10 +398,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<Vec<VertexId>, RpcError> {
-        let session = self
-            .primal
-            .get_session(session_id)
-            .map_err(|e| RpcError::SessionNotFound(e.to_string()))?;
+        let session = self.primal.get_session(session_id).map_err(RpcError::from)?;
         Ok(session.frontier.into_iter().collect())
     }
 
@@ -417,10 +407,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<Vec<VertexId>, RpcError> {
-        let session = self
-            .primal
-            .get_session(session_id)
-            .map_err(|e| RpcError::SessionNotFound(e.to_string()))?;
+        let session = self.primal.get_session(session_id).map_err(RpcError::from)?;
         Ok(session.genesis.into_iter().collect())
     }
 
@@ -436,7 +423,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         self.primal
             .query_vertices(request.session_id, event_types.as_deref(), agent.as_ref(), limit)
             .await
-            .map_err(|e| RpcError::Core(e.to_string()))
+            .map_err(RpcError::from)
     }
 
     async fn get_children(
@@ -445,12 +432,9 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         session_id: SessionId,
         vertex_id: VertexId,
     ) -> Result<Vec<VertexId>, RpcError> {
-        let dag_store = self.primal.dag_store().await.map_err(|e| RpcError::Core(e.to_string()))?;
+        let dag_store = self.primal.dag_store().await.map_err(RpcError::from)?;
 
-        dag_store
-            .get_children(session_id, vertex_id)
-            .await
-            .map_err(|e| RpcError::Core(e.to_string()))
+        dag_store.get_children(session_id, vertex_id).await.map_err(RpcError::from)
     }
 
     async fn get_merkle_root(
@@ -458,7 +442,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<MerkleRoot, RpcError> {
-        self.primal.compute_merkle_root(session_id).await.map_err(|e| RpcError::Core(e.to_string()))
+        self.primal.compute_merkle_root(session_id).await.map_err(RpcError::from)
     }
 
     async fn get_merkle_proof(
@@ -467,10 +451,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         session_id: SessionId,
         vertex_id: VertexId,
     ) -> Result<MerkleProof, RpcError> {
-        self.primal
-            .generate_merkle_proof(session_id, vertex_id)
-            .await
-            .map_err(|e| RpcError::Core(e.to_string()))
+        self.primal.generate_merkle_proof(session_id, vertex_id).await.map_err(RpcError::from)
     }
 
     async fn verify_proof(
@@ -521,7 +502,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
             slice::SliceBuilder::new(origin, holder, request.mode, session_id, checkout_vertex)
                 .build();
 
-        self.primal.checkout_slice(slice).map_err(|e| RpcError::Core(e.to_string()))
+        self.primal.checkout_slice(slice).map_err(RpcError::from)
     }
 
     async fn get_slice(
@@ -529,7 +510,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         slice_id: SliceId,
     ) -> Result<rhizo_crypt_core::Slice, RpcError> {
-        self.primal.get_slice(slice_id).map_err(|e| RpcError::SliceNotFound(e.to_string()))
+        self.primal.get_slice(slice_id).map_err(RpcError::from)
     }
 
     async fn list_slices(
@@ -549,7 +530,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
 
         self.primal
             .resolve_slice(slice_id, ResolutionOutcome::ReturnedUnchanged)
-            .map_err(|e| RpcError::Core(e.to_string()))
+            .map_err(RpcError::from)
     }
 
     async fn dehydrate(
@@ -557,7 +538,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<MerkleRoot, RpcError> {
-        self.primal.dehydrate(session_id).await.map_err(|e| RpcError::Core(e.to_string()))
+        self.primal.dehydrate(session_id).await.map_err(RpcError::from)
     }
 
     async fn get_dehydration_status(

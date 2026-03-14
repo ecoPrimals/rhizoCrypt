@@ -231,12 +231,18 @@ impl VertexQuery {
 ///
 /// ## Usage
 ///
-/// ```rust,ignore
-/// use rhizo_crypt_core::clients::ProvenanceQueryable;
-///
-/// // rhizoCrypt implements this trait
-/// let vertices = queryable.get_vertices_for_data(data_hash).await?;
-/// let chain = queryable.get_provenance_chain(vertex_id).await?;
+/// ```no_run
+/// # use rhizo_crypt_core::types_ecosystem::provenance::{ProvenanceQueryable, VertexRef, ProvenanceChain};
+/// # use rhizo_crypt_core::types::VertexId;
+/// #
+/// # async fn example(queryable: &impl ProvenanceQueryable) -> rhizo_crypt_core::error::Result<()> {
+/// #     let data_hash = [0u8; 32];
+/// #     let vertices = queryable.get_vertices_for_data(data_hash).await?;
+/// #     let vertex_id = vertices.first().map(|v| v.vertex_id).unwrap_or(VertexId::from_bytes(&[0u8; 32]));
+/// #     let _chain = queryable.get_provenance_chain(vertex_id).await?;
+/// #     Ok(())
+/// # }
+/// // rhizoCrypt implements this trait; pass any ProvenanceQueryable impl
 /// ```
 pub trait ProvenanceQueryable: Send + Sync {
     /// Get all vertices related to a data hash.

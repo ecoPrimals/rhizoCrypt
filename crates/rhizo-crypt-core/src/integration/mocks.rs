@@ -8,12 +8,15 @@
 //!
 //! ## Usage
 //!
-//! ```rust,ignore
-//! #[cfg(test)]
-//! use rhizo_crypt_core::integration::mocks::*;
-//!
+//! ```no_run
+//! # use rhizo_crypt_core::integration::{mocks::MockSigningProvider, SigningProvider};
+//! # use rhizo_crypt_core::types::Did;
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
 //! let client = MockSigningProvider::permissive();
+//! let did = Did::new("did:key:test");
 //! assert!(client.verify_did(&did).await?);
+//! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+//! # });
 //! ```
 
 use crate::dehydration::{Attestation, AttestationStatement, DehydrationSummary};
@@ -221,7 +224,6 @@ impl PayloadStorageProvider for MockPayloadStorageProvider {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
-#[allow(deprecated)] // Allow use of deprecated type aliases in tests
 mod tests {
     use super::*;
     use crate::dehydration::DehydrationSummaryBuilder;
@@ -410,16 +412,17 @@ mod tests {
 ///
 /// ## Example
 ///
-/// ```rust,ignore
-/// use rhizo_crypt_core::integration::mocks::MockProtocolAdapter;
-/// use rhizo_crypt_core::clients::capabilities::SigningClient;
-///
+/// ```no_run
+/// # use rhizo_crypt_core::integration::mocks::MockProtocolAdapter;
+/// # use rhizo_crypt_core::clients::adapters::ProtocolAdapter;
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
 /// // Create mock adapter
 /// let adapter = MockProtocolAdapter::permissive();
 ///
-/// // Use with capability client (bypass discovery)
-/// let client = SigningClient::with_adapter(adapter);
-/// let sig = client.sign(data, &did).await?;
+/// // Use adapter directly (e.g. for testing protocol layer)
+/// let _response = adapter.call_json("verify_did", "{}".to_string()).await?;
+/// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+/// # });
 /// ```
 #[derive(Debug, Clone)]
 pub struct MockProtocolAdapter {
@@ -520,15 +523,12 @@ impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
 ///
 /// ## Example
 ///
-/// ```rust,ignore
-/// use rhizo_crypt_core::integration::mocks::MockCapabilityFactory;
-///
+/// ```no_run
+/// # use rhizo_crypt_core::integration::mocks::MockCapabilityFactory;
+/// // Create factory with permissive mock adapter
 /// let factory = MockCapabilityFactory::permissive();
-/// let signer = factory.signing_client();
-/// let storage = factory.storage_client();
-///
-/// // Use in tests
-/// let sig = signer.sign(data, &did).await?;
+/// // Get the adapter for configuring mock responses or passing to clients
+/// let _adapter = factory.adapter();
 /// ```
 #[derive(Debug, Clone)]
 pub struct MockCapabilityFactory {

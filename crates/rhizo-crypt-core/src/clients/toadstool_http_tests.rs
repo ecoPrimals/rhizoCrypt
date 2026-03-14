@@ -69,6 +69,7 @@ fn test_client_new() {
 fn test_deployment_to_event_pending() {
     let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
+    let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
         deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
         status: DeploymentStatus::Pending,
@@ -78,7 +79,7 @@ fn test_deployment_to_event_pending() {
         error: None,
         result: None,
     };
-    let event = client.deployment_to_event(&deployment, &did);
+    let event = client.deployment_to_event(&deployment, &did, &worker);
     assert!(event.is_some());
     assert!(matches!(event.unwrap(), ComputeEvent::TaskCreated { .. }));
 }
@@ -87,6 +88,7 @@ fn test_deployment_to_event_pending() {
 fn test_deployment_to_event_running() {
     let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
+    let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
         deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
         status: DeploymentStatus::Running,
@@ -96,7 +98,7 @@ fn test_deployment_to_event_running() {
         error: None,
         result: None,
     };
-    let event = client.deployment_to_event(&deployment, &did);
+    let event = client.deployment_to_event(&deployment, &did, &worker);
     assert!(matches!(event.unwrap(), ComputeEvent::TaskStarted { .. }));
 }
 
@@ -104,6 +106,7 @@ fn test_deployment_to_event_running() {
 fn test_deployment_to_event_completed() {
     let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
+    let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
         deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
         status: DeploymentStatus::Completed,
@@ -113,7 +116,7 @@ fn test_deployment_to_event_completed() {
         error: None,
         result: Some(serde_json::json!({"output": "data"})),
     };
-    let event = client.deployment_to_event(&deployment, &did);
+    let event = client.deployment_to_event(&deployment, &did, &worker);
     assert!(matches!(event.unwrap(), ComputeEvent::TaskCompleted { .. }));
 }
 
@@ -121,6 +124,7 @@ fn test_deployment_to_event_completed() {
 fn test_deployment_to_event_failed() {
     let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
+    let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
         deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
         status: DeploymentStatus::Failed,
@@ -130,7 +134,7 @@ fn test_deployment_to_event_failed() {
         error: Some("out of memory".to_string()),
         result: None,
     };
-    let event = client.deployment_to_event(&deployment, &did);
+    let event = client.deployment_to_event(&deployment, &did, &worker);
     match event.unwrap() {
         ComputeEvent::TaskFailed {
             error,
@@ -146,6 +150,7 @@ fn test_deployment_to_event_failed() {
 fn test_deployment_to_event_failed_no_error_msg() {
     let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
+    let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
         deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
         status: DeploymentStatus::Failed,
@@ -155,7 +160,7 @@ fn test_deployment_to_event_failed_no_error_msg() {
         error: None,
         result: None,
     };
-    let event = client.deployment_to_event(&deployment, &did);
+    let event = client.deployment_to_event(&deployment, &did, &worker);
     match event.unwrap() {
         ComputeEvent::TaskFailed {
             error,
@@ -171,6 +176,7 @@ fn test_deployment_to_event_failed_no_error_msg() {
 fn test_deployment_to_event_stopped() {
     let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
+    let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
         deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
         status: DeploymentStatus::Stopped,
@@ -180,7 +186,7 @@ fn test_deployment_to_event_stopped() {
         error: None,
         result: None,
     };
-    let event = client.deployment_to_event(&deployment, &did);
+    let event = client.deployment_to_event(&deployment, &did, &worker);
     assert!(matches!(event.unwrap(), ComputeEvent::TaskCancelled { .. }));
 }
 
@@ -188,6 +194,7 @@ fn test_deployment_to_event_stopped() {
 fn test_deployment_to_event_invalid_id() {
     let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
+    let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
         deployment_id: "bad".to_string(),
         status: DeploymentStatus::Running,
@@ -197,13 +204,14 @@ fn test_deployment_to_event_invalid_id() {
         error: None,
         result: None,
     };
-    assert!(client.deployment_to_event(&deployment, &did).is_none());
+    assert!(client.deployment_to_event(&deployment, &did, &worker).is_none());
 }
 
 #[test]
 fn test_poll_events_from_deployments() {
     let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
+    let worker = Did::new("did:compute:test-worker");
     let deployments = vec![
         DeploymentResponse {
             deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
@@ -224,7 +232,7 @@ fn test_poll_events_from_deployments() {
             result: None,
         },
     ];
-    let events = poll_events_from_deployments(&client, &deployments, &did);
+    let events = poll_events_from_deployments(&client, &deployments, &did, &worker);
     assert_eq!(events.len(), 1);
 }
 
@@ -232,7 +240,8 @@ fn test_poll_events_from_deployments() {
 fn test_poll_events_empty() {
     let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
-    let events = poll_events_from_deployments(&client, &[], &did);
+    let worker = Did::new("did:compute:test-worker");
+    let events = poll_events_from_deployments(&client, &[], &did, &worker);
     assert!(events.is_empty());
 }
 

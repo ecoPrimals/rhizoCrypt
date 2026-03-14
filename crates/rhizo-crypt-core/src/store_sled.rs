@@ -24,11 +24,18 @@
 //!
 //! ## Usage
 //!
-//! ```rust,ignore
-//! use rhizo_crypt_core::SledDagStore;
-//!
-//! let store = SledDagStore::open("/path/to/db")?;
+//! ```no_run
+//! # #[cfg(feature = "sled")]
+//! # {
+//! # use rhizo_crypt_core::{SledDagStore, DagStore, event::EventType, vertex::VertexBuilder, types::SessionId};
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
+//! let store = SledDagStore::open(std::env::temp_dir().join("rhizocrypt-doc-test-sled.db"))?;
+//! let session_id = SessionId::now();
+//! let vertex = VertexBuilder::new(EventType::SessionStart).build();
 //! store.put_vertex(session_id, vertex).await?;
+//! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+//! # });
+//! # }
 //! ```
 //!
 //! ## Tree Structure

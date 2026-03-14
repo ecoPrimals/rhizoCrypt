@@ -12,12 +12,22 @@
 //!
 //! Use generic capability clients that work with ANY provider:
 //!
-//! ```rust,ignore
-//! use rhizo_crypt_core::clients::capabilities::{SigningClient, StorageClient};
-//!
+//! ```no_run
+//! # use rhizo_crypt_core::clients::capabilities::SigningClient;
+//! # use rhizo_crypt_core::types::Did;
+//! # use std::sync::Arc;
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
+//! # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
+//! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
+//! #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+//! #     vec![rhizo_crypt_core::discovery::Capability::Signing],
+//! # )).await;
 //! // Discover ANY signing provider
 //! let signer = SigningClient::discover(&registry).await?;
-//! let signature = signer.sign(data, &did).await?;
+//! let did = Did::new("did:key:test");
+//! let signature = signer.sign(b"data", &did).await?;
+//! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+//! # });
 //! ```
 //!
 //! ### ⚠️ LEGACY: Primal-Specific Traits (Deprecated)
@@ -75,10 +85,19 @@ pub use mocks::{
 ///
 /// Providers are discovered at runtime via capability queries:
 ///
-/// ```rust,ignore
-/// use rhizo_crypt_core::capabilities::SigningClient;
+/// ```no_run
+/// # use rhizo_crypt_core::clients::capabilities::SigningClient;
+/// # use std::sync::Arc;
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+/// # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
+/// # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
+/// #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+/// #     vec![rhizo_crypt_core::discovery::Capability::Signing],
+/// # )).await;
 /// let signer = SigningClient::discover(&registry).await?;
 /// // Works with ANY signing provider!
+/// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+/// # });
 /// ```
 ///
 /// ## Capabilities Provided
@@ -127,18 +146,6 @@ pub trait SigningProvider: Send + Sync {
     ) -> impl std::future::Future<Output = Result<Attestation>> + Send;
 }
 
-/// Backward compatibility type alias (v0.12.x).
-///
-/// **DEPRECATED**: Use `SigningProvider` instead.
-///
-/// This alias maintains backward compatibility for existing code while we migrate
-/// to capability-based naming. Will be removed in v1.0.0.
-#[deprecated(
-    since = "0.13.0",
-    note = "Use SigningProvider instead - this is capability-based, not vendor-specific"
-)]
-pub trait BearDogClient: SigningProvider {}
-
 // ============================================================================
 // Permanent Storage Provider (Commit & Slice Management)
 // ============================================================================
@@ -162,10 +169,19 @@ pub trait BearDogClient: SigningProvider {}
 ///
 /// Providers are discovered at runtime via capability queries:
 ///
-/// ```rust,ignore
-/// use rhizo_crypt_core::capabilities::PermanentStorageClient;
+/// ```no_run
+/// # use rhizo_crypt_core::clients::capabilities::PermanentStorageClient;
+/// # use std::sync::Arc;
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+/// # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
+/// # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
+/// #     "test-loamspine", "127.0.0.1:9700".parse().unwrap(),
+/// #     vec![rhizo_crypt_core::discovery::Capability::PermanentCommit],
+/// # )).await;
 /// let storage = PermanentStorageClient::discover(&registry).await?;
 /// // Works with ANY permanent storage provider!
+/// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+/// # });
 /// ```
 ///
 /// ## Capabilities Provided
@@ -209,18 +225,6 @@ pub trait PermanentStorageProvider: Send + Sync {
     ) -> impl std::future::Future<Output = Result<()>> + Send;
 }
 
-/// Backward compatibility type alias (v0.12.x).
-///
-/// **DEPRECATED**: Use `PermanentStorageProvider` instead.
-///
-/// This alias maintains backward compatibility for existing code while we migrate
-/// to capability-based naming. Will be removed in v1.0.0.
-#[deprecated(
-    since = "0.13.0",
-    note = "Use PermanentStorageProvider instead - this is capability-based, not vendor-specific"
-)]
-pub trait LoamSpineClient: PermanentStorageProvider {}
-
 // ============================================================================
 // Payload Storage Provider (Content-Addressed Storage)
 // ============================================================================
@@ -244,10 +248,19 @@ pub trait LoamSpineClient: PermanentStorageProvider {}
 ///
 /// Providers are discovered at runtime via capability queries:
 ///
-/// ```rust,ignore
-/// use rhizo_crypt_core::capabilities::StorageClient;
+/// ```no_run
+/// # use rhizo_crypt_core::clients::capabilities::StorageClient;
+/// # use std::sync::Arc;
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+/// # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
+/// # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
+/// #     "test-nestgate", "127.0.0.1:9600".parse().unwrap(),
+/// #     vec![rhizo_crypt_core::discovery::Capability::PayloadStorage],
+/// # )).await;
 /// let storage = StorageClient::discover(&registry).await?;
 /// // Works with ANY payload storage provider!
+/// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+/// # });
 /// ```
 ///
 /// ## Capabilities Provided
@@ -275,18 +288,6 @@ pub trait PayloadStorageProvider: Send + Sync {
         payload_ref: &PayloadRef,
     ) -> impl std::future::Future<Output = Result<bool>> + Send;
 }
-
-/// Backward compatibility type alias (v0.12.x).
-///
-/// **DEPRECATED**: Use `PayloadStorageProvider` instead.
-///
-/// This alias maintains backward compatibility for existing code while we migrate
-/// to capability-based naming. Will be removed in v1.0.0.
-#[deprecated(
-    since = "0.13.0",
-    note = "Use PayloadStorageProvider instead - this is capability-based, not vendor-specific"
-)]
-pub trait NestGateClient: PayloadStorageProvider {}
 
 // ============================================================================
 // Integration Status - Runtime capability checking
@@ -439,15 +440,25 @@ const fn status_str(status: &ServiceStatus) -> &'static str {
 ///
 /// ## Usage
 ///
-/// ```rust,ignore
-/// let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
+/// ```no_run
+/// # use rhizo_crypt_core::integration::ClientFactory;
+/// # use rhizo_crypt_core::discovery::{DiscoveryRegistry, ServiceEndpoint, Capability};
+/// # use std::sync::Arc;
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+/// # let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
+/// # registry.register_endpoint(ServiceEndpoint::new(
+/// #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+/// #     vec![Capability::Signing],
+/// # )).await;
 /// let factory = ClientFactory::new(registry);
 ///
 /// // Check if a service is available
 /// if factory.has_signing_capability().await {
-///     let endpoint = factory.signing_endpoint().await?;
+///     let _endpoint = factory.signing_endpoint().await?;
 ///     // Connect to endpoint via tarpc
 /// }
+/// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+/// # });
 /// ```
 #[derive(Clone)]
 pub struct ClientFactory {
@@ -463,17 +474,17 @@ impl ClientFactory {
         }
     }
 
-    /// Check if signing capability (BearDog) is available.
+    /// Check if signing capability is available.
     pub async fn has_signing_capability(&self) -> bool {
         self.registry.is_available(&Capability::Signing).await
     }
 
-    /// Check if permanent commit capability (LoamSpine) is available.
+    /// Check if permanent commit capability is available.
     pub async fn has_commit_capability(&self) -> bool {
         self.registry.is_available(&Capability::PermanentCommit).await
     }
 
-    /// Check if payload storage capability (NestGate) is available.
+    /// Check if payload storage capability is available.
     pub async fn has_storage_capability(&self) -> bool {
         self.registry.is_available(&Capability::PayloadStorage).await
     }

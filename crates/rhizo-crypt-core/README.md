@@ -1,26 +1,27 @@
 # rhizo-crypt-core
 
-Core DAG Engine - Ephemeral Working Memory for ecoPrimals Phase 2.
+Core DAG Engine — Ephemeral Working Memory for ecoPrimals Phase 2.
 
 ## Overview
 
-RhizoCrypt is the ephemeral DAG engine that provides git-like functionality for
-capturing, linking, and eventually committing events to the permanent LoamSpine layer.
+rhizoCrypt is the ephemeral DAG engine that provides content-addressed,
+session-scoped graphs for capturing, linking, and eventually committing
+events to permanent storage via dehydration.
 
 ## Key Features
 
-- **Content-addressed vertices** using Blake3 hashing
+- **Content-addressed vertices** using BLAKE3 hashing
 - **Session-scoped DAGs** with full lifecycle management
 - **Merkle tree proofs** for cryptographic verification
 - **Slice semantics** with 6 modes (Copy, Loan, Consignment, Escrow, Waypoint, Transfer)
-- **Dehydration protocol** for committing to LoamSpine
-- **Live primal clients** for Songbird, BearDog, NestGate, LoamSpine
-- **Capability-based discovery** for runtime service location
+- **Dehydration protocol** for committing to permanent storage
+- **Capability-based discovery** — runtime service location, zero hardcoded vendors
 - **Multiple storage backends** with trait-based extensibility
-  - In-memory (default)
-  - RocksDB (optional, `--features rocksdb`)
+  - redb (default, 100% Pure Rust)
+  - sled (optional, `--features sled`)
+  - In-memory (default for ephemeral sessions)
 - **Storage health & statistics** for observability
-- **Zero unsafe code** - `#![forbid(unsafe_code)]`
+- **Zero unsafe code** — `#![forbid(unsafe_code)]`
 
 ## Usage
 
@@ -32,20 +33,17 @@ use rhizo_crypt_core::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create and start the primal
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
     primal.start().await?;
-    
-    // Create a session
+
     let session = SessionBuilder::new(SessionType::General)
         .with_name("My Session")
         .build();
-    
-    // Create vertices
+
     let vertex = VertexBuilder::new(EventType::SessionStart)
         .build();
-    
+
     Ok(())
 }
 ```
@@ -62,51 +60,39 @@ let store = InMemoryDagStore::new();
 let health = store.health(&session_id)?;  // Healthy | Degraded | Unhealthy
 let stats = store.stats(&session_id)?;    // sessions, vertices, bytes, ops
 
-// RocksDB (persistent, requires feature flag)
-#[cfg(feature = "rocksdb")]
+// redb (persistent, Pure Rust, default backend)
+#[cfg(feature = "redb")]
 {
-    use rhizo_crypt_core::RocksDbDagStore;
-    let store = RocksDbDagStore::open("/path/to/db")?;
+    use rhizo_crypt_core::RedbDagStore;
+    let store = RedbDagStore::open("/path/to/db")?;
+}
+
+// sled (persistent, optional)
+#[cfg(feature = "sled")]
+{
+    use rhizo_crypt_core::SledDagStore;
+    let store = SledDagStore::open("/path/to/db")?;
 }
 ```
 
-## Live Clients
+## Capability-Based Clients
 
-Connect to Phase 1 primals at runtime:
-
-```rust
-use rhizo_crypt_core::clients::{SongbirdClient, BearDogClient};
-use rhizo_crypt_core::discovery::DiscoveryRegistry;
-use std::sync::Arc;
-
-// Service discovery via Songbird
-let songbird = SongbirdClient::from_env();
-songbird.connect().await?;
-songbird.register("127.0.0.1:9400").await?;
-
-// Capability-based discovery
-let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
-let beardog = BearDogClient::with_discovery(registry);
-beardog.connect().await?;
-let sig = beardog.sign_vertex(&hash, &did).await?;
-```
-
-## Client Factory
-
-Centralized capability-based client creation:
+All integration uses capability discovery — no vendor lock-in:
 
 ```rust
+use rhizo_crypt_core::clients::capabilities::SigningClient;
 use rhizo_crypt_core::integration::ClientFactory;
 use rhizo_crypt_core::discovery::DiscoveryRegistry;
 use std::sync::Arc;
 
+// Discover capabilities at runtime
 let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
 let factory = ClientFactory::new(registry);
 
-// Get endpoints for different services
-let signing_addr = factory.signing_endpoint().await?;
-let commit_addr = factory.commit_endpoint().await?;
-let storage_addr = factory.storage_endpoint().await?;
+// Check availability and get endpoints
+if factory.has_signing_capability().await {
+    let endpoint = factory.signing_endpoint().await?;
+}
 ```
 
 ## Modules
@@ -118,13 +104,14 @@ let storage_addr = factory.storage_endpoint().await?;
 | `event` | 25+ event types across 7 domains |
 | `session` | Session management and lifecycle |
 | `store` | DAG and payload storage traits + in-memory impl |
-| `store_rocksdb` | RocksDB storage backend (optional) |
+| `store_redb` | redb storage backend (default, Pure Rust) |
+| `store_sled` | sled storage backend (optional) |
 | `merkle` | Merkle trees and inclusion proofs |
 | `slice` | Slice semantics with 6 modes |
 | `dehydration` | Commit protocol with attestations |
 | `discovery` | Capability-based runtime discovery |
-| `integration` | Client traits + ClientFactory |
-| `clients` | Live primal clients |
+| `integration` | Provider traits + ClientFactory |
+| `clients` | Capability clients + protocol adapters |
 | `config` | Configuration structs |
 | `error` | Error types |
 | `primal` | Lifecycle and health traits |
@@ -133,9 +120,12 @@ let storage_addr = factory.storage_endpoint().await?;
 
 | Feature | Description |
 |---------|-------------|
-| `rocksdb` | Enable RocksDB persistent storage backend |
+| `redb` | Enable redb persistent storage backend (default, Pure Rust) |
+| `sled` | Enable sled persistent storage backend (uses libc) |
+| `http-clients` | Enable HTTP clients via reqwest (pulls ring/rustls) |
+| `live-clients` | Enable live connections to sibling primals (tarpc + HTTP) |
 | `test-utils` | Enable test utilities and mock implementations |
 
 ## License
 
-AGPL-3.0
+AGPL-3.0-only

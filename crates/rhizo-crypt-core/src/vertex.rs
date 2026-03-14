@@ -6,6 +6,8 @@
 //! A vertex is a single event in the RhizoCrypt DAG. Each vertex is
 //! content-addressed by its Blake3 hash and linked to parent vertices.
 
+use bytes::Bytes;
+
 use crate::event::EventType;
 use crate::types::{Did, PayloadRef, Signature, Timestamp, VertexId};
 use hashbrown::HashMap;
@@ -154,8 +156,8 @@ pub enum MetadataValue {
     Float(f64),
     /// String value.
     String(String),
-    /// Bytes value.
-    Bytes(Vec<u8>),
+    /// Bytes value (zero-copy via `bytes::Bytes`).
+    Bytes(Bytes),
     /// Array value.
     Array(Vec<Self>),
     /// Object value.

@@ -24,18 +24,23 @@ use super::types::{ClientState, ComputeEvent, ComputeProviderConfig, TaskId};
 ///
 /// ## Usage
 ///
-/// ```rust,ignore
-/// use rhizo_crypt_core::types_ecosystem::compute::{ComputeProviderClient, ComputeProviderConfig};
-///
+/// ```no_run
+/// # use rhizo_crypt_core::types_ecosystem::compute::{ComputeProviderClient, TaskId};
+/// # use std::sync::Arc;
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+/// # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
 /// // Create with discovery (preferred)
 /// let client = ComputeProviderClient::with_discovery(registry);
 /// client.connect().await?;
 ///
 /// // Subscribe to a task
+/// # let task_id = TaskId::now();
 /// let mut events = client.subscribe_task(task_id).await?;
 /// while let Some(event) = events.recv().await {
-///     println!("Event: {:?}", event);
+///     let _ = event;
 /// }
+/// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+/// # });
 /// ```
 pub struct ComputeProviderClient {
     /// Client configuration.

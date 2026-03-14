@@ -311,13 +311,16 @@ impl ToadStoolHttpClient {
     }
 
     /// Convert deployment response to compute event.
+    ///
+    /// The `worker` DID identifies the compute provider discovered at runtime
+    /// via capability-based discovery -- never hardcoded.
     #[must_use]
     pub fn deployment_to_event(
         &self,
         deployment: &DeploymentResponse,
         requester: &Did,
+        worker: &Did,
     ) -> Option<ComputeEvent> {
-        // Parse deployment_id as TaskId
         let task_id = parse_deployment_id(&deployment.deployment_id)?;
         let now = Timestamp::now();
 
@@ -330,7 +333,7 @@ impl ToadStoolHttpClient {
             },
             DeploymentStatus::Running => ComputeEvent::TaskStarted {
                 task_id,
-                worker: Did::new("did:toadstool:byob"),
+                worker: worker.clone(),
                 started_at: now,
             },
             DeploymentStatus::Completed => ComputeEvent::TaskCompleted {
@@ -408,13 +411,18 @@ pub async fn create_http_client(endpoint: std::net::SocketAddr) -> Result<ToadSt
 
 /// Poll for task events using HTTP.
 ///
-/// This provides event updates by polling the deployments API.
+/// The `worker` DID should be resolved from capability-based discovery at
+/// runtime, identifying the compute provider that owns these deployments.
 pub fn poll_events_from_deployments(
     http_client: &ToadStoolHttpClient,
     deployments: &[DeploymentResponse],
     requester: &Did,
+    worker: &Did,
 ) -> Vec<ComputeEvent> {
-    deployments.iter().filter_map(|d| http_client.deployment_to_event(d, requester)).collect()
+    deployments
+        .iter()
+        .filter_map(|d| http_client.deployment_to_event(d, requester, worker))
+        .collect()
 }
 
 #[cfg(test)]

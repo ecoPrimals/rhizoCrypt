@@ -12,20 +12,29 @@
 //! Clients should be capability-first, not vendor-specific:
 //!
 //! - ✅ `SigningClient` - Works with ANY signing provider
-//! - ❌ `BearDogClient` - Locks you into one vendor
+//! - ❌ Vendor-specific clients - Lock you into one provider
 //!
 //! ## Usage
 //!
-//! ```ignore
-//! use rhizo_crypt_core::clients::capabilities::SigningClient;
-//! use rhizo_crypt_core::discovery::DiscoveryRegistry;
-//!
+//! ```no_run
+//! # use rhizo_crypt_core::clients::capabilities::SigningClient;
+//! # use rhizo_crypt_core::discovery::DiscoveryRegistry;
+//! # use rhizo_crypt_core::types::Did;
+//! # use std::sync::Arc;
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
+//! # let registry = Arc::new(DiscoveryRegistry::new("doc-test"));
+//! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
+//! #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+//! #     vec![rhizo_crypt_core::discovery::Capability::Signing],
+//! # )).await;
 //! // Discover and connect to ANY signing provider
-//! let registry = DiscoveryRegistry::new();
 //! let signer = SigningClient::discover(&registry).await?;
 //!
 //! // Works with BearDog, YubiKey, CloudKMS, HSM, etc.
-//! let signature = signer.sign(data, &did).await?;
+//! let did = Did::new("did:key:test");
+//! let signature = signer.sign(b"data", &did).await?;
+//! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+//! # });
 //! ```
 
 pub mod compute;

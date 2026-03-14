@@ -18,17 +18,37 @@
 //!
 //! ## Usage
 //!
-//! ```rust,ignore
-//! use rhizo_crypt_rpc::{RhizoCryptRpc, RhizoCryptRpcClient};
-//!
+//! ```no_run
+//! # use rhizo_crypt_rpc::{RpcClient, CreateSessionRequest, AppendEventRequest};
+//! # use rhizo_crypt_core::{SessionType, EventType};
+//! # use std::net::SocketAddr;
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
 //! // Connect to a rhizoCrypt service
-//! let client = RhizoCryptRpcClient::connect("127.0.0.1:9400").await?;
+//! let addr: SocketAddr = "127.0.0.1:9400".parse().unwrap();
+//! let client = RpcClient::connect(addr).await?;
 //!
 //! // Create a session (compile-time type checked)
+//! let session_config = CreateSessionRequest {
+//!     session_type: SessionType::General,
+//!     description: None,
+//!     parent_session: None,
+//!     max_vertices: None,
+//!     ttl_seconds: None,
+//! };
 //! let session_id = client.create_session(session_config).await?;
 //!
 //! // Append events
-//! let vertex_id = client.append_event(session_id, event).await?;
+//! let event = AppendEventRequest {
+//!     session_id,
+//!     event_type: EventType::SessionStart,
+//!     agent: None,
+//!     parents: vec![],
+//!     metadata: vec![],
+//!     payload_ref: None,
+//! };
+//! let _vertex_id = client.append_event(event).await?;
+//! # Ok::<(), rhizo_crypt_rpc::RpcError>(())
+//! # });
 //! ```
 
 #![forbid(unsafe_code)]

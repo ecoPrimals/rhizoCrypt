@@ -79,23 +79,7 @@ async fn handle_jsonrpc(
     State(state): State<JsonRpcState>,
     body: axum::body::Bytes,
 ) -> impl IntoResponse {
-    let Ok(body_str) = std::str::from_utf8(&body) else {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(
-                serde_json::to_value(error_response(
-                    None,
-                    codes::PARSE_ERROR,
-                    "Invalid UTF-8 in request body",
-                    None,
-                ))
-                .unwrap_or_default(),
-            ),
-        )
-            .into_response();
-    };
-
-    let parsed: Result<serde_json::Value, _> = serde_json::from_str(body_str);
+    let parsed: Result<serde_json::Value, _> = serde_json::from_slice(&body);
     let value = match parsed {
         Ok(v) => v,
         Err(e) => {

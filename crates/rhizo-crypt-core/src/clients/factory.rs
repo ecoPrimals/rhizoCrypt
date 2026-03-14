@@ -8,17 +8,25 @@
 //!
 //! ## Usage
 //!
-//! ```rust,ignore
-//! use rhizo_crypt_core::clients::factory::CapabilityClientFactory;
-//!
+//! ```no_run
+//! # use rhizo_crypt_core::clients::CapabilityClientFactory;
+//! # use std::sync::Arc;
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
+//! # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
+//! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
+//! #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+//! #     vec![rhizo_crypt_core::discovery::Capability::Signing],
+//! # )).await;
+//! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
+//! #     "test-storage", "127.0.0.1:9600".parse().unwrap(),
+//! #     vec![rhizo_crypt_core::discovery::Capability::PayloadStorage],
+//! # )).await;
 //! // Production: discover and connect to real services
-//! let factory = CapabilityClientFactory::new(registry).await?;
+//! let factory = CapabilityClientFactory::new(registry);
 //! let signer = factory.signing_client().await?;
 //! let storage = factory.storage_client().await?;
-//!
-//! // Testing: use mocks
-//! let factory = CapabilityClientFactory::with_mocks();
-//! let signer = factory.signing_client().await?; // Returns mock
+//! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+//! # });
 //! ```
 
 use crate::clients::capabilities::{
@@ -247,20 +255,22 @@ impl CapabilityClientFactory {
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// use rhizo_crypt_core::clients::CapabilityClientFactory;
-    /// use rhizo_crypt_core::discovery::{DiscoveryRegistry, ServiceEndpoint, Capability};
-    ///
-    /// let registry = DiscoveryRegistry::new();
+    /// ```no_run
+    /// # use rhizo_crypt_core::clients::CapabilityClientFactory;
+    /// # use rhizo_crypt_core::discovery::{DiscoveryRegistry, ServiceEndpoint, Capability};
+    /// # use std::sync::Arc;
+    /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+    /// let registry = Arc::new(DiscoveryRegistry::new("doc-test"));
     /// // Register mock services
-    /// registry.register(ServiceEndpoint {
-    ///     service_id: "mock-signer".to_string(),
-    ///     endpoint: "http://localhost:9999".to_string(),
-    ///     capabilities: vec![Capability::Signing],
-    ///     metadata: Default::default(),
-    /// }).await;
+    /// registry.register_endpoint(ServiceEndpoint::new(
+    ///     "mock-signer",
+    ///     "127.0.0.1:9999".parse().unwrap(),
+    ///     vec![Capability::Signing],
+    /// )).await;
     ///
-    /// let factory = CapabilityClientFactory::new(Arc::new(registry));
+    /// let factory = CapabilityClientFactory::new(registry);
+    /// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+    /// # });
     /// ```
     #[must_use]
     pub fn with_mocks() -> Self {

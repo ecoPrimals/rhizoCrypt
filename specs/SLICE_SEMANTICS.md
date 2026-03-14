@@ -490,7 +490,7 @@ pub async fn checkout_slice(
     let permissions = beardog
         .check_permissions(&request.requester, &request.spine_id, "slice:checkout")
         .await
-        .map_err(|e| RhizoCryptError::BearDog(e.to_string()))?;
+        .map_err(|e| RhizoCryptError::capability_provider("signing", e.to_string()))?;
     
     if !permissions.allowed {
         return Err(RhizoCryptError::SlicePermissionDenied);
@@ -506,7 +506,7 @@ pub async fn checkout_slice(
     let origin_entry = loamspine
         .get_entry(&request.spine_id, &request.entry_hash)
         .await
-        .map_err(|e| RhizoCryptError::LoamSpine(e.to_string()))?
+        .map_err(|e| RhizoCryptError::capability_provider("permanent_storage", e.to_string()))?
         .ok_or(RhizoCryptError::SliceNotFound(SliceId::nil()))?;
     
     // 4. Create slice
@@ -617,7 +617,7 @@ async fn resolve_single_slice(
                     summary,
                 )
                 .await
-                .map_err(|e| RhizoCryptError::LoamSpine(e.to_string()))?;
+                .map_err(|e| RhizoCryptError::capability_provider("permanent_storage", e.to_string()))?;
             
             Ok(ResolutionOutcome::CommittedToOrigin { entry_hash })
         }
@@ -626,7 +626,7 @@ async fn resolve_single_slice(
             let entry_hash = loamspine
                 .append_entry(&target_spine, entry_type, None)
                 .await
-                .map_err(|e| RhizoCryptError::LoamSpine(e.to_string()))?;
+                .map_err(|e| RhizoCryptError::capability_provider("permanent_storage", e.to_string()))?;
             
             let new_owner = extract_new_owner(&slice.mode);
             
@@ -642,14 +642,14 @@ async fn resolve_single_slice(
             let waypoint_hash = loamspine
                 .append_entry(&waypoint_spine, waypoint_entry, None)
                 .await
-                .map_err(|e| RhizoCryptError::LoamSpine(e.to_string()))?;
+                .map_err(|e| RhizoCryptError::capability_provider("permanent_storage", e.to_string()))?;
             
             // Optionally update origin
             if let Some(update) = origin_update {
                 loamspine
                     .append_entry(&slice.origin.spine_id, update, None)
                     .await
-                    .map_err(|e| RhizoCryptError::LoamSpine(e.to_string()))?;
+                    .map_err(|e| RhizoCryptError::capability_provider("permanent_storage", e.to_string()))?;
             }
             
             Ok(ResolutionOutcome::AnchoredAtWaypoint {
@@ -1034,7 +1034,7 @@ pub struct WaypointSummary {
 
 ### 8.1 Permission Checks
 
-All slice operations require BearDog permission checks:
+All slice operations require signing provider permission checks:
 
 | Operation | Required Permission |
 |-----------|---------------------|
@@ -1047,8 +1047,8 @@ All slice operations require BearDog permission checks:
 
 Constraints are enforced at multiple levels:
 - **RhizoCrypt**: Checks before appending vertices
-- **LoamSpine**: Validates on commit
-- **BearDog**: Policy enforcement
+- **Permanent storage provider**: Validates on commit
+- **Signing provider**: Policy enforcement
 
 ### 8.3 Expiry Enforcement
 

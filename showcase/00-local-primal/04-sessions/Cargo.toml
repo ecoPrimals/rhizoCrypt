@@ -2,6 +2,7 @@
 name = "rhizocrypt-session-demos"
 version = "0.1.0"
 edition = "2021"
+license = "AGPL-3.0-only"
 
 # Mark this as a standalone package (not part of parent workspace)
 [workspace]

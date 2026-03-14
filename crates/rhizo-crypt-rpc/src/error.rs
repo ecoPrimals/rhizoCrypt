@@ -57,7 +57,34 @@ pub enum RpcError {
 
 impl From<RhizoCryptError> for RpcError {
     fn from(err: RhizoCryptError) -> Self {
-        Self::Core(err.to_string())
+        match &err {
+            RhizoCryptError::SessionNotFound(_)
+            | RhizoCryptError::SessionNotActive {
+                ..
+            } => Self::SessionNotFound(err.to_string()),
+            RhizoCryptError::VertexNotFound(_) | RhizoCryptError::ParentNotFound(_) => {
+                Self::VertexNotFound(err.to_string())
+            }
+            RhizoCryptError::SliceNotFound(_)
+            | RhizoCryptError::InvalidSliceOperation(_)
+            | RhizoCryptError::SliceAlreadyResolved(_)
+            | RhizoCryptError::SliceExpired {
+                ..
+            }
+            | RhizoCryptError::SliceModeNotAllowed {
+                ..
+            }
+            | RhizoCryptError::ResliceNotAllowed(_) => Self::SliceNotFound(err.to_string()),
+            RhizoCryptError::Config(_)
+            | RhizoCryptError::InvalidConfig {
+                ..
+            } => Self::InvalidRequest(err.to_string()),
+            RhizoCryptError::Timeout(ms) => Self::Timeout(format!("{ms}ms")),
+            RhizoCryptError::Serialization(_) | RhizoCryptError::Deserialization(_) => {
+                Self::Serialization(err.to_string())
+            }
+            _ => Self::Core(err.to_string()),
+        }
     }
 }
 

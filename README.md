@@ -6,8 +6,8 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-only |
-| Tests | 1022 passing |
-| Coverage | 90.12% line coverage (llvm-cov) |
+| Tests | 1075 passing |
+| Coverage | 91.02% line coverage (llvm-cov) |
 | Clippy | 0 warnings (pedantic + nursery) |
 | Unsafe | `#![forbid(unsafe_code)]` workspace-wide |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
@@ -16,6 +16,7 @@
 | Storage | redb (Pure Rust, default) / sled (optional) |
 | Deps | ecoBin compliant — zero application C dependencies |
 | Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
+| Doc tests | 30 passing, 0 ignored |
 
 ---
 
@@ -31,7 +32,7 @@ permanent storage.
 - **Vertex** — Content-addressed event node (BLAKE3 hash, multi-parent DAG)
 - **Session** — Scoped DAG with lifecycle (create, grow, resolve, expire)
 - **Merkle Tree** — Cryptographic integrity proof over session vertices
-- **Dehydration** — Commit ephemeral results to permanent storage (LoamSpine)
+- **Dehydration** — Commit ephemeral results to permanent storage
 - **Slice** — Checkout immutable snapshot from permanent storage (Copy, Loan, Consignment)
 - **Capability Discovery** — Runtime service discovery, zero hardcoded vendors
 
@@ -75,7 +76,7 @@ fallback) for forward/backward compatibility.
 |-------|---------|
 | `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, clients |
 | `rhizo-crypt-rpc` | tarpc service definition, JSON-RPC handler, rate limiting, metrics |
-| `rhizocrypt-service` | UniBin service binary and library (subcommands: `server`, `status`, `version`, `doctor`) |
+| `rhizocrypt-service` | UniBin service binary and library (subcommands: `server`, `client`, `status`, `version`, `doctor`) |
 
 ---
 

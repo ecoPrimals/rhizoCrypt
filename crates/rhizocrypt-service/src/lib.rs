@@ -11,6 +11,7 @@
 pub use rhizo_crypt_core;
 pub use rhizo_crypt_rpc;
 
+use clap::Subcommand;
 use rhizo_crypt_core::clients::songbird::{SongbirdClient, SongbirdConfig};
 use rhizo_crypt_core::constants;
 use rhizo_crypt_core::primal::PrimalLifecycle;
@@ -22,6 +23,17 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::{error, info, warn};
+
+/// Client operations for interacting with a running rhizoCrypt server.
+#[derive(Subcommand)]
+pub enum ClientOperation {
+    /// Check server health.
+    Health,
+    /// List active sessions.
+    ListSessions,
+    /// Get service metrics.
+    Metrics,
+}
 
 /// Service-level error type.
 #[derive(Debug, Error)]
@@ -41,6 +53,50 @@ pub enum ServiceError {
     /// Address parse error.
     #[error("address parse error: {0}")]
     AddrParse(#[from] std::net::AddrParseError),
+}
+
+/// Run a client operation against a running rhizoCrypt server.
+pub async fn run_client(address: &str, operation: ClientOperation) -> Result<(), ServiceError> {
+    let addr: SocketAddr = address.parse()?;
+
+    let client = rhizo_crypt_rpc::RpcClient::connect(addr)
+        .await
+        .map_err(|e| ServiceError::Config(format!("Failed to connect: {e}")))?;
+
+    match operation {
+        ClientOperation::Health => {
+            let health = client
+                .health()
+                .await
+                .map_err(|e| ServiceError::Config(format!("Health check failed: {e}")))?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&health).unwrap_or_else(|_| format!("{health:?}"))
+            );
+        }
+        ClientOperation::ListSessions => {
+            let sessions = client
+                .list_sessions()
+                .await
+                .map_err(|e| ServiceError::Config(format!("List sessions failed: {e}")))?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&sessions).unwrap_or_else(|_| format!("{sessions:?}"))
+            );
+        }
+        ClientOperation::Metrics => {
+            let metrics = client
+                .metrics()
+                .await
+                .map_err(|e| ServiceError::Config(format!("Metrics failed: {e}")))?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&metrics).unwrap_or_else(|_| format!("{metrics:?}"))
+            );
+        }
+    }
+
+    Ok(())
 }
 
 /// Resolve the bind address from CLI overrides + environment.

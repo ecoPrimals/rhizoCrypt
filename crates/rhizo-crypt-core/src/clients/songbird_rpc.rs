@@ -267,4 +267,95 @@ mod tests {
         assert_eq!(decoded.protocol, "tarpc-1.0");
         assert_eq!(decoded.capabilities.len(), 2);
     }
+
+    // ------------------------------------------------------------------------
+    // MockSongbirdServer direct-call tests (live-clients only)
+    // ------------------------------------------------------------------------
+
+    #[cfg(all(test, feature = "live-clients"))]
+    #[tokio::test]
+    async fn mock_discover_signing_returns_service() {
+        use super::{MockSongbirdServer, SongbirdRpc};
+
+        let server = MockSongbirdServer;
+        let services = server.discover(tarpc::context::current(), "signing".to_string()).await;
+        assert_eq!(services.len(), 1);
+        assert_eq!(services[0].id, "mock-beardog-1");
+        assert_eq!(services[0].capability, "signing");
+        assert_eq!(services[0].endpoint, "127.0.0.1:9500");
+        assert_eq!(services[0].status, "healthy");
+    }
+
+    #[cfg(all(test, feature = "live-clients"))]
+    #[tokio::test]
+    async fn mock_discover_unknown_capability_returns_empty() {
+        use super::{MockSongbirdServer, SongbirdRpc};
+
+        let server = MockSongbirdServer;
+        let services = server.discover(tarpc::context::current(), "unknown".to_string()).await;
+        assert!(services.is_empty());
+    }
+
+    #[cfg(all(test, feature = "live-clients"))]
+    #[tokio::test]
+    async fn mock_discover_all_returns_empty() {
+        use super::{MockSongbirdServer, SongbirdRpc};
+
+        let server = MockSongbirdServer;
+        let services = server.discover_all(tarpc::context::current()).await;
+        assert!(services.is_empty());
+    }
+
+    #[cfg(all(test, feature = "live-clients"))]
+    #[tokio::test]
+    async fn mock_register_success() {
+        use super::{MockSongbirdServer, RpcServiceRegistration, SongbirdRpc};
+
+        let server = MockSongbirdServer;
+        let reg = RpcServiceRegistration {
+            service_id: "test-svc-1".to_string(),
+            service_name: "TestService".to_string(),
+            capability: "dag-engine".to_string(),
+            endpoint: "127.0.0.1:9400".to_string(),
+            metadata: HashMap::new(),
+        };
+        let result = server.register(tarpc::context::current(), reg).await;
+        assert!(result.success);
+        assert_eq!(result.message, "Registered test-svc-1");
+    }
+
+    #[cfg(all(test, feature = "live-clients"))]
+    #[tokio::test]
+    async fn mock_unregister_success() {
+        use super::{MockSongbirdServer, SongbirdRpc};
+
+        let server = MockSongbirdServer;
+        let result = server.unregister(tarpc::context::current(), "test-svc-1".to_string()).await;
+        assert!(result.success);
+        assert_eq!(result.message, "Unregistered");
+    }
+
+    #[cfg(all(test, feature = "live-clients"))]
+    #[tokio::test]
+    async fn mock_health_returns_status() {
+        use super::{MockSongbirdServer, SongbirdRpc};
+
+        let server = MockSongbirdServer;
+        let health = server.health(tarpc::context::current()).await;
+        assert_eq!(health.status, "healthy");
+        assert_eq!(health.version, "0.1.0-test");
+        assert_eq!(health.services_count, 1);
+    }
+
+    #[cfg(all(test, feature = "live-clients"))]
+    #[tokio::test]
+    async fn mock_version_returns_info() {
+        use super::{MockSongbirdServer, SongbirdRpc};
+
+        let server = MockSongbirdServer;
+        let version = server.version(tarpc::context::current()).await;
+        assert_eq!(version.version, "0.1.0-test");
+        assert_eq!(version.protocol, "tarpc-1.0");
+        assert_eq!(version.capabilities, vec!["discovery"]);
+    }
 }

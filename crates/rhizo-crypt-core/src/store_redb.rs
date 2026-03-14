@@ -16,11 +16,18 @@
 //!
 //! ## Usage
 //!
-//! ```rust,ignore
-//! use rhizo_crypt_core::RedbDagStore;
-//!
-//! let store = RedbDagStore::open("/path/to/db")?;
+//! ```no_run
+//! # #[cfg(feature = "redb")]
+//! # {
+//! # use rhizo_crypt_core::{RedbDagStore, DagStore, event::EventType, vertex::VertexBuilder, types::SessionId};
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
+//! let store = RedbDagStore::open(std::env::temp_dir().join("rhizocrypt-doc-test.db"))?;
+//! let session_id = SessionId::now();
+//! let vertex = VertexBuilder::new(EventType::SessionStart).build();
 //! store.put_vertex(session_id, vertex).await?;
+//! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+//! # });
+//! # }
 //! ```
 //!
 //! ## Table Structure
@@ -653,3 +660,8 @@ impl std::fmt::Debug for RedbDagStore {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[path = "store_redb_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[path = "store_redb_tests_advanced.rs"]
+mod tests_advanced;

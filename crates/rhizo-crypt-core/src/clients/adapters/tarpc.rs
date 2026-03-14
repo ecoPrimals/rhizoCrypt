@@ -84,11 +84,14 @@ struct TarpcConnection {
 ///
 /// ## Usage
 ///
-/// ```rust,ignore
-/// use rhizo_crypt_core::clients::adapters::tarpc::TarpcAdapter;
-///
-/// let adapter = TarpcAdapter::connect("localhost:7777").await?;
-/// let result_json = adapter.call_json("sign", args_json).await?;
+/// ```no_run
+/// # use rhizo_crypt_core::clients::adapters::{tarpc::TarpcAdapter, ProtocolAdapter};
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+/// let adapter = TarpcAdapter::new("localhost:7777")?;
+/// let args_json = r#"{"data":[],"signer":"did:key:test"}"#.to_string();
+/// let _result_json = adapter.call_json("sign", args_json).await?;
+/// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+/// # });
 /// ```
 ///
 /// ## Feature Gate

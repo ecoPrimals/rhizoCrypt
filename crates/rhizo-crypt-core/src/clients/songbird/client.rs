@@ -55,19 +55,21 @@ use super::super::songbird_rpc::{RpcServiceRegistration, SongbirdRpcClient};
 ///
 /// ## Usage
 ///
-/// ```ignore
-/// use rhizo_crypt_core::clients::SongbirdClient;
-///
+/// ```no_run
+/// # use rhizo_crypt_core::clients::SongbirdClient;
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
 /// // Create from environment (production)
 /// let client = SongbirdClient::from_env();
 /// client.connect().await?;
 /// client.register("127.0.0.1:9400").await?;
 ///
 /// // Start heartbeat to maintain registration (60s TTL)
-/// let heartbeat_handle = client.start_heartbeat().await?;
+/// let _handle = client.start_heartbeat().await?;
 ///
 /// // Discover capabilities (not specific primals)
-/// let signer = client.discover_signing_provider().await?;
+/// let _signer_info = client.discover_signing_provider().await?;
+/// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+/// # });
 /// ```
 ///
 /// ## Heartbeat Mechanism
@@ -228,16 +230,20 @@ impl SongbirdClient {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # use rhizo_crypt_core::clients::SongbirdClient;
+    /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
     /// let client = SongbirdClient::from_env();
     /// client.connect().await?;
     /// client.register("127.0.0.1:9400").await?;
     ///
     /// // Start heartbeat (refreshes every 45s)
-    /// let handle = client.start_heartbeat().await?;
+    /// let _handle = client.start_heartbeat().await?;
     ///
     /// // Later, stop heartbeat
     /// client.stop_heartbeat().await;
+    /// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+    /// # });
     /// ```
     pub async fn start_heartbeat(&self) -> Result<()> {
         // Check if already running
