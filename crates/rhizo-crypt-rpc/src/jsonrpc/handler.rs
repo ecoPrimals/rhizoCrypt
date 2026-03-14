@@ -79,15 +79,17 @@ fn get_obj(params: &Value) -> Result<&serde_json::Map<String, Value>, HandlerErr
         .ok_or_else(|| HandlerError::InvalidParams("params must be an object".to_string()))
 }
 
-fn get_str(obj: &serde_json::Map<String, Value>, key: &str) -> Result<String, HandlerError> {
+fn get_str<'a>(
+    obj: &'a serde_json::Map<String, Value>,
+    key: &str,
+) -> Result<&'a str, HandlerError> {
     obj.get(key)
         .and_then(Value::as_str)
-        .map(String::from)
         .ok_or_else(|| HandlerError::InvalidParams(format!("missing or invalid '{key}'")))
 }
 
-fn get_opt_str(obj: &serde_json::Map<String, Value>, key: &str) -> Option<String> {
-    obj.get(key).and_then(Value::as_str).map(String::from)
+fn get_opt_str<'a>(obj: &'a serde_json::Map<String, Value>, key: &str) -> Option<&'a str> {
+    obj.get(key).and_then(Value::as_str)
 }
 
 fn parse_session_id(s: &str) -> Result<SessionId, HandlerError> {
@@ -138,9 +140,8 @@ async fn dispatch_session_create(
         .get("session_type")
         .and_then(|v| serde_json::from_value(v.clone()).ok())
         .unwrap_or_default();
-    let description = get_opt_str(obj, "description");
-    let parent_session =
-        get_opt_str(obj, "parent_session").map(|s| parse_session_id(&s)).transpose()?;
+    let description = get_opt_str(obj, "description").map(String::from);
+    let parent_session = get_opt_str(obj, "parent_session").map(parse_session_id).transpose()?;
     let max_vertices = obj.get("max_vertices").and_then(Value::as_u64);
     let ttl_seconds = obj.get("ttl_seconds").and_then(Value::as_u64);
 
@@ -160,7 +161,7 @@ async fn dispatch_session_get(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let info = server.clone().get_session(tarpc::context::current(), session_id).await?;
     serde_json::to_value(&info).map_err(|e| HandlerError::InvalidParams(e.to_string()))
 }
@@ -175,7 +176,7 @@ async fn dispatch_session_discard(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     server.clone().discard_session(tarpc::context::current(), session_id).await?;
     Ok(Value::Null)
 }
@@ -185,10 +186,10 @@ async fn dispatch_event_append(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let event_type = serde_json::from_value(obj.get("event_type").cloned().unwrap_or(Value::Null))
         .map_err(|e| HandlerError::InvalidParams(format!("event_type: {e}")))?;
-    let agent = get_opt_str(obj, "agent").as_deref().map(parse_did);
+    let agent = get_opt_str(obj, "agent").map(parse_did);
     let parents: Vec<VertexId> = obj
         .get("parents")
         .and_then(Value::as_array)
@@ -209,7 +210,7 @@ async fn dispatch_event_append(
             Some((k, v))
         })
         .collect();
-    let payload_ref = get_opt_str(obj, "payload_ref");
+    let payload_ref = get_opt_str(obj, "payload_ref").map(String::from);
 
     let req = AppendEventRequest {
         session_id,
@@ -237,11 +238,11 @@ async fn dispatch_event_append_batch(
         let r_obj = r.as_object().ok_or_else(|| {
             HandlerError::InvalidParams("each request must be an object".to_string())
         })?;
-        let session_id = parse_session_id(&get_str(r_obj, "session_id")?)?;
+        let session_id = parse_session_id(get_str(r_obj, "session_id")?)?;
         let event_type =
             serde_json::from_value(r_obj.get("event_type").cloned().unwrap_or(Value::Null))
                 .map_err(|e| HandlerError::InvalidParams(format!("event_type: {e}")))?;
-        let agent = get_opt_str(r_obj, "agent").as_deref().map(parse_did);
+        let agent = get_opt_str(r_obj, "agent").map(parse_did);
         let parents: Vec<VertexId> = r_obj
             .get("parents")
             .and_then(Value::as_array)
@@ -262,7 +263,7 @@ async fn dispatch_event_append_batch(
                 Some((k, v))
             })
             .collect();
-        let payload_ref = get_opt_str(r_obj, "payload_ref");
+        let payload_ref = get_opt_str(r_obj, "payload_ref").map(String::from);
         requests.push(AppendEventRequest {
             session_id,
             event_type,
@@ -282,8 +283,8 @@ async fn dispatch_vertex_get(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
-    let vertex_id = parse_vertex_id(&get_str(obj, "vertex_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
+    let vertex_id = parse_vertex_id(get_str(obj, "vertex_id")?)?;
     let vertex =
         server.clone().get_vertex(tarpc::context::current(), session_id, vertex_id).await?;
     serde_json::to_value(&vertex).map_err(|e| HandlerError::InvalidParams(e.to_string()))
@@ -294,7 +295,7 @@ async fn dispatch_frontier_get(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let frontier = server.clone().get_frontier(tarpc::context::current(), session_id).await?;
     serde_json::to_value(frontier.iter().map(|id| vertex_id_to_value(*id)).collect::<Vec<_>>())
         .map_err(|e| HandlerError::InvalidParams(e.to_string()))
@@ -305,7 +306,7 @@ async fn dispatch_genesis_get(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let genesis = server.clone().get_genesis(tarpc::context::current(), session_id).await?;
     serde_json::to_value(genesis.iter().map(|id| vertex_id_to_value(*id)).collect::<Vec<_>>())
         .map_err(|e| HandlerError::InvalidParams(e.to_string()))
@@ -316,9 +317,9 @@ async fn dispatch_vertex_query(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let event_types = obj.get("event_types").and_then(|v| serde_json::from_value(v.clone()).ok());
-    let agent = get_opt_str(obj, "agent").as_deref().map(parse_did);
+    let agent = get_opt_str(obj, "agent").map(parse_did);
     let start_time = obj.get("start_time").and_then(|v| serde_json::from_value(v.clone()).ok());
     let end_time = obj.get("end_time").and_then(|v| serde_json::from_value(v.clone()).ok());
     let limit = obj.get("limit").and_then(Value::as_u64).and_then(|u| u32::try_from(u).ok());
@@ -340,8 +341,8 @@ async fn dispatch_vertex_children(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
-    let vertex_id = parse_vertex_id(&get_str(obj, "vertex_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
+    let vertex_id = parse_vertex_id(get_str(obj, "vertex_id")?)?;
     let children =
         server.clone().get_children(tarpc::context::current(), session_id, vertex_id).await?;
     serde_json::to_value(children.iter().map(|id| vertex_id_to_value(*id)).collect::<Vec<_>>())
@@ -353,7 +354,7 @@ async fn dispatch_merkle_root(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let root = server.clone().get_merkle_root(tarpc::context::current(), session_id).await?;
     Ok(json!(hex::encode(root.0)))
 }
@@ -363,8 +364,8 @@ async fn dispatch_merkle_proof(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
-    let vertex_id = parse_vertex_id(&get_str(obj, "vertex_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
+    let vertex_id = parse_vertex_id(get_str(obj, "vertex_id")?)?;
     let proof =
         server.clone().get_merkle_proof(tarpc::context::current(), session_id, vertex_id).await?;
     serde_json::to_value(&proof).map_err(|e| HandlerError::InvalidParams(e.to_string()))
@@ -377,7 +378,7 @@ async fn dispatch_merkle_verify(
     let obj = get_obj(&params)?;
     let root_hex = get_str(obj, "root")?;
     let root_bytes =
-        hex::decode(&root_hex).map_err(|e| HandlerError::InvalidParams(format!("root: {e}")))?;
+        hex::decode(root_hex).map_err(|e| HandlerError::InvalidParams(format!("root: {e}")))?;
     if root_bytes.len() != 32 {
         return Err(HandlerError::InvalidParams("root must be 32 bytes hex".to_string()));
     }
@@ -404,8 +405,8 @@ async fn dispatch_slice_checkout(
             allow_recopy: false,
         },
     );
-    let lender = get_opt_str(obj, "lender").as_deref().map(parse_did);
-    let borrower = get_opt_str(obj, "borrower").as_deref().map(parse_did);
+    let lender = get_opt_str(obj, "lender").map(parse_did);
+    let borrower = get_opt_str(obj, "borrower").map(parse_did);
     let duration_seconds = obj.get("duration_seconds").and_then(Value::as_u64);
 
     let req = CheckoutSliceRequest {
@@ -424,7 +425,7 @@ async fn dispatch_slice_get(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let slice_id = parse_slice_id(&get_str(obj, "slice_id")?)?;
+    let slice_id = parse_slice_id(get_str(obj, "slice_id")?)?;
     let slice = server.clone().get_slice(tarpc::context::current(), slice_id).await?;
     serde_json::to_value(&slice).map_err(|e| HandlerError::InvalidParams(e.to_string()))
 }
@@ -439,8 +440,8 @@ async fn dispatch_slice_resolve(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let slice_id = parse_slice_id(&get_str(obj, "slice_id")?)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
+    let slice_id = parse_slice_id(get_str(obj, "slice_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     server.clone().resolve_slice(tarpc::context::current(), slice_id, session_id).await?;
     Ok(Value::Null)
 }
@@ -450,7 +451,7 @@ async fn dispatch_dehydrate(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let root = server.clone().dehydrate(tarpc::context::current(), session_id).await?;
     Ok(json!(hex::encode(root.0)))
 }
@@ -460,7 +461,7 @@ async fn dispatch_dehydrate_status(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let session_id = parse_session_id(&get_str(obj, "session_id")?)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let status =
         server.clone().get_dehydration_status(tarpc::context::current(), session_id).await?;
     serde_json::to_value(&status).map_err(|e| HandlerError::InvalidParams(e.to_string()))

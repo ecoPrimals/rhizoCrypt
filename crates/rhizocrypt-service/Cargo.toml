@@ -9,6 +9,10 @@ description = "Standalone RPC service for rhizoCrypt - Ephemeral DAG Engine"
 keywords = ["dag", "ephemeral", "rpc", "primal", "ecoprimal"]
 categories = ["cryptography", "network-programming", "data-structures"]
 
+[features]
+default = ["redb"]
+redb = ["rhizo-crypt-core/redb"]
+
 [lib]
 name = "rhizocrypt_service"
 path = "src/lib.rs"
@@ -19,6 +23,7 @@ path = "src/main.rs"
 
 [dependencies]
 rhizo-crypt-core = { path = "../rhizo-crypt-core" }
+tempfile = "3.15"
 thiserror = { workspace = true }
 rhizo-crypt-rpc = { path = "../rhizo-crypt-rpc" }
 tokio = { workspace = true }
@@ -31,6 +36,7 @@ workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
+tempfile = "3.15"
 
 [target.'cfg(unix)'.dev-dependencies]
 nix = { version = "0.27", features = ["signal", "process"] }

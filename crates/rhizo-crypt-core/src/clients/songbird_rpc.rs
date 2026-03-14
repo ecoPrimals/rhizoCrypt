@@ -110,6 +110,77 @@ pub struct RpcVersionInfo {
     pub capabilities: Vec<String>,
 }
 
+// ============================================================================
+// Mock server for integration tests (live-clients only)
+// ============================================================================
+
+/// Mock Songbird RPC server for integration tests.
+///
+/// Implements `SongbirdRpc` with canned responses for register, discover, etc.
+#[cfg(all(test, feature = "live-clients"))]
+#[derive(Clone)]
+pub struct MockSongbirdServer;
+
+#[cfg(all(test, feature = "live-clients"))]
+impl SongbirdRpc for MockSongbirdServer {
+    async fn discover(self, _: tarpc::context::Context, capability: String) -> Vec<RpcServiceInfo> {
+        if capability == "signing" {
+            vec![RpcServiceInfo {
+                id: "mock-beardog-1".to_string(),
+                capability: "signing".to_string(),
+                endpoint: "127.0.0.1:9500".to_string(),
+                status: "healthy".to_string(),
+                metadata: None,
+            }]
+        } else {
+            vec![]
+        }
+    }
+
+    async fn discover_all(self, _: tarpc::context::Context) -> Vec<RpcServiceInfo> {
+        vec![]
+    }
+
+    async fn register(
+        self,
+        _: tarpc::context::Context,
+        registration: RpcServiceRegistration,
+    ) -> RpcRegistrationResult {
+        RpcRegistrationResult {
+            success: true,
+            message: format!("Registered {}", registration.service_id),
+        }
+    }
+
+    async fn unregister(
+        self,
+        _: tarpc::context::Context,
+        _service_id: String,
+    ) -> RpcRegistrationResult {
+        RpcRegistrationResult {
+            success: true,
+            message: "Unregistered".to_string(),
+        }
+    }
+
+    async fn health(self, _: tarpc::context::Context) -> RpcHealthStatus {
+        RpcHealthStatus {
+            status: "healthy".to_string(),
+            version: "0.1.0-test".to_string(),
+            uptime_seconds: 0,
+            services_count: 1,
+        }
+    }
+
+    async fn version(self, _: tarpc::context::Context) -> RpcVersionInfo {
+        RpcVersionInfo {
+            version: "0.1.0-test".to_string(),
+            protocol: "tarpc-1.0".to_string(),
+            capabilities: vec!["discovery".to_string()],
+        }
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {

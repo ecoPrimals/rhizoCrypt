@@ -6,12 +6,13 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-only |
-| Tests | 862 passing |
-| Coverage | 87.78% line coverage (llvm-cov) |
+| Tests | 1022 passing |
+| Coverage | 90.12% line coverage (llvm-cov) |
 | Clippy | 0 warnings (pedantic + nursery) |
 | Unsafe | `#![forbid(unsafe_code)]` workspace-wide |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
 | IPC | JSON-RPC 2.0 (HTTP) + tarpc (bincode) |
+| Transport | Platform-agnostic (Unix socket / TCP / abstract socket) |
 | Storage | redb (Pure Rust, default) / sled (optional) |
 | Deps | ecoBin compliant — zero application C dependencies |
 | Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
@@ -74,7 +75,7 @@ fallback) for forward/backward compatibility.
 |-------|---------|
 | `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, clients |
 | `rhizo-crypt-rpc` | tarpc service definition, JSON-RPC handler, rate limiting, metrics |
-| `rhizocrypt-service` | UniBin service binary and library (subcommands: `server`, `status`, `version`) |
+| `rhizocrypt-service` | UniBin service binary and library (subcommands: `server`, `status`, `version`, `doctor`) |
 
 ---
 

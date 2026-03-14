@@ -159,10 +159,7 @@ impl ProvenanceNotifier {
     /// # Errors
     ///
     /// Returns error if notification fails.
-    pub async fn notify_dehydration(
-        &self,
-        summary: &DehydrationSummary,
-    ) -> Result<()> {
+    pub async fn notify_dehydration(&self, summary: &DehydrationSummary) -> Result<()> {
         if *self.state.read().await != ClientState::Connected {
             return Ok(());
         }
@@ -179,11 +176,7 @@ impl ProvenanceNotifier {
             "Notifying provenance provider of dehydration"
         );
 
-        let agent_dids: Vec<String> = summary
-            .agents
-            .iter()
-            .map(|a| a.agent.to_string())
-            .collect();
+        let agent_dids: Vec<String> = summary.agents.iter().map(|a| a.agent.to_string()).collect();
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",
@@ -243,21 +236,16 @@ impl ProvenanceNotifier {
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
         use tokio::net::TcpStream;
 
-        let stream = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            TcpStream::connect(endpoint),
-        )
-        .await
-        .map_err(|_| format!("Connection timeout to {endpoint}"))?
-        .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
+        let stream =
+            tokio::time::timeout(std::time::Duration::from_secs(5), TcpStream::connect(endpoint))
+                .await
+                .map_err(|_| format!("Connection timeout to {endpoint}"))?
+                .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
 
         let (reader, mut writer) = stream.into_split();
 
         let payload = format!("{}\n", serde_json::to_string(request).unwrap_or_default());
-        writer
-            .write_all(payload.as_bytes())
-            .await
-            .map_err(|e| format!("Write failed: {e}"))?;
+        writer.write_all(payload.as_bytes()).await.map_err(|e| format!("Write failed: {e}"))?;
 
         let mut buf_reader = BufReader::new(reader);
         let mut response = String::new();

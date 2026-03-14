@@ -5,6 +5,62 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-14 (session 3)
+
+### Changed
+
+#### Deep Debt Execution & Coverage Push to 90%
+- **1022 tests passing** (was 862) — +160 new tests across all modules
+- **90.12% line coverage** (llvm-cov) — crossed 90% target
+- **Zero production TODOs, FIXMEs, or HACKs** in all `.rs` files
+- **Zero production `unwrap()`/`expect()`** — all in `#[cfg(test)]` modules with proper `#[allow]`
+
+#### Platform-Agnostic Transport (ecoBin v2.0)
+- `TransportHint` enum: `UnixSocket`, `Tcp`, `AbstractSocket`
+- `socket_dir()`: XDG_RUNTIME_DIR → /run/ecoPrimals → /tmp/ecoPrimals; `None` on Android/Windows
+- `socket_path_for_primal()`: per-primal socket path construction
+- `preferred_transport()`: runtime OS detection, picks optimal transport
+
+#### UniBin Doctor Subcommand
+- `rhizocrypt doctor` — DAG engine, storage (redb), configuration, discovery, environment checks
+- `rhizocrypt doctor --comprehensive` — adds TCP connectivity probes to discovery endpoints
+- Human-readable output with pass/warn/fail indicators
+
+#### Zero-Copy JSON-RPC Handler
+- `get_str()` → returns `&str` instead of `String` (zero allocation on parameter extraction)
+- `get_opt_str()` → returns `Option<&str>` instead of `Option<String>`
+- Explicit `.map(String::from)` only where struct fields require ownership
+
+#### HTTP Client Test Infrastructure
+- Added `wiremock` (pure Rust) for HTTP client testing
+- LoamSpine: 16 wiremock tests (method negotiation, health, commit, verify, checkout, resolve)
+- BearDog: 8 wiremock tests (sign, verify, health, error paths)
+- NestGate: 12 wiremock tests (store, retrieve, exists, metadata, health)
+- ToadStool: 15 wiremock tests (health, BYOB health, deployments, stop, usage)
+- Songbird: 4 tarpc integration tests with mock server
+- Provenance: 6 mock adapter tests (all capability methods)
+
+#### Spec & Doc Alignment
+- `STORAGE_BACKENDS.md` updated: RocksDB/LMDB → redb/sled (ecoBin rationale)
+- Binary integration tests: `env!("CARGO_BIN_EXE_rhizocrypt")` — idiomatic Rust binary discovery
+- Root docs and CHANGELOG updated to current metrics
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy --workspace --all-features --all-targets -- -D warnings` | Clean |
+| `cargo doc --workspace --all-features --no-deps` | Clean (0 warnings) |
+| `cargo test --workspace --all-features` | 1022 pass, 0 fail |
+| `cargo llvm-cov --all-features` | 90.12% lines, 91.84% regions |
+| `cargo deny check` | advisories ok, bans ok, licenses ok, sources ok |
+| `#![forbid(unsafe_code)]` | Workspace-wide |
+| SPDX headers | All `.rs` files |
+| Max file size | All under 1000 lines |
+
+---
+
 ## [0.13.0-dev] - 2026-03-13 (session 2)
 
 ### Changed
@@ -191,6 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.13.0-dev** (2026-03-14): 90% coverage, 1022 tests, platform-agnostic transport, doctor subcommand, zero-copy handler
 - **0.13.0-dev** (2026-03-13): Deep debt, 862 tests, cargo-deny, service lib extraction
 - **0.13.0-dev** (2026-03-12): wateringHole standards, capability discovery, UniBin
 - **0.12.0** (2025-12-26): Lock-free concurrency (DashMap), Songbird registration

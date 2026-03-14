@@ -12,33 +12,8 @@ use std::process::{Command, Stdio};
 use std::time::Duration;
 use tokio::time::sleep;
 
-fn build_service() -> Result<(), Box<dyn std::error::Error>> {
-    let output = Command::new("cargo").args(["build", "--bin", "rhizocrypt"]).output()?;
-
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to build service: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into());
-    }
-
-    Ok(())
-}
-
 fn service_binary_path() -> String {
-    let manifest_dir =
-        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should be set");
-
-    let workspace_root = std::path::Path::new(&manifest_dir)
-        .parent()
-        .and_then(|p| p.parent())
-        .expect("Should have workspace root");
-
-    let target_dir = std::env::var("CARGO_TARGET_DIR")
-        .unwrap_or_else(|_| workspace_root.join("target").to_string_lossy().to_string());
-
-    format!("{target_dir}/debug/rhizocrypt")
+    env!("CARGO_BIN_EXE_rhizocrypt").to_string()
 }
 
 fn server_command(binary_path: &str) -> Command {
@@ -50,20 +25,14 @@ fn server_command(binary_path: &str) -> Command {
 #[tokio::test]
 async fn test_service_binary_exists() {
     let binary_path = service_binary_path();
-
-    if !std::path::Path::new(&binary_path).exists() {
-        build_service().expect("Failed to build service binary");
-    }
-
     assert!(
         std::path::Path::new(&binary_path).exists(),
-        "Service binary should exist after build at: {binary_path}",
+        "Service binary should exist at: {binary_path}",
     );
 }
 
 #[tokio::test]
 async fn test_service_version_subcommand() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let output = Command::new(&binary_path)
@@ -79,7 +48,6 @@ async fn test_service_version_subcommand() {
 
 #[tokio::test]
 async fn test_service_status_subcommand() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let output =
@@ -89,8 +57,37 @@ async fn test_service_status_subcommand() {
 }
 
 #[tokio::test]
+async fn test_service_doctor_subcommand() {
+    let binary_path = service_binary_path();
+
+    let output =
+        Command::new(&binary_path).arg("doctor").output().expect("Failed to run doctor subcommand");
+
+    assert!(output.status.success(), "doctor subcommand should succeed");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("rhizoCrypt Doctor"), "Should contain doctor header");
+    assert!(stdout.contains("DAG engine"), "Should contain DAG engine check");
+    assert!(stdout.contains("Overall:"), "Should contain overall status");
+}
+
+#[tokio::test]
+async fn test_service_doctor_comprehensive_subcommand() {
+    let binary_path = service_binary_path();
+
+    let output = Command::new(&binary_path)
+        .arg("doctor")
+        .arg("--comprehensive")
+        .output()
+        .expect("Failed to run doctor --comprehensive subcommand");
+
+    assert!(output.status.success(), "doctor --comprehensive should succeed");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("rhizoCrypt Doctor"), "Should contain doctor header");
+    assert!(stdout.contains("Discovery service"), "Should contain discovery check");
+}
+
+#[tokio::test]
 async fn test_service_starts_with_defaults() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
@@ -115,7 +112,6 @@ async fn test_service_starts_with_defaults() {
 
 #[tokio::test]
 async fn test_service_handles_invalid_port() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
@@ -147,7 +143,6 @@ async fn test_service_handles_invalid_port() {
 
 #[tokio::test]
 async fn test_service_custom_configuration() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
@@ -173,7 +168,6 @@ async fn test_service_custom_configuration() {
 
 #[tokio::test]
 async fn test_service_cli_port_override() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let mut child = Command::new(&binary_path)
@@ -198,7 +192,6 @@ async fn test_service_cli_port_override() {
 
 #[tokio::test]
 async fn test_service_without_discovery() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
@@ -227,7 +220,6 @@ async fn test_service_without_discovery() {
 
 #[tokio::test]
 async fn test_service_graceful_shutdown_sigterm() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
@@ -270,7 +262,6 @@ async fn test_service_graceful_shutdown_sigterm() {
 
 #[tokio::test]
 async fn test_service_port_already_in_use() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
     let test_port = "19450";
 
@@ -316,7 +307,6 @@ async fn test_service_port_already_in_use() {
 
 #[tokio::test]
 async fn test_service_environment_variable_parsing() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
@@ -343,7 +333,6 @@ async fn test_service_environment_variable_parsing() {
 
 #[tokio::test]
 async fn test_service_multiple_instances_different_ports() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let mut child1 = server_command(&binary_path)
@@ -390,7 +379,6 @@ async fn test_service_signal_handling() {
     use nix::sys::signal::{kill, Signal};
     use nix::unistd::Pid;
 
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)
@@ -423,7 +411,6 @@ async fn test_service_signal_handling() {
 
 #[tokio::test]
 async fn test_service_with_discovery_fallback() {
-    build_service().expect("Failed to build service");
     let binary_path = service_binary_path();
 
     let mut child = server_command(&binary_path)

@@ -411,4 +411,188 @@ mod tests {
         assert_eq!(method.method_type, "Ed25519VerificationKey2020");
         assert!(method.public_key_multibase.is_none());
     }
+
+    // ========================================================================
+    // Wiremock integration tests (require live-clients feature)
+    // ========================================================================
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_sign_success() {
+        use base64::engine::general_purpose::STANDARD;
+        use base64::Engine;
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("POST"))
+            .and(path("/ai/sign"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "signature": STANDARD.encode(b"mock-signature-bytes"),
+                "success": true
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+        let data = b"hello world";
+        let signature = client.sign(data).await.unwrap();
+        assert_eq!(signature, b"mock-signature-bytes");
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_verify_success() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("POST"))
+            .and(path("/ai/verify"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "valid": true
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+        let valid = client.verify(b"data", b"sig").await.unwrap();
+        assert!(valid);
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_verify_invalid() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("POST"))
+            .and(path("/ai/verify"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "valid": false
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+        let valid = client.verify(b"data", b"sig").await.unwrap();
+        assert!(!valid);
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_health_success() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("GET"))
+            .and(path("/ai/health"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "status": "healthy",
+                "version": "0.2.0"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+        let health = client.health().await.unwrap();
+        assert_eq!(health.status, "healthy");
+        assert_eq!(health.version, "0.2.0");
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_sign_status_error() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("POST"))
+            .and(path("/ai/sign"))
+            .respond_with(ResponseTemplate::new(500))
+            .mount(&mock_server)
+            .await;
+
+        let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+        let err = client.sign(b"data").await.unwrap_err();
+        assert!(matches!(err, BearDogHttpError::Status(500)));
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_sign_failure_response() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("POST"))
+            .and(path("/ai/sign"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "signature": "",
+                "success": false
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+        let err = client.sign(b"data").await.unwrap_err();
+        assert!(matches!(err, BearDogHttpError::SigningFailed));
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_sign_invalid_signature_base64() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("POST"))
+            .and(path("/ai/sign"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "signature": "!!!invalid-base64!!!",
+                "success": true
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+        let err = client.sign(b"data").await.unwrap_err();
+        assert!(matches!(err, BearDogHttpError::InvalidSignature));
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_health_status_error() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("GET"))
+            .and(path("/ai/health"))
+            .respond_with(ResponseTemplate::new(503))
+            .mount(&mock_server)
+            .await;
+
+        let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+        let err = client.health().await.unwrap_err();
+        assert!(matches!(err, BearDogHttpError::Status(503)));
+    }
 }

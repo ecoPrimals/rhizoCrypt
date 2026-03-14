@@ -65,6 +65,16 @@ impl ProvenanceClient {
         })
     }
 
+    /// Create client with a pre-built adapter (for testing).
+    #[cfg(test)]
+    pub(crate) fn with_adapter(adapter: Box<dyn ProtocolAdapter>, endpoint: &str) -> Self {
+        Self {
+            adapter: Arc::new(adapter),
+            endpoint: endpoint.to_string(),
+            service_name: Some("test-service".to_string()),
+        }
+    }
+
     /// Check if service is available.
     pub async fn is_available(&self) -> bool {
         self.adapter.is_healthy().await
@@ -214,5 +224,84 @@ mod tests {
         let client = ProvenanceClient::discover(&registry).await.unwrap();
         assert_eq!(client.endpoint(), "127.0.0.1:19900");
         assert_eq!(client.service_name(), Some("provenance-test"));
+    }
+
+    fn mock_client() -> ProvenanceClient {
+        use crate::integration::mocks::MockProtocolAdapter;
+        let adapter = MockProtocolAdapter::permissive();
+        ProvenanceClient::with_adapter(Box::new(adapter), "mock://test:9900")
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_is_available_with_mock() {
+        let client = mock_client();
+        assert!(client.is_available().await);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_vertices_for_data_with_mock() {
+        use crate::integration::mocks::MockProtocolAdapter;
+        let adapter = MockProtocolAdapter::permissive();
+        adapter
+            .set_response("provenance.vertices_for_data", Vec::<VertexRef>::new())
+            .await
+            .unwrap();
+        let client = ProvenanceClient::with_adapter(Box::new(adapter), "mock://test:9900");
+        let result = client.get_vertices_for_data([0u8; 32]).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_provenance_chain_with_mock() {
+        use crate::integration::mocks::MockProtocolAdapter;
+        let adapter = MockProtocolAdapter::permissive();
+        adapter.set_response("provenance.chain", ProvenanceChain::new()).await.unwrap();
+        let client = ProvenanceClient::with_adapter(Box::new(adapter), "mock://test:9900");
+        let vid = crate::types::VertexId::from_bytes(b"test-vertex");
+        let result = client.get_provenance_chain(vid).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_query_vertices_with_mock() {
+        use crate::integration::mocks::MockProtocolAdapter;
+        let adapter = MockProtocolAdapter::permissive();
+        adapter.set_response("provenance.query", Vec::<VertexRef>::new()).await.unwrap();
+        let client = ProvenanceClient::with_adapter(Box::new(adapter), "mock://test:9900");
+        let query = VertexQuery::default();
+        let result = client.query_vertices(query).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_session_attribution_with_mock() {
+        use crate::integration::mocks::MockProtocolAdapter;
+        use crate::types::SessionId;
+        let adapter = MockProtocolAdapter::permissive();
+        let session_id = SessionId::now();
+        adapter
+            .set_response(
+                "provenance.session_attribution",
+                SessionAttribution {
+                    session_id,
+                    session_type: "test".to_string(),
+                    agents: vec![],
+                    data_inputs: vec![],
+                    data_outputs: vec![],
+                    merkle_root: [0u8; 32],
+                },
+            )
+            .await
+            .unwrap();
+        let client = ProvenanceClient::with_adapter(Box::new(adapter), "mock://test:9900");
+        let result = client.get_session_attribution(session_id).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_mock_client_service_name() {
+        let client = mock_client();
+        assert_eq!(client.service_name(), Some("test-service"));
+        assert_eq!(client.endpoint(), "mock://test:9900");
     }
 }

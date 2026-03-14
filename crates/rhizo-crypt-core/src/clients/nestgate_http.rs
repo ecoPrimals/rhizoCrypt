@@ -438,4 +438,284 @@ mod tests {
         assert_eq!(req2.data, req.data);
         assert_eq!(req2.metadata.get("author").unwrap(), "test");
     }
+
+    // ========================================================================
+    // Wiremock integration tests (require live-clients feature)
+    // ========================================================================
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_store_success() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/blobs"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "reference": "blake3-abc123",
+                "size": 11,
+                "success": true
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let reference = client.store(b"hello world", None).await.unwrap();
+        assert_eq!(reference, "blake3-abc123");
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_store_with_content_type() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/blobs"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "reference": "blake3-xyz",
+                "size": 5,
+                "success": true
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let reference = client.store(b"hello", Some("text/plain")).await.unwrap();
+        assert_eq!(reference, "blake3-xyz");
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_retrieve_success() {
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/blobs/hash123"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": STANDARD.encode(b"retrieved data"),
+                "content_type": "application/octet-stream",
+                "size": 14
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let data = client.retrieve("hash123").await.unwrap();
+        assert_eq!(data, b"retrieved data");
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_retrieve_not_found() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/blobs/nonexistent"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let err = client.retrieve("nonexistent").await.unwrap_err();
+        assert!(matches!(err, NestGateHttpError::NotFound));
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_exists_true() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("HEAD"))
+            .and(path("/api/v1/blobs/exists-ref"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let exists = client.exists("exists-ref").await.unwrap();
+        assert!(exists);
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_exists_false() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("HEAD"))
+            .and(path("/api/v1/blobs/missing-ref"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let exists = client.exists("missing-ref").await.unwrap();
+        assert!(!exists);
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_metadata_success() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/blobs/ref456/metadata"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "reference": "ref456",
+                "content_type": "application/octet-stream",
+                "size": 1024,
+                "created_at": "2024-01-15T12:00:00Z",
+                "metadata": {"author": "test"}
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let meta = client.metadata("ref456").await.unwrap();
+        assert_eq!(meta.reference, "ref456");
+        assert_eq!(meta.size, 1024);
+        assert_eq!(meta.created_at.as_deref(), Some("2024-01-15T12:00:00Z"));
+        assert_eq!(meta.metadata.get("author").unwrap(), "test");
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_metadata_not_found() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/blobs/missing/metadata"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let err = client.metadata("missing").await.unwrap_err();
+        assert!(matches!(err, NestGateHttpError::NotFound));
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_health_success() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/health"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "status": "healthy",
+                "available_bytes": 1_000_000_000,
+                "used_bytes": 500_000_000
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let health = client.health().await.unwrap();
+        assert_eq!(health.status, "healthy");
+        assert_eq!(health.available_bytes, 1_000_000_000);
+        assert_eq!(health.used_bytes, 500_000_000);
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_store_status_error() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/blobs"))
+            .respond_with(ResponseTemplate::new(507))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let err = client.store(b"data", None).await.unwrap_err();
+        assert!(matches!(err, NestGateHttpError::Status(507)));
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_store_failure_response() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/blobs"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "reference": "",
+                "size": 0,
+                "success": false
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let err = client.store(b"data", None).await.unwrap_err();
+        assert!(matches!(err, NestGateHttpError::StoreFailed));
+    }
+
+    #[cfg(feature = "live-clients")]
+    #[tokio::test]
+    async fn wiremock_retrieve_invalid_base64() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let base_url = mock_server.uri();
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/blobs/badref"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": "!!!invalid-base64!!!",
+                "content_type": "application/octet-stream",
+                "size": 0
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+        let err = client.retrieve("badref").await.unwrap_err();
+        assert!(matches!(err, NestGateHttpError::InvalidData));
+    }
 }

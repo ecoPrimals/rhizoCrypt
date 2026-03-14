@@ -51,11 +51,11 @@ Integrate rhizoCrypt with real Phase 1 primals to:
 │   ├── demo-mcp-session.sh    # MCP session → DAG
 │   └── demo-multi-provider.sh # Track provider routing
 │
-└── 06-complete-workflow/      # Full ecosystem coordination
-    ├── start-all.sh           # Start all Phase 1 primals
-    ├── demo-full-pipeline.sh  # Session → Sign → Store → Commit
-    ├── demo-gaming-ml.sh      # Gaming + ML + Storage
-    └── stop-all.sh            # Clean shutdown
+└── 05-complete-workflows/     # Full ecosystem coordination
+    ├── demo-supply-chain.sh   # Supply chain provenance
+    ├── demo-ml-pipeline.sh    # ML pipeline with provenance
+    ├── demo-federated-identity.sh  # Federated identity flow
+    └── demo-document-workflow.sh   # Document lifecycle
 ```
 
 ---

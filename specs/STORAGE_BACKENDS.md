@@ -2,21 +2,34 @@
 
 **Version**: 0.2.0  
 **Status**: Draft  
-**Last Updated**: December 22, 2025
+**Last Updated**: March 2026
 
 ---
 
 ## 1. Overview
 
-RhizoCrypt uses a pluggable storage architecture with three primary backends:
+RhizoCrypt uses a pluggable storage architecture with Pure Rust backends:
 
 | Backend | Use Case | Durability | Performance |
 |---------|----------|------------|-------------|
-| **In-Memory** | Short sessions, testing | None | Fastest |
-| **RocksDB** | General purpose, longer sessions | Full | Fast |
-| **LMDB** | Memory-mapped, high read workloads | Full | Very Fast |
+| **In-Memory** | Short sessions, testing (default for tests) | None | Fastest |
+| **redb** | General purpose, production (default) | Full | Fast |
+| **sled** | Alternative persistent backend (optional feature) | Full | Fast |
 
-All backends implement the same trait interface, allowing seamless swapping.
+All backends implement the same `DagStore` trait interface, allowing seamless swapping.
+
+### 1.1 Design Rationale: Pure Rust Backends
+
+RhizoCrypt targets **ecoBin compliance** — zero C dependencies. RocksDB and LMDB were originally planned as persistent backends but were never implemented because they require C/C++ bindings, which violate ecoBin. The implementation instead uses:
+
+- **redb** — 100% Pure Rust embedded key-value store (default persistent backend)
+- **sled** — Pure Rust embedded database (optional, feature-gated)
+
+Both provide ACID semantics, concurrent access, and persistence without external C dependencies.
+
+### 1.2 Evolution Note
+
+RocksDB and LMDB were considered in early design phases for their maturity and performance. They were replaced with redb and sled to achieve ecoBin compliance while retaining persistent storage capabilities.
 
 ---
 
@@ -139,11 +152,8 @@ pub struct StorageStats {
     pub sessions: u64,
     pub vertices: u64,
     pub bytes_used: u64,
-    pub bytes_available: u64,
     pub read_ops: u64,
     pub write_ops: u64,
-    pub cache_hits: u64,
-    pub cache_misses: u64,
 }
 ```
 
@@ -254,7 +264,7 @@ pub enum SessionStateFilter {
 
 ## 3. In-Memory Backend
 
-The fastest backend, suitable for short-lived sessions and testing.
+The fastest backend, suitable for short-lived sessions and testing. **Always available** — no feature flag required. This is the default backend for tests and ephemeral workflows. Implementation: `crates/rhizo-crypt-core/src/store.rs` (`InMemoryDagStore`).
 
 ### 3.1 Implementation
 
@@ -264,7 +274,7 @@ use parking_lot::RwLock;
 
 /// In-memory DAG store
 #[derive(Clone)]
-pub struct MemoryDagStore {
+pub struct InMemoryDagStore {
     /// Vertices by session and ID
     vertices: Arc<DashMap<SessionId, DashMap<VertexId, Vertex>>>,
     
@@ -281,7 +291,7 @@ pub struct MemoryDagStore {
     stats: Arc<RwLock<StorageStats>>,
 }
 
-impl MemoryDagStore {
+impl InMemoryDagStore {
     /// Create a new in-memory store
     pub fn new() -> Self {
         Self {
@@ -306,7 +316,7 @@ impl MemoryDagStore {
 }
 
 #[async_trait]
-impl DagStore for MemoryDagStore {
+impl DagStore for InMemoryDagStore {
     async fn put_vertex(
         &self,
         session_id: SessionId,
@@ -461,13 +471,13 @@ impl DagStore for MemoryDagStore {
 ```rust
 /// In-memory payload store
 #[derive(Clone)]
-pub struct MemoryPayloadStore {
+pub struct InMemoryPayloadStore {
     payloads: Arc<DashMap<PayloadRef, Bytes>>,
     metadata: Arc<DashMap<PayloadRef, PayloadMetadata>>,
     stats: Arc<RwLock<StorageStats>>,
 }
 
-impl MemoryPayloadStore {
+impl InMemoryPayloadStore {
     pub fn new() -> Self {
         Self {
             payloads: Arc::new(DashMap::new()),
@@ -478,7 +488,7 @@ impl MemoryPayloadStore {
 }
 
 #[async_trait]
-impl PayloadStore for MemoryPayloadStore {
+impl PayloadStore for InMemoryPayloadStore {
     async fn put(&self, data: Bytes) -> Result<PayloadRef, StorageError> {
         let payload_ref = PayloadRef::from_bytes(&data);
         
@@ -513,325 +523,128 @@ impl PayloadStore for MemoryPayloadStore {
 
 ---
 
-## 4. RocksDB Backend
+## 4. redb Backend (Default Persistent)
 
-Persistent storage for general-purpose use.
+Persistent storage for general-purpose use. **100% Pure Rust** — no C dependencies, ecoBin compliant. Implementation: `crates/rhizo-crypt-core/src/store_redb.rs` (`RedbDagStore`). Enabled by default via the `redb` feature.
 
-### 4.1 Implementation
+### 4.1 Features
+
+- ACID transactions
+- MVCC — concurrent readers without blocking writers
+- Table separation: `vertices`, `children`, `frontiers`, `genesis`, `metadata`
+
+### 4.2 Implementation Sketch
 
 ```rust
-use rocksdb::{DB, Options, ColumnFamilyDescriptor};
+use redb::{Database, TableDefinition};
 
-/// Column families
-const CF_VERTICES: &str = "vertices";
-const CF_CHILDREN: &str = "children";
-const CF_FRONTIERS: &str = "frontiers";
-const CF_GENESIS: &str = "genesis";
-const CF_SESSIONS: &str = "sessions";
+const VERTICES: TableDefinition<&[u8], &[u8]> = TableDefinition::new("vertices");
+const CHILDREN: TableDefinition<&[u8], &[u8]> = TableDefinition::new("children");
+const FRONTIERS: TableDefinition<&[u8], &[u8]> = TableDefinition::new("frontiers");
+const GENESIS: TableDefinition<&[u8], &[u8]> = TableDefinition::new("genesis");
+const METADATA: TableDefinition<&[u8], &[u8]> = TableDefinition::new("metadata");
 
-/// RocksDB DAG store
+/// redb-backed DAG store (100% Pure Rust).
 #[derive(Clone)]
-pub struct RocksDbDagStore {
-    db: Arc<DB>,
-    stats: Arc<RwLock<StorageStats>>,
+pub struct RedbDagStore {
+    db: Arc<Database>,
+    path: Arc<PathBuf>,
+    read_ops: Arc<AtomicU64>,
+    write_ops: Arc<AtomicU64>,
 }
 
-impl RocksDbDagStore {
-    /// Open or create a RocksDB store
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, StorageError> {
-        let mut opts = Options::default();
-        opts.create_if_missing(true);
-        opts.create_missing_column_families(true);
-        opts.set_compression_type(rocksdb::DBCompressionType::Lz4);
-        opts.set_max_background_jobs(4);
-        
-        // Column family options
-        let cf_opts = Options::default();
-        
-        let cfs = vec![
-            ColumnFamilyDescriptor::new(CF_VERTICES, cf_opts.clone()),
-            ColumnFamilyDescriptor::new(CF_CHILDREN, cf_opts.clone()),
-            ColumnFamilyDescriptor::new(CF_FRONTIERS, cf_opts.clone()),
-            ColumnFamilyDescriptor::new(CF_GENESIS, cf_opts.clone()),
-            ColumnFamilyDescriptor::new(CF_SESSIONS, cf_opts),
-        ];
-        
-        let db = DB::open_cf_descriptors(&opts, path, cfs)
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        Ok(Self {
-            db: Arc::new(db),
-            stats: Arc::new(RwLock::new(StorageStats::default())),
-        })
+impl RedbDagStore {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+        let db = Database::create(path)?;
+        // Open tables to ensure they exist
+        let write_txn = db.begin_write()?;
+        let _ = write_txn.open_table(VERTICES)?;
+        let _ = write_txn.open_table(CHILDREN)?;
+        // ... other tables
+        write_txn.commit()?;
+        Ok(Self { db: Arc::new(db), path, read_ops, write_ops })
     }
-    
-    /// Compose key from session and vertex ID
-    fn vertex_key(session_id: SessionId, vertex_id: &VertexId) -> Vec<u8> {
-        let mut key = Vec::with_capacity(32 + 32);
+
+    fn vertex_key(session_id: SessionId, vertex_id: VertexId) -> Vec<u8> {
+        let mut key = Vec::with_capacity(49);
         key.extend_from_slice(session_id.as_bytes());
-        key.extend_from_slice(vertex_id);
+        key.push(b':');
+        key.extend_from_slice(vertex_id.as_bytes());
         key
     }
 }
 
-#[async_trait]
-impl DagStore for RocksDbDagStore {
-    async fn put_vertex(
-        &self,
-        session_id: SessionId,
-        vertex: &Vertex,
-    ) -> Result<(), StorageError> {
-        let vertex_id = vertex.compute_id();
-        let key = Self::vertex_key(session_id, &vertex_id);
-        let value = vertex.to_cbor();
-        
-        let cf = self.db.cf_handle(CF_VERTICES)
-            .ok_or_else(|| StorageError::Backend("Missing CF".into()))?;
-        
-        self.db.put_cf(&cf, &key, &value)
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        // Update children index
-        let children_cf = self.db.cf_handle(CF_CHILDREN)
-            .ok_or_else(|| StorageError::Backend("Missing CF".into()))?;
-        
-        for parent in &vertex.parents {
-            let parent_key = Self::vertex_key(session_id, parent);
-            
-            // Read existing children
-            let mut children: HashSet<VertexId> = self.db
-                .get_cf(&children_cf, &parent_key)
-                .map_err(|e| StorageError::Backend(e.to_string()))?
-                .map(|v| bincode::deserialize(&v).unwrap_or_default())
-                .unwrap_or_default();
-            
-            children.insert(vertex_id);
-            
-            self.db.put_cf(
-                &children_cf,
-                &parent_key,
-                &bincode::serialize(&children).unwrap(),
-            ).map_err(|e| StorageError::Backend(e.to_string()))?;
-        }
-        
+impl DagStore for RedbDagStore {
+    async fn put_vertex(&self, session_id: SessionId, vertex: Vertex) -> Result<()> {
+        let write_txn = self.db.begin_write()?;
+        let mut vertices_table = write_txn.open_table(VERTICES)?;
+        let key = Self::vertex_key(session_id, vertex_id);
+        vertices_table.insert(key.as_slice(), value.as_slice())?;
+        // Update children, genesis, frontiers...
+        write_txn.commit()?;
         Ok(())
     }
-    
-    async fn get_vertex(
-        &self,
-        session_id: SessionId,
-        vertex_id: &VertexId,
-    ) -> Result<Option<Vertex>, StorageError> {
-        let key = Self::vertex_key(session_id, vertex_id);
-        
-        let cf = self.db.cf_handle(CF_VERTICES)
-            .ok_or_else(|| StorageError::Backend("Missing CF".into()))?;
-        
-        let value = self.db.get_cf(&cf, &key)
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        match value {
-            Some(bytes) => {
-                let vertex = Vertex::from_cbor(&bytes)?;
-                Ok(Some(vertex))
-            }
-            None => Ok(None),
-        }
-    }
-    
-    async fn delete_session(&self, session_id: SessionId) -> Result<u64, StorageError> {
-        let prefix = session_id.as_bytes();
-        let mut count = 0u64;
-        
-        // Delete from all column families
-        for cf_name in [CF_VERTICES, CF_CHILDREN, CF_FRONTIERS, CF_GENESIS] {
-            let cf = self.db.cf_handle(cf_name)
-                .ok_or_else(|| StorageError::Backend("Missing CF".into()))?;
-            
-            let iter = self.db.prefix_iterator_cf(&cf, prefix);
-            
-            for item in iter {
-                let (key, _) = item.map_err(|e| StorageError::Backend(e.to_string()))?;
-                
-                if !key.starts_with(prefix) {
-                    break;
-                }
-                
-                self.db.delete_cf(&cf, &key)
-                    .map_err(|e| StorageError::Backend(e.to_string()))?;
-                
-                if cf_name == CF_VERTICES {
-                    count += 1;
-                }
-            }
-        }
-        
-        Ok(count)
-    }
-    
-    // ... other trait methods
-}
-```
-
-### 4.2 RocksDB Payload Store
-
-```rust
-/// RocksDB payload store
-#[derive(Clone)]
-pub struct RocksDbPayloadStore {
-    db: Arc<DB>,
-    compression: CompressionType,
-}
-
-impl RocksDbPayloadStore {
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, StorageError> {
-        let mut opts = Options::default();
-        opts.create_if_missing(true);
-        opts.set_compression_type(rocksdb::DBCompressionType::Zstd);
-        
-        let db = DB::open(&opts, path)
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        Ok(Self {
-            db: Arc::new(db),
-            compression: CompressionType::Zstd,
-        })
-    }
-}
-
-#[async_trait]
-impl PayloadStore for RocksDbPayloadStore {
-    async fn put(&self, data: Bytes) -> Result<PayloadRef, StorageError> {
-        let payload_ref = PayloadRef::from_bytes(&data);
-        
-        self.db.put(&payload_ref.hash, &data)
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        Ok(payload_ref)
-    }
-    
-    async fn get(&self, payload_ref: &PayloadRef) -> Result<Option<Bytes>, StorageError> {
-        let value = self.db.get(&payload_ref.hash)
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        Ok(value.map(Bytes::from))
-    }
-    
     // ... other trait methods
 }
 ```
 
 ---
 
-## 5. LMDB Backend
+## 5. sled Backend (Optional)
 
-Memory-mapped for maximum read performance.
+Alternative persistent backend. **Feature-gated** — only compiled when `sled` feature is enabled. Implementation: `crates/rhizo-crypt-core/src/store_sled.rs` (`SledDagStore`).
 
-### 5.1 Implementation
+**Note:** Sled 0.34 transitively depends on `zstd-sys` (C compression library), which may not meet the Pure Rust requirement of ecoBin. Use the `redb` backend for strict ecoBin compliance.
+
+### 5.1 Features
+
+- Tree namespaces: `vertices`, `children`, `frontiers`, `genesis`, `metadata`
+- Atomic batch writes
+- Lock-free concurrent access
+
+### 5.2 Implementation Sketch
 
 ```rust
-use heed::{Database, EnvOpenOptions, types::*};
+use sled::{Batch, Db, Tree};
 
-/// LMDB DAG store
+const TREE_VERTICES: &str = "vertices";
+const TREE_CHILDREN: &str = "children";
+const TREE_FRONTIERS: &str = "frontiers";
+const TREE_GENESIS: &str = "genesis";
+const TREE_METADATA: &str = "metadata";
+
+/// Sled-backed DAG store.
 #[derive(Clone)]
-pub struct LmdbDagStore {
-    env: Arc<heed::Env>,
-    vertices: Database<Bytes, Bytes>,
-    children: Database<Bytes, Bytes>,
-    frontiers: Database<Bytes, Bytes>,
-    genesis: Database<Bytes, Bytes>,
+pub struct SledDagStore {
+    db: Arc<Db>,
+    vertices: Tree,
+    children: Tree,
+    frontiers: Tree,
+    genesis: Tree,
+    metadata: Tree,
+    path: Arc<PathBuf>,
 }
 
-impl LmdbDagStore {
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, StorageError> {
-        std::fs::create_dir_all(&path)
-            .map_err(|e| StorageError::Io(e))?;
-        
-        let env = EnvOpenOptions::new()
-            .map_size(10 * 1024 * 1024 * 1024) // 10GB
-            .max_dbs(10)
-            .open(path)
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        let mut wtxn = env.write_txn()
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        let vertices = env.create_database(&mut wtxn, Some("vertices"))
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        let children = env.create_database(&mut wtxn, Some("children"))
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        let frontiers = env.create_database(&mut wtxn, Some("frontiers"))
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        let genesis = env.create_database(&mut wtxn, Some("genesis"))
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        wtxn.commit().map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        Ok(Self {
-            env: Arc::new(env),
-            vertices,
-            children,
-            frontiers,
-            genesis,
-        })
+impl SledDagStore {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+        let db = sled::Config::new().path(path).open()?;
+        let vertices = db.open_tree(TREE_VERTICES)?;
+        let children = db.open_tree(TREE_CHILDREN)?;
+        // ... other trees
+        Ok(Self { db, vertices, children, frontiers, genesis, metadata, path })
     }
 }
 
-#[async_trait]
-impl DagStore for LmdbDagStore {
-    async fn put_vertex(
-        &self,
-        session_id: SessionId,
-        vertex: &Vertex,
-    ) -> Result<(), StorageError> {
-        let vertex_id = vertex.compute_id();
-        let key = compose_key(session_id, &vertex_id);
-        let value = vertex.to_cbor();
-        
-        let mut wtxn = self.env.write_txn()
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        self.vertices.put(&mut wtxn, &key, &value)
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        wtxn.commit().map_err(|e| StorageError::Backend(e.to_string()))?;
-        
+impl DagStore for SledDagStore {
+    async fn put_vertex(&self, session_id: SessionId, vertex: Vertex) -> Result<()> {
+        let mut vertices_batch = Batch::default();
+        let mut children_batch = Batch::default();
+        // ... build batches
+        self.vertices.apply_batch(vertices_batch)?;
+        self.children.apply_batch(children_batch)?;
         Ok(())
     }
-    
-    async fn get_vertex(
-        &self,
-        session_id: SessionId,
-        vertex_id: &VertexId,
-    ) -> Result<Option<Vertex>, StorageError> {
-        let key = compose_key(session_id, vertex_id);
-        
-        let rtxn = self.env.read_txn()
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        let value = self.vertices.get(&rtxn, &key)
-            .map_err(|e| StorageError::Backend(e.to_string()))?;
-        
-        match value {
-            Some(bytes) => {
-                let vertex = Vertex::from_cbor(bytes)?;
-                Ok(Some(vertex))
-            }
-            None => Ok(None),
-        }
-    }
-    
     // ... other trait methods
-}
-
-fn compose_key(session_id: SessionId, vertex_id: &VertexId) -> Vec<u8> {
-    let mut key = Vec::with_capacity(32 + 32);
-    key.extend_from_slice(session_id.as_bytes());
-    key.extend_from_slice(vertex_id);
-    key
 }
 ```
 
@@ -854,31 +667,29 @@ pub struct StorageConfig {
     /// Memory limit for in-memory backend
     pub memory_limit: Option<usize>,
     
-    /// RocksDB-specific options
-    pub rocksdb: Option<RocksDbOptions>,
+    /// redb-specific options (future)
+    pub redb: Option<RedbOptions>,
     
-    /// LMDB-specific options
-    pub lmdb: Option<LmdbOptions>,
+    /// sled-specific options (future)
+    pub sled: Option<SledOptions>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum StorageBackendType {
     Memory,
-    RocksDb,
-    Lmdb,
+    Redb,
+    Sled,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RocksDbOptions {
-    pub compression: CompressionType,
-    pub cache_size: usize,
-    pub max_open_files: i32,
+pub struct RedbOptions {
+    // Future: compression, cache size, etc.
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LmdbOptions {
-    pub map_size: usize,
-    pub max_readers: u32,
+pub struct SledOptions {
+    pub cache_capacity: Option<u64>,
+    pub flush_every_ms: Option<u64>,
 }
 ```
 
@@ -889,37 +700,17 @@ pub struct LmdbOptions {
 pub fn create_dag_store(config: &StorageConfig) -> Result<Box<dyn DagStore>, StorageError> {
     match config.backend {
         StorageBackendType::Memory => {
-            Ok(Box::new(MemoryDagStore::new()))
+            Ok(Box::new(InMemoryDagStore::new()))
         }
-        StorageBackendType::RocksDb => {
+        StorageBackendType::Redb => {
             let path = config.path.as_ref()
-                .ok_or_else(|| StorageError::Backend("Path required for RocksDB".into()))?;
-            Ok(Box::new(RocksDbDagStore::open(path)?))
+                .ok_or_else(|| StorageError::Backend("Path required for redb".into()))?;
+            Ok(Box::new(RedbDagStore::open(path)?))
         }
-        StorageBackendType::Lmdb => {
+        StorageBackendType::Sled => {
             let path = config.path.as_ref()
-                .ok_or_else(|| StorageError::Backend("Path required for LMDB".into()))?;
-            Ok(Box::new(LmdbDagStore::open(path)?))
-        }
-    }
-}
-
-pub fn create_payload_store(config: &StorageConfig) -> Result<Box<dyn PayloadStore>, StorageError> {
-    match config.backend {
-        StorageBackendType::Memory => {
-            Ok(Box::new(MemoryPayloadStore::new()))
-        }
-        StorageBackendType::RocksDb => {
-            let path = config.path.as_ref()
-                .ok_or_else(|| StorageError::Backend("Path required for RocksDB".into()))?;
-            let payload_path = path.join("payloads");
-            Ok(Box::new(RocksDbPayloadStore::open(payload_path)?))
-        }
-        StorageBackendType::Lmdb => {
-            let path = config.path.as_ref()
-                .ok_or_else(|| StorageError::Backend("Path required for LMDB".into()))?;
-            let payload_path = path.join("payloads");
-            Ok(Box::new(LmdbPayloadStore::open(payload_path)?))
+                .ok_or_else(|| StorageError::Backend("Path required for sled".into()))?;
+            Ok(Box::new(SledDagStore::open(path)?))
         }
     }
 }
@@ -929,16 +720,17 @@ pub fn create_payload_store(config: &StorageConfig) -> Result<Box<dyn PayloadSto
 
 ## 7. Performance Characteristics
 
-| Operation | Memory | RocksDB | LMDB |
-|-----------|--------|---------|------|
-| Put vertex | ~1µs | ~50µs | ~100µs |
-| Get vertex | ~100ns | ~10µs | ~1µs |
-| Get children | ~200ns | ~20µs | ~2µs |
+| Operation | Memory | redb | sled |
+|-----------|--------|------|------|
+| Put vertex | ~1µs | ~50–100µs | ~50–100µs |
+| Get vertex | ~100ns | ~10µs | ~10µs |
+| Get children | ~200ns | ~20µs | ~20µs |
 | Delete session | O(n) | O(n) | O(n) |
-| Memory usage | High | Medium | Low (mmap) |
+| Memory usage | High | Medium | Medium |
 | Persistence | None | Full | Full |
-| Concurrent reads | Lock-free | Good | Excellent |
+| Concurrent reads | Lock-free | MVCC (excellent) | Lock-free |
 | Concurrent writes | Sharded locks | Single writer | Single writer |
+| ecoBin compliant | Yes | Yes (100% Pure Rust) | Optional (zstd-sys) |
 
 ---
 
@@ -946,8 +738,8 @@ pub fn create_payload_store(config: &StorageConfig) -> Result<Box<dyn PayloadSto
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — System architecture
 - [DATA_MODEL.md](./DATA_MODEL.md) — Data structures
-- [RocksDB Documentation](https://rocksdb.org/docs/)
-- [LMDB Documentation](http://www.lmdb.tech/doc/)
+- [redb Documentation](https://docs.rs/redb/)
+- [sled Documentation](https://docs.rs/sled/)
 
 ---
 

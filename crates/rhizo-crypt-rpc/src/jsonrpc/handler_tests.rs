@@ -516,6 +516,322 @@ async fn test_dehydrate_status_handler() {
     let session_id = result.as_str().unwrap();
 
     let req = make_request("dag.dehydrate.status", Some(json!({"session_id": session_id})));
-    let result = handle_request(primal.clone(), req).await;
-    assert!(result.is_ok() || result.is_err());
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(
+        result.as_str().is_some() || result.as_object().is_some(),
+        "dehydrate.status should return string (unit variant) or object (struct variant)"
+    );
+}
+
+// --- dispatch_event_append_batch ---
+
+#[tokio::test]
+async fn test_event_append_batch_empty_array() {
+    let primal = create_test_primal().await;
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({"session_type": "General", "description": "test"})),
+    );
+    let _ = handle_request(primal.clone(), req).await.unwrap();
+
+    let req = make_request("dag.event.append_batch", Some(json!({"requests": []})));
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let ids = result.as_array().unwrap();
+    assert!(ids.is_empty());
+}
+
+#[tokio::test]
+async fn test_event_append_batch_single_with_metadata() {
+    let primal = create_test_primal().await;
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({"session_type": "General", "description": "test"})),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append_batch",
+        Some(json!({
+            "requests": [{
+                "session_id": session_id,
+                "event_type": {"DataCreate": {"schema": null}},
+                "metadata": [{"key": "k1", "value": "v1"}],
+                "agent": "did:key:z6MkTest"
+            }]
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let ids = result.as_array().unwrap();
+    assert_eq!(ids.len(), 1);
+    assert!(ids[0].as_str().unwrap().len() == 64);
+}
+
+#[tokio::test]
+async fn test_event_append_batch_missing_requests() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.event.append_batch", Some(json!({})));
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_event_append_batch_requests_not_array() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.event.append_batch", Some(json!({"requests": "not-array"})));
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_event_append_batch_request_not_object() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append_batch",
+        Some(json!({
+            "requests": [session_id]
+        })),
+    );
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_event_append_batch_invalid_session_id() {
+    let primal = create_test_primal().await;
+    let req = make_request(
+        "dag.event.append_batch",
+        Some(json!({
+            "requests": [{"session_id": "not-a-uuid", "event_type": {"SessionStart": null}}]
+        })),
+    );
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_event_append_batch_invalid_parents_hex() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append_batch",
+        Some(json!({
+            "requests": [{
+                "session_id": session_id,
+                "event_type": {"SessionStart": null},
+                "parents": ["not-valid-hex"]
+            }]
+        })),
+    );
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+// --- dispatch_vertex_children ---
+
+#[tokio::test]
+async fn test_vertex_children_empty() {
+    let primal = create_test_primal().await;
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({"session_type": "General", "description": "test"})),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"SessionStart": null}
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let vertex_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.vertex.children",
+        Some(json!({"session_id": session_id, "vertex_id": vertex_id})),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let children = result.as_array().unwrap();
+    assert!(children.is_empty());
+}
+
+#[tokio::test]
+async fn test_vertex_children_invalid_vertex_id() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.vertex.children",
+        Some(json!({"session_id": session_id, "vertex_id": "zzzz"})),
+    );
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+// --- dispatch_slice_checkout / dispatch_slice_get / dispatch_slice_list / dispatch_slice_resolve ---
+
+#[tokio::test]
+async fn test_slice_checkout_missing_spine_index() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.slice.checkout", Some(json!({})));
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_slice_get_invalid_slice_id() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.slice.get", Some(json!({"slice_id": "not-a-uuid"})));
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_slice_get_missing_slice_id() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.slice.get", Some(json!({})));
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_slice_resolve_invalid_slice_id() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.slice.resolve",
+        Some(json!({"slice_id": "bad-uuid", "session_id": session_id})),
+    );
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_slice_resolve_invalid_session_id() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"SessionStart": null}
+        })),
+    );
+    let _ = handle_request(primal.clone(), req).await.unwrap();
+
+    let req = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
+    let _ = handle_request(primal.clone(), req).await.unwrap();
+
+    let req = make_request("dag.slice.checkout", Some(json!({"spine_index": 0})));
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let slice_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.slice.resolve",
+        Some(json!({"slice_id": slice_id, "session_id": "not-a-uuid"})),
+    );
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_slice_list_with_null_params() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.slice.list", None);
+    let result = handle_request(primal, req).await.unwrap();
+    let list = result.as_array().unwrap();
+    assert!(list.is_empty());
+}
+
+// --- dispatch_dehydrate_status error path ---
+
+#[tokio::test]
+async fn test_dehydrate_status_invalid_session_id() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.dehydrate.status", Some(json!({"session_id": "bad-uuid"})));
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+// --- Edge cases: null params, extra fields ---
+
+#[tokio::test]
+async fn test_params_null() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.session.get", None);
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_extra_fields_ignored() {
+    let primal = create_test_primal().await;
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({
+            "session_type": "General",
+            "description": "test",
+            "extra_field": "ignored",
+            "another_extra": 123
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(uuid::Uuid::parse_str(result.as_str().unwrap()).is_ok());
+}
+
+#[tokio::test]
+async fn test_event_append_batch_params_not_object() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.event.append_batch", Some(json!([1, 2, 3])));
+    let err = handle_request(primal, req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::InvalidParams(_)));
+}
+
+#[tokio::test]
+async fn test_slice_checkout_with_mode_and_duration() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"SessionStart": null}
+        })),
+    );
+    let _ = handle_request(primal.clone(), req).await.unwrap();
+
+    let req = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
+    let _ = handle_request(primal.clone(), req).await.unwrap();
+
+    let req = make_request(
+        "dag.slice.checkout",
+        Some(json!({
+            "spine_index": 0,
+            "mode": {"Copy": {"allow_recopy": true}},
+            "duration_seconds": 3600
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(uuid::Uuid::parse_str(result.as_str().unwrap()).is_ok());
 }

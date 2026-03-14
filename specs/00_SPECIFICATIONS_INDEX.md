@@ -1,7 +1,7 @@
 # 🔐 RhizoCrypt — Specifications Index
 
-**Last Updated**: December 22, 2025  
-**Version**: 0.3.0  
+**Last Updated**: March 14, 2026  
+**Version**: 0.13.0-dev  
 **Status**: Active Development
 
 ---
@@ -59,8 +59,9 @@ RhizoCrypt respects human dignity by:
 
 | Document | Purpose | Status |
 |----------|---------|--------|
-| [INTEGRATION_SPECIFICATION.md](./INTEGRATION_SPECIFICATION.md) | BearDog, LoamSpine, SweetGrass, ToadStool | ✅ Complete |
-| [STORAGE_BACKENDS.md](./STORAGE_BACKENDS.md) | In-memory, RocksDB, LMDB store implementations | ✅ Complete |
+| [INTEGRATION_SPECIFICATION.md](./INTEGRATION_SPECIFICATION.md) | Legacy v1 integration (superseded by V2) | 📦 Archived |
+| [INTEGRATION_SPECIFICATION_V2.md](./INTEGRATION_SPECIFICATION_V2.md) | Capability-based integration (current) | ✅ Complete |
+| [STORAGE_BACKENDS.md](./STORAGE_BACKENDS.md) | redb (default), sled (optional), in-memory | ✅ Complete |
 
 ---
 

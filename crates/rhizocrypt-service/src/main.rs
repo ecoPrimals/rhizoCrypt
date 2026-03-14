@@ -11,6 +11,8 @@
 //! rhizocrypt server                    # Start the RPC service
 //! rhizocrypt server --port 9400        # Custom port
 //! rhizocrypt status                    # Check service health
+//! rhizocrypt doctor                    # Health diagnostics (UniBin standard)
+//! rhizocrypt doctor --comprehensive    # Detailed checks including discovery
 //! rhizocrypt --version                 # Version info
 //! rhizocrypt --help                    # Help
 //! ```
@@ -64,6 +66,13 @@ enum Commands {
 
     /// Print version and build information.
     Version,
+
+    /// Run health diagnostics (UniBin Architecture Standard).
+    Doctor {
+        /// Run detailed checks including discovery connectivity.
+        #[arg(long)]
+        comprehensive: bool,
+    },
 }
 
 #[tokio::main]
@@ -81,6 +90,12 @@ async fn main() -> Result<(), ServiceError> {
         }
         Commands::Version => {
             rhizocrypt_service::print_version();
+            Ok(())
+        }
+        Commands::Doctor {
+            comprehensive,
+        } => {
+            rhizocrypt_service::run_doctor(comprehensive).await;
             Ok(())
         }
     }

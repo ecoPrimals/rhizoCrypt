@@ -473,10 +473,7 @@ impl RhizoCrypt {
         let commit_ref = self.commit_to_permanent_storage(&summary_with_attestations).await?;
 
         // Notify provenance provider (non-fatal: dehydration succeeds regardless)
-        self.provenance_notifier
-            .notify_dehydration(&summary_with_attestations)
-            .await
-            .ok();
+        self.provenance_notifier.notify_dehydration(&summary_with_attestations).await.ok();
 
         // Update status to complete
         self.dehydration_status.insert(
