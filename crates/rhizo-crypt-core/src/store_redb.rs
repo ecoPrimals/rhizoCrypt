@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 //! redb persistent storage backend.
@@ -178,10 +178,44 @@ impl RedbDagStore {
     pub fn path(&self) -> &Path {
         &self.path
     }
+
+    /// Read a vertex ID set from a table, returning an empty set if no entry exists.
+    fn read_vertex_set(
+        &self,
+        table: TableDefinition<&[u8], &[u8]>,
+        key: &[u8],
+    ) -> Result<hashbrown::HashSet<VertexId>> {
+        let read_txn = self
+            .db
+            .begin_read()
+            .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
+        let t = read_txn
+            .open_table(table)
+            .map_err(|e| RhizoCryptError::storage(format!("Failed to open table: {e}")))?;
+        let existing = t
+            .get(key)
+            .map_err(|e| RhizoCryptError::storage(e.to_string()))?
+            .map(|g| g.value().to_vec());
+        Ok(existing.as_deref().map(Self::parse_vertex_set).unwrap_or_default())
+    }
+
+    /// Insert a serialized vertex set into an open table within a write transaction.
+    fn write_vertex_set(
+        write_txn: &redb::WriteTransaction,
+        table: TableDefinition<&[u8], &[u8]>,
+        key: &[u8],
+        set: &hashbrown::HashSet<VertexId>,
+    ) -> Result<()> {
+        let mut t = write_txn
+            .open_table(table)
+            .map_err(|e| RhizoCryptError::storage(format!("Failed to open table: {e}")))?;
+        t.insert(key, Self::serialize_vertex_set(set).as_slice())
+            .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+        Ok(())
+    }
 }
 
 impl DagStore for RedbDagStore {
-    #[allow(clippy::too_many_lines)]
     async fn put_vertex(&self, session_id: SessionId, mut vertex: Vertex) -> Result<()> {
         self.write_ops.fetch_add(1, Ordering::Relaxed);
 
@@ -194,108 +228,39 @@ impl DagStore for RedbDagStore {
             RhizoCryptError::storage(format!("Failed to begin write transaction: {e}"))
         })?;
 
+        // Store vertex
         {
-            let mut vertices_table = write_txn.open_table(VERTICES).map_err(|e| {
+            let mut t = write_txn.open_table(VERTICES).map_err(|e| {
                 RhizoCryptError::storage(format!("Failed to open vertices table: {e}"))
             })?;
-
             let key = Self::vertex_key(session_id, vertex_id);
-            vertices_table
-                .insert(key.as_slice(), value.as_slice())
+            t.insert(key.as_slice(), value.as_slice())
                 .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
         }
 
         // Update children index for each parent
         for parent_id in &vertex.parents {
             let parent_key = Self::vertex_key(session_id, *parent_id);
-
-            let existing: Option<Vec<u8>> = {
-                let read_txn = self
-                    .db
-                    .begin_read()
-                    .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-                let children_table = read_txn.open_table(CHILDREN).map_err(|e| {
-                    RhizoCryptError::storage(format!("Failed to open children table: {e}"))
-                })?;
-                children_table
-                    .get(parent_key.as_slice())
-                    .map_err(|e| RhizoCryptError::storage(e.to_string()))?
-                    .map(|g| g.value().to_vec())
-            };
-
-            let mut children_set =
-                existing.as_deref().map(Self::parse_vertex_set).unwrap_or_default();
+            let mut children_set = self.read_vertex_set(CHILDREN, &parent_key)?;
             children_set.insert(vertex_id);
-
-            let mut children_table = write_txn.open_table(CHILDREN).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open children table: {e}"))
-            })?;
-            children_table
-                .insert(parent_key.as_slice(), Self::serialize_vertex_set(&children_set).as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+            Self::write_vertex_set(&write_txn, CHILDREN, &parent_key, &children_set)?;
         }
 
         // Update genesis if this is a root vertex
+        let session_key = Self::session_key(session_id);
         if vertex.is_genesis() {
-            let session_key = Self::session_key(session_id);
-
-            let existing: Option<Vec<u8>> = {
-                let read_txn = self
-                    .db
-                    .begin_read()
-                    .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-                let genesis_table = read_txn.open_table(GENESIS).map_err(|e| {
-                    RhizoCryptError::storage(format!("Failed to open genesis table: {e}"))
-                })?;
-                genesis_table
-                    .get(session_key.as_slice())
-                    .map_err(|e| RhizoCryptError::storage(e.to_string()))?
-                    .map(|g| g.value().to_vec())
-            };
-
-            let mut genesis_set =
-                existing.as_deref().map(Self::parse_vertex_set).unwrap_or_default();
+            let mut genesis_set = self.read_vertex_set(GENESIS, &session_key)?;
             genesis_set.insert(vertex_id);
-
-            let mut genesis_table = write_txn.open_table(GENESIS).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open genesis table: {e}"))
-            })?;
-            genesis_table
-                .insert(session_key.as_slice(), Self::serialize_vertex_set(&genesis_set).as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+            Self::write_vertex_set(&write_txn, GENESIS, &session_key, &genesis_set)?;
         }
 
-        // Update frontier
-        let session_key = Self::session_key(session_id);
-
-        let existing: Option<Vec<u8>> = {
-            let read_txn = self
-                .db
-                .begin_read()
-                .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-            let frontiers_table = read_txn.open_table(FRONTIERS).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open frontiers table: {e}"))
-            })?;
-            frontiers_table
-                .get(session_key.as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?
-                .map(|g| g.value().to_vec())
-        };
-
-        let mut frontier = existing.as_deref().map(Self::parse_vertex_set).unwrap_or_default();
+        // Update frontier: remove parents, add this vertex
+        let mut frontier = self.read_vertex_set(FRONTIERS, &session_key)?;
         for parent_id in &vertex.parents {
             frontier.remove(parent_id);
         }
         frontier.insert(vertex_id);
-
-        {
-            let mut frontiers_table = write_txn.open_table(FRONTIERS).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open frontiers table: {e}"))
-            })?;
-            frontiers_table
-                .insert(session_key.as_slice(), Self::serialize_vertex_set(&frontier).as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
-        }
+        Self::write_vertex_set(&write_txn, FRONTIERS, &session_key, &frontier)?;
 
         write_txn.commit().map_err(|e| {
             RhizoCryptError::storage(format!("Failed to commit write transaction: {e}"))
@@ -645,14 +610,13 @@ impl DagStore for RedbDagStore {
     }
 }
 
-#[allow(clippy::missing_fields_in_debug)]
 impl std::fmt::Debug for RedbDagStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RedbDagStore")
             .field("path", &*self.path)
             .field("read_ops", &self.read_ops.load(Ordering::Relaxed))
             .field("write_ops", &self.write_ops.load(Ordering::Relaxed))
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

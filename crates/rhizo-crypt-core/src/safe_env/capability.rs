@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 //! Capability-specific environment configuration.
@@ -39,7 +39,6 @@ use super::SafeEnv;
 /// Capability-specific environment configuration.
 pub struct CapabilityEnv;
 
-#[allow(clippy::manual_inspect)]
 impl CapabilityEnv {
     /// Get the endpoint for signing capability.
     ///
@@ -52,13 +51,12 @@ impl CapabilityEnv {
         SafeEnv::get_endpoint("CRYPTO_SIGNING")
             .or_else(|| SafeEnv::get_endpoint("SIGNING"))
             .or_else(|| {
-                std::env::var("BEARDOG_ADDRESS").ok().map(|addr| {
+                std::env::var("BEARDOG_ADDRESS").ok().inspect(|_| {
                     tracing::warn!(
                         "Using deprecated BEARDOG_ADDRESS environment variable. \
                          Please migrate to SIGNING_ENDPOINT or CRYPTO_SIGNING_ENDPOINT \
                          for capability-based configuration."
                     );
-                    addr
                 })
             })
     }
@@ -73,12 +71,11 @@ impl CapabilityEnv {
     pub fn did_verification_endpoint() -> Option<String> {
         SafeEnv::get_endpoint("DID_VERIFICATION").or_else(|| SafeEnv::get_endpoint("DID")).or_else(
             || {
-                std::env::var("BEARDOG_ADDRESS").ok().map(|addr| {
+                std::env::var("BEARDOG_ADDRESS").ok().inspect(|_| {
                     tracing::warn!(
                         "Using deprecated BEARDOG_ADDRESS for DID verification. \
                          Please migrate to DID_ENDPOINT for capability-based configuration."
                     );
-                    addr
                 })
             },
         )
@@ -95,13 +92,12 @@ impl CapabilityEnv {
         SafeEnv::get_endpoint("PAYLOAD_STORAGE")
             .or_else(|| SafeEnv::get_endpoint("PAYLOAD"))
             .or_else(|| {
-                std::env::var("NESTGATE_ADDRESS").ok().map(|addr| {
+                std::env::var("NESTGATE_ADDRESS").ok().inspect(|_| {
                     tracing::warn!(
                         "Using deprecated NESTGATE_ADDRESS environment variable. \
                          Please migrate to PAYLOAD_STORAGE_ENDPOINT \
                          for capability-based configuration."
                     );
-                    addr
                 })
             })
     }
@@ -117,13 +113,12 @@ impl CapabilityEnv {
         SafeEnv::get_endpoint("STORAGE_PERMANENT_COMMIT")
             .or_else(|| SafeEnv::get_endpoint("PERMANENT_STORAGE"))
             .or_else(|| {
-                std::env::var("LOAMSPINE_ADDRESS").ok().map(|addr| {
+                std::env::var("LOAMSPINE_ADDRESS").ok().inspect(|_| {
                     tracing::warn!(
                         "Using deprecated LOAMSPINE_ADDRESS environment variable. \
                          Please migrate to PERMANENT_STORAGE_ENDPOINT \
                          for capability-based configuration."
                     );
-                    addr
                 })
             })
     }
@@ -171,12 +166,11 @@ impl CapabilityEnv {
             .or_else(|| SafeEnv::get_endpoint("DISCOVERY_SERVICE"))
             .or_else(|| SafeEnv::get_endpoint("DISCOVERY"))
             .or_else(|| {
-                std::env::var("SONGBIRD_ADDRESS").ok().map(|addr| {
+                std::env::var("SONGBIRD_ADDRESS").ok().inspect(|_| {
                     tracing::info!(
                         "Using SONGBIRD_ADDRESS for discovery. \
                          Consider migrating to RHIZOCRYPT_DISCOVERY_ADAPTER for consistency."
                     );
-                    addr
                 })
             })
     }

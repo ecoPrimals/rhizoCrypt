@@ -1,71 +1,72 @@
-# 🚀 DEPLOYMENT CHECKLIST — rhizoCrypt v0.13.0
+# DEPLOYMENT CHECKLIST — rhizoCrypt v0.13.0-dev
 
-**Date**: December 27, 2025  
-**Version**: 0.13.0  
-**Status**: ✅ **PRODUCTION READY**  
-**Grade**: A+ (96/100) 🏆
-
----
-
-## ✅ PRE-DEPLOYMENT VERIFICATION
-
-### Code Quality ✅
-- [x] **600/600 tests passing** (100%)
-- [x] **90%+ code coverage** (llvm-cov, exceeds 60% target)
-- [x] **Zero unsafe code** (workspace-level forbid)
-- [x] **Zero clippy warnings** (pedantic + nursery)
-- [x] **100% file size compliance** (<1000 lines)
-- [x] **Formatted** (rustfmt passes)
-
-### Architecture ✅
-- [x] **Capability-based** (zero hardcoding)
-- [x] **Lock-free concurrency** (DashMap everywhere)
-- [x] **Dehydration protocol** (complete 8-step workflow)
-- [x] **Service mode** (standalone binary)
-- [x] **Health monitoring** (endpoints ready)
-- [x] **Graceful shutdown** (no data loss)
-
-### Integration ✅
-- [x] **Songbird integration** (4 demos, real binary)
-- [x] **BearDog integration** (4 demos, real binary)
-- [x] **NestGate integration** (3 demos, real binary)
-- [x] **Zero mocks in production** (all capability-based)
-
-### Documentation ✅
-- [x] **README.md** (updated with latest metrics — 600 tests, 90% coverage)
-- [x] **CHANGELOG.md** (version history)
-- [x] **showcase/** (41 comprehensive demos)
-- [x] **specs/** (complete specifications)
-- [x] **00_START_HERE.md** (clear entry point)
+**Date**: March 15, 2026
+**Version**: 0.13.0-dev
+**Status**: PRODUCTION READY
 
 ---
 
-## 🏗️ DEPLOYMENT OPTIONS
+## PRE-DEPLOYMENT VERIFICATION
 
-### Option 1: Standalone Binary ✅
+### Code Quality
+- [x] **882+ tests passing** (default features), 0 failures
+- [x] **90.88% line coverage** (llvm-cov verified)
+- [x] **Zero unsafe code** (workspace-level `#![forbid(unsafe_code)]`)
+- [x] **Zero clippy warnings** (pedantic + nursery + cargo, all features)
+- [x] **100% file size compliance** (all files under 1000 lines)
+- [x] **Formatted** (`cargo fmt --check` clean)
+- [x] **AGPL-3.0-or-later** SPDX header on all 105 `.rs` files
+
+### Architecture
+- [x] **Capability-based** (zero hardcoded primal names in production)
+- [x] **Lock-free concurrency** (DashMap, atomics)
+- [x] **Dehydration protocol** (complete 7-step workflow)
+- [x] **UniBin binary** (`rhizocrypt server`, `doctor`, `status`, `version`)
+- [x] **JSON-RPC 2.0 + tarpc** — dual-transport, semantic method names
+- [x] **Graceful shutdown** (SIGTERM + SIGINT, no data loss)
+
+### Storage Backends
+- [x] **redb** (default) — 100% Pure Rust, ACID, MVCC, ecoBin compliant
+- [x] **sled** (optional `--features sled`) — high-performance embedded
+- [x] **Memory** (testing) — ephemeral in-memory store
+
+### Documentation
+- [x] **README.md** (current metrics — 882+ tests, 90.88% coverage)
+- [x] **CHANGELOG.md** (version history through session 7)
+- [x] **showcase/** (70+ comprehensive demos)
+- [x] **specs/** (10 specification documents)
+- [x] **docs/ENV_VARS.md** (capability-based configuration reference)
+
+---
+
+## DEPLOYMENT OPTIONS
+
+### Option 1: Standalone Binary
 
 ```bash
 # Build release binary
 cargo build --release -p rhizocrypt-service
 
-# Run service
-./target/release/rhizocrypt server --port 7777
+# Run service (production port)
+./target/release/rhizocrypt server --port 9400
 
-# Health check
-curl http://localhost:7777/health
+# Health check via JSON-RPC
+curl -s -X POST http://localhost:9400/rpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"system.health","params":{},"id":1}'
 ```
 
 **Environment Variables**:
 ```bash
-export RHIZOCRYPT_PORT=7777
+export RHIZOCRYPT_PORT=9400
 export RHIZOCRYPT_ENV=production
 export RHIZOCRYPT_LOG_LEVEL=info
-export SONGBIRD_ADDRESS=localhost:8888  # Optional: for registration
+export RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500  # Optional: for registration
 ```
 
 ---
 
-### Option 2: Docker Container ✅
+### Option 2: Docker Container
 
 ```bash
 # Build Docker image
@@ -74,12 +75,12 @@ docker build -t rhizocrypt:0.13.0 .
 # Run container
 docker run -d \
   --name rhizocrypt \
-  -p 7777:7777 \
+  -p 9400:9400 \
   -e RHIZOCRYPT_ENV=production \
   rhizocrypt:0.13.0
 
-# Health check
-curl http://localhost:7777/health
+# Health check via rhizocrypt status subcommand
+docker exec rhizocrypt /app/rhizocrypt status
 ```
 
 **Docker Compose**:
@@ -89,12 +90,12 @@ services:
   rhizocrypt:
     image: rhizocrypt:0.13.0
     ports:
-      - "7777:7777"
+      - "9400:9400"
     environment:
       - RHIZOCRYPT_ENV=production
       - RHIZOCRYPT_LOG_LEVEL=info
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7777/health"]
+      test: ["CMD", "/app/rhizocrypt", "status"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -102,218 +103,150 @@ services:
 
 ---
 
-### Option 3: Kubernetes Deployment ✅
+### Option 3: Kubernetes Deployment
 
-```bash
-# Apply Kubernetes manifests
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
-
-# Verify deployment
-kubectl get pods -l app=rhizocrypt
-kubectl logs -l app=rhizocrypt
-
-# Health check
-kubectl port-forward svc/rhizocrypt 7777:7777
-curl http://localhost:7777/health
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rhizocrypt
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rhizocrypt
+  template:
+    metadata:
+      labels:
+        app: rhizocrypt
+    spec:
+      containers:
+        - name: rhizocrypt
+          image: rhizocrypt:0.13.0
+          ports:
+            - containerPort: 9400
+          env:
+            - name: RHIZOCRYPT_ENV
+              value: "production"
+            - name: RHIZOCRYPT_DISCOVERY_ADAPTER
+              valueFrom:
+                configMapKeyRef:
+                  name: rhizocrypt-config
+                  key: discovery_adapter
+          livenessProbe:
+            exec:
+              command: ["/app/rhizocrypt", "status"]
+            initialDelaySeconds: 5
+            periodSeconds: 30
 ```
-
-**Key Manifests**:
-- `k8s/deployment.yaml` — Deployment configuration (3 replicas)
-- `k8s/service.yaml` — Service exposure (LoadBalancer)
-- `k8s/configmap.yaml` — Configuration (optional)
 
 ---
 
-## 📊 POST-DEPLOYMENT VERIFICATION
+## POST-DEPLOYMENT VERIFICATION
 
-### Health Checks ✅
-
-```bash
-# Service health
-curl http://localhost:7777/health
-
-# Expected response:
-{
-  "status": "healthy",
-  "version": "0.13.0",
-  "uptime_seconds": 45,
-  "sessions": { "active": 0, "total": 0 },
-  "memory": { "used_mb": 32, "available_mb": 224 }
-}
-```
-
-### Metrics ✅
+### Health Check (JSON-RPC)
 
 ```bash
-# Metrics endpoint
-curl http://localhost:7777/metrics
-
-# Expected metrics:
-rhizocrypt_sessions_active 0
-rhizocrypt_sessions_total 0
-rhizocrypt_vertices_total 0
-rhizocrypt_operations_total 0
-rhizocrypt_uptime_seconds 45
-```
-
-### Smoke Tests ✅
-
-```bash
-# Create a session (via RPC client)
-# See showcase/00-local-primal/01-hello-rhizocrypt/ for examples
-
-# Or use curl (if HTTP adapter enabled)
-curl -X POST http://localhost:7777/sessions \
+curl -s -X POST http://localhost:9400/rpc \
   -H "Content-Type: application/json" \
-  -d '{"type": "General", "name": "smoke-test"}'
+  -d '{"jsonrpc":"2.0","method":"system.health","params":{},"id":1}'
+```
+
+### Metrics (JSON-RPC)
+
+```bash
+curl -s -X POST http://localhost:9400/rpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"system.metrics","params":{},"id":1}'
+```
+
+### Doctor (CLI)
+
+```bash
+# Basic diagnostics
+./target/release/rhizocrypt doctor
+
+# Comprehensive (includes connectivity probes)
+./target/release/rhizocrypt doctor --comprehensive
 ```
 
 ---
 
-## 🔧 CONFIGURATION
+## CONFIGURATION
 
-### Required ✅
-- `RHIZOCRYPT_PORT` — RPC server port (default: 7777)
-- `RHIZOCRYPT_ENV` — Environment (development/production)
+### Required
+- `RHIZOCRYPT_PORT` — RPC server port (default: OS-assigned in dev, 9400 in production)
+- `RHIZOCRYPT_ENV` — Environment (`development` or `production`)
 
-### Optional ✅
-- `RHIZOCRYPT_LOG_LEVEL` — Logging level (default: info)
-- `RHIZOCRYPT_MAX_SESSIONS` — Max concurrent sessions (default: 1000)
-- `RHIZOCRYPT_CACHE_SIZE_MB` — Cache size (default: 256)
-- `SONGBIRD_ADDRESS` — Songbird for auto-registration (optional)
+### Optional
+- `RHIZOCRYPT_DISCOVERY_ADAPTER` — Discovery service endpoint (primary)
+- `RHIZOCRYPT_LOG_LEVEL` — Logging level (default: `info`)
+- `SIGNING_ENDPOINT` — Direct signing provider
+- `PERMANENT_STORAGE_ENDPOINT` — Direct permanent storage
+- `PAYLOAD_STORAGE_ENDPOINT` — Direct payload storage
 
-### Storage ✅
-- **Default**: In-memory (ephemeral, production-ready)
-- **Optional**: RocksDB (persistence, requires feature flag)
-
----
-
-## 🎯 OPERATIONAL GUIDELINES
-
-### Monitoring ✅
-
-**Key Metrics to Watch**:
-- `rhizocrypt_sessions_active` — Should stay < `MAX_SESSIONS`
-- `rhizocrypt_operations_errors` — Should stay near 0
-- `rhizocrypt_memory_bytes` — Monitor for leaks
-- `rhizocrypt_uptime_seconds` — Track restarts
-
-**Alerting Thresholds**:
-- Active sessions > 80% of max → Scale up
-- Error rate > 1% → Investigate
-- Memory growth > 10MB/hour → Check for leaks
-
-### Scaling ✅
-
-**Horizontal Scaling** (Recommended):
-- Run multiple rhizoCrypt instances
-- Each instance is independent
-- Load balance at service discovery (Songbird)
-
-**Vertical Scaling** (If needed):
-- Increase `RHIZOCRYPT_MAX_SESSIONS`
-- Increase `RHIZOCRYPT_CACHE_SIZE_MB`
-- Ensure adequate CPU cores (for lock-free concurrency)
-
-### Backup & Recovery ✅
-
-**Ephemeral Sessions**:
-- rhizoCrypt is designed to forget
-- Sessions are temporary by default
-- No backup needed for in-memory state
-
-**Dehydrated Sessions**:
-- Backed up in permanent storage (LoamSpine, NestGate)
-- Recovery via slice semantics (checkout from permanent)
+See [ENV_VARS.md](./ENV_VARS.md) for the complete capability-based configuration reference.
 
 ---
 
-## 🚨 TROUBLESHOOTING
+## OPERATIONAL GUIDELINES
 
-### Common Issues
+### Monitoring
+
+**Key Metrics** (via `system.metrics` JSON-RPC):
+- `rhizocrypt_sessions_active` — currently active sessions
+- `rhizocrypt_rpc_errors_total` — errors by type
+- `rhizocrypt_rpc_request_duration_seconds_mean` — latency by method
+- `rhizocrypt_uptime_seconds` — time since start
+
+### Scaling
+
+**Horizontal Scaling** (recommended):
+- Each rhizoCrypt instance is independent (no shared state)
+- Load balance at discovery layer
+- Sessions are scoped to the instance that created them
+
+### Backup & Recovery
+
+**Ephemeral Sessions**: rhizoCrypt is designed to forget. Sessions are temporary
+working memory — no backup needed for in-memory state.
+
+**Dehydrated Sessions**: Committed results live in permanent storage (via
+`PermanentStorageProvider` capability). Recovery is via slice checkout.
+
+---
+
+## TROUBLESHOOTING
 
 **1. Port Already in Use**
 ```bash
-# Check what's using port 7777
-lsof -i :7777
-
-# Solution: Use different port
-export RHIZOCRYPT_PORT=7778
+lsof -i :9400
+export RHIZOCRYPT_PORT=9401
 ```
 
-**2. Songbird Connection Failed**
+**2. Discovery Unavailable**
 ```bash
-# Check Songbird is running
-curl http://localhost:8888/health
-
-# Solution: Either start Songbird or remove SONGBIRD_ADDRESS
-unset SONGBIRD_ADDRESS  # Runs without auto-registration
+# rhizoCrypt runs standalone without discovery — just no inter-primal features
+unset RHIZOCRYPT_DISCOVERY_ADAPTER
 ```
 
-**3. High Memory Usage**
+**3. Doctor Diagnostics**
 ```bash
-# Check metrics
-curl http://localhost:7777/metrics | grep memory
-
-# Solution: Reduce max sessions or cache size
-export RHIZOCRYPT_MAX_SESSIONS=500
-export RHIZOCRYPT_CACHE_SIZE_MB=128
+./target/release/rhizocrypt doctor --comprehensive
 ```
 
 ---
 
-## 🎊 SUCCESS CRITERIA
+## REFERENCES
 
-Deployment is successful when:
-
-- [x] Service starts without errors
-- [x] Health endpoint responds "healthy"
-- [x] Metrics endpoint is accessible
-- [x] Can create and resolve sessions
-- [x] Logs show no errors
-- [x] Memory usage is stable
-- [x] CPU usage is reasonable (<50% steady state)
+- [README.md](../README.md) — Project overview
+- [CHANGELOG.md](../CHANGELOG.md) — Version history
+- [ENV_VARS.md](./ENV_VARS.md) — Environment variable reference
+- [specs/](../specs/) — Formal specifications
+- [showcase/](../showcase/) — 70+ progressive demos
 
 ---
 
-## 📚 REFERENCES
-
-### Documentation
-- **[README.md](../README.md)** — Project overview
-- **[CHANGELOG.md](../CHANGELOG.md)** — Version history and current metrics
-- **[showcase/](../showcase/)** — 70+ demos for testing
-
-### Support
-- **[specs/](../specs/)** — Complete specifications
-- **[ENV_VARS.md](./ENV_VARS.md)** — Environment variable reference
-
----
-
-## ✅ DEPLOYMENT APPROVED
-
-**rhizoCrypt v0.13.0 is production-ready:**
-
-- ✅ All quality gates passed
-- ✅ 600/600 tests passing (100%)
-- ✅ 90%+ code coverage
-- ✅ Zero unsafe code
-- ✅ Real Phase 1 integration proven
-- ✅ Service mode tested
-- ✅ Comprehensive documentation
-
-**Confidence Level**: **VERY HIGH** 🏆
-
----
-
-**Deploy with confidence!** 🚀
-
----
-
-**Created**: December 27, 2025  
-**Version**: rhizoCrypt 0.13.0  
-**Status**: ✅ **PRODUCTION READY**  
-**Grade**: A+ (96/100) 🏆
-
-*"From code to container to cloud — rhizoCrypt is ready."*
-
+**Created**: December 27, 2025
+**Last Updated**: March 15, 2026
+**Version**: rhizoCrypt 0.13.0-dev

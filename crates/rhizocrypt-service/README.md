@@ -247,7 +247,7 @@ RUST_LOG=rhizocrypt_service=trace rhizocrypt server
 ## 🐳 Docker Deployment
 
 ```dockerfile
-FROM rust:1.75 as builder
+FROM rust:1.85-slim AS builder
 WORKDIR /app
 COPY . .
 RUN cargo build --release -p rhizocrypt-service

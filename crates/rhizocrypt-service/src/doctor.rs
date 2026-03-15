@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 //! `UniBin` doctor diagnostics for `rhizoCrypt`.
@@ -115,6 +115,7 @@ pub async fn check_dag_engine() -> bool {
 }
 
 /// Check that the default storage backend is accessible.
+#[must_use]
 pub fn check_storage_backend() -> (bool, &'static str) {
     #[cfg(feature = "redb")]
     {
@@ -180,6 +181,10 @@ async fn check_discovery(comprehensive: bool) -> (DoctorCheck, String) {
 }
 
 /// Attempt TCP connection to discovery endpoint.
+///
+/// # Errors
+///
+/// Returns `Err` when the address cannot be parsed or the endpoint is unreachable.
 pub async fn check_discovery_connectivity(addr: &str) -> Result<(), String> {
     let host_port = addr
         .strip_prefix("http://")

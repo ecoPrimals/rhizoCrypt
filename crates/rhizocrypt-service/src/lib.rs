@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 //! `rhizoCrypt` service library — shared logic for the `UniBin` entry point.
@@ -305,7 +305,7 @@ pub async fn register_with_discovery(
 pub fn print_version() {
     println!("rhizoCrypt v{}", env!("CARGO_PKG_VERSION"));
     println!("Edition: 2021");
-    println!("License: AGPL-3.0-only");
+    println!("License: AGPL-3.0-or-later");
     println!("Architecture: UniBin / ecoBin (Pure Rust)");
 }
 
@@ -313,7 +313,7 @@ pub fn print_version() {
 pub fn print_status() {
     println!("rhizoCrypt v{}", env!("CARGO_PKG_VERSION"));
     println!("Status: Not connected (use `rhizocrypt server` to start)");
-    println!("License: AGPL-3.0-only");
+    println!("License: AGPL-3.0-or-later");
 }
 
 #[cfg(test)]

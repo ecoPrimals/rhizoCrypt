@@ -502,7 +502,7 @@ The RPC API respects primal sovereignty:
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — System architecture
 - [DATA_MODEL.md](./DATA_MODEL.md) — Data structures
-- [INTEGRATION_SPECIFICATION.md](./INTEGRATION_SPECIFICATION.md) — Primal integrations
+- [INTEGRATION_SPECIFICATION.md](./archive/INTEGRATION_SPECIFICATION.md) — Primal integrations (archived v1)
 - [tarpc documentation](https://docs.rs/tarpc) — RPC framework
 
 ---

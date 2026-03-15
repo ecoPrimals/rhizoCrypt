@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # cargo-deny configuration for rhizoCrypt
 # https://embarkstudios.github.io/cargo-deny/
 
@@ -27,7 +27,7 @@ allow = [
     "Unicode-3.0",
     "Zlib",
     "BSL-1.0",
-    "AGPL-3.0-only",
+    "AGPL-3.0-or-later",
     "CC0-1.0",
     "CDLA-Permissive-2.0",
 ]

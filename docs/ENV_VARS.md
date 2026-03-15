@@ -1,6 +1,6 @@
 # 🔐 rhizoCrypt — Environment Variables
 
-**Last Updated**: March 12, 2026  
+**Last Updated**: March 15, 2026  
 **Version**: 0.13.0-dev  
 **Philosophy**: Capability-based, not primal-based
 
@@ -22,7 +22,7 @@ rhizoCrypt follows the **infant discovery** pattern: it starts with **zero knowl
 |----------|------|---------|-------------|
 | `RHIZOCRYPT_ENV` | string | `production` | Environment mode (`development` or `production`) |
 | `RHIZOCRYPT_RPC_HOST` | string | `0.0.0.0` | RPC server bind address |
-| `RHIZOCRYPT_RPC_PORT` | u16 | `9400` | RPC server port |
+| `RHIZOCRYPT_PORT` | u16 | `9400` | RPC server port |
 | `RHIZOCRYPT_METRICS_PORT` | u16 | `9401` | Prometheus metrics port |
 
 ### Capability Endpoints (Preferred ✅)
@@ -31,7 +31,7 @@ These are the **new, capability-based** environment variables. Use these for all
 
 | Capability | Variable | Legacy Alternative | Description |
 |------------|----------|-------------------|-------------|
-| **Discovery** | `DISCOVERY_ENDPOINT` | `SONGBIRD_ADDRESS` | Service discovery endpoint |
+| **Discovery** | `RHIZOCRYPT_DISCOVERY_ADAPTER` | `DISCOVERY_ENDPOINT`, `SONGBIRD_ADDRESS` | Service discovery endpoint (highest priority) |
 | **Signing** | `SIGNING_ENDPOINT` | `BEARDOG_ADDRESS` | Cryptographic signing service |
 | **DID Verification** | `DID_ENDPOINT` | `BEARDOG_ADDRESS` | DID resolution and verification |
 | **Payload Storage** | `PAYLOAD_STORAGE_ENDPOINT` | `NESTGATE_ADDRESS` | Content-addressed payload storage |
@@ -76,7 +76,7 @@ These variables still work for **backward compatibility** but emit deprecation w
 | `SWEETGRASS_ADDRESS` | `PROVENANCE_ENDPOINT` | ⚠️ Deprecated |
 | `SWEETGRASS_PUSH_ADDRESS` | `PROVENANCE_ENDPOINT` | ⚠️ Deprecated |
 | `SWEETGRASS_TIMEOUT_MS` | `PROVENANCE_TIMEOUT_MS` | ⚠️ Deprecated |
-| `SONGBIRD_ADDRESS` | `DISCOVERY_ENDPOINT` | ℹ️ Acceptable (Songbird is the universal adapter) |
+| `SONGBIRD_ADDRESS` | `RHIZOCRYPT_DISCOVERY_ADAPTER` | ℹ️ Acceptable (Songbird is the universal adapter) |
 
 ---
 
@@ -140,7 +140,7 @@ For each capability, rhizoCrypt checks environment variables in this order:
 
 1. **Capability-based endpoint** (e.g., `SIGNING_ENDPOINT`)
 2. **Legacy primal-based endpoint** (e.g., `BEARDOG_ADDRESS`) — emits warning
-3. **Runtime discovery** via Songbird (if `DISCOVERY_ENDPOINT` is set)
+3. **Runtime discovery** via Songbird (if `RHIZOCRYPT_DISCOVERY_ADAPTER` or `DISCOVERY_ENDPOINT` is set)
 4. **Development fallback** (only if `RHIZOCRYPT_ENV=development`)
 
 ### Example: Signing Capability

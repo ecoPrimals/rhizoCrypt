@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 //! Generic signing client - works with ANY signing provider.
@@ -181,6 +181,18 @@ impl SigningClient {
     /// - Signing fails
     /// - DID not authorized
     pub async fn sign(&self, data: &[u8], signer: &Did) -> Result<Signature> {
+        self.sign_owned(bytes::Bytes::copy_from_slice(data), signer).await
+    }
+
+    /// Sign data that is already owned as `Bytes` (zero-copy path).
+    ///
+    /// Prefer this over [`sign`] when the caller already holds `Bytes` or `Vec<u8>`
+    /// to avoid an extra allocation.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the signing service is unavailable or the DID is not authorized.
+    pub async fn sign_owned(&self, data: bytes::Bytes, signer: &Did) -> Result<Signature> {
         tracing::debug!(
             signer = %signer,
             data_len = data.len(),
@@ -188,7 +200,7 @@ impl SigningClient {
         );
 
         let request = SignRequest {
-            data: bytes::Bytes::copy_from_slice(data),
+            data,
             signer: signer.clone(),
         };
 
@@ -209,6 +221,20 @@ impl SigningClient {
     ///
     /// Returns error if service unavailable or verification fails.
     pub async fn verify(&self, data: &[u8], signature: &Signature, signer: &Did) -> Result<bool> {
+        self.verify_owned(bytes::Bytes::copy_from_slice(data), signature, signer).await
+    }
+
+    /// Verify a signature against owned data (zero-copy path).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if service unavailable or verification fails.
+    pub async fn verify_owned(
+        &self,
+        data: bytes::Bytes,
+        signature: &Signature,
+        signer: &Did,
+    ) -> Result<bool> {
         tracing::debug!(
             signer = %signer,
             data_len = data.len(),
@@ -216,7 +242,7 @@ impl SigningClient {
         );
 
         let request = VerifyRequest {
-            data: bytes::Bytes::copy_from_slice(data),
+            data,
             signature: signature.0.clone(),
             signer: signer.clone(),
         };
@@ -237,8 +263,8 @@ impl SigningClient {
     ///
     /// Returns error if signing fails.
     pub async fn sign_vertex(&self, vertex: &Vertex, signer: &Did) -> Result<Signature> {
-        let canonical_bytes = vertex.to_canonical_bytes()?;
-        self.sign(&canonical_bytes, signer).await
+        let canonical = bytes::Bytes::from(vertex.to_canonical_bytes()?);
+        self.sign_owned(canonical, signer).await
     }
 
     /// Verify a vertex signature.
@@ -252,10 +278,10 @@ impl SigningClient {
     /// Returns error if verification fails.
     pub async fn verify_vertex(&self, vertex: &Vertex) -> Result<bool> {
         if let (Some(sig), Some(agent)) = (&vertex.signature, &vertex.agent) {
-            let canonical_bytes = vertex.to_canonical_bytes()?;
-            self.verify(&canonical_bytes, sig, agent).await
+            let canonical = bytes::Bytes::from(vertex.to_canonical_bytes()?);
+            self.verify_owned(canonical, sig, agent).await
         } else {
-            Ok(false) // No signature or agent
+            Ok(false)
         }
     }
 

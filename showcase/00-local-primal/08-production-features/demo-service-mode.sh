@@ -34,7 +34,7 @@ echo "────────────────────────�
 echo ""
 echo "Service configuration:"
 cat << 'CONFIG'
-  Port: 7777 (RPC server)
+  Port: 9400 (RPC server)
   Host: 0.0.0.0 (all interfaces)
   Environment: production
   Log Level: info
@@ -50,7 +50,7 @@ echo "────────────────────────�
 echo ""
 
 echo "Command:"
-echo "  $ rhizocrypt server --port 7777"
+echo "  $ rhizocrypt server --port 9400"
 echo ""
 
 sleep 1
@@ -69,7 +69,7 @@ echo "✅ Service started successfully!"
 echo ""
 echo "Service Details:"
 echo "  PID: 12345"
-echo "  Port: 7777 (RPC)"
+echo "  Port: 9400 (RPC)"
 echo "  Status: Running"
 echo "  Protocol: tarpc"
 echo ""
@@ -81,7 +81,7 @@ echo "────────────────────────"
 echo ""
 
 echo "Checking service health..."
-echo "  $ curl http://localhost:7777/health"
+echo "  $ curl http://localhost:9400/health"
 echo ""
 
 sleep 1
@@ -120,7 +120,7 @@ cat << 'CLIENT'
 // Client code
 use rhizo_crypt_rpc::RpcClient;
 
-let client = RpcClient::connect("localhost:7777").await?;
+let client = RpcClient::connect("localhost:9400").await?;
 let session_id = client.create_session(session).await?;
 CLIENT
 echo ""
@@ -174,7 +174,7 @@ echo -e "${YELLOW}📝 Step 6: Monitoring${NC}"
 echo "──────────────────────"
 echo ""
 
-echo "Metrics endpoint: http://localhost:7777/metrics"
+echo "Metrics endpoint: http://localhost:9400/metrics"
 echo ""
 
 cat << 'METRICS'
@@ -255,7 +255,7 @@ sleep 2
 echo -e "${CYAN}💡 Production Deployment:${NC}"
 echo ""
 echo "Docker:"
-echo "  $ docker run -d -p 7777:7777 rhizocrypt:0.13.0"
+echo "  $ docker run -d -p 9400:9400 rhizocrypt:0.13.0"
 echo ""
 echo "Kubernetes:"
 echo "  $ kubectl apply -f k8s/deployment.yaml"
@@ -269,10 +269,10 @@ sleep 2
 echo -e "${CYAN}🔧 Configuration Options:${NC}"
 echo ""
 echo "Environment Variables:"
-echo "  RHIZOCRYPT_PORT=7777"
+echo "  RHIZOCRYPT_PORT=9400"
 echo "  RHIZOCRYPT_ENV=production"
 echo "  RHIZOCRYPT_LOG_LEVEL=info"
-echo "  SONGBIRD_ADDRESS=localhost:8888"
+echo "  RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500"
 echo ""
 
 sleep 1

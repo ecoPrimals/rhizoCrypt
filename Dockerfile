@@ -1,8 +1,8 @@
-# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Multi-stage build for rhizoCrypt service
 
 # Stage 1: Builder
-FROM rust:1.92-slim AS builder
+FROM rust:1.85-slim AS builder
 
 WORKDIR /build
 
@@ -41,4 +41,4 @@ LABEL org.opencontainers.image.title="rhizoCrypt"
 LABEL org.opencontainers.image.description="Ephemeral DAG engine for ecoPrimals"
 LABEL org.opencontainers.image.version="0.13.0-dev"
 LABEL org.opencontainers.image.vendor="ecoPrimals Project"
-LABEL org.opencontainers.image.licenses="AGPL-3.0-only"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"

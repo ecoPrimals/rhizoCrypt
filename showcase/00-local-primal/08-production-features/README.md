@@ -24,7 +24,7 @@ This showcase demonstrates that rhizoCrypt is **production-ready**:
 ### 1. Service Mode (`demo-service-mode.sh`)
 **What it shows**:
 - Starting rhizoCrypt as a service
-- RPC server on port 7777
+- RPC server on port 9400
 - Health endpoint on /health
 - Graceful shutdown with SIGTERM
 
@@ -122,7 +122,7 @@ Or run individually:
 ```bash
 docker run -d \
   --name rhizocrypt \
-  -p 7777:7777 \
+  -p 9400:9400 \
   -e RHIZOCRYPT_ENV=production \
   rhizocrypt:0.13.0
 ```
@@ -141,15 +141,15 @@ spec:
       - name: rhizocrypt
         image: rhizocrypt:0.13.0
         ports:
-        - containerPort: 7777
+        - containerPort: 9400
         livenessProbe:
           httpGet:
             path: /health
-            port: 7777
+            port: 9400
         readinessProbe:
           httpGet:
             path: /ready
-            port: 7777
+            port: 9400
 ```
 
 ---
@@ -181,7 +181,7 @@ spec:
 ### Environment Variables
 ```bash
 # Service Configuration
-RHIZOCRYPT_PORT=7777              # RPC server port
+RHIZOCRYPT_PORT=9400              # RPC server port
 RHIZOCRYPT_HOST=0.0.0.0           # Bind address
 RHIZOCRYPT_ENV=production         # Environment
 

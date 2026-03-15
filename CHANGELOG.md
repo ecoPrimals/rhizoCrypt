@@ -5,6 +5,57 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-15 (session 7)
+
+### Changed
+
+#### scyBorg License Alignment
+- Updated SPDX identifier from `AGPL-3.0-only` to `AGPL-3.0-or-later` across all 105 `.rs` files, `Cargo.toml`, `deny.toml`, `Dockerfile`, CI workflow, and all documentation
+- Aligned with wateringHole/scyBorg licensing standard (AGPL-3.0 + ORC + CC-BY-SA)
+
+#### Smart Refactoring — `store_redb.rs`
+- Extracted `read_vertex_set` and `write_vertex_set` helpers — eliminated `#[allow(clippy::too_many_lines)]` on `put_vertex`
+- `Debug` impl uses `finish_non_exhaustive()` — removed `#[allow(clippy::missing_fields_in_debug)]`
+
+#### Zero-Copy Signing
+- Added `sign_owned(Bytes)` / `verify_owned(Bytes)` paths to signing capability client
+- `sign_vertex` / `verify_vertex` use `Bytes::from(Vec<u8>)` (ownership transfer) instead of `Bytes::copy_from_slice`
+
+#### Metrics Hardening
+- Fixed duplicate padding entries in `ALL_METHODS` array — defined `RPC_METHOD_COUNT` / `ERROR_TYPE_COUNT` constants
+- Safe `f64` → `u64` cast: explicit `is_finite()` + positivity check before truncation
+
+#### Modern Async Traits (RPITIT)
+- Converted `PermanentStorageProvider` impl in `loamspine_http.rs` from `fn -> impl Future { async move }` to `async fn`
+- Removed `#[allow(clippy::manual_async_fn)]` and eliminated pre-async-block cloning
+
+#### Idiomatic Patterns
+- `safe_env/capability.rs`: `Option::inspect()` replacing `.map(|x| { side_effect; x })` — removed `#[allow(clippy::manual_inspect)]`
+- `store_sled.rs`: `SledExportEntry` type alias replacing `#[allow(clippy::type_complexity)]`; `finish_non_exhaustive()` for Debug
+- `doctor.rs`: Added `#[must_use]` and `# Errors` doc section per pedantic clippy
+
+#### Documentation Cleanup
+- Rewrote `docs/DEPLOYMENT_CHECKLIST.md` (port 9400, 882+ tests, redb/sled storage, JSON-RPC health checks)
+- Fixed `docs/ENV_VARS.md` (`RHIZOCRYPT_DISCOVERY_ADAPTER` as primary, `RHIZOCRYPT_PORT` matching code)
+- Updated `README.md` metrics, fixed broken spec links, cleaned showcase port references
+- Archived legacy `INTEGRATION_SPECIFICATION.md` to `specs/archive/`
+- New wateringHole handoff documenting this session
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery + cargo, all features) | Clean (0 warnings) |
+| `cargo doc --workspace --all-features --no-deps` | Clean |
+| `cargo test --workspace` | 882+ pass, 0 fail (default features) |
+| `cargo llvm-cov` | 90.88% line coverage |
+| `#![forbid(unsafe_code)]` | Workspace-wide (all entry points) |
+| SPDX headers | All 105 `.rs` files |
+| Max file size | All under 1000 lines |
+
+---
+
 ## [0.13.0-dev] - 2026-03-15 (session 6)
 
 ### Changed
@@ -301,7 +352,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 #### wateringHole Standards Compliance
-- **AGPL-3.0-only**: Updated SPDX identifier, added headers to all 71 source files
+- **AGPL-3.0-or-later**: Updated SPDX identifier, added headers to all 71 source files
 - **UniBin architecture**: Binary renamed to `rhizocrypt` with `clap` subcommands (`server`, `status`, `version`)
 - **Semantic method naming**: JSON-RPC methods evolved from `loamspine.*` to `permanent-storage.*`
 - **ecoBin**: `reqwest` switched to `rustls-tls` (no OpenSSL); sled `zstd-sys` dependency documented
@@ -393,6 +444,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.13.0-dev** (2026-03-15 s7): scyBorg license, zero-copy signing, store_redb refactor, modern async traits, docs cleanup
 - **0.13.0-dev** (2026-03-14 s4): Sovereignty cleanup, 1075 tests, 91% coverage, doc tests rewritten, capability-based errors
 - **0.13.0-dev** (2026-03-14 s3): 90% coverage, 1022 tests, platform-agnostic transport, doctor subcommand, zero-copy handler
 - **0.13.0-dev** (2026-03-13): Deep debt, 862 tests, cargo-deny, service lib extraction

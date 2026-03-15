@@ -128,4 +128,4 @@ if factory.has_signing_capability().await {
 
 ## License
 
-AGPL-3.0-only
+AGPL-3.0-or-later

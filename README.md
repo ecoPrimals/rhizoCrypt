@@ -5,9 +5,9 @@
 | Metric | Value |
 |--------|-------|
 | Version | 0.13.0-dev |
-| License | AGPL-3.0-only |
-| Tests | 907 passing (default features) |
-| Coverage | 90.83% line coverage (llvm-cov) |
+| License | AGPL-3.0-or-later |
+| Tests | 882+ passing (default features) |
+| Coverage | 90.88% line coverage (llvm-cov verified) |
 | Clippy | 0 warnings (pedantic + nursery + cargo, all features) |
 | Unsafe | `#![forbid(unsafe_code)]` workspace-wide |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
@@ -16,7 +16,7 @@
 | Storage | redb (Pure Rust, default) / sled (optional) |
 | Deps | ecoBin compliant — zero application C dependencies |
 | Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
-| SPDX | `AGPL-3.0-only` header on all 104 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 105 `.rs` files |
 
 ---
 
@@ -131,7 +131,7 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 | Universal IPC v3 | Compliant | JSON-RPC 2.0 + tarpc, semantic method names |
 | Semantic Naming | Compliant | Native (`commit.*`) + compat (`permanent-storage.*`) with negotiation |
 | `#![forbid(unsafe_code)]` | Compliant | Workspace-wide |
-| AGPL-3.0-only | Compliant | SPDX headers on all source files |
+| AGPL-3.0-or-later | Compliant | SPDX headers on all source files |
 
 ---
 
@@ -148,4 +148,4 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 
 ## License
 
-AGPL-3.0-only. See [LICENSE](LICENSE).
+AGPL-3.0-or-later. See [LICENSE](LICENSE).

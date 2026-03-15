@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 //! Sled persistent storage backend.
@@ -58,6 +58,9 @@ use sled::{Batch, Db, Tree};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+
+/// Sled export entry: `(tree_name, key_prefix, row_iterator)`.
+pub type SledExportEntry = (Vec<u8>, Vec<u8>, Vec<Vec<Vec<u8>>>);
 
 /// Tree names.
 const TREE_VERTICES: &str = "vertices";
@@ -213,12 +216,14 @@ impl SledDagStore {
 
     /// Export the database for backup.
     ///
-    /// # Errors
-    ///
-    /// Returns an error if export fails.
-    #[allow(clippy::type_complexity)]
-    pub fn export(&self) -> Vec<(Vec<u8>, Vec<u8>, impl Iterator<Item = Vec<Vec<u8>>>)> {
-        self.db.export()
+    /// Collects all tree data into a vector of `(tree_name, key_prefix, rows)` entries.
+    #[must_use]
+    pub fn export(&self) -> Vec<SledExportEntry> {
+        self.db
+            .export()
+            .into_iter()
+            .map(|(name, prefix, iter)| (name, prefix, iter.collect()))
+            .collect()
     }
 }
 
@@ -535,14 +540,13 @@ impl DagStore for SledDagStore {
     }
 }
 
-#[allow(clippy::missing_fields_in_debug)]
 impl std::fmt::Debug for SledDagStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SledDagStore")
             .field("path", &*self.path)
             .field("read_ops", &self.read_ops.load(Ordering::Relaxed))
             .field("write_ops", &self.write_ops.load(Ordering::Relaxed))
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

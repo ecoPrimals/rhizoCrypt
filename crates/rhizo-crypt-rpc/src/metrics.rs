@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 //! Prometheus metrics for RPC layer.
@@ -174,9 +174,7 @@ impl Default for Histogram {
 }
 
 impl Histogram {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // Acceptable for metrics
     fn observe(&self, value: f64) {
-        // Increment appropriate bucket
         for (i, &bound) in LATENCY_BUCKETS.iter().enumerate() {
             if value <= bound {
                 self.buckets[i].fetch_add(1, Ordering::Relaxed);
@@ -184,8 +182,15 @@ impl Histogram {
             }
         }
 
-        // Update sum and count (using integer representation for atomicity)
-        let value_micros = (value * 1_000_000.0) as u64;
+        // Integer microseconds for lock-free atomicity; negative/NaN → 0.
+        let micros = value * 1_000_000.0;
+        let value_micros = if micros.is_finite() && micros > 0.0 {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let v = micros as u64;
+            v
+        } else {
+            0
+        };
         self.sum.fetch_add(value_micros, Ordering::Relaxed);
         self.count.fetch_add(1, Ordering::Relaxed);
     }
@@ -218,26 +223,34 @@ impl HistogramSnapshot {
     }
 
     /// Get the mean latency in seconds.
+    ///
+    /// Precision loss from `u64 → f64` is acceptable for observability data.
     #[must_use]
-    #[allow(clippy::cast_precision_loss)] // Acceptable for metrics
     pub fn mean_seconds(&self) -> f64 {
         if self.count == 0 {
-            0.0
-        } else {
-            (self.sum_micros as f64 / 1_000_000.0) / self.count as f64
+            return 0.0;
         }
+        #[allow(clippy::cast_precision_loss)]
+        let mean = (self.sum_micros as f64 / 1_000_000.0) / self.count as f64;
+        mean
     }
 }
+
+/// Number of distinct `RpcMethod` variants.
+const RPC_METHOD_COUNT: usize = 22;
+
+/// Number of distinct `ErrorType` variants.
+const ERROR_TYPE_COUNT: usize = 6;
 
 /// Prometheus-compatible metrics collector.
 #[derive(Debug)]
 pub struct MetricsCollector {
     /// Request counts by method.
-    requests: [AtomicU64; 24],
+    requests: [AtomicU64; RPC_METHOD_COUNT],
     /// Request latency histograms by method.
-    latencies: [Histogram; 24],
+    latencies: [Histogram; RPC_METHOD_COUNT],
     /// Error counts by type.
-    errors: [AtomicU64; 6],
+    errors: [AtomicU64; ERROR_TYPE_COUNT],
     /// Active sessions gauge.
     active_sessions: AtomicU64,
     /// Total vertices created.
@@ -411,7 +424,7 @@ impl MetricsCollector {
 }
 
 /// All RPC methods for iteration.
-const ALL_METHODS: [RpcMethod; 24] = [
+const ALL_METHODS: [RpcMethod; RPC_METHOD_COUNT] = [
     RpcMethod::CreateSession,
     RpcMethod::GetSession,
     RpcMethod::ListSessions,
@@ -434,12 +447,10 @@ const ALL_METHODS: [RpcMethod; 24] = [
     RpcMethod::GetDehydrationStatus,
     RpcMethod::Health,
     RpcMethod::Metrics,
-    RpcMethod::Health,  // Padding to reach 24
-    RpcMethod::Metrics, // Padding to reach 24
 ];
 
 /// All error types for iteration.
-const ALL_ERROR_TYPES: [ErrorType; 6] = [
+const ALL_ERROR_TYPES: [ErrorType; ERROR_TYPE_COUNT] = [
     ErrorType::SessionNotFound,
     ErrorType::VertexNotFound,
     ErrorType::InvalidInput,
