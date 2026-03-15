@@ -23,7 +23,7 @@
 //! let adapter = AdapterFactory::create("127.0.0.1:9500")?;
 //!
 //! // Use adapter to make calls (protocol-independent)
-//! let args_json = r#"{"data":[],"signer":"did:key:test"}"#.to_string();
+//! let args_json = r#"{"data":[],"signer":"did:key:test"}"#;
 //! let _result_json = adapter.call_json("sign", args_json).await?;
 //! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
 //! # });
@@ -71,10 +71,10 @@ pub trait ProtocolAdapter: Send + Sync + fmt::Debug {
     /// # Returns
     ///
     /// JSON-serialized response or error
-    async fn call_json(&self, method: &str, args_json: String) -> Result<String>;
+    async fn call_json(&self, method: &str, args_json: &str) -> Result<String>;
 
     /// Call a remote method without expecting a response (fire-and-forget).
-    async fn call_oneway_json(&self, method: &str, args_json: String) -> Result<()>;
+    async fn call_oneway_json(&self, method: &str, args_json: &str) -> Result<()>;
 
     /// Check if the adapter is connected/healthy.
     async fn is_healthy(&self) -> bool;
@@ -95,7 +95,7 @@ pub trait ProtocolAdapterExt: ProtocolAdapter {
         let args_json = serde_json::to_string(&args)
             .map_err(|e| RhizoCryptError::integration(format!("Failed to serialize args: {e}")))?;
 
-        let response_json = self.call_json(method, args_json).await?;
+        let response_json = self.call_json(method, &args_json).await?;
 
         serde_json::from_str(&response_json).map_err(|e| {
             RhizoCryptError::integration(format!("Failed to deserialize response: {e}"))
@@ -110,7 +110,7 @@ pub trait ProtocolAdapterExt: ProtocolAdapter {
         let args_json = serde_json::to_string(&args)
             .map_err(|e| RhizoCryptError::integration(format!("Failed to serialize args: {e}")))?;
 
-        self.call_oneway_json(method, args_json).await
+        self.call_oneway_json(method, &args_json).await
     }
 }
 

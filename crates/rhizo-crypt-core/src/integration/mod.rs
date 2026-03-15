@@ -69,9 +69,8 @@ pub use mocks::{
 /// Generic signing provider interface - works with ANY signing service.
 ///
 /// This trait is implemented by services providing cryptographic signing capabilities:
-/// - BearDog (HSM-backed signing & identity)
-/// - YubiKey (hardware security key)
-/// - CloudKMS (AWS KMS, GCP KMS, Azure Key Vault)
+/// - Capability-discovered signing providers
+/// - Hardware security keys
 /// - Software signing services
 /// - Hardware Security Modules (HSMs)
 ///

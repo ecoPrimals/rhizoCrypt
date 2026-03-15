@@ -89,7 +89,7 @@ struct TarpcConnection {
 /// # use rhizo_crypt_core::clients::adapters::{tarpc::TarpcAdapter, ProtocolAdapter};
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
 /// let adapter = TarpcAdapter::new("localhost:7777")?;
-/// let args_json = r#"{"data":[],"signer":"did:key:test"}"#.to_string();
+/// let args_json = r#"{"data":[],"signer":"did:key:test"}"#;
 /// let _result_json = adapter.call_json("sign", args_json).await?;
 /// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
 /// # });
@@ -254,7 +254,7 @@ impl ProtocolAdapter for TarpcAdapter {
         "tarpc"
     }
 
-    async fn call_json(&self, method: &str, args_json: String) -> Result<String> {
+    async fn call_json(&self, method: &str, args_json: &str) -> Result<String> {
         #[cfg(not(feature = "live-clients"))]
         {
             let _ = (method, args_json);
@@ -267,8 +267,7 @@ impl ProtocolAdapter for TarpcAdapter {
         {
             self.ensure_connected().await?;
 
-            // Parse args for validation
-            let _args: Value = serde_json::from_str(&args_json)
+            let _args: Value = serde_json::from_str(args_json)
                 .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
 
             tracing::debug!(
@@ -277,22 +276,20 @@ impl ProtocolAdapter for TarpcAdapter {
                 "Calling tarpc method"
             );
 
-            let method = method.to_string();
+            let method_owned = method.to_string();
+            let args_owned = args_json.to_owned();
             let conn = self.connection.read().await;
             let tarpc_conn = conn
                 .as_ref()
                 .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?;
 
-            let call_future = tarpc_conn.client.call(
-                tarpc::context::current(),
-                method.clone(),
-                args_json.clone(),
-            );
+            let call_future =
+                tarpc_conn.client.call(tarpc::context::current(), method_owned.clone(), args_owned);
 
             let result = timeout(self.timeout_duration, call_future).await.map_err(|_| {
                 RhizoCryptError::integration(format!(
                     "tarpc call timed out after {:?}: method={}, endpoint={}",
-                    self.timeout_duration, method, self.addr
+                    self.timeout_duration, method_owned, self.addr
                 ))
             })?;
 
@@ -302,7 +299,7 @@ impl ProtocolAdapter for TarpcAdapter {
         }
     }
 
-    async fn call_oneway_json(&self, method: &str, args_json: String) -> Result<()> {
+    async fn call_oneway_json(&self, method: &str, args_json: &str) -> Result<()> {
         #[cfg(not(feature = "live-clients"))]
         {
             let _ = (method, args_json);
@@ -317,7 +314,7 @@ impl ProtocolAdapter for TarpcAdapter {
             // and discarding the response future.
             self.ensure_connected().await?;
 
-            let _args: Value = serde_json::from_str(&args_json)
+            let _args: Value = serde_json::from_str(args_json)
                 .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
 
             tracing::debug!(
@@ -326,16 +323,16 @@ impl ProtocolAdapter for TarpcAdapter {
                 "Calling tarpc method (oneway)"
             );
 
-            let method = method.to_string();
+            let method_owned = method.to_string();
+            let args_owned = args_json.to_owned();
             let conn = self.connection.read().await;
             let tarpc_conn = conn
                 .as_ref()
                 .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?;
 
-            // Clone client handle for spawn; tarpc client is a cheap cloneable handle.
             let client = tarpc_conn.client.clone();
             tokio::spawn(async move {
-                let _ = client.call(tarpc::context::current(), method, args_json).await;
+                let _ = client.call(tarpc::context::current(), method_owned, args_owned).await;
             });
 
             Ok(())
@@ -435,7 +432,7 @@ mod tests {
     #[tokio::test]
     async fn test_call_json_feature_gated() {
         let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
-        let result = adapter.call_json("test_method", "{}".to_string()).await;
+        let result = adapter.call_json("test_method", "{}").await;
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         #[cfg(not(feature = "live-clients"))]
@@ -457,7 +454,7 @@ mod tests {
     async fn test_call_json_timeout() {
         let adapter =
             TarpcAdapter::new("127.0.0.1:7777").unwrap().with_timeout(Duration::from_millis(1));
-        let result = adapter.call_json("test_method", "{}".to_string()).await;
+        let result = adapter.call_json("test_method", "{}").await;
         assert!(result.is_err());
     }
 

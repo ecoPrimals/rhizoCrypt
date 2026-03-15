@@ -29,7 +29,12 @@
 #![forbid(unsafe_code)]
 
 use clap::{Parser, Subcommand};
+use rhizo_crypt_core::constants;
 use rhizocrypt_service::ClientOperation;
+
+fn default_client_address() -> String {
+    format!("{}:{}", constants::LOCALHOST, constants::PRODUCTION_RPC_PORT)
+}
 
 /// rhizoCrypt — Ephemeral DAG Engine for the ecoPrimals ecosystem.
 ///
@@ -79,7 +84,7 @@ enum Commands {
     /// Connect to a running rhizoCrypt server and execute RPC commands.
     Client {
         /// Server address to connect to.
-        #[arg(short, long, default_value = "127.0.0.1:9400")]
+        #[arg(short, long, default_value_t = default_client_address())]
         address: String,
 
         /// Client operation to perform.

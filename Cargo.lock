@@ -1485,6 +1485,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "provenance-trio-types"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1760,6 +1768,7 @@ dependencies = [
  "lru",
  "parking_lot 0.12.5",
  "proptest",
+ "provenance-trio-types",
  "redb",
  "reqwest",
  "serde",

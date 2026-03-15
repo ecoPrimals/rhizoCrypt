@@ -69,7 +69,7 @@ impl ProtocolAdapter for HttpAdapter {
         "http"
     }
 
-    async fn call_json(&self, method: &str, args_json: String) -> Result<String> {
+    async fn call_json(&self, method: &str, args_json: &str) -> Result<String> {
         let url = self.build_url(method);
 
         tracing::debug!(
@@ -82,12 +82,11 @@ impl ProtocolAdapter for HttpAdapter {
             .client
             .post(&url)
             .header("Content-Type", "application/json")
-            .body(args_json)
+            .body(args_json.to_owned())
             .send()
             .await
             .map_err(|e| RhizoCryptError::integration(format!("HTTP request failed: {e}")))?;
 
-        // Check status
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_else(|_| "<no body>".to_string());
@@ -96,14 +95,13 @@ impl ProtocolAdapter for HttpAdapter {
             )));
         }
 
-        // Get response as JSON string
         response
             .text()
             .await
             .map_err(|e| RhizoCryptError::integration(format!("Failed to read response: {e}")))
     }
 
-    async fn call_oneway_json(&self, method: &str, args_json: String) -> Result<()> {
+    async fn call_oneway_json(&self, method: &str, args_json: &str) -> Result<()> {
         let url = self.build_url(method);
 
         tracing::debug!(
@@ -116,7 +114,7 @@ impl ProtocolAdapter for HttpAdapter {
             .client
             .post(&url)
             .header("Content-Type", "application/json")
-            .body(args_json)
+            .body(args_json.to_owned())
             .send()
             .await
             .map_err(|e| RhizoCryptError::integration(format!("HTTP request failed: {e}")))?;

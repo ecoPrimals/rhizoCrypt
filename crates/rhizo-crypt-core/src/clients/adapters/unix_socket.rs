@@ -213,9 +213,9 @@ impl ProtocolAdapter for UnixSocketAdapter {
         "unix"
     }
 
-    async fn call_json(&self, method: &str, args_json: String) -> Result<String> {
-        let params: serde_json::Value =
-            serde_json::from_str(&args_json).unwrap_or(serde_json::Value::String(args_json));
+    async fn call_json(&self, method: &str, args_json: &str) -> Result<String> {
+        let params: serde_json::Value = serde_json::from_str(args_json)
+            .unwrap_or_else(|_| serde_json::Value::String(args_json.to_owned()));
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",
@@ -238,9 +238,9 @@ impl ProtocolAdapter for UnixSocketAdapter {
         Self::parse_json_rpc_response(&response_body)
     }
 
-    async fn call_oneway_json(&self, method: &str, args_json: String) -> Result<()> {
-        let params: serde_json::Value =
-            serde_json::from_str(&args_json).unwrap_or(serde_json::Value::String(args_json));
+    async fn call_oneway_json(&self, method: &str, args_json: &str) -> Result<()> {
+        let params: serde_json::Value = serde_json::from_str(args_json)
+            .unwrap_or_else(|_| serde_json::Value::String(args_json.to_owned()));
 
         // JSON-RPC 2.0 notification: no `id` field
         let request = serde_json::json!({
@@ -264,7 +264,7 @@ impl ProtocolAdapter for UnixSocketAdapter {
     }
 
     async fn is_healthy(&self) -> bool {
-        self.socket_path.exists() && self.call_json("system.health", "{}".to_string()).await.is_ok()
+        self.socket_path.exists() && self.call_json("system.health", "{}").await.is_ok()
     }
 
     fn endpoint(&self) -> &str {
@@ -343,7 +343,7 @@ mod tests {
     async fn test_nonexistent_socket_fails() {
         let adapter =
             UnixSocketAdapter::new("/tmp/nonexistent_ecoPrimal_socket_12345.sock").unwrap();
-        let result = adapter.call_json("test", "{}".to_string()).await;
+        let result = adapter.call_json("test", "{}").await;
         assert!(result.is_err());
     }
 

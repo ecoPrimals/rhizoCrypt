@@ -18,6 +18,14 @@ use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
 use types::{codes, error_response, success, JsonRpcRequest};
 
+/// Serialize a JSON-RPC response value, logging any serialization failure.
+fn serialize_response(value: &impl serde::Serialize) -> serde_json::Value {
+    serde_json::to_value(value).unwrap_or_else(|e| {
+        warn!(error = %e, "Failed to serialize JSON-RPC response, returning null");
+        serde_json::Value::Null
+    })
+}
+
 /// Shared state for the JSON-RPC handler.
 #[derive(Clone)]
 struct JsonRpcState {
@@ -91,15 +99,12 @@ async fn handle_jsonrpc(
             warn!(error = %e, "JSON-RPC parse error");
             return (
                 StatusCode::BAD_REQUEST,
-                Json(
-                    serde_json::to_value(error_response(
-                        None,
-                        codes::PARSE_ERROR,
-                        "Parse error",
-                        Some(serde_json::json!(e.to_string())),
-                    ))
-                    .unwrap_or_default(),
-                ),
+                Json(serialize_response(&error_response(
+                    None,
+                    codes::PARSE_ERROR,
+                    "Parse error",
+                    Some(serde_json::json!(e.to_string())),
+                ))),
             )
                 .into_response();
         }
@@ -110,15 +115,12 @@ async fn handle_jsonrpc(
             if arr.is_empty() {
                 return (
                     StatusCode::BAD_REQUEST,
-                    Json(
-                        serde_json::to_value(error_response(
-                            None,
-                            codes::INVALID_REQUEST,
-                            "Batch request must not be empty",
-                            None,
-                        ))
-                        .unwrap_or_default(),
-                    ),
+                    Json(serialize_response(&error_response(
+                        None,
+                        codes::INVALID_REQUEST,
+                        "Batch request must not be empty",
+                        None,
+                    ))),
                 )
                     .into_response();
             }
@@ -144,41 +146,38 @@ async fn process_single_request(
     let request: JsonRpcRequest = match serde_json::from_value(value) {
         Ok(r) => r,
         Err(e) => {
-            return serde_json::to_value(error_response(
+            return serialize_response(&error_response(
                 None,
                 codes::INVALID_REQUEST,
                 "Invalid Request",
                 Some(serde_json::json!(e.to_string())),
-            ))
-            .unwrap_or_default();
+            ));
         }
     };
 
     if request.jsonrpc != "2.0" {
-        return serde_json::to_value(error_response(
+        return serialize_response(&error_response(
             request.id,
             codes::INVALID_REQUEST,
             "jsonrpc must be \"2.0\"",
             None,
-        ))
-        .unwrap_or_default();
+        ));
     }
 
     let id = match &request.id {
         Some(i) => i.clone(),
         None => {
-            return serde_json::to_value(error_response(
+            return serialize_response(&error_response(
                 None,
                 codes::INVALID_REQUEST,
                 "id is required (notifications not supported)",
                 None,
-            ))
-            .unwrap_or_default();
+            ));
         }
     };
 
     match handler::handle_request(primal, request).await {
-        Ok(result) => serde_json::to_value(success(id, result)).unwrap_or_default(),
+        Ok(result) => serialize_response(&success(id, result)),
         Err(e) => {
             let detail = serde_json::json!(e.to_string());
             let (code, message) = match e {
@@ -188,8 +187,7 @@ async fn process_single_request(
                 }
                 handler::HandlerError::Rpc(rpc_err) => (codes::INTERNAL_ERROR, rpc_err.to_string()),
             };
-            serde_json::to_value(error_response(Some(id), code, &message, Some(detail)))
-                .unwrap_or_default()
+            serialize_response(&error_response(Some(id), code, &message, Some(detail)))
         }
     }
 }

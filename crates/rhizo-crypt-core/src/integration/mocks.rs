@@ -420,7 +420,7 @@ mod tests {
 /// let adapter = MockProtocolAdapter::permissive();
 ///
 /// // Use adapter directly (e.g. for testing protocol layer)
-/// let _response = adapter.call_json("verify_did", "{}".to_string()).await?;
+/// let _response = adapter.call_json("verify_did", "{}").await?;
 /// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
 /// # });
 /// ```
@@ -471,7 +471,7 @@ impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
         "mock"
     }
 
-    async fn call_json(&self, method: &str, _args: String) -> Result<String> {
+    async fn call_json(&self, method: &str, _args: &str) -> Result<String> {
         if !self.permissive {
             return Err(crate::error::RhizoCryptError::integration(
                 "Mock adapter is in strict mode",
@@ -495,7 +495,7 @@ impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
         }
     }
 
-    async fn call_oneway_json(&self, method: &str, _args: String) -> Result<()> {
+    async fn call_oneway_json(&self, method: &str, _args: &str) -> Result<()> {
         if !self.permissive {
             return Err(crate::error::RhizoCryptError::integration(
                 "Mock adapter is in strict mode",
@@ -569,7 +569,7 @@ mod capability_mock_tests {
         let adapter = MockProtocolAdapter::permissive();
 
         // Should return default responses
-        let result = adapter.call_json("verify_did", "{}".to_string()).await;
+        let result = adapter.call_json("verify_did", "{}").await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "true");
     }
@@ -579,7 +579,7 @@ mod capability_mock_tests {
         let adapter = MockProtocolAdapter::strict();
 
         // Should fail all calls
-        let result = adapter.call_json("verify_did", "{}".to_string()).await;
+        let result = adapter.call_json("verify_did", "{}").await;
         assert!(result.is_err());
     }
 
@@ -591,7 +591,7 @@ mod capability_mock_tests {
         adapter.set_response("my_method", "custom_response").await.unwrap();
 
         // Should return custom response
-        let result = adapter.call_json("my_method", "{}".to_string()).await;
+        let result = adapter.call_json("my_method", "{}").await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), r#""custom_response""#);
     }

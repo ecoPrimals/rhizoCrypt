@@ -111,7 +111,7 @@ For new developers, we recommend this reading order:
 3. **[SLICE_SEMANTICS.md](./SLICE_SEMANTICS.md)** — Understand the Rhizo-Loam layering
 4. **[DEHYDRATION_PROTOCOL.md](./DEHYDRATION_PROTOCOL.md)** — Learn how DAGs commit to permanence
 5. **[API_SPECIFICATION.md](./API_SPECIFICATION.md)** — See the external interfaces (pure Rust tarpc)
-6. **[INTEGRATION_SPECIFICATION.md](./INTEGRATION_SPECIFICATION.md)** — Understand primal interactions
+6. **[INTEGRATION_SPECIFICATION_V2.md](./INTEGRATION_SPECIFICATION_V2.md)** — Understand capability-based primal interactions
 7. **[RHIZOCRYPT_SPECIFICATION.md](./RHIZOCRYPT_SPECIFICATION.md)** — Full reference (read as needed)
 
 ---

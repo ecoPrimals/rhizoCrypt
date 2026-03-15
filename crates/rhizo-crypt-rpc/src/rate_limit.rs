@@ -6,6 +6,7 @@
 //! Provides token bucket rate limiting per client, with configurable
 //! limits for different operation types.
 
+use rhizo_crypt_core::constants;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
@@ -41,7 +42,7 @@ impl Default for RateLimitConfig {
             write_rps: 100,
             expensive_rps: 10,
             burst_multiplier: 2,
-            cleanup_interval: Duration::from_secs(60),
+            cleanup_interval: constants::RATE_LIMIT_CLEANUP_INTERVAL,
         }
     }
 }
@@ -55,7 +56,7 @@ impl RateLimitConfig {
             write_rps: 50,
             expensive_rps: 5,
             burst_multiplier: 2,
-            cleanup_interval: Duration::from_secs(60),
+            cleanup_interval: constants::RATE_LIMIT_CLEANUP_INTERVAL,
         }
     }
 
@@ -67,7 +68,7 @@ impl RateLimitConfig {
             write_rps: 1000,
             expensive_rps: 100,
             burst_multiplier: 5,
-            cleanup_interval: Duration::from_secs(300),
+            cleanup_interval: constants::RATE_LIMIT_CLEANUP_INTERVAL_DEV,
         }
     }
 

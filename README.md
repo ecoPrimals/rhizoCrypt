@@ -6,17 +6,17 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-only |
-| Tests | 1092 passing |
+| Tests | 907 passing (default features) |
 | Coverage | 90.83% line coverage (llvm-cov) |
-| Clippy | 0 warnings (pedantic + nursery) |
+| Clippy | 0 warnings (pedantic + nursery + cargo, all features) |
 | Unsafe | `#![forbid(unsafe_code)]` workspace-wide |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
-| IPC | JSON-RPC 2.0 (HTTP) + tarpc (bincode) |
+| IPC | JSON-RPC 2.0 (HTTP) + tarpc (bincode) — dual-transport first |
 | Transport | Platform-agnostic (Unix socket / TCP / abstract socket) |
 | Storage | redb (Pure Rust, default) / sled (optional) |
 | Deps | ecoBin compliant — zero application C dependencies |
 | Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
-| Doc tests | 30 passing (29 core + 1 rpc), 0 ignored |
+| SPDX | `AGPL-3.0-only` header on all 104 `.rs` files |
 
 ---
 
@@ -74,9 +74,9 @@ fallback) for forward/backward compatibility.
 
 | Crate | Purpose |
 |-------|---------|
-| `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, clients |
-| `rhizo-crypt-rpc` | tarpc service definition, JSON-RPC handler, rate limiting, metrics |
-| `rhizocrypt-service` | UniBin service binary and library (subcommands: `server`, `client`, `status`, `version`, `doctor`) |
+| `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, capability clients, discovery |
+| `rhizo-crypt-rpc` | tarpc service (24 ops), JSON-RPC 2.0 handler, rate limiting, metrics |
+| `rhizocrypt-service` | UniBin binary and library (`server`, `client`, `status`, `version`, `doctor`) |
 
 ---
 
@@ -116,7 +116,7 @@ rhizoCrypt discovers all services at runtime via environment variables:
 | `SIGNING_ENDPOINT` | Direct signing provider endpoint |
 | `COMPUTE_ENDPOINT` | Direct compute orchestration endpoint |
 | `PROVENANCE_ENDPOINT` | Direct provenance query endpoint |
-| `RHIZOCRYPT_RPC_PORT` | Service listen port (default: 9400) |
+| `RHIZOCRYPT_PORT` | Service listen port (default: OS-assigned dev, 9400 production) |
 
 See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 

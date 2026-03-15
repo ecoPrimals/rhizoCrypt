@@ -57,7 +57,7 @@ impl ClientProvider {
     /// Check if payload storage capabilities are available.
     ///
     /// This checks for services that provide ephemeral blob storage,
-    /// regardless of which service implements it (could be NestGate, S3, Azure, etc.).
+    /// regardless of which service implements it — discovered at runtime via capabilities.
     pub async fn has_payload_storage(&self) -> bool {
         self.registry.is_available(&Capability::PayloadStorage).await
     }

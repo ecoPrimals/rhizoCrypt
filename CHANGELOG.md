@@ -5,6 +5,49 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-15 (session 6)
+
+### Changed
+
+#### Deep Debt Reduction & Modern Idiomatic Rust
+- Evolved `ProtocolAdapter` trait: `call_json(&str, String)` → `call_json(&str, &str)` — borrows where possible, allocates only at transport boundary
+- Replaced all `Box<dyn Error>` with typed `ServiceError::Storage` variant in doctor checks
+- Extracted `serialize_response()` helper in JSON-RPC mod — logs serialization errors via `tracing::warn!` instead of silently falling back with `unwrap_or_default()`
+- Eliminated redundant `.clone()` on last-use values flagged by clippy `redundant_clone`
+- Fixed `default_value` in clap `Client` subcommand: now references `constants::LOCALHOST` and `constants::PRODUCTION_RPC_PORT` instead of hardcoded `"127.0.0.1:9400"`
+
+#### Constants Centralization (continued)
+- Added `DEFAULT_GC_INTERVAL`, `RATE_LIMIT_CLEANUP_INTERVAL`, `RATE_LIMIT_CLEANUP_INTERVAL_DEV` to `constants.rs`
+- Dehydration config now uses `constants::DEFAULT_ATTESTATION_TIMEOUT_SECS` and named `FULL_ATTESTATION_TIMEOUT_SECS`
+- Rate limiter cleanup intervals reference constants instead of inline `Duration::from_secs(60/300)`
+
+#### Sovereignty Hardening
+- Removed cloud provider references ("AWS KMS, GCP KMS, Azure Key Vault", "S3, Azure") from capability trait doc comments
+- All capability docs now use agnostic language ("discovered at runtime via capabilities")
+
+#### Smart File Refactoring
+- Extracted `doctor.rs` (197 lines) from `rhizocrypt-service/src/lib.rs` — contains `DoctorCheck`, `run_doctor`, all health check functions
+- `lib.rs` reduced from 809 → 624 lines
+
+#### Provenance Trio Wire Types
+- Added `provenance-trio-types` workspace dependency for canonical wire format
+- `ProvenanceNotifier` converts internal `DehydrationSummary` to trio wire format
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery + cargo, all features) | Clean (0 warnings) |
+| `cargo doc --workspace --all-features --no-deps` | Clean |
+| `cargo test --workspace` | 907 pass, 0 fail (default features) |
+| `#![forbid(unsafe_code)]` | Workspace-wide (all 4 entry points) |
+| SPDX headers | All 104 `.rs` files |
+| Max file size | All under 1000 lines (max 858) |
+| No production `todo!()`, `unimplemented!()`, `TODO`, `FIXME` | Verified |
+
+---
+
 ## [0.13.0-dev] - 2026-03-14 (session 5)
 
 ### Changed

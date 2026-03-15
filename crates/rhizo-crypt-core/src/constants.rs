@@ -143,6 +143,15 @@ pub const DEFAULT_ATTESTATION_TIMEOUT_SECS: u64 = 60;
 /// Default commit timeout (60 seconds).
 pub const DEFAULT_COMMIT_TIMEOUT_SECS: u64 = 60;
 
+/// Default garbage collection interval for expired sessions (2 minutes).
+pub const DEFAULT_GC_INTERVAL: Duration = Duration::from_secs(120);
+
+/// Rate-limit cleanup interval for production (1 minute).
+pub const RATE_LIMIT_CLEANUP_INTERVAL: Duration = Duration::from_secs(60);
+
+/// Rate-limit cleanup interval for development (5 minutes).
+pub const RATE_LIMIT_CLEANUP_INTERVAL_DEV: Duration = Duration::from_secs(300);
+
 // ============================================================================
 // BUFFER SIZES
 // ============================================================================

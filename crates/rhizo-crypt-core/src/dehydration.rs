@@ -8,6 +8,7 @@
 //! the ephemeral, water-rich rhizome layer dries and compresses into the
 //! permanent loam fossil record.
 
+use crate::constants;
 use crate::event::SessionOutcome;
 use crate::merkle::MerkleRoot;
 use crate::session::LoamCommitRef;
@@ -192,10 +193,13 @@ impl DehydrationConfig {
             include_payloads: false,
             generate_proofs_for: Vec::new(),
             required_attestations: Vec::new(),
-            attestation_timeout_secs: Some(60),
+            attestation_timeout_secs: Some(constants::DEFAULT_ATTESTATION_TIMEOUT_SECS),
             require_all_attestations: false,
         }
     }
+
+    /// Full dehydration config timeout (5 minutes).
+    const FULL_ATTESTATION_TIMEOUT_SECS: u64 = 5 * 60;
 
     /// Create a full dehydration config.
     #[must_use]
@@ -205,7 +209,7 @@ impl DehydrationConfig {
             include_payloads: true,
             generate_proofs_for: Vec::new(),
             required_attestations: Vec::new(),
-            attestation_timeout_secs: Some(300),
+            attestation_timeout_secs: Some(Self::FULL_ATTESTATION_TIMEOUT_SECS),
             require_all_attestations: false,
         }
     }
@@ -270,6 +274,48 @@ impl DehydrationStatus {
                 | Self::CollectingAttestations { .. }
                 | Self::Committing
         )
+    }
+}
+
+impl From<&DehydrationSummary> for provenance_trio_types::DehydrationSummary {
+    fn from(s: &DehydrationSummary) -> Self {
+        Self {
+            source_primal: crate::constants::PRIMAL_NAME.to_string(),
+            session_id: s.session_id.to_string(),
+            merkle_root: hex::encode(s.merkle_root.0),
+            vertex_count: s.vertex_count,
+            branch_count: s.results.len() as u64,
+            payload_bytes: s.payload_bytes,
+            agents: s.agents.iter().map(|a| a.agent.to_string()).collect(),
+            session_start: s.created_at.as_nanos(),
+            dehydrated_at: s.resolved_at.as_nanos(),
+            session_type: s.session_type.clone(),
+            outcome: format!("{:?}", s.outcome),
+            agent_summaries: s
+                .agents
+                .iter()
+                .map(|a| provenance_trio_types::AgentRef {
+                    agent: a.agent.to_string(),
+                    joined_at: a.joined_at.as_nanos(),
+                    left_at: a.left_at.map(|t| t.as_nanos()),
+                    event_count: a.event_count,
+                    role: a.role.clone(),
+                })
+                .collect(),
+            attestations: s
+                .attestations
+                .iter()
+                .map(|a| provenance_trio_types::AttestationRef {
+                    agent: a.attester.to_string(),
+                    signature: hex::encode(&a.signature),
+                    attested_at: a.attested_at.as_nanos(),
+                })
+                .collect(),
+            operations: Vec::new(),
+            frontier: Vec::new(),
+            niche: None,
+            compression_ratio: None,
+        }
     }
 }
 
@@ -444,6 +490,45 @@ mod tests {
         } else {
             panic!("Expected SessionSummary");
         }
+    }
+
+    #[test]
+    fn to_wire_dehydration_summary() {
+        let session_id = SessionId::now();
+        let merkle_root = MerkleRoot::ZERO;
+        let created_at = Timestamp::now();
+        let attester = Did::new("did:key:attester");
+
+        let summary =
+            DehydrationSummaryBuilder::new(session_id, "experiment", created_at, merkle_root)
+                .with_vertex_count(42)
+                .with_agent(AgentSummary {
+                    agent: attester.clone(),
+                    joined_at: created_at,
+                    left_at: None,
+                    event_count: 10,
+                    role: "researcher".to_string(),
+                })
+                .with_attestation(Attestation {
+                    attester,
+                    statement: AttestationStatement::SessionSummary {
+                        summary_hash: [0u8; 32],
+                    },
+                    signature: bytes::Bytes::from_static(b"sig-bytes"),
+                    attested_at: Timestamp::now(),
+                    verified: true,
+                })
+                .build();
+
+        let wire: provenance_trio_types::DehydrationSummary = (&summary).into();
+        assert_eq!(wire.source_primal, "rhizoCrypt");
+        assert_eq!(wire.vertex_count, 42);
+        assert_eq!(wire.session_type, "experiment");
+        assert_eq!(wire.agents.len(), 1);
+        assert_eq!(wire.agent_summaries.len(), 1);
+        assert_eq!(wire.agent_summaries[0].event_count, 10);
+        assert_eq!(wire.attestations.len(), 1);
+        assert!(!wire.attestations[0].signature.is_empty());
     }
 
     #[test]
