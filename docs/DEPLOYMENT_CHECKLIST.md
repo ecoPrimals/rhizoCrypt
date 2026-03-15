@@ -11,7 +11,7 @@
 ### Code Quality
 - [x] **1177 tests passing** (all features), 0 failures
 - [x] **91.47% line coverage** (llvm-cov verified)
-- [x] **Zero unsafe code** (workspace-level `#![forbid(unsafe_code)]`)
+- [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, `forbid` in non-test builds)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo, all features)
 - [x] **100% file size compliance** (all files under 1000 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
@@ -32,7 +32,7 @@
 
 ### Documentation
 - [x] **README.md** (current metrics — 1177 tests, 91.47% coverage)
-- [x] **CHANGELOG.md** (version history through session 9)
+- [x] **CHANGELOG.md** (version history through session 10)
 - [x] **showcase/** (70+ comprehensive demos)
 - [x] **specs/** (10 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)

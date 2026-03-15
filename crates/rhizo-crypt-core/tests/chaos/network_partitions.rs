@@ -142,7 +142,7 @@ async fn test_slow_network_timeouts() {
 /// Test partial network failures (some services reachable, others not).
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_partial_network_failure() {
-    use rhizo_crypt_core::{discovery::DiscoveryRegistry, ClientFactory};
+    use rhizo_crypt_core::{ClientFactory, discovery::DiscoveryRegistry};
     use std::sync::Arc;
 
     let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));

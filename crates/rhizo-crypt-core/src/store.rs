@@ -10,8 +10,8 @@ use crate::types::{SessionId, VertexId};
 use crate::vertex::Vertex;
 use hashbrown::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 
 /// Health status of a storage backend.

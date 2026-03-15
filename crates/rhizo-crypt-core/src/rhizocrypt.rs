@@ -298,16 +298,15 @@ impl RhizoCrypt {
             .into_iter()
             .filter(|v| {
                 // Filter by event type
-                if let Some(types) = event_types {
-                    if !types.contains(&v.event_type) {
-                        return false;
-                    }
+                if let Some(types) = event_types
+                    && !types.contains(&v.event_type)
+                {
+                    return false;
                 }
-                // Filter by agent
-                if let Some(a) = agent {
-                    if v.agent.as_ref() != Some(a) {
-                        return false;
-                    }
+                if let Some(a) = agent
+                    && v.agent.as_ref() != Some(a)
+                {
+                    return false;
                 }
                 true
             })

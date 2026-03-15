@@ -9,14 +9,14 @@
 mod handler;
 mod types;
 
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
-use rhizo_crypt_core::{constants::JSON_RPC_PATH, RhizoCrypt};
+use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::post};
+use rhizo_crypt_core::{RhizoCrypt, constants::JSON_RPC_PATH};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
-use types::{codes, error_response, success, JsonRpcRequest};
+use types::{JsonRpcRequest, codes, error_response, success};
 
 /// Serialize a JSON-RPC response value, logging any serialization failure.
 fn serialize_response(value: &impl serde::Serialize) -> serde_json::Value {
@@ -196,7 +196,7 @@ async fn process_single_request(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use axum::body::{to_bytes, Body};
+    use axum::body::{Body, to_bytes};
     use axum::http::Request;
     use rhizo_crypt_core::{PrimalLifecycle, RhizoCryptConfig};
     use tower::util::ServiceExt;

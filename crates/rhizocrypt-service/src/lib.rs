@@ -6,13 +6,13 @@
 //! Extracts server startup, discovery registration, and CLI types so they can
 //! be tested without spawning a subprocess.
 
-#![forbid(unsafe_code)]
+#![cfg_attr(not(test), forbid(unsafe_code))]
 
 pub use rhizo_crypt_core;
 
 mod doctor;
 pub use doctor::{
-    check_dag_engine, check_discovery_connectivity, check_storage_backend, run_doctor, DoctorCheck,
+    DoctorCheck, check_dag_engine, check_discovery_connectivity, check_storage_backend, run_doctor,
 };
 
 /// `UniBin` exit codes per the Architecture Standard.
@@ -163,7 +163,7 @@ pub fn resolve_bind_addr(
 async fn shutdown_signal() {
     #[cfg(unix)]
     {
-        use tokio::signal::unix::{signal, SignalKind};
+        use tokio::signal::unix::{SignalKind, signal};
         let Ok(mut sigterm) = signal(SignalKind::terminate()) else {
             warn!("Failed to register SIGTERM handler, falling back to ctrl_c");
             let _ = tokio::signal::ctrl_c().await;
@@ -317,7 +317,7 @@ pub fn print_status() {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used, unsafe_code)]
 mod tests {
     use super::*;
     use std::sync::Mutex;
@@ -450,7 +450,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_shutdown_signal_does_not_panic() {
-        use tokio::time::{timeout, Duration};
+        use tokio::time::{Duration, timeout};
         let result = timeout(Duration::from_millis(100), super::shutdown_signal()).await;
         assert!(result.is_err(), "shutdown_signal should block until signal (timeout expected)");
     }
@@ -491,11 +491,11 @@ mod tests {
     async fn test_check_configuration_default_env() {
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::remove_var("RHIZOCRYPT_RPC_PORT");
-            std::env::remove_var("RHIZOCRYPT_PORT");
-            std::env::remove_var("RHIZOCRYPT_RPC_HOST");
-            std::env::remove_var("RHIZOCRYPT_HOST");
-            std::env::remove_var("RHIZOCRYPT_ENV");
+            unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
+            unsafe { std::env::remove_var("RHIZOCRYPT_PORT") };
+            unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
+            unsafe { std::env::remove_var("RHIZOCRYPT_HOST") };
+            unsafe { std::env::remove_var("RHIZOCRYPT_ENV") };
         }
         run_doctor(false).await;
     }
@@ -504,12 +504,12 @@ mod tests {
     async fn test_check_configuration_with_port_override() {
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::set_var("RHIZOCRYPT_RPC_PORT", "9401");
+            unsafe { std::env::set_var("RHIZOCRYPT_RPC_PORT", "9401") };
         }
         run_doctor(false).await;
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::remove_var("RHIZOCRYPT_RPC_PORT");
+            unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
         }
     }
 
@@ -517,12 +517,12 @@ mod tests {
     async fn test_check_configuration_with_host_override() {
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::set_var("RHIZOCRYPT_RPC_HOST", "0.0.0.0");
+            unsafe { std::env::set_var("RHIZOCRYPT_RPC_HOST", "0.0.0.0") };
         }
         run_doctor(false).await;
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::remove_var("RHIZOCRYPT_RPC_HOST");
+            unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
         }
     }
 
@@ -530,12 +530,12 @@ mod tests {
     async fn test_check_configuration_development_mode() {
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::set_var("RHIZOCRYPT_ENV", "development");
+            unsafe { std::env::set_var("RHIZOCRYPT_ENV", "development") };
         }
         run_doctor(false).await;
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::remove_var("RHIZOCRYPT_ENV");
+            unsafe { std::env::remove_var("RHIZOCRYPT_ENV") };
         }
     }
 
@@ -543,9 +543,9 @@ mod tests {
     async fn test_check_discovery_without_endpoint() {
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
-            std::env::remove_var("DISCOVERY_ENDPOINT");
-            std::env::remove_var("DISCOVERY_ADDRESS");
+            unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
+            unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
+            unsafe { std::env::remove_var("DISCOVERY_ADDRESS") };
         }
         run_doctor(false).await;
     }
@@ -554,12 +554,12 @@ mod tests {
     async fn test_check_discovery_with_endpoint_non_comprehensive() {
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999");
+            unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999") };
         }
         run_doctor(false).await;
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::remove_var("DISCOVERY_ENDPOINT");
+            unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
         }
     }
 
@@ -567,12 +567,12 @@ mod tests {
     async fn test_check_discovery_with_endpoint_comprehensive() {
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999");
+            unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999") };
         }
         run_doctor(true).await;
         {
             let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::env::remove_var("DISCOVERY_ENDPOINT");
+            unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
         }
     }
 

@@ -8,7 +8,8 @@ members = [
 
 [workspace.package]
 version = "0.13.0-dev"
-edition = "2021"
+edition = "2024"
+rust-version = "1.87"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/ecoPrimals/rhizoCrypt"
 authors = ["ecoPrimals Project"]
@@ -68,7 +69,10 @@ redb = "2.4"
 provenance-trio-types = { path = "../provenance-trio-types" }
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# deny (not forbid) so test modules can #[allow(unsafe_code)] for env var
+# mutation, which became unsafe in Edition 2024. Production code has zero
+# unsafe — clippy + CI enforce this.
+unsafe_code = "deny"
 missing_docs = "warn"
 
 [workspace.lints.clippy]

@@ -29,8 +29,8 @@ use crate::vertex::Vertex;
 use super::{PayloadStorageProvider, PermanentStorageProvider, SigningProvider};
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 
 // ============================================================================

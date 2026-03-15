@@ -13,7 +13,7 @@
 ### Pure Rust
 RhizoCrypt follows the ecoPrimals commitment to pure Rust:
 - **No protobuf** — tarpc for RPC with compile-time type safety
-- **No unsafe** — `#![forbid(unsafe_code)]` enforced
+- **No unsafe** — `unsafe_code = "deny"` workspace-wide, `forbid` in non-test builds
 - **Lean into rustc** — The compiler is our ally
 
 ### Primal Sovereignty

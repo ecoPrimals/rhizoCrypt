@@ -153,7 +153,7 @@ impl BearDogHttpClient {
     ///
     /// Returns error if the HTTP request fails or response cannot be parsed.
     pub async fn sign(&self, data: &[u8]) -> Result<bytes::Bytes, BearDogHttpError> {
-        use base64::{engine::general_purpose::STANDARD, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD};
 
         let request = HttpSignRequest {
             data: STANDARD.encode(data),
@@ -191,7 +191,7 @@ impl BearDogHttpClient {
     ///
     /// Returns error if the HTTP request fails or response cannot be parsed.
     pub async fn verify(&self, data: &[u8], signature: &[u8]) -> Result<bool, BearDogHttpError> {
-        use base64::{engine::general_purpose::STANDARD, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD};
 
         let request = HttpVerifyRequest {
             data: STANDARD.encode(data),
@@ -427,8 +427,8 @@ mod tests {
     #[cfg(feature = "live-clients")]
     #[tokio::test]
     async fn wiremock_sign_success() {
-        use base64::engine::general_purpose::STANDARD;
         use base64::Engine;
+        use base64::engine::general_purpose::STANDARD;
         use wiremock::matchers::{method, path};
         use wiremock::{Mock, MockServer, ResponseTemplate};
 

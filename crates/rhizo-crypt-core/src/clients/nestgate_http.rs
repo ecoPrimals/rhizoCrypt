@@ -140,7 +140,7 @@ impl NestGateHttpClient {
         data: &[u8],
         content_type: Option<&str>,
     ) -> Result<String, NestGateHttpError> {
-        use base64::{engine::general_purpose::STANDARD, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD};
 
         let request = HttpStoreBlobRequest {
             data: STANDARD.encode(data),
@@ -178,7 +178,7 @@ impl NestGateHttpClient {
     ///
     /// Returns error if the HTTP request fails, blob not found, or response cannot be parsed.
     pub async fn retrieve(&self, reference: &str) -> Result<bytes::Bytes, NestGateHttpError> {
-        use base64::{engine::general_purpose::STANDARD, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD};
 
         let response = self
             .client
@@ -502,7 +502,7 @@ mod tests {
     #[cfg(feature = "live-clients")]
     #[tokio::test]
     async fn wiremock_retrieve_success() {
-        use base64::{engine::general_purpose::STANDARD, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD};
         use wiremock::matchers::{method, path};
         use wiremock::{Mock, MockServer, ResponseTemplate};
 

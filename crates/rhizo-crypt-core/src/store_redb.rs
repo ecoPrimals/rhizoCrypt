@@ -46,8 +46,8 @@ use crate::types::{SessionId, VertexId};
 use crate::vertex::Vertex;
 use redb::{Database, ReadableTableMetadata, TableDefinition};
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Table definitions.
 const VERTICES: TableDefinition<&[u8], &[u8]> = TableDefinition::new("vertices");

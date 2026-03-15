@@ -9,7 +9,8 @@
 | Tests | 1177 passing (all features) |
 | Coverage | 91.47% line coverage (llvm-cov verified) |
 | Clippy | 0 warnings (pedantic + nursery + cargo, all features) |
-| Unsafe | `#![forbid(unsafe_code)]` workspace-wide |
+| Edition | 2024 (rust-version 1.87) |
+| Unsafe | `unsafe_code = "deny"` workspace-wide, `forbid` in non-test builds |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
 | IPC | JSON-RPC 2.0 (HTTP) + tarpc (bincode) — dual-transport first |
 | Transport | Platform-agnostic (Unix socket / TCP / abstract socket) |
@@ -17,6 +18,8 @@
 | Deps | ecoBin compliant — zero application C dependencies |
 | Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
 | SPDX | `AGPL-3.0-or-later` header on all 106 `.rs` files |
+| Registry | `capability_registry.toml` (23 methods, 7 domains) |
+| Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche standard) |
 
 ---
 
@@ -130,7 +133,7 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 | ecoBin | Compliant | Default `redb` backend is 100% Pure Rust; `sled` available as optional feature |
 | Universal IPC v3 | Compliant | JSON-RPC 2.0 + tarpc, semantic method names |
 | Semantic Naming | Compliant | Native (`commit.*`) + compat (`permanent-storage.*`) with negotiation |
-| `#![forbid(unsafe_code)]` | Compliant | Workspace-wide |
+| `unsafe_code = "deny"` | Compliant | Workspace-wide, `forbid` in non-test builds |
 | AGPL-3.0-or-later | Compliant | SPDX headers on all source files |
 
 ---
@@ -143,6 +146,8 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 - [showcase/](showcase/) — Progressive demo suite (70+ working demos)
 - [CHANGELOG.md](CHANGELOG.md) — Version history
 - [deny.toml](deny.toml) — Dependency audit policy (`cargo-deny`)
+- [capability_registry.toml](capability_registry.toml) — Capability registry for biomeOS routing
+- [graphs/rhizocrypt_deploy.toml](graphs/rhizocrypt_deploy.toml) — biomeOS deploy graph
 
 ---
 

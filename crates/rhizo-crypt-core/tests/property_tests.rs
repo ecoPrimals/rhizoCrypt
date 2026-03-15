@@ -10,12 +10,12 @@
 
 use proptest::prelude::*;
 use rhizo_crypt_core::{
+    SessionType,
     event::EventType,
     merkle::{MerkleRoot, MerkleTreeBuilder},
     session::{SessionBuilder, SessionState},
     types::*,
     vertex::VertexBuilder,
-    SessionType,
 };
 
 // ============================================================================

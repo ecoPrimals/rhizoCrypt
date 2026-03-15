@@ -5,6 +5,47 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-15 (session 10)
+
+### Changed
+
+#### Edition 2024 Migration (absorbed from wetSpring, airSpring, healthSpring)
+- Migrated workspace from Edition 2021 to **Edition 2024** with `rust-version = "1.87"`
+- Updated all three Cargo.toml files (workspace, fuzz, showcase)
+- Wrapped 183 `std::env::set_var`/`remove_var` calls in `unsafe {}` (Edition 2024 requirement)
+- Changed workspace lint from `forbid` to `deny` for `unsafe_code`; `forbid` preserved in non-test builds via `#[cfg_attr(not(test), forbid(unsafe_code))]`
+- Collapsed 10 nested `if`/`if let` chains into Edition 2024 `if let` chains
+- Applied Edition 2024 `rustfmt` import reordering (types before modules)
+
+#### biomeOS Niche Standard Compliance
+- Created `graphs/rhizocrypt_deploy.toml` — 5-node deploy graph (BearDog → Songbird → rhizoCrypt → LoamSpine → sweetGrass) for biomeOS orchestration
+- Created `capability_registry.toml` — 23 JSON-RPC methods across 7 domains (`dag.session`, `dag.event`, `dag.vertex`, `dag.merkle`, `dag.slice`, `dag.dehydration`, `health`, `capability`)
+
+#### `#[expect()]` Lint Migration (absorbed from wetSpring V117)
+- Migrated 5 production `#[allow(clippy::...)]` to `#[expect(clippy::...)]`
+- Caught and removed 1 stale suppression (`missing_const_for_fn` on `RateLimiter::disabled()`)
+
+#### wateringHole Documentation Sync
+- Fixed stale method names in `SPRING_PROVENANCE_TRIO_INTEGRATION_PATTERN.md` (`dag.session.append` → `dag.event.append`, `dag.dehydrate` → `dag.dehydration.trigger`)
+- Updated `RHIZOCRYPT_LEVERAGE_GUIDE.md` with all 23 current semantic method names + `capability.list`
+- Updated `PRIMAL_REGISTRY.md` rhizoCrypt entry (1177 tests, 91.47% coverage, Edition 2024)
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery + cargo, all features) | Clean (0 warnings) |
+| `cargo doc --workspace --all-features --no-deps` | Clean |
+| `cargo test --workspace --all-features` | 1177 pass, 0 fail |
+| `cargo deny check` | Clean |
+| `unsafe_code = "deny"` | Workspace-wide (`forbid` in non-test builds) |
+| SPDX headers | All 106 `.rs` files |
+| Max file size | All under 1000 lines |
+| Production unwrap/expect | Zero |
+
+---
+
 ## [0.13.0-dev] - 2026-03-15 (session 9)
 
 ### Changed
@@ -552,6 +593,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.13.0-dev** (2026-03-15 s10): Edition 2024, deploy graph, capability registry, `#[expect]` lint migration
 - **0.13.0-dev** (2026-03-15 s8): O(1) vertex-to-session index, checkout_slice evolution, Did→Arc\<str\>, 907 tests
 - **0.13.0-dev** (2026-03-15 s7): scyBorg license, zero-copy signing, store_redb refactor, modern async traits, docs cleanup
 - **0.13.0-dev** (2026-03-14 s4): Sovereignty cleanup, 1075 tests, 91% coverage, doc tests rewritten, capability-based errors

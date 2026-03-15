@@ -18,15 +18,15 @@
 #![allow(unused_must_use)]
 #![allow(missing_docs)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use rhizo_crypt_core::{
+    DagStore, SessionType,
     event::EventType,
     merkle::{MerkleRoot, MerkleTreeBuilder},
     session::SessionBuilder,
     store::InMemoryDagStore,
     types::{SessionId, VertexId},
     vertex::VertexBuilder,
-    DagStore, SessionType,
 };
 use tokio::runtime::Runtime;
 

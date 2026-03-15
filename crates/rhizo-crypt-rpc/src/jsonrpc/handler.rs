@@ -12,7 +12,7 @@ use crate::service::{
     RhizoCryptRpcServer,
 };
 use rhizo_crypt_core::{MerkleRoot, SessionId, SliceId, SliceMode, VertexId};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::debug;

@@ -226,10 +226,10 @@ impl ComputeProviderConfig {
             config.fallback_address = Some(Cow::Owned(addr));
         }
 
-        if let Ok(timeout) = std::env::var("COMPUTE_TIMEOUT_MS") {
-            if let Ok(ms) = timeout.parse() {
-                config.timeout_ms = ms;
-            }
+        if let Ok(timeout) = std::env::var("COMPUTE_TIMEOUT_MS")
+            && let Ok(ms) = timeout.parse()
+        {
+            config.timeout_ms = ms;
         }
 
         config

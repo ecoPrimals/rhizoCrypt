@@ -6,7 +6,7 @@
 //! This module provides Merkle root computation and proof generation/verification.
 
 use crate::error::{Result, RhizoCryptError};
-use crate::types::{hash_pair, ContentHash, VertexId};
+use crate::types::{ContentHash, VertexId, hash_pair};
 use crate::vertex::Vertex;
 use serde::{Deserialize, Serialize};
 

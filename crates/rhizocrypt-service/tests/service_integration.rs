@@ -5,14 +5,14 @@
 //!
 //! Tests the service configuration, startup behavior, and basic functionality.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::uninlined_format_args)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::uninlined_format_args, unsafe_code)]
 
 use rhizo_crypt_core::{PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, StorageBackend};
 use rhizo_crypt_rpc::server::RpcServer;
 use rhizocrypt_service::{
-    check_dag_engine, check_discovery_connectivity, check_storage_backend, exit_codes,
-    print_status, print_version, resolve_bind_addr, run_client, run_doctor, run_server,
-    ClientOperation, DoctorCheck, ServiceError,
+    ClientOperation, DoctorCheck, ServiceError, check_dag_engine, check_discovery_connectivity,
+    check_storage_backend, exit_codes, print_status, print_version, resolve_bind_addr, run_client,
+    run_doctor, run_server,
 };
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -262,11 +262,11 @@ async fn test_doctor_run_comprehensive() {
 async fn test_doctor_unhealthy_config_empty_host() {
     {
         let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        std::env::set_var("RHIZOCRYPT_RPC_HOST", "");
+        unsafe { std::env::set_var("RHIZOCRYPT_RPC_HOST", "") };
     }
     run_doctor(false).await;
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    std::env::remove_var("RHIZOCRYPT_RPC_HOST");
+    unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
 }
 
 /// Test doctor reports Healthy (standalone mode) when discovery is not configured.
@@ -274,9 +274,9 @@ async fn test_doctor_unhealthy_config_empty_host() {
 async fn test_doctor_standalone_mode() {
     {
         let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
-        std::env::remove_var("DISCOVERY_ENDPOINT");
-        std::env::remove_var("DISCOVERY_ADDRESS");
+        unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
+        unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
+        unsafe { std::env::remove_var("DISCOVERY_ADDRESS") };
     }
     run_doctor(false).await;
 }
@@ -286,11 +286,11 @@ async fn test_doctor_standalone_mode() {
 async fn test_doctor_discovery_configured_non_comprehensive() {
     {
         let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999");
+        unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999") };
     }
     run_doctor(false).await;
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    std::env::remove_var("DISCOVERY_ENDPOINT");
+    unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
 }
 
 /// Test doctor with discovery configured and comprehensive (unreachable -> Warn).
@@ -298,11 +298,11 @@ async fn test_doctor_discovery_configured_non_comprehensive() {
 async fn test_doctor_discovery_comprehensive_unreachable() {
     {
         let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999");
+        unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999") };
     }
     run_doctor(true).await;
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    std::env::remove_var("DISCOVERY_ENDPOINT");
+    unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
 }
 
 /// Test doctor with discovery reachable in comprehensive mode.
@@ -312,11 +312,11 @@ async fn test_doctor_discovery_comprehensive_reachable() {
     let addr = listener.local_addr().unwrap();
     {
         let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        std::env::set_var("DISCOVERY_ENDPOINT", format!("http://{addr}"));
+        unsafe { std::env::set_var("DISCOVERY_ENDPOINT", format!("http://{addr}")) };
     }
     run_doctor(true).await;
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    std::env::remove_var("DISCOVERY_ENDPOINT");
+    unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
 }
 
 /// Test check_dag_engine passes.
@@ -533,9 +533,9 @@ fn test_resolve_bind_addr_invalid_host() {
 async fn test_run_server_standalone_mode_no_discovery() {
     {
         let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
-        std::env::remove_var("DISCOVERY_ENDPOINT");
-        std::env::remove_var("DISCOVERY_ADDRESS");
+        unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
+        unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
+        unsafe { std::env::remove_var("DISCOVERY_ADDRESS") };
     }
 
     let handle =
@@ -552,10 +552,15 @@ async fn test_run_server_standalone_mode_no_discovery() {
 async fn test_run_server_discovery_failure_continues_standalone() {
     {
         let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        std::env::set_var("RHIZOCRYPT_PORT", "19710");
-        std::env::set_var("RHIZOCRYPT_HOST", "127.0.0.1");
-        std::env::set_var("RHIZOCRYPT_DISCOVERY_ADAPTER", "http://invalid-discovery-12345:99999");
-        std::env::set_var("RUST_LOG", "error");
+        unsafe { std::env::set_var("RHIZOCRYPT_PORT", "19710") };
+        unsafe { std::env::set_var("RHIZOCRYPT_HOST", "127.0.0.1") };
+        unsafe {
+            std::env::set_var(
+                "RHIZOCRYPT_DISCOVERY_ADAPTER",
+                "http://invalid-discovery-12345:99999",
+            );
+        }
+        unsafe { std::env::set_var("RUST_LOG", "error") };
     }
 
     let handle =
@@ -567,19 +572,19 @@ async fn test_run_server_discovery_failure_continues_standalone() {
     let _ = handle.await;
 
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    std::env::remove_var("RHIZOCRYPT_PORT");
-    std::env::remove_var("RHIZOCRYPT_HOST");
-    std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
+    unsafe { std::env::remove_var("RHIZOCRYPT_PORT") };
+    unsafe { std::env::remove_var("RHIZOCRYPT_HOST") };
+    unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
 }
 
 /// Clear all env vars that affect `resolve_bind_addr` so tests are isolated
 /// from async tests that may have leaked values outside their lock window.
 fn clear_bind_addr_env() {
-    std::env::remove_var("RHIZOCRYPT_RPC_PORT");
-    std::env::remove_var("RHIZOCRYPT_PORT");
-    std::env::remove_var("RHIZOCRYPT_RPC_HOST");
-    std::env::remove_var("RHIZOCRYPT_HOST");
-    std::env::remove_var("RHIZOCRYPT_ENV");
+    unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
+    unsafe { std::env::remove_var("RHIZOCRYPT_PORT") };
+    unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
+    unsafe { std::env::remove_var("RHIZOCRYPT_HOST") };
+    unsafe { std::env::remove_var("RHIZOCRYPT_ENV") };
 }
 
 /// Test resolve_bind_addr with RHIZOCRYPT_RPC_PORT env.
@@ -587,7 +592,7 @@ fn clear_bind_addr_env() {
 fn test_resolve_bind_addr_rpc_port_env() {
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     clear_bind_addr_env();
-    std::env::set_var("RHIZOCRYPT_RPC_PORT", "19701");
+    unsafe { std::env::set_var("RHIZOCRYPT_RPC_PORT", "19701") };
     let addr = resolve_bind_addr(None, None).unwrap();
     assert_eq!(addr.port(), 19701);
     clear_bind_addr_env();
@@ -598,7 +603,7 @@ fn test_resolve_bind_addr_rpc_port_env() {
 fn test_resolve_bind_addr_port_legacy_env() {
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     clear_bind_addr_env();
-    std::env::set_var("RHIZOCRYPT_PORT", "19702");
+    unsafe { std::env::set_var("RHIZOCRYPT_PORT", "19702") };
     let addr = resolve_bind_addr(None, None).unwrap();
     assert_eq!(addr.port(), 19702);
     clear_bind_addr_env();
@@ -609,7 +614,7 @@ fn test_resolve_bind_addr_port_legacy_env() {
 fn test_resolve_bind_addr_rpc_host_env() {
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     clear_bind_addr_env();
-    std::env::set_var("RHIZOCRYPT_RPC_HOST", "127.0.0.1");
+    unsafe { std::env::set_var("RHIZOCRYPT_RPC_HOST", "127.0.0.1") };
     let addr = resolve_bind_addr(None, None).unwrap();
     assert_eq!(addr.ip().to_string(), "127.0.0.1");
     clear_bind_addr_env();
@@ -620,7 +625,7 @@ fn test_resolve_bind_addr_rpc_host_env() {
 fn test_resolve_bind_addr_host_legacy_env() {
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     clear_bind_addr_env();
-    std::env::set_var("RHIZOCRYPT_HOST", "0.0.0.0");
+    unsafe { std::env::set_var("RHIZOCRYPT_HOST", "0.0.0.0") };
     let addr = resolve_bind_addr(None, None).unwrap();
     assert_eq!(addr.ip().to_string(), "0.0.0.0");
     clear_bind_addr_env();
@@ -631,7 +636,7 @@ fn test_resolve_bind_addr_host_legacy_env() {
 fn test_resolve_bind_addr_development_env() {
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     clear_bind_addr_env();
-    std::env::set_var("RHIZOCRYPT_ENV", "development");
+    unsafe { std::env::set_var("RHIZOCRYPT_ENV", "development") };
     let addr = resolve_bind_addr(None, None).unwrap();
     assert!(addr.port() > 0 || addr.port() == 0);
     clear_bind_addr_env();

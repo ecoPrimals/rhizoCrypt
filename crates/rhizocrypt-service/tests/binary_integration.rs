@@ -249,7 +249,7 @@ async fn test_service_graceful_shutdown_sigterm() {
 
     #[cfg(unix)]
     {
-        use nix::sys::signal::{kill, Signal};
+        use nix::sys::signal::{Signal, kill};
         use nix::unistd::Pid;
 
         let pid = Pid::from_raw(child.id() as i32);
@@ -391,7 +391,7 @@ async fn test_service_multiple_instances_different_ports() {
 #[cfg(unix)]
 #[tokio::test]
 async fn test_service_signal_handling() {
-    use nix::sys::signal::{kill, Signal};
+    use nix::sys::signal::{Signal, kill};
     use nix::unistd::Pid;
 
     let binary_path = service_binary_path();

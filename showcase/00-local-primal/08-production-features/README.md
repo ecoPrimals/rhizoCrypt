@@ -101,12 +101,7 @@ This showcase demonstrates that rhizoCrypt is **production-ready**:
 
 ## 🚀 Quick Start
 
-Run all production demos:
-```bash
-./run-all.sh
-```
-
-Or run individually:
+Run demos individually:
 ```bash
 ./demo-service-mode.sh          # 5 min
 ./demo-health-monitoring.sh     # 3 min

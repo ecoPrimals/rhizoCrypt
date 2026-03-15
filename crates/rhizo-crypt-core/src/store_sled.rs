@@ -56,8 +56,8 @@ use crate::vertex::Vertex;
 
 use sled::{Batch, Db, Tree};
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Sled export entry: `(tree_name, key_prefix, row_iterator)`.
 pub type SledExportEntry = (Vec<u8>, Vec<u8>, Vec<Vec<Vec<u8>>>);

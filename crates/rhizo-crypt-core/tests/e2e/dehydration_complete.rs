@@ -9,8 +9,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use rhizo_crypt_core::{
-    dehydration::DehydrationStatus, event::SessionOutcome, EventType, PrimalLifecycle, RhizoCrypt,
-    RhizoCryptConfig, SessionBuilder, SessionType, VertexBuilder,
+    EventType, PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, SessionBuilder, SessionType,
+    VertexBuilder, dehydration::DehydrationStatus, event::SessionOutcome,
 };
 
 /// Test complete dehydration workflow.

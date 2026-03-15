@@ -503,19 +503,25 @@ mod tests {
 
     #[test]
     fn test_slice_mode_lineage() {
-        assert!(!SliceMode::Copy {
-            allow_recopy: false
-        }
-        .can_lineage_back());
-        assert!(SliceMode::Loan {
-            terms: LoanTerms::default(),
-            allow_subloan: false
-        }
-        .can_lineage_back());
-        assert!(SliceMode::Transfer {
-            new_owner: Did::new("did:key:new")
-        }
-        .can_lineage_back());
+        assert!(
+            !SliceMode::Copy {
+                allow_recopy: false
+            }
+            .can_lineage_back()
+        );
+        assert!(
+            SliceMode::Loan {
+                terms: LoanTerms::default(),
+                allow_subloan: false
+            }
+            .can_lineage_back()
+        );
+        assert!(
+            SliceMode::Transfer {
+                new_owner: Did::new("did:key:new")
+            }
+            .can_lineage_back()
+        );
     }
 
     #[test]

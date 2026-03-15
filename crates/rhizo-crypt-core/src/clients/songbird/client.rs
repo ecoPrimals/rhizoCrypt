@@ -205,13 +205,13 @@ impl SongbirdClient {
             }
         };
 
-        if result.success {
-            if let Some(ref id) = result.service_id {
-                *self.service_id.write().await = Some(id.clone());
-                *self.state.write().await = ClientState::Registered;
-                *self.our_endpoint.write().await = Some(our_endpoint.to_string());
-                info!(service_id = %id, "Registered with Songbird mesh");
-            }
+        if result.success
+            && let Some(ref id) = result.service_id
+        {
+            *self.service_id.write().await = Some(id.clone());
+            *self.state.write().await = ClientState::Registered;
+            *self.our_endpoint.write().await = Some(our_endpoint.to_string());
+            info!(service_id = %id, "Registered with Songbird mesh");
         }
 
         Ok(result)

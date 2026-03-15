@@ -1,0 +1,113 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# biomeOS Deploy Graph — rhizoCrypt ephemeral DAG engine
+#
+# Minimal deployment: rhizoCrypt can run standalone with no dependencies.
+# Full deployment: wires the provenance trio (rhizoCrypt + loamSpine + sweetGrass)
+# with BearDog for signing and Songbird for discovery.
+#
+# Provenance trio nodes are optional — rhizoCrypt degrades gracefully to
+# standalone mode when dependencies are unavailable.
+#
+# STATUS: Production-ready (Mar 15, 2026)
+#
+# Usage:
+#   biomeos deploy --graph graphs/rhizocrypt_deploy.toml
+
+[graph]
+name = "rhizocrypt_dag_engine"
+description = "Ephemeral DAG engine with optional provenance trio wiring"
+version = "0.13.0-dev"
+coordination = "Sequential"
+
+# ── Node 1: BearDog (crypto + key management) ─────────────────────
+[[graph.node]]
+name = "beardog"
+binary = "beardog_primal"
+order = 1
+required = false
+health_method = "health"
+by_capability = "crypto"
+capabilities = [
+    "crypto.sign",
+    "crypto.verify",
+]
+
+# ── Node 2: Songbird (discovery + registration) ───────────────────
+[[graph.node]]
+name = "songbird"
+binary = "songbird_primal"
+order = 2
+required = false
+depends_on = ["beardog"]
+health_method = "health"
+by_capability = "network"
+capabilities = [
+    "network.tls_connect",
+    "network.http_fetch",
+]
+
+# ── Node 3: rhizoCrypt (ephemeral DAG sessions) ───────────────────
+[[graph.node]]
+name = "rhizocrypt"
+binary = "rhizocrypt"
+order = 3
+required = true
+health_method = "health.check"
+by_capability = "dag"
+capabilities = [
+    "dag.session.create",
+    "dag.session.get",
+    "dag.session.list",
+    "dag.session.discard",
+    "dag.event.append",
+    "dag.event.append_batch",
+    "dag.vertex.get",
+    "dag.vertex.query",
+    "dag.vertex.children",
+    "dag.frontier.get",
+    "dag.genesis.get",
+    "dag.merkle.root",
+    "dag.merkle.proof",
+    "dag.merkle.verify",
+    "dag.slice.checkout",
+    "dag.slice.get",
+    "dag.slice.list",
+    "dag.slice.resolve",
+    "dag.dehydration.trigger",
+    "dag.dehydration.status",
+    "health.check",
+    "health.metrics",
+    "capability.list",
+]
+
+# ── Node 4: loamSpine (immutable linear ledger) ───────────────────
+[[graph.node]]
+name = "loamspine"
+binary = "loamspine_primal"
+order = 4
+required = false
+depends_on = ["rhizocrypt"]
+health_method = "commit.health"
+by_capability = "commit"
+capabilities = [
+    "commit.session",
+    "commit.entry",
+    "commit.health",
+]
+
+# ── Node 5: sweetGrass (semantic provenance braids) ────────────────
+[[graph.node]]
+name = "sweetgrass"
+binary = "sweetgrass_primal"
+order = 5
+required = false
+depends_on = ["loamspine"]
+health_method = "provenance.health"
+by_capability = "provenance"
+capabilities = [
+    "provenance.create_braid",
+    "provenance.lineage",
+    "provenance.attribution",
+    "provenance.health",
+]

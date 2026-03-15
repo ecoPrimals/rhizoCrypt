@@ -1,0 +1,140 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# rhizoCrypt capability registry — biomeOS ephemeral DAG primal.
+#
+# Declares the capabilities this primal registers with Songbird for
+# capability-based discovery. Self-knowledge only: no references to
+# other primals' capabilities.
+
+[primal]
+name = "rhizocrypt"
+version = "0.13.0-dev"
+domain = "dag"
+license = "AGPL-3.0-or-later"
+description = "Ephemeral content-addressed DAG engine for session-scoped working memory"
+
+# ── Session lifecycle ──────────────────────────────────────────────
+
+[capabilities.session_create]
+method = "dag.session.create"
+domain = "dag.session"
+description = "Create a scoped DAG session with lifecycle management"
+
+[capabilities.session_get]
+method = "dag.session.get"
+domain = "dag.session"
+description = "Retrieve session metadata by ID"
+
+[capabilities.session_list]
+method = "dag.session.list"
+domain = "dag.session"
+description = "List all active sessions"
+
+[capabilities.session_discard]
+method = "dag.session.discard"
+domain = "dag.session"
+description = "Discard and clean up a session"
+
+# ── Vertex operations ──────────────────────────────────────────────
+
+[capabilities.event_append]
+method = "dag.event.append"
+domain = "dag.event"
+description = "Append a content-addressed vertex to a session DAG"
+
+[capabilities.event_append_batch]
+method = "dag.event.append_batch"
+domain = "dag.event"
+description = "Append multiple vertices in a single batch operation"
+
+[capabilities.vertex_get]
+method = "dag.vertex.get"
+domain = "dag.vertex"
+description = "Retrieve a vertex by session and vertex ID"
+
+[capabilities.vertex_query]
+method = "dag.vertex.query"
+domain = "dag.vertex"
+description = "Query vertices with optional type, agent, and limit filters"
+
+[capabilities.vertex_children]
+method = "dag.vertex.children"
+domain = "dag.vertex"
+description = "Get child vertices of a given vertex"
+
+[capabilities.frontier_get]
+method = "dag.frontier.get"
+domain = "dag.frontier"
+description = "Get the frontier (leaf vertices) of a session DAG"
+
+[capabilities.genesis_get]
+method = "dag.genesis.get"
+domain = "dag.genesis"
+description = "Get the genesis (root) vertices of a session DAG"
+
+# ── Merkle integrity ──────────────────────────────────────────────
+
+[capabilities.merkle_root]
+method = "dag.merkle.root"
+domain = "dag.merkle"
+description = "Compute the Merkle root of a session's vertex set"
+
+[capabilities.merkle_proof]
+method = "dag.merkle.proof"
+domain = "dag.merkle"
+description = "Generate an inclusion proof for a vertex"
+
+[capabilities.merkle_verify]
+method = "dag.merkle.verify"
+domain = "dag.merkle"
+description = "Verify a Merkle inclusion proof"
+
+# ── Slice operations ──────────────────────────────────────────────
+
+[capabilities.slice_checkout]
+method = "dag.slice.checkout"
+domain = "dag.slice"
+description = "Checkout an immutable slice from permanent storage"
+
+[capabilities.slice_get]
+method = "dag.slice.get"
+domain = "dag.slice"
+description = "Retrieve slice metadata by ID"
+
+[capabilities.slice_list]
+method = "dag.slice.list"
+domain = "dag.slice"
+description = "List all active slices"
+
+[capabilities.slice_resolve]
+method = "dag.slice.resolve"
+domain = "dag.slice"
+description = "Resolve a slice to its underlying session data"
+
+# ── Dehydration (commit to permanent storage) ─────────────────────
+
+[capabilities.dehydration_trigger]
+method = "dag.dehydration.trigger"
+domain = "dag.dehydration"
+description = "Trigger dehydration of a session to permanent storage"
+
+[capabilities.dehydration_status]
+method = "dag.dehydration.status"
+domain = "dag.dehydration"
+description = "Check the status of a dehydration operation"
+
+# ── Health and introspection ──────────────────────────────────────
+
+[capabilities.health_check]
+method = "health.check"
+domain = "health"
+description = "Service health check with status, version, and uptime"
+
+[capabilities.health_metrics]
+method = "health.metrics"
+domain = "health"
+description = "Operational metrics (sessions, vertices, latency, errors)"
+
+[capabilities.capability_list]
+method = "capability.list"
+domain = "capability"
+description = "List all capabilities this primal provides"

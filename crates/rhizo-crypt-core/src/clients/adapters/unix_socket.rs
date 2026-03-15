@@ -264,7 +264,7 @@ impl ProtocolAdapter for UnixSocketAdapter {
     }
 
     async fn is_healthy(&self) -> bool {
-        self.socket_path.exists() && self.call_json("system.health", "{}").await.is_ok()
+        self.socket_path.exists() && self.call_json("health.check", "{}").await.is_ok()
     }
 
     fn endpoint(&self) -> &str {

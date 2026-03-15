@@ -366,7 +366,7 @@ mod duration_serde {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(clippy::unwrap_used, clippy::expect_used, unsafe_code)]
 mod tests {
     use super::*;
 
@@ -423,18 +423,18 @@ mod tests {
 
     #[test]
     fn test_config_from_env() {
-        std::env::set_var("RHIZOCRYPT_RPC_HOST", "0.0.0.0");
-        std::env::set_var("RHIZOCRYPT_RPC_PORT", "9090");
-        std::env::set_var("RHIZOCRYPT_RPC_ENABLED", "false");
+        unsafe { std::env::set_var("RHIZOCRYPT_RPC_HOST", "0.0.0.0") };
+        unsafe { std::env::set_var("RHIZOCRYPT_RPC_PORT", "9090") };
+        unsafe { std::env::set_var("RHIZOCRYPT_RPC_ENABLED", "false") };
 
         let rpc = RpcConfig::from_env_or_default();
         assert_eq!(rpc.host.as_ref(), "0.0.0.0");
         assert_eq!(rpc.port, 9090);
         assert!(!rpc.enabled);
 
-        std::env::remove_var("RHIZOCRYPT_RPC_HOST");
-        std::env::remove_var("RHIZOCRYPT_RPC_PORT");
-        std::env::remove_var("RHIZOCRYPT_RPC_ENABLED");
+        unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
+        unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
+        unsafe { std::env::remove_var("RHIZOCRYPT_RPC_ENABLED") };
     }
 
     #[test]

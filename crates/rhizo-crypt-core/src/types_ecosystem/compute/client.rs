@@ -106,11 +106,11 @@ impl ComputeProviderClient {
         *self.state.write().await = ClientState::Connecting;
 
         // Try discovery first
-        if let Some(registry) = &self.registry {
-            if let Some(endpoint) = registry.get_endpoint(&Capability::ComputeOrchestration).await {
-                info!(address = %endpoint.addr, "Discovered compute provider via registry");
-                return self.connect_to(endpoint.addr).await;
-            }
+        if let Some(registry) = &self.registry
+            && let Some(endpoint) = registry.get_endpoint(&Capability::ComputeOrchestration).await
+        {
+            info!(address = %endpoint.addr, "Discovered compute provider via registry");
+            return self.connect_to(endpoint.addr).await;
         }
 
         // Fall back to configured address
@@ -243,7 +243,7 @@ impl ComputeProviderClient {
 
     /// Get the discovery registry (if configured).
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)] // as_ref() is not const-stable
+    #[expect(clippy::missing_const_for_fn)] // as_ref() is not const-stable
     pub fn registry(&self) -> Option<&Arc<DiscoveryRegistry>> {
         self.registry.as_ref()
     }

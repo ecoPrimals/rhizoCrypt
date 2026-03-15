@@ -118,11 +118,11 @@ cd ../07-dehydration
 ```bash
 cd showcase/00-local-primal
 
-# Level 0 + Level 1
-cd 01-hello-rhizocrypt && ./run-all.sh
-cd ../02-dag-engine && ./run-all.sh
-cd ../03-merkle-proofs && ./run-all.sh
-cd ../07-dehydration && ./run-all.sh
+# Level 0 + Level 1 — run each demo individually
+for demo in 01-hello-rhizocrypt/demo-*.sh; do bash "$demo"; done
+for demo in 02-dag-engine/demo-*.sh; do bash "$demo"; done
+for demo in 03-merkle-proofs/demo-*.sh; do bash "$demo"; done
+for demo in 07-dehydration/demo-*.sh; do bash "$demo"; done
 ```
 **Result**: You understand rhizoCrypt's core capabilities!
 
@@ -134,8 +134,7 @@ cd showcase/00-local-primal
 
 # Run all local demos
 for dir in 01-* 02-* 03-* 04-* 05-* 06-* 07-* 08-*/; do
-  cd "$dir" && ./run-all.sh 2>/dev/null || echo "Dir: $dir"
-  cd ..
+  for demo in "$dir"/demo-*.sh; do bash "$demo" 2>/dev/null || echo "Demo: $demo"; done
 done
 ```
 **Result**: You've seen everything rhizoCrypt can do!

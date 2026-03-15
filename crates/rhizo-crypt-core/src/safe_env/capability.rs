@@ -219,7 +219,7 @@ impl CapabilityEnv {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(clippy::unwrap_used, clippy::expect_used, unsafe_code)]
 mod tests {
     use super::*;
 
@@ -228,246 +228,254 @@ mod tests {
     #[test]
     fn test_signing_endpoint_primary() {
         let _guard = ENV_LOCK.lock();
-        std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "signing.example.com:9500");
+        unsafe { std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "signing.example.com:9500") };
         let result = CapabilityEnv::signing_endpoint();
         assert_eq!(result, Some("signing.example.com:9500".to_string()));
-        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
+        unsafe { std::env::remove_var("CRYPTO_SIGNING_ENDPOINT") };
     }
 
     #[test]
     fn test_signing_endpoint_short_form() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
-        std::env::remove_var("CRYPTO_SIGNING_ADDRESS");
-        std::env::set_var("SIGNING_ENDPOINT", "signing.example.com:9500");
+        unsafe { std::env::remove_var("CRYPTO_SIGNING_ENDPOINT") };
+        unsafe { std::env::remove_var("CRYPTO_SIGNING_ADDRESS") };
+        unsafe { std::env::set_var("SIGNING_ENDPOINT", "signing.example.com:9500") };
         let result = CapabilityEnv::signing_endpoint();
         assert_eq!(result, Some("signing.example.com:9500".to_string()));
-        std::env::remove_var("SIGNING_ENDPOINT");
+        unsafe { std::env::remove_var("SIGNING_ENDPOINT") };
     }
 
     #[test]
     fn test_signing_endpoint_legacy() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
-        std::env::remove_var("CRYPTO_SIGNING_ADDRESS");
-        std::env::remove_var("SIGNING_ENDPOINT");
-        std::env::remove_var("SIGNING_ADDRESS");
-        std::env::set_var("BEARDOG_ADDRESS", "beardog.example.com:9500");
+        unsafe { std::env::remove_var("CRYPTO_SIGNING_ENDPOINT") };
+        unsafe { std::env::remove_var("CRYPTO_SIGNING_ADDRESS") };
+        unsafe { std::env::remove_var("SIGNING_ENDPOINT") };
+        unsafe { std::env::remove_var("SIGNING_ADDRESS") };
+        unsafe { std::env::set_var("BEARDOG_ADDRESS", "beardog.example.com:9500") };
         let result = CapabilityEnv::signing_endpoint();
         assert_eq!(result, Some("beardog.example.com:9500".to_string()));
-        std::env::remove_var("BEARDOG_ADDRESS");
+        unsafe { std::env::remove_var("BEARDOG_ADDRESS") };
     }
 
     #[test]
     fn test_did_verification_endpoint_primary() {
         let _guard = ENV_LOCK.lock();
-        std::env::set_var("DID_VERIFICATION_ENDPOINT", "did.example.com:9500");
+        unsafe { std::env::set_var("DID_VERIFICATION_ENDPOINT", "did.example.com:9500") };
         let result = CapabilityEnv::did_verification_endpoint();
         assert_eq!(result, Some("did.example.com:9500".to_string()));
-        std::env::remove_var("DID_VERIFICATION_ENDPOINT");
+        unsafe { std::env::remove_var("DID_VERIFICATION_ENDPOINT") };
     }
 
     #[test]
     fn test_did_verification_endpoint_short_form() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("DID_VERIFICATION_ENDPOINT");
-        std::env::remove_var("DID_VERIFICATION_ADDRESS");
-        std::env::set_var("DID_ENDPOINT", "did-short.example.com:9500");
+        unsafe { std::env::remove_var("DID_VERIFICATION_ENDPOINT") };
+        unsafe { std::env::remove_var("DID_VERIFICATION_ADDRESS") };
+        unsafe { std::env::set_var("DID_ENDPOINT", "did-short.example.com:9500") };
         let result = CapabilityEnv::did_verification_endpoint();
         assert_eq!(result, Some("did-short.example.com:9500".to_string()));
-        std::env::remove_var("DID_ENDPOINT");
+        unsafe { std::env::remove_var("DID_ENDPOINT") };
     }
 
     #[test]
     fn test_did_verification_endpoint_legacy() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("DID_VERIFICATION_ENDPOINT");
-        std::env::remove_var("DID_VERIFICATION_ADDRESS");
-        std::env::remove_var("DID_ENDPOINT");
-        std::env::remove_var("DID_ADDRESS");
-        std::env::set_var("BEARDOG_ADDRESS", "beardog-did.example.com:9500");
+        unsafe { std::env::remove_var("DID_VERIFICATION_ENDPOINT") };
+        unsafe { std::env::remove_var("DID_VERIFICATION_ADDRESS") };
+        unsafe { std::env::remove_var("DID_ENDPOINT") };
+        unsafe { std::env::remove_var("DID_ADDRESS") };
+        unsafe { std::env::set_var("BEARDOG_ADDRESS", "beardog-did.example.com:9500") };
         let result = CapabilityEnv::did_verification_endpoint();
         assert_eq!(result, Some("beardog-did.example.com:9500".to_string()));
-        std::env::remove_var("BEARDOG_ADDRESS");
+        unsafe { std::env::remove_var("BEARDOG_ADDRESS") };
     }
 
     #[test]
     fn test_payload_storage_endpoint_primary() {
         let _guard = ENV_LOCK.lock();
-        std::env::set_var("PAYLOAD_STORAGE_ENDPOINT", "storage.example.com:9600");
+        unsafe { std::env::set_var("PAYLOAD_STORAGE_ENDPOINT", "storage.example.com:9600") };
         let result = CapabilityEnv::payload_storage_endpoint();
         assert_eq!(result, Some("storage.example.com:9600".to_string()));
-        std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT");
+        unsafe { std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT") };
     }
 
     #[test]
     fn test_payload_storage_endpoint_short_form() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT");
-        std::env::remove_var("PAYLOAD_STORAGE_ADDRESS");
-        std::env::set_var("PAYLOAD_ENDPOINT", "payload-short.example.com:9600");
+        unsafe { std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT") };
+        unsafe { std::env::remove_var("PAYLOAD_STORAGE_ADDRESS") };
+        unsafe { std::env::set_var("PAYLOAD_ENDPOINT", "payload-short.example.com:9600") };
         let result = CapabilityEnv::payload_storage_endpoint();
         assert_eq!(result, Some("payload-short.example.com:9600".to_string()));
-        std::env::remove_var("PAYLOAD_ENDPOINT");
+        unsafe { std::env::remove_var("PAYLOAD_ENDPOINT") };
     }
 
     #[test]
     fn test_payload_storage_endpoint_legacy() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT");
-        std::env::remove_var("PAYLOAD_STORAGE_ADDRESS");
-        std::env::remove_var("PAYLOAD_ENDPOINT");
-        std::env::remove_var("PAYLOAD_ADDRESS");
-        std::env::set_var("NESTGATE_ADDRESS", "nestgate.example.com:9600");
+        unsafe { std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT") };
+        unsafe { std::env::remove_var("PAYLOAD_STORAGE_ADDRESS") };
+        unsafe { std::env::remove_var("PAYLOAD_ENDPOINT") };
+        unsafe { std::env::remove_var("PAYLOAD_ADDRESS") };
+        unsafe { std::env::set_var("NESTGATE_ADDRESS", "nestgate.example.com:9600") };
         let result = CapabilityEnv::payload_storage_endpoint();
         assert_eq!(result, Some("nestgate.example.com:9600".to_string()));
-        std::env::remove_var("NESTGATE_ADDRESS");
+        unsafe { std::env::remove_var("NESTGATE_ADDRESS") };
     }
 
     #[test]
     fn test_permanent_commit_endpoint_primary() {
         let _guard = ENV_LOCK.lock();
-        std::env::set_var(
-            "STORAGE_PERMANENT_COMMIT_ENDPOINT",
-            "permanent-primary.example.com:9700",
-        );
+        unsafe {
+            std::env::set_var(
+                "STORAGE_PERMANENT_COMMIT_ENDPOINT",
+                "permanent-primary.example.com:9700",
+            );
+        }
         let result = CapabilityEnv::permanent_commit_endpoint();
         assert_eq!(result, Some("permanent-primary.example.com:9700".to_string()));
-        std::env::remove_var("STORAGE_PERMANENT_COMMIT_ENDPOINT");
+        unsafe { std::env::remove_var("STORAGE_PERMANENT_COMMIT_ENDPOINT") };
     }
 
     #[test]
     fn test_permanent_commit_endpoint_short_form() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("STORAGE_PERMANENT_COMMIT_ENDPOINT");
-        std::env::remove_var("STORAGE_PERMANENT_COMMIT_ADDRESS");
-        std::env::set_var("PERMANENT_STORAGE_ENDPOINT", "permanent.example.com:9700");
+        unsafe { std::env::remove_var("STORAGE_PERMANENT_COMMIT_ENDPOINT") };
+        unsafe { std::env::remove_var("STORAGE_PERMANENT_COMMIT_ADDRESS") };
+        unsafe { std::env::set_var("PERMANENT_STORAGE_ENDPOINT", "permanent.example.com:9700") };
         let result = CapabilityEnv::permanent_commit_endpoint();
         assert_eq!(result, Some("permanent.example.com:9700".to_string()));
-        std::env::remove_var("PERMANENT_STORAGE_ENDPOINT");
+        unsafe { std::env::remove_var("PERMANENT_STORAGE_ENDPOINT") };
     }
 
     #[test]
     fn test_permanent_commit_endpoint_legacy() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("STORAGE_PERMANENT_COMMIT_ENDPOINT");
-        std::env::remove_var("STORAGE_PERMANENT_COMMIT_ADDRESS");
-        std::env::remove_var("PERMANENT_STORAGE_ENDPOINT");
-        std::env::remove_var("PERMANENT_STORAGE_ADDRESS");
-        std::env::set_var("LOAMSPINE_ADDRESS", "loamspine.example.com:9700");
+        unsafe { std::env::remove_var("STORAGE_PERMANENT_COMMIT_ENDPOINT") };
+        unsafe { std::env::remove_var("STORAGE_PERMANENT_COMMIT_ADDRESS") };
+        unsafe { std::env::remove_var("PERMANENT_STORAGE_ENDPOINT") };
+        unsafe { std::env::remove_var("PERMANENT_STORAGE_ADDRESS") };
+        unsafe { std::env::set_var("LOAMSPINE_ADDRESS", "loamspine.example.com:9700") };
         let result = CapabilityEnv::permanent_commit_endpoint();
         assert_eq!(result, Some("loamspine.example.com:9700".to_string()));
-        std::env::remove_var("LOAMSPINE_ADDRESS");
+        unsafe { std::env::remove_var("LOAMSPINE_ADDRESS") };
     }
 
     #[test]
     fn test_compute_endpoint_preferred() {
         let _guard = ENV_LOCK.lock();
-        std::env::set_var("COMPUTE_ORCHESTRATION_ENDPOINT", "compute-pref.example.com:9800");
+        unsafe {
+            std::env::set_var("COMPUTE_ORCHESTRATION_ENDPOINT", "compute-pref.example.com:9800");
+        }
         let result = CapabilityEnv::compute_endpoint();
         assert_eq!(result, Some("compute-pref.example.com:9800".to_string()));
-        std::env::remove_var("COMPUTE_ORCHESTRATION_ENDPOINT");
+        unsafe { std::env::remove_var("COMPUTE_ORCHESTRATION_ENDPOINT") };
     }
 
     #[test]
     fn test_compute_endpoint_short_form() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("COMPUTE_ORCHESTRATION_ENDPOINT");
-        std::env::remove_var("COMPUTE_ORCHESTRATION_ADDRESS");
-        std::env::set_var("COMPUTE_ENDPOINT", "compute.example.com:9800");
+        unsafe { std::env::remove_var("COMPUTE_ORCHESTRATION_ENDPOINT") };
+        unsafe { std::env::remove_var("COMPUTE_ORCHESTRATION_ADDRESS") };
+        unsafe { std::env::set_var("COMPUTE_ENDPOINT", "compute.example.com:9800") };
         let result = CapabilityEnv::compute_endpoint();
         assert_eq!(result, Some("compute.example.com:9800".to_string()));
-        std::env::remove_var("COMPUTE_ENDPOINT");
+        unsafe { std::env::remove_var("COMPUTE_ENDPOINT") };
     }
 
     #[test]
     fn test_provenance_endpoint_preferred() {
         let _guard = ENV_LOCK.lock();
-        std::env::set_var("PROVENANCE_QUERY_ENDPOINT", "provenance-pref.example.com:9900");
+        unsafe {
+            std::env::set_var("PROVENANCE_QUERY_ENDPOINT", "provenance-pref.example.com:9900");
+        }
         let result = CapabilityEnv::provenance_endpoint();
         assert_eq!(result, Some("provenance-pref.example.com:9900".to_string()));
-        std::env::remove_var("PROVENANCE_QUERY_ENDPOINT");
+        unsafe { std::env::remove_var("PROVENANCE_QUERY_ENDPOINT") };
     }
 
     #[test]
     fn test_provenance_endpoint_short_form() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("PROVENANCE_QUERY_ENDPOINT");
-        std::env::remove_var("PROVENANCE_QUERY_ADDRESS");
-        std::env::set_var("PROVENANCE_ENDPOINT", "provenance.example.com:9900");
+        unsafe { std::env::remove_var("PROVENANCE_QUERY_ENDPOINT") };
+        unsafe { std::env::remove_var("PROVENANCE_QUERY_ADDRESS") };
+        unsafe { std::env::set_var("PROVENANCE_ENDPOINT", "provenance.example.com:9900") };
         let result = CapabilityEnv::provenance_endpoint();
         assert_eq!(result, Some("provenance.example.com:9900".to_string()));
-        std::env::remove_var("PROVENANCE_ENDPOINT");
+        unsafe { std::env::remove_var("PROVENANCE_ENDPOINT") };
     }
 
     #[test]
     fn test_discovery_endpoint_rhizocrypt_adapter() {
         let _guard = ENV_LOCK.lock();
-        std::env::set_var("RHIZOCRYPT_DISCOVERY_ADAPTER", "adapter.example.com:7500");
+        unsafe { std::env::set_var("RHIZOCRYPT_DISCOVERY_ADAPTER", "adapter.example.com:7500") };
         let result = CapabilityEnv::discovery_endpoint();
         assert_eq!(result, Some("adapter.example.com:7500".to_string()));
-        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
+        unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
     }
 
     #[test]
     fn test_discovery_endpoint_discovery_service() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
-        std::env::set_var("DISCOVERY_SERVICE_ENDPOINT", "discovery-svc.example.com:8091");
+        unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
+        unsafe {
+            std::env::set_var("DISCOVERY_SERVICE_ENDPOINT", "discovery-svc.example.com:8091");
+        }
         let result = CapabilityEnv::discovery_endpoint();
         assert_eq!(result, Some("discovery-svc.example.com:8091".to_string()));
-        std::env::remove_var("DISCOVERY_SERVICE_ENDPOINT");
+        unsafe { std::env::remove_var("DISCOVERY_SERVICE_ENDPOINT") };
     }
 
     #[test]
     fn test_discovery_endpoint_short_form() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
-        std::env::remove_var("DISCOVERY_SERVICE_ENDPOINT");
-        std::env::remove_var("DISCOVERY_SERVICE_ADDRESS");
-        std::env::set_var("DISCOVERY_ENDPOINT", "discovery.example.com:8091");
+        unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
+        unsafe { std::env::remove_var("DISCOVERY_SERVICE_ENDPOINT") };
+        unsafe { std::env::remove_var("DISCOVERY_SERVICE_ADDRESS") };
+        unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "discovery.example.com:8091") };
         let result = CapabilityEnv::discovery_endpoint();
         assert_eq!(result, Some("discovery.example.com:8091".to_string()));
-        std::env::remove_var("DISCOVERY_ENDPOINT");
+        unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
     }
 
     #[test]
     fn test_discovery_endpoint_songbird_legacy() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER");
-        std::env::remove_var("DISCOVERY_SERVICE_ENDPOINT");
-        std::env::remove_var("DISCOVERY_SERVICE_ADDRESS");
-        std::env::remove_var("DISCOVERY_ENDPOINT");
-        std::env::remove_var("DISCOVERY_ADDRESS");
-        std::env::set_var("SONGBIRD_ADDRESS", "songbird.example.com:7500");
+        unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
+        unsafe { std::env::remove_var("DISCOVERY_SERVICE_ENDPOINT") };
+        unsafe { std::env::remove_var("DISCOVERY_SERVICE_ADDRESS") };
+        unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
+        unsafe { std::env::remove_var("DISCOVERY_ADDRESS") };
+        unsafe { std::env::set_var("SONGBIRD_ADDRESS", "songbird.example.com:7500") };
         let result = CapabilityEnv::discovery_endpoint();
         assert_eq!(result, Some("songbird.example.com:7500".to_string()));
-        std::env::remove_var("SONGBIRD_ADDRESS");
+        unsafe { std::env::remove_var("SONGBIRD_ADDRESS") };
     }
 
     #[test]
     fn test_capability_endpoint_priority() {
         let _guard = ENV_LOCK.lock();
-        std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "primary.example.com:9500");
-        std::env::set_var("SIGNING_ENDPOINT", "short.example.com:9500");
-        std::env::set_var("BEARDOG_ADDRESS", "legacy.example.com:9500");
+        unsafe { std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "primary.example.com:9500") };
+        unsafe { std::env::set_var("SIGNING_ENDPOINT", "short.example.com:9500") };
+        unsafe { std::env::set_var("BEARDOG_ADDRESS", "legacy.example.com:9500") };
 
         let result = CapabilityEnv::signing_endpoint();
         assert_eq!(result, Some("primary.example.com:9500".to_string()));
 
-        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
-        std::env::remove_var("SIGNING_ENDPOINT");
-        std::env::remove_var("BEARDOG_ADDRESS");
+        unsafe { std::env::remove_var("CRYPTO_SIGNING_ENDPOINT") };
+        unsafe { std::env::remove_var("SIGNING_ENDPOINT") };
+        unsafe { std::env::remove_var("BEARDOG_ADDRESS") };
     }
 
     #[test]
     fn test_capability_endpoint_none() {
         let _guard = ENV_LOCK.lock();
-        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
-        std::env::remove_var("CRYPTO_SIGNING_ADDRESS");
-        std::env::remove_var("SIGNING_ENDPOINT");
-        std::env::remove_var("SIGNING_ADDRESS");
-        std::env::remove_var("BEARDOG_ADDRESS");
+        unsafe { std::env::remove_var("CRYPTO_SIGNING_ENDPOINT") };
+        unsafe { std::env::remove_var("CRYPTO_SIGNING_ADDRESS") };
+        unsafe { std::env::remove_var("SIGNING_ENDPOINT") };
+        unsafe { std::env::remove_var("SIGNING_ADDRESS") };
+        unsafe { std::env::remove_var("BEARDOG_ADDRESS") };
 
         let result = CapabilityEnv::signing_endpoint();
         assert_eq!(result, None);
@@ -476,9 +484,9 @@ mod tests {
     #[test]
     fn test_all_capability_endpoints() {
         let _guard = ENV_LOCK.lock();
-        std::env::set_var("SIGNING_ENDPOINT", "signing.example.com:9500");
-        std::env::set_var("DID_ENDPOINT", "did.example.com:9500");
-        std::env::set_var("PAYLOAD_STORAGE_ENDPOINT", "payload.example.com:9600");
+        unsafe { std::env::set_var("SIGNING_ENDPOINT", "signing.example.com:9500") };
+        unsafe { std::env::set_var("DID_ENDPOINT", "did.example.com:9500") };
+        unsafe { std::env::set_var("PAYLOAD_STORAGE_ENDPOINT", "payload.example.com:9600") };
 
         let map = CapabilityEnv::all_capability_endpoints();
         assert!(map.contains_key("signing"));
@@ -486,9 +494,9 @@ mod tests {
         assert!(map.contains_key("did_verification"));
         assert!(map.contains_key("payload_storage"));
 
-        std::env::remove_var("SIGNING_ENDPOINT");
-        std::env::remove_var("DID_ENDPOINT");
-        std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT");
+        unsafe { std::env::remove_var("SIGNING_ENDPOINT") };
+        unsafe { std::env::remove_var("DID_ENDPOINT") };
+        unsafe { std::env::remove_var("PAYLOAD_STORAGE_ENDPOINT") };
     }
 
     #[test]
@@ -515,7 +523,7 @@ mod tests {
             "DISCOVERY_ENDPOINT",
             "SONGBIRD_ADDRESS",
         ] {
-            std::env::remove_var(key);
+            unsafe { std::env::remove_var(key) };
         }
         assert!(CapabilityEnv::is_infant_discovery_mode());
     }
@@ -523,8 +531,8 @@ mod tests {
     #[test]
     fn test_is_infant_discovery_mode_with_endpoint() {
         let _guard = ENV_LOCK.lock();
-        std::env::set_var("SIGNING_ENDPOINT", "signing.example.com:9500");
+        unsafe { std::env::set_var("SIGNING_ENDPOINT", "signing.example.com:9500") };
         assert!(!CapabilityEnv::is_infant_discovery_mode());
-        std::env::remove_var("SIGNING_ENDPOINT");
+        unsafe { std::env::remove_var("SIGNING_ENDPOINT") };
     }
 }

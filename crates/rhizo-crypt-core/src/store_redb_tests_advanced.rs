@@ -504,11 +504,13 @@ async fn test_delete_session_multi_table_cleanup() {
     assert!(store.get_vertex(session_id, child_id).await.expect("Failed to get").is_none());
     assert!(store.get_genesis(session_id).await.expect("Failed to get genesis").is_empty());
     assert!(store.get_frontier(session_id).await.expect("Failed to get frontier").is_empty());
-    assert!(store
-        .get_children(session_id, genesis_id)
-        .await
-        .expect("Failed to get children")
-        .is_empty());
+    assert!(
+        store
+            .get_children(session_id, genesis_id)
+            .await
+            .expect("Failed to get children")
+            .is_empty()
+    );
     assert_eq!(store.count_vertices(session_id).await.expect("Failed to count"), 0);
 }
 

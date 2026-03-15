@@ -73,13 +73,13 @@ impl ProvenanceNotifier {
     /// Returns error if connection fails.
     pub async fn connect(&self) -> Result<()> {
         // Try discovery first
-        if let Some(registry) = &self.registry {
-            if let Some(endpoint) = registry.get_endpoint(&Capability::ProvenanceQuery).await {
-                info!(address = %endpoint.addr, "Discovered provenance provider via registry");
-                *self.endpoint.write().await = Some(endpoint.addr);
-                *self.state.write().await = ClientState::Connected;
-                return Ok(());
-            }
+        if let Some(registry) = &self.registry
+            && let Some(endpoint) = registry.get_endpoint(&Capability::ProvenanceQuery).await
+        {
+            info!(address = %endpoint.addr, "Discovered provenance provider via registry");
+            *self.endpoint.write().await = Some(endpoint.addr);
+            *self.state.write().await = ClientState::Connected;
+            return Ok(());
         }
 
         // Fall back to configured address
@@ -263,9 +263,9 @@ impl ProvenanceNotifier {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::MerkleRoot;
     use crate::types::{Did, Timestamp, VertexId};
     use crate::types_ecosystem::provenance::VertexRef;
-    use crate::MerkleRoot;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_notifier_creation() {

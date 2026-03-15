@@ -454,15 +454,19 @@ mod tests {
             entry_hash: [0u8; 32],
             index: 1,
         };
-        assert!(DehydrationStatus::Completed {
-            commit_ref
-        }
-        .is_complete());
+        assert!(
+            DehydrationStatus::Completed {
+                commit_ref
+            }
+            .is_complete()
+        );
 
-        assert!(DehydrationStatus::Failed {
-            error: "test".to_string()
-        }
-        .is_failed());
+        assert!(
+            DehydrationStatus::Failed {
+                error: "test".to_string()
+            }
+            .is_failed()
+        );
     }
 
     #[test]

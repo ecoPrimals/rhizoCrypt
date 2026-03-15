@@ -204,14 +204,18 @@ mod tests {
     #[test]
     fn test_health_status() {
         assert!(HealthStatus::Healthy.is_healthy());
-        assert!(!HealthStatus::Degraded {
-            reason: "test".into()
-        }
-        .is_healthy());
-        assert!(!HealthStatus::Unhealthy {
-            reason: "test".into()
-        }
-        .is_healthy());
+        assert!(
+            !HealthStatus::Degraded {
+                reason: "test".into()
+            }
+            .is_healthy()
+        );
+        assert!(
+            !HealthStatus::Unhealthy {
+                reason: "test".into()
+            }
+            .is_healthy()
+        );
     }
 
     #[test]
