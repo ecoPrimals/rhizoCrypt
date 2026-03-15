@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-or-later |
-| Tests | 882+ passing (default features) |
+| Tests | 907+ passing (default features) |
 | Coverage | 90.88% line coverage (llvm-cov verified) |
 | Clippy | 0 warnings (pedantic + nursery + cargo, all features) |
 | Unsafe | `#![forbid(unsafe_code)]` workspace-wide |

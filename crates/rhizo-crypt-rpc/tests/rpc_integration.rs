@@ -470,19 +470,24 @@ async fn test_rpc_merkle_operations() {
 /// Test slice operations via RPC.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_rpc_slice_operations() {
-    use rhizo_crypt_core::SliceMode;
+    use rhizo_crypt_core::{Did, SessionId, SliceMode, VertexId};
     use rhizo_crypt_rpc::CheckoutSliceRequest;
 
     let (_primal, client, server_handle) = setup_server_client(19609).await;
 
     // Checkout a slice
     let checkout_request = CheckoutSliceRequest {
-        spine_index: 0,
+        spine_id: "spine-0".to_string(),
+        entry_hash: "00".repeat(32),
+        entry_index: 0,
         mode: SliceMode::Copy {
             allow_recopy: true,
         },
-        lender: None,
-        borrower: None,
+        owner: Did::new("did:eco:owner"),
+        holder: Did::new("did:eco:holder"),
+        session_id: SessionId::now(),
+        checkout_vertex: VertexId::ZERO,
+        certificate_id: None,
         duration_seconds: Some(3600),
     };
     let slice_id = client.checkout_slice(checkout_request).await.expect("should checkout slice");

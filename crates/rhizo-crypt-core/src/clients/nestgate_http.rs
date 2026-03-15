@@ -13,6 +13,9 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Default MIME content type for untyped binary blobs.
+const DEFAULT_CONTENT_TYPE: &str = "application/octet-stream";
+
 // ============================================================================
 // HTTP Request/Response Types (mirrors NestGate's API)
 // ============================================================================
@@ -31,7 +34,7 @@ pub struct HttpStoreBlobRequest {
 }
 
 fn default_content_type() -> String {
-    "application/octet-stream".to_string()
+    DEFAULT_CONTENT_TYPE.to_string()
 }
 
 /// Store blob response.
@@ -141,7 +144,7 @@ impl NestGateHttpClient {
 
         let request = HttpStoreBlobRequest {
             data: STANDARD.encode(data),
-            content_type: content_type.unwrap_or("application/octet-stream").to_string(),
+            content_type: content_type.unwrap_or(DEFAULT_CONTENT_TYPE).to_string(),
             metadata: std::collections::HashMap::new(),
         };
 
@@ -169,10 +172,12 @@ impl NestGateHttpClient {
 
     /// Retrieve a blob from NestGate by reference.
     ///
+    /// Returns the blob as `bytes::Bytes` for zero-copy downstream use.
+    ///
     /// # Errors
     ///
     /// Returns error if the HTTP request fails, blob not found, or response cannot be parsed.
-    pub async fn retrieve(&self, reference: &str) -> Result<Vec<u8>, NestGateHttpError> {
+    pub async fn retrieve(&self, reference: &str) -> Result<bytes::Bytes, NestGateHttpError> {
         use base64::{engine::general_purpose::STANDARD, Engine};
 
         let response = self
@@ -198,7 +203,10 @@ impl NestGateHttpClient {
         let retrieve_response: HttpRetrieveBlobResponse =
             response.json().await.map_err(NestGateHttpError::Parse)?;
 
-        STANDARD.decode(&retrieve_response.data).map_err(|_| NestGateHttpError::InvalidData)
+        STANDARD
+            .decode(&retrieve_response.data)
+            .map(bytes::Bytes::from)
+            .map_err(|_| NestGateHttpError::InvalidData)
     }
 
     /// Check if a blob exists.
@@ -513,7 +521,7 @@ mod tests {
 
         let client = NestGateHttpClient::new(base_url, 5000).unwrap();
         let data = client.retrieve("hash123").await.unwrap();
-        assert_eq!(data, b"retrieved data");
+        assert_eq!(&data[..], b"retrieved data");
     }
 
     #[cfg(feature = "live-clients")]

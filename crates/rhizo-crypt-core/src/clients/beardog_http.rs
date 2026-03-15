@@ -13,6 +13,9 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Default cryptographic key type for signing operations.
+const DEFAULT_KEY_TYPE: &str = "ed25519";
+
 // ============================================================================
 // HTTP Request/Response Types (mirrors BearDog's API)
 // ============================================================================
@@ -28,7 +31,7 @@ pub struct HttpSignRequest {
 }
 
 fn default_key_type() -> String {
-    "ed25519".to_string()
+    DEFAULT_KEY_TYPE.to_string()
 }
 
 /// Sign response from BearDog HTTP API.
@@ -144,15 +147,17 @@ impl BearDogHttpClient {
 
     /// Sign data using BearDog.
     ///
+    /// Returns the signature as `bytes::Bytes` for zero-copy downstream use.
+    ///
     /// # Errors
     ///
     /// Returns error if the HTTP request fails or response cannot be parsed.
-    pub async fn sign(&self, data: &[u8]) -> Result<Vec<u8>, BearDogHttpError> {
+    pub async fn sign(&self, data: &[u8]) -> Result<bytes::Bytes, BearDogHttpError> {
         use base64::{engine::general_purpose::STANDARD, Engine};
 
         let request = HttpSignRequest {
             data: STANDARD.encode(data),
-            key_type: "ed25519".to_string(),
+            key_type: DEFAULT_KEY_TYPE.to_string(),
         };
 
         let response = self
@@ -174,7 +179,10 @@ impl BearDogHttpClient {
             return Err(BearDogHttpError::SigningFailed);
         }
 
-        STANDARD.decode(&sign_response.signature).map_err(|_| BearDogHttpError::InvalidSignature)
+        STANDARD
+            .decode(&sign_response.signature)
+            .map(bytes::Bytes::from)
+            .map_err(|_| BearDogHttpError::InvalidSignature)
     }
 
     /// Verify a signature using BearDog.
@@ -439,7 +447,7 @@ mod tests {
         let client = BearDogHttpClient::new(base_url, 5000).unwrap();
         let data = b"hello world";
         let signature = client.sign(data).await.unwrap();
-        assert_eq!(signature, b"mock-signature-bytes");
+        assert_eq!(&signature[..], b"mock-signature-bytes");
     }
 
     #[cfg(feature = "live-clients")]

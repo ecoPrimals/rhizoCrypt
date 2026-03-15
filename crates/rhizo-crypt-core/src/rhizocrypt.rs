@@ -55,6 +55,8 @@ pub struct RhizoCrypt {
     sessions: Arc<DashMap<SessionId, Session>>,
     slices: Arc<DashMap<SliceId, Slice>>,
     dehydration_status: Arc<DashMap<SessionId, dehydration::DehydrationStatus>>,
+    // O(1) vertex → session lookup (populated on append, cleaned on discard)
+    vertex_session_index: Arc<DashMap<VertexId, SessionId>>,
     // Atomic metrics (lock-free)
     metrics: Arc<PrimalMetrics>,
     // Provenance notifier (optional, non-fatal)
@@ -76,6 +78,7 @@ impl RhizoCrypt {
             sessions: Arc::new(DashMap::new()),
             slices: Arc::new(DashMap::new()),
             dehydration_status: Arc::new(DashMap::new()),
+            vertex_session_index: Arc::new(DashMap::new()),
             metrics: Arc::new(PrimalMetrics::new()),
             provenance_notifier: Arc::new(ProvenanceNotifier::new(
                 ProvenanceProviderConfig::from_env(),
@@ -120,6 +123,12 @@ impl RhizoCrypt {
     #[must_use]
     pub fn uptime_secs(&self) -> Option<u64> {
         self.started_at.map(|s| s.elapsed().as_secs())
+    }
+
+    /// Look up which session owns a vertex (O(1) via index).
+    #[must_use]
+    pub fn session_for_vertex(&self, vertex_id: VertexId) -> Option<SessionId> {
+        self.vertex_session_index.get(&vertex_id).map(|e| *e.value())
     }
 
     // ========================================================================
@@ -181,9 +190,10 @@ impl RhizoCrypt {
         let dag_store = self.dag_store().await?;
         dag_store.delete_session(session_id).await?;
 
-        // Clean up slices and dehydration status
+        // Clean up slices, dehydration status, and vertex index
         self.slices.retain(|_, v| v.session_id != session_id);
         self.dehydration_status.remove(&session_id);
+        self.vertex_session_index.retain(|_, sid| *sid != session_id);
 
         Ok(())
     }
@@ -229,20 +239,19 @@ impl RhizoCrypt {
             session.add_agent(agent.clone());
         }
 
-        // Update frontier
-        let parents: Vec<VertexId> = vertex.parents.clone();
-        let mut v = vertex.clone();
-        let vertex_id = v.id()?;
+        // Compute ID once, update frontier, then release session lock
+        let parents = vertex.parents.clone();
+        let mut vertex = vertex;
+        let vertex_id = vertex.id()?;
         session.update_frontier(vertex_id, &parents);
 
         // Release session lock before expensive DAG operation
         drop(session_entry);
 
-        // Store the vertex
+        // Store the vertex and index it for O(1) lookup
         let dag_store = self.dag_store().await?;
-        let mut v = vertex;
-        let vertex_id = v.id()?;
-        dag_store.put_vertex(session_id, v).await?;
+        dag_store.put_vertex(session_id, vertex).await?;
+        self.vertex_session_index.insert(vertex_id, session_id);
         self.metrics.inc_vertices_appended();
 
         Ok(vertex_id)
@@ -681,6 +690,7 @@ impl PrimalLifecycle for RhizoCrypt {
             *payload_store = None;
         }
 
+        self.vertex_session_index.clear();
         self.started_at = None;
         self.state = PrimalState::Stopped;
         tracing::info!(primal = %self.config.name, "stopped");

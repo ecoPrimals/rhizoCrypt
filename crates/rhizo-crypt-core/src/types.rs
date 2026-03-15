@@ -8,6 +8,7 @@
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::sync::Arc;
 
 /// 32-byte content hash (Blake3).
 pub type ContentHash = [u8; 32];
@@ -198,14 +199,22 @@ impl fmt::Display for PayloadRef {
 }
 
 /// BearDog Decentralized Identifier (DID).
+///
+/// Internally backed by `Arc<str>` for O(1) cloning — DIDs are shared across
+/// sessions, slices, dehydration summaries, and RPC boundaries.
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Did(pub String);
+#[serde(transparent)]
+pub struct Did(Arc<str>);
+
+/// Sentinel value for anonymous agents (allocated once).
+static ANONYMOUS_DID: std::sync::LazyLock<Did> =
+    std::sync::LazyLock::new(|| Did(Arc::from("did:key:anonymous")));
 
 impl Did {
     /// Create a new DID from a string.
     #[must_use]
-    pub fn new(did: impl Into<String>) -> Self {
-        Self(did.into())
+    pub fn new(did: impl AsRef<str>) -> Self {
+        Self(Arc::from(did.as_ref()))
     }
 
     /// Get the DID as a string.
@@ -229,7 +238,7 @@ impl fmt::Display for Did {
 
 impl Default for Did {
     fn default() -> Self {
-        Self("did:key:anonymous".to_string())
+        ANONYMOUS_DID.clone()
     }
 }
 

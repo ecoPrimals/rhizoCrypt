@@ -44,7 +44,7 @@ pub async fn handle_request(
 
     debug!(method = %method, "JSON-RPC request");
 
-    let result = match method {
+    match method {
         "dag.session.create" => dispatch_session_create(&server, params).await,
         "dag.session.get" => dispatch_session_get(&server, params).await,
         "dag.session.list" => dispatch_session_list(&server).await,
@@ -67,10 +67,8 @@ pub async fn handle_request(
         "dag.dehydrate.status" => dispatch_dehydrate_status(&server, params).await,
         "system.health" => dispatch_health(&server).await,
         "system.metrics" => dispatch_metrics(&server).await,
-        _ => return Err(HandlerError::MethodNotFound(request.method)),
-    };
-
-    result
+        _ => Err(HandlerError::MethodNotFound(request.method)),
+    }
 }
 
 fn get_obj(params: &Value) -> Result<&serde_json::Map<String, Value>, HandlerError> {
@@ -396,24 +394,34 @@ async fn dispatch_slice_checkout(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let spine_index = obj
-        .get("spine_index")
+    let spine_id = get_str(obj, "spine_id")?.to_string();
+    let entry_hash = get_str(obj, "entry_hash")?.to_string();
+    let entry_index = obj
+        .get("entry_index")
         .and_then(Value::as_u64)
-        .ok_or_else(|| HandlerError::InvalidParams("missing spine_index".to_string()))?;
+        .ok_or_else(|| HandlerError::InvalidParams("missing entry_index".to_string()))?;
     let mode = serde_json::from_value(obj.get("mode").cloned().unwrap_or(Value::Null)).unwrap_or(
         SliceMode::Copy {
             allow_recopy: false,
         },
     );
-    let lender = get_opt_str(obj, "lender").map(parse_did);
-    let borrower = get_opt_str(obj, "borrower").map(parse_did);
+    let owner = parse_did(get_str(obj, "owner")?);
+    let holder = parse_did(get_str(obj, "holder")?);
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
+    let checkout_vertex = parse_vertex_id(get_str(obj, "checkout_vertex")?)?;
+    let certificate_id = get_opt_str(obj, "certificate_id").map(String::from);
     let duration_seconds = obj.get("duration_seconds").and_then(Value::as_u64);
 
     let req = CheckoutSliceRequest {
-        spine_index,
+        spine_id,
+        entry_hash,
+        entry_index,
         mode,
-        lender,
-        borrower,
+        owner,
+        holder,
+        session_id,
+        checkout_vertex,
+        certificate_id,
         duration_seconds,
     };
     let id = server.clone().checkout_slice(tarpc::context::current(), req).await?;

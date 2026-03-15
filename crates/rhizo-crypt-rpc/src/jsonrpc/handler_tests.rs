@@ -209,7 +209,19 @@ async fn test_slice_operations() {
     let req = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
-    let req = make_request("dag.slice.checkout", Some(json!({"spine_index": 0})));
+    let zero_vertex = "0".repeat(64);
+    let req = make_request(
+        "dag.slice.checkout",
+        Some(json!({
+            "spine_id": "spine-0",
+            "entry_hash": "00".repeat(32),
+            "entry_index": 0,
+            "owner": "did:eco:owner",
+            "holder": "did:eco:holder",
+            "session_id": session_id,
+            "checkout_vertex": zero_vertex,
+        })),
+    );
     let result = handle_request(primal.clone(), req).await.unwrap();
     let slice_id = result.as_str().unwrap();
     assert!(uuid::Uuid::parse_str(slice_id).is_ok());
@@ -466,12 +478,17 @@ async fn test_slice_checkout_with_lender_borrower() {
     let req = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
+    let zero_vertex = "0".repeat(64);
     let req = make_request(
         "dag.slice.checkout",
         Some(json!({
-            "spine_index": 0,
-            "lender": "did:key:lender",
-            "borrower": "did:key:borrower"
+            "spine_id": "spine-0",
+            "entry_hash": "00".repeat(32),
+            "entry_index": 0,
+            "owner": "did:key:lender",
+            "holder": "did:key:borrower",
+            "session_id": session_id,
+            "checkout_vertex": zero_vertex,
         })),
     );
     let result = handle_request(primal.clone(), req).await.unwrap();
@@ -683,7 +700,7 @@ async fn test_vertex_children_invalid_vertex_id() {
 // --- dispatch_slice_checkout / dispatch_slice_get / dispatch_slice_list / dispatch_slice_resolve ---
 
 #[tokio::test]
-async fn test_slice_checkout_missing_spine_index() {
+async fn test_slice_checkout_missing_required_fields() {
     let primal = create_test_primal().await;
     let req = make_request("dag.slice.checkout", Some(json!({})));
     let err = handle_request(primal, req).await.unwrap_err();
@@ -740,7 +757,19 @@ async fn test_slice_resolve_invalid_session_id() {
     let req = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
-    let req = make_request("dag.slice.checkout", Some(json!({"spine_index": 0})));
+    let zero_vertex = "0".repeat(64);
+    let req = make_request(
+        "dag.slice.checkout",
+        Some(json!({
+            "spine_id": "spine-0",
+            "entry_hash": "00".repeat(32),
+            "entry_index": 0,
+            "owner": "did:eco:owner",
+            "holder": "did:eco:holder",
+            "session_id": session_id,
+            "checkout_vertex": zero_vertex,
+        })),
+    );
     let result = handle_request(primal.clone(), req).await.unwrap();
     let slice_id = result.as_str().unwrap();
 
@@ -824,11 +853,18 @@ async fn test_slice_checkout_with_mode_and_duration() {
     let req = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
+    let zero_vertex = "0".repeat(64);
     let req = make_request(
         "dag.slice.checkout",
         Some(json!({
-            "spine_index": 0,
+            "spine_id": "spine-0",
+            "entry_hash": "00".repeat(32),
+            "entry_index": 0,
             "mode": {"Copy": {"allow_recopy": true}},
+            "owner": "did:eco:owner",
+            "holder": "did:eco:holder",
+            "session_id": session_id,
+            "checkout_vertex": zero_vertex,
             "duration_seconds": 3600
         })),
     );

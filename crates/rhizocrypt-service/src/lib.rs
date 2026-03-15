@@ -385,10 +385,10 @@ mod tests {
 
     #[test]
     fn test_service_error_display_discovery() {
-        let err = ServiceError::Discovery("no songbird".to_string());
+        let err = ServiceError::Discovery("no discovery adapter available".to_string());
         let s = err.to_string();
         assert!(s.contains("discovery registration failed"));
-        assert!(s.contains("no songbird"));
+        assert!(s.contains("no discovery adapter"));
     }
 
     #[test]

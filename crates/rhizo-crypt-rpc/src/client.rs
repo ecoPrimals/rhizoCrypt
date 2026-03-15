@@ -364,7 +364,7 @@ impl RpcClient {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use rhizo_crypt_core::{EventType, SessionState, SessionType, SliceMode, Timestamp};
+    use rhizo_crypt_core::{Did, EventType, SessionState, SessionType, SliceMode, Timestamp};
     use std::net::SocketAddr;
 
     // ------------------------------------------------------------------------
@@ -523,12 +523,17 @@ mod tests {
     async fn test_checkout_slice_without_connection_errors_gracefully() {
         let client = client_with_dropped_transport();
         let request = CheckoutSliceRequest {
-            spine_index: 0,
+            spine_id: "spine-0".to_string(),
+            entry_hash: "00".repeat(32),
+            entry_index: 0,
             mode: SliceMode::Copy {
                 allow_recopy: false,
             },
-            lender: None,
-            borrower: None,
+            owner: Did::new("did:eco:owner"),
+            holder: Did::new("did:eco:holder"),
+            session_id: SessionId::now(),
+            checkout_vertex: VertexId::ZERO,
+            certificate_id: None,
             duration_seconds: None,
         };
         let result = client.checkout_slice(request).await;
@@ -601,17 +606,23 @@ mod tests {
     #[test]
     fn test_checkout_slice_request_serialization() {
         let request = CheckoutSliceRequest {
-            spine_index: 42,
+            spine_id: "spine-42".to_string(),
+            entry_hash: "ab".repeat(32),
+            entry_index: 42,
             mode: SliceMode::Copy {
                 allow_recopy: true,
             },
-            lender: None,
-            borrower: None,
+            owner: Did::new("did:eco:owner"),
+            holder: Did::new("did:eco:holder"),
+            session_id: SessionId::now(),
+            checkout_vertex: VertexId::ZERO,
+            certificate_id: None,
             duration_seconds: Some(3600),
         };
         let bytes = bincode::serialize(&request).unwrap();
         let parsed: CheckoutSliceRequest = bincode::deserialize(&bytes).unwrap();
-        assert_eq!(parsed.spine_index, request.spine_index);
+        assert_eq!(parsed.spine_id, request.spine_id);
+        assert_eq!(parsed.entry_index, request.entry_index);
         assert_eq!(parsed.duration_seconds, request.duration_seconds);
     }
 

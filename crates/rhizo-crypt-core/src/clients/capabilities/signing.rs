@@ -186,7 +186,7 @@ impl SigningClient {
 
     /// Sign data that is already owned as `Bytes` (zero-copy path).
     ///
-    /// Prefer this over [`sign`] when the caller already holds `Bytes` or `Vec<u8>`
+    /// Prefer this over [`Self::sign`] when the caller already holds `Bytes` or `Vec<u8>`
     /// to avoid an extra allocation.
     ///
     /// # Errors

@@ -88,14 +88,24 @@ pub struct QueryRequest {
 /// Slice checkout request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CheckoutSliceRequest {
-    /// Source spine index.
-    pub spine_index: u64,
+    /// Spine ID from LoamSpine commit.
+    pub spine_id: String,
+    /// Entry hash from LoamSpine commit (hex-encoded, 32 bytes).
+    pub entry_hash: String,
+    /// Entry index in the spine.
+    pub entry_index: u64,
     /// Slice mode.
     pub mode: SliceMode,
-    /// Lender DID (for loans).
-    pub lender: Option<Did>,
-    /// Borrower DID (for loans).
-    pub borrower: Option<Did>,
+    /// Owner DID (lender).
+    pub owner: Did,
+    /// Holder DID (borrower).
+    pub holder: Did,
+    /// Session ID to associate the slice with.
+    pub session_id: SessionId,
+    /// Vertex ID marking the checkout point.
+    pub checkout_vertex: VertexId,
+    /// Optional certificate ID from the spine.
+    pub certificate_id: Option<String>,
     /// Duration in seconds.
     pub duration_seconds: Option<u64>,
 }
@@ -461,22 +471,15 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _root: MerkleRoot,
         proof: MerkleProof,
     ) -> Result<bool, RpcError> {
-        // Get the vertex to verify against
-        // The proof contains the session context implicitly through the vertex_id
-        // For a stateless verification, we need to look up the vertex
-        // However, the proof itself can be verified if we have the vertex data
+        let session_id = self
+            .primal
+            .session_for_vertex(proof.vertex_id)
+            .ok_or_else(|| RpcError::VertexNotFound(proof.vertex_id.to_string()))?;
 
-        // For now, we'll attempt to look up any matching vertex
-        // In production, this would need session context
-        let sessions = self.primal.list_sessions();
-        for session in sessions {
-            if let Ok(vertex) = self.primal.get_vertex(session.id, proof.vertex_id).await {
-                return Ok(proof.verify(&vertex));
-            }
-        }
+        let vertex =
+            self.primal.get_vertex(session_id, proof.vertex_id).await.map_err(RpcError::from)?;
 
-        // If we can't find the vertex, we can't verify
-        Err(RpcError::VertexNotFound(proof.vertex_id.to_string()))
+        Ok(proof.verify(&vertex))
     }
 
     async fn checkout_slice(
@@ -484,24 +487,30 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         request: CheckoutSliceRequest,
     ) -> Result<SliceId, RpcError> {
-        use rhizo_crypt_core::{slice, VertexId};
+        use rhizo_crypt_core::slice;
 
-        // Build slice from request
+        let entry_hash_bytes = hex::decode(&request.entry_hash)
+            .map_err(|e| RpcError::InvalidRequest(format!("invalid entry_hash hex: {e}")))?;
+        let mut entry_hash = [0u8; 32];
+        let copy_len = entry_hash_bytes.len().min(32);
+        entry_hash[..copy_len].copy_from_slice(&entry_hash_bytes[..copy_len]);
+
         let origin = slice::SliceOrigin {
-            spine_id: format!("spine-{}", request.spine_index),
-            entry_hash: [0u8; 32], // Would come from LoamSpine in production
-            entry_index: request.spine_index,
-            certificate_id: None,
-            owner: request.lender.clone().unwrap_or_default(),
+            spine_id: request.spine_id,
+            entry_hash,
+            entry_index: request.entry_index,
+            certificate_id: request.certificate_id,
+            owner: request.owner,
         };
 
-        let holder = request.borrower.clone().unwrap_or_default();
-        let session_id = rhizo_crypt_core::SessionId::now(); // Would be provided in production
-        let checkout_vertex = VertexId::ZERO;
-
-        let slice =
-            slice::SliceBuilder::new(origin, holder, request.mode, session_id, checkout_vertex)
-                .build();
+        let slice = slice::SliceBuilder::new(
+            origin,
+            request.holder,
+            request.mode,
+            request.session_id,
+            request.checkout_vertex,
+        )
+        .build();
 
         self.primal.checkout_slice(slice).map_err(RpcError::from)
     }

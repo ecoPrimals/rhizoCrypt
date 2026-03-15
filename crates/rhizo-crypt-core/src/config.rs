@@ -314,7 +314,7 @@ impl RpcConfig {
     #[must_use]
     pub const fn localhost_auto() -> Self {
         Self {
-            host: Cow::Borrowed("127.0.0.1"),
+            host: Cow::Borrowed(constants::LOCALHOST),
             port: 0,
             enabled: true,
             max_connections: 1000,

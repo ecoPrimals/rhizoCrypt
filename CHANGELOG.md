@@ -5,6 +5,57 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-15 (session 8)
+
+### Changed
+
+#### O(1) Vertex-to-Session Index
+- Added `vertex_session_index: Arc<DashMap<VertexId, SessionId>>` to `RhizoCrypt`
+- Populated on `append_vertex`, cleaned on `discard_session` and `stop`
+- Exposed `session_for_vertex()` for O(1) lookup
+- `verify_proof` RPC now uses the index directly — eliminated O(N) session scan
+
+#### CheckoutSlice Evolution
+- Replaced placeholder `spine_index: u64` with real LoamSpine parameters: `spine_id`, `entry_hash` (hex), `entry_index`, `session_id`, `checkout_vertex`, `owner`, `holder`, `certificate_id`
+- Eliminated all three placeholder values (`[0u8; 32]`, `SessionId::now()`, `VertexId::ZERO`)
+- Added hex decode with proper error handling via `RpcError::InvalidRequest`
+- Updated JSON-RPC handler, tarpc client, handler tests, and integration tests
+
+#### Zero-Copy DID (`Did` → `Arc<str>`)
+- Evolved `Did(pub String)` to `Did(Arc<str>)` with `#[serde(transparent)]`
+- `Did::default()` uses `LazyLock` static — allocated once, cloned O(1)
+- All DID cloning across sessions, slices, dehydration, and RPC is now a trivial pointer increment
+
+#### Additional Improvements
+- Fixed broken intra-doc link in `signing.rs` (`[sign]` → `[Self::sign]`)
+- Removed unnecessary intermediate `result` variable in JSON-RPC handler
+- Replaced hardcoded `"no songbird"` test assertion with capability-based language
+- Extracted `DEFAULT_KEY_TYPE` and `DEFAULT_CONTENT_TYPE` constants in HTTP clients
+- Evolved `beardog_http::sign()` and `nestgate_http::retrieve()` to return `bytes::Bytes`
+- Used central `constants::LOCALHOST` instead of hardcoded `"127.0.0.1"` in config
+- Eliminated redundant `clone()` and double `id()` call in `append_vertex`
+
+#### Documentation & Cleanup
+- Updated README test count to 907+
+- Updated CHANGELOG with session 8 entry
+- Moved cross-project audit doc to wateringHole fossil record
+- Created new wateringHole handoff
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery + cargo, all features) | Clean (0 warnings) |
+| `cargo doc --workspace --all-features --no-deps -D warnings` | Clean |
+| `cargo test --workspace` | 907 pass, 0 fail |
+| `#![forbid(unsafe_code)]` | Workspace-wide |
+| SPDX headers | All 105 `.rs` files |
+| Max file size | All under 1000 lines |
+| Production unwrap/expect | Zero |
+
+---
+
 ## [0.13.0-dev] - 2026-03-15 (session 7)
 
 ### Changed
@@ -48,7 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | `cargo fmt --check` | Clean |
 | `cargo clippy` (pedantic + nursery + cargo, all features) | Clean (0 warnings) |
 | `cargo doc --workspace --all-features --no-deps` | Clean |
-| `cargo test --workspace` | 882+ pass, 0 fail (default features) |
+| `cargo test --workspace` | 907 pass, 0 fail |
 | `cargo llvm-cov` | 90.88% line coverage |
 | `#![forbid(unsafe_code)]` | Workspace-wide (all entry points) |
 | SPDX headers | All 105 `.rs` files |
@@ -444,6 +495,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.13.0-dev** (2026-03-15 s8): O(1) vertex-to-session index, checkout_slice evolution, Did→Arc\<str\>, 907 tests
 - **0.13.0-dev** (2026-03-15 s7): scyBorg license, zero-copy signing, store_redb refactor, modern async traits, docs cleanup
 - **0.13.0-dev** (2026-03-14 s4): Sovereignty cleanup, 1075 tests, 91% coverage, doc tests rewritten, capability-based errors
 - **0.13.0-dev** (2026-03-14 s3): 90% coverage, 1022 tests, platform-agnostic transport, doctor subcommand, zero-copy handler
