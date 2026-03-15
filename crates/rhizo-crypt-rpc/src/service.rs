@@ -142,6 +142,19 @@ pub struct ServiceMetrics {
     pub dehydrations_completed: u64,
 }
 
+/// Capability descriptor per Spring-as-Niche deployment standard.
+///
+/// Describes a capability this primal exposes for runtime discovery.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapabilityDescriptor {
+    /// Capability domain (e.g. "dag", "health").
+    pub domain: String,
+    /// Semantic method names within this domain.
+    pub methods: Vec<String>,
+    /// Protocol version.
+    pub version: String,
+}
+
 // ============================================================================
 // tarpc Service Trait
 // ============================================================================
@@ -257,6 +270,13 @@ pub trait RhizoCryptRpc {
 
     /// Get service metrics.
     async fn metrics() -> Result<ServiceMetrics, RpcError>;
+
+    // ========================================================================
+    // Capability Discovery (Spring-as-Niche Standard)
+    // ========================================================================
+
+    /// List capabilities this primal provides.
+    async fn list_capabilities() -> Result<Vec<CapabilityDescriptor>, RpcError>;
 }
 
 // ============================================================================
@@ -586,6 +606,56 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
             slices_checked_out: metrics.get_slices_checked_out(),
             dehydrations_completed: metrics.get_dehydrations_completed(),
         })
+    }
+
+    async fn list_capabilities(
+        self,
+        _: tarpc::context::Context,
+    ) -> Result<Vec<CapabilityDescriptor>, RpcError> {
+        Ok(vec![
+            CapabilityDescriptor {
+                domain: "dag".to_string(),
+                methods: vec![
+                    "dag.session.create",
+                    "dag.session.get",
+                    "dag.session.list",
+                    "dag.session.discard",
+                    "dag.event.append",
+                    "dag.event.append_batch",
+                    "dag.vertex.get",
+                    "dag.vertex.query",
+                    "dag.vertex.children",
+                    "dag.frontier.get",
+                    "dag.genesis.get",
+                    "dag.merkle.root",
+                    "dag.merkle.proof",
+                    "dag.merkle.verify",
+                    "dag.slice.checkout",
+                    "dag.slice.get",
+                    "dag.slice.list",
+                    "dag.slice.resolve",
+                    "dag.dehydration.trigger",
+                    "dag.dehydration.status",
+                ]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+            },
+            CapabilityDescriptor {
+                domain: "health".to_string(),
+                methods: vec!["health.check", "health.metrics"]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+            },
+            CapabilityDescriptor {
+                domain: "capability".to_string(),
+                methods: vec!["capability.list".to_string()],
+                version: env!("CARGO_PKG_VERSION").to_string(),
+            },
+        ])
     }
 }
 

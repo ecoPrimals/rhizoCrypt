@@ -354,6 +354,22 @@ impl RpcClient {
             .await
             .map_err(|e| RpcError::Transport(e.to_string()))?
     }
+
+    // ========================================================================
+    // Capability Discovery (Spring-as-Niche Standard)
+    // ========================================================================
+
+    /// List capabilities this primal provides.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
+    pub async fn list_capabilities(&self) -> RpcResult<Vec<crate::service::CapabilityDescriptor>> {
+        self.inner
+            .list_capabilities(context::current())
+            .await
+            .map_err(|e| RpcError::Transport(e.to_string()))?
+    }
 }
 
 // ============================================================================

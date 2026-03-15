@@ -80,8 +80,8 @@ echo -e "${YELLOW}📝 Step 3: Health Check${NC}"
 echo "────────────────────────"
 echo ""
 
-echo "Checking service health..."
-echo "  $ curl http://localhost:9400/health"
+echo "Checking service health via JSON-RPC..."
+echo '  $ curl -s -X POST http://localhost:9401/rpc -H "Content-Type: application/json" -d '"'"'{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}'"'"
 echo ""
 
 sleep 1
@@ -174,7 +174,7 @@ echo -e "${YELLOW}📝 Step 6: Monitoring${NC}"
 echo "──────────────────────"
 echo ""
 
-echo "Metrics endpoint: http://localhost:9400/metrics"
+echo 'Metrics via JSON-RPC: POST http://localhost:9401/rpc {"method":"health.metrics"}'
 echo ""
 
 cat << 'METRICS'

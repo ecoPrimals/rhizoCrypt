@@ -71,6 +71,8 @@ pub enum RpcMethod {
     Health,
     /// Metrics.
     Metrics,
+    /// List capabilities.
+    ListCapabilities,
 }
 
 impl RpcMethod {
@@ -100,6 +102,7 @@ impl RpcMethod {
             Self::GetDehydrationStatus => "get_dehydration_status",
             Self::Health => "health",
             Self::Metrics => "metrics",
+            Self::ListCapabilities => "list_capabilities",
         }
     }
 }
@@ -185,6 +188,9 @@ impl Histogram {
         // Integer microseconds for lock-free atomicity; negative/NaN → 0.
         let micros = value * 1_000_000.0;
         let value_micros = if micros.is_finite() && micros > 0.0 {
+            // Truncation is acceptable: latencies exceeding u64::MAX µs (~584 millennia) are
+            // not realistic, and sub-microsecond fractional loss is immaterial for observability.
+            // Sign loss is guarded by the `> 0.0` predicate.
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             let v = micros as u64;
             v
@@ -230,6 +236,9 @@ impl HistogramSnapshot {
         if self.count == 0 {
             return 0.0;
         }
+        // Precision loss: f64 mantissa is 53 bits; u64 values above 2^53 lose
+        // low-order bits. For microsecond sums this corresponds to ~285 years of
+        // accumulated latency — acceptable for observability.
         #[allow(clippy::cast_precision_loss)]
         let mean = (self.sum_micros as f64 / 1_000_000.0) / self.count as f64;
         mean
@@ -237,7 +246,7 @@ impl HistogramSnapshot {
 }
 
 /// Number of distinct `RpcMethod` variants.
-const RPC_METHOD_COUNT: usize = 22;
+const RPC_METHOD_COUNT: usize = 23;
 
 /// Number of distinct `ErrorType` variants.
 const ERROR_TYPE_COUNT: usize = 6;
@@ -447,6 +456,7 @@ const ALL_METHODS: [RpcMethod; RPC_METHOD_COUNT] = [
     RpcMethod::GetDehydrationStatus,
     RpcMethod::Health,
     RpcMethod::Metrics,
+    RpcMethod::ListCapabilities,
 ];
 
 /// All error types for iteration.

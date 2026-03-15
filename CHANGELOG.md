@@ -5,6 +5,63 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-15 (session 9)
+
+### Changed
+
+#### Semantic JSON-RPC Method Naming
+- `dag.dehydrate` → `dag.dehydration.trigger` (Spring-as-Niche compliant)
+- `system.health` → `health.check` (Spring-as-Niche compliant)
+- `system.metrics` → `health.metrics` (Spring-as-Niche compliant)
+- Added `capability.list` JSON-RPC endpoint for runtime discovery
+- Updated all handler tests, integration tests, and showcase scripts
+
+#### Coverage Expansion (91.47% line coverage)
+- Added 270 tests across the workspace (907 → 1177)
+- `store_redb.rs` coverage: 68% → 90%+ (25 new tests)
+- `store_sled.rs` coverage: 79% → 90%+ (25 new tests)
+- `songbird/client.rs` coverage: 75% → 90%+ (16 new tests)
+- `doctor.rs` coverage: 81% → 90%+ (16 new tests)
+- `rhizocrypt-service/lib.rs` coverage: 81% → 90%+ (18 new tests)
+
+#### Zero-Copy Evolution
+- `vertex.rs::to_canonical_bytes()` returns `bytes::Bytes` instead of `Vec<u8>`
+- Updated signing and store backends to consume `Bytes` directly
+
+#### CI Pipeline Hardening
+- Added `cargo-deny` job for license, advisory, and ban enforcement
+- Added `--all-features` to coverage and doc CI jobs
+
+#### Dependency Audit
+- Resolved AGPL-3.0-only license for `provenance-trio-types` in `deny.toml`
+- Cleaned `ring` skip from deny config
+- All `cargo deny check` gates green
+
+#### Test Isolation Fix
+- Fixed env var race condition in `resolve_bind_addr_*` tests — `clear_bind_addr_env()` helper
+- Ensures all bind-address tests sanitize global env state before and after
+
+#### Documentation Updates
+- Updated `DEPLOYMENT_CHECKLIST.md` method names: `system.health` → `health.check`, `system.metrics` → `health.metrics`
+- Updated README test count to 1177, coverage to 91.47%, SPDX count to 106
+- Updated CHANGELOG through session 9
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery + cargo, all features) | Clean (0 warnings) |
+| `cargo doc --workspace --all-features --no-deps -D warnings` | Clean |
+| `cargo test --workspace --all-features` | 1177 pass, 0 fail |
+| `cargo deny check` | Clean |
+| `#![forbid(unsafe_code)]` | Workspace-wide |
+| SPDX headers | All 106 `.rs` files |
+| Max file size | All under 1000 lines |
+| Production unwrap/expect | Zero |
+
+---
+
 ## [0.13.0-dev] - 2026-03-15 (session 8)
 
 ### Changed

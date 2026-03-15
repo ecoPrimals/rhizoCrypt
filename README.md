@@ -6,8 +6,8 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-or-later |
-| Tests | 907+ passing (default features) |
-| Coverage | 90.88% line coverage (llvm-cov verified) |
+| Tests | 1177 passing (all features) |
+| Coverage | 91.47% line coverage (llvm-cov verified) |
 | Clippy | 0 warnings (pedantic + nursery + cargo, all features) |
 | Unsafe | `#![forbid(unsafe_code)]` workspace-wide |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
@@ -16,7 +16,7 @@
 | Storage | redb (Pure Rust, default) / sled (optional) |
 | Deps | ecoBin compliant — zero application C dependencies |
 | Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 105 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 106 `.rs` files |
 
 ---
 

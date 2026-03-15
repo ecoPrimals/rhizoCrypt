@@ -234,7 +234,7 @@ impl DagStore for RedbDagStore {
                 RhizoCryptError::storage(format!("Failed to open vertices table: {e}"))
             })?;
             let key = Self::vertex_key(session_id, vertex_id);
-            t.insert(key.as_slice(), value.as_slice())
+            t.insert(key.as_slice(), &value[..])
                 .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
         }
 

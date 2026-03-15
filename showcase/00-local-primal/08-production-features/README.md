@@ -24,8 +24,8 @@ This showcase demonstrates that rhizoCrypt is **production-ready**:
 ### 1. Service Mode (`demo-service-mode.sh`)
 **What it shows**:
 - Starting rhizoCrypt as a service
-- RPC server on port 9400
-- Health endpoint on /health
+- tarpc server on port 9400, JSON-RPC on port 9401
+- Health via `health.check` JSON-RPC method
 - Graceful shutdown with SIGTERM
 
 **Run**: `./demo-service-mode.sh`
@@ -143,13 +143,15 @@ spec:
         ports:
         - containerPort: 9400
         livenessProbe:
-          httpGet:
-            path: /health
-            port: 9400
+          exec:
+            command: ["/app/rhizocrypt", "status"]
+          initialDelaySeconds: 5
+          periodSeconds: 30
         readinessProbe:
-          httpGet:
-            path: /ready
-            port: 9400
+          exec:
+            command: ["/app/rhizocrypt", "status"]
+          initialDelaySeconds: 3
+          periodSeconds: 10
 ```
 
 ---

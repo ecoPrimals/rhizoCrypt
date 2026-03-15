@@ -70,8 +70,8 @@ pub use metrics::{
 pub use rate_limit::{OperationType, RateLimitConfig, RateLimitExceeded, RateLimiter};
 pub use server::RpcServer;
 pub use service::{
-    AppendEventRequest, CheckoutSliceRequest, CreateSessionRequest, HealthStatus, QueryRequest,
-    RhizoCryptRpc, RhizoCryptRpcServer, ServiceMetrics, SessionInfo,
+    AppendEventRequest, CapabilityDescriptor, CheckoutSliceRequest, CreateSessionRequest,
+    HealthStatus, QueryRequest, RhizoCryptRpc, RhizoCryptRpcServer, ServiceMetrics, SessionInfo,
 };
 
 // Re-export core types for convenience

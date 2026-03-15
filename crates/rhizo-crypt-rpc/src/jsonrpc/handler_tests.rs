@@ -206,7 +206,7 @@ async fn test_slice_operations() {
     );
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
-    let req = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
+    let req = make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
     let zero_vertex = "0".repeat(64);
@@ -238,10 +238,10 @@ async fn test_slice_operations() {
 }
 
 #[tokio::test]
-async fn test_system_health() {
+async fn test_health_check() {
     let primal = create_test_primal().await;
 
-    let req = make_request("system.health", None);
+    let req = make_request("health.check", None);
     let result = handle_request(primal.clone(), req).await.unwrap();
     let health = result.as_object().unwrap();
     assert!(health.get("healthy").and_then(Value::as_bool).unwrap());
@@ -249,14 +249,30 @@ async fn test_system_health() {
 }
 
 #[tokio::test]
-async fn test_system_metrics() {
+async fn test_health_metrics() {
     let primal = create_test_primal().await;
 
-    let req = make_request("system.metrics", None);
+    let req = make_request("health.metrics", None);
     let result = handle_request(primal.clone(), req).await.unwrap();
     let metrics = result.as_object().unwrap();
     assert!(metrics.contains_key("sessions_created"));
     assert!(metrics.contains_key("vertices_appended"));
+}
+
+#[tokio::test]
+async fn test_capability_list() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("capability.list", None);
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let capabilities = result.as_array().unwrap();
+    assert!(capabilities.len() >= 3, "should have dag, health, and capability domains");
+
+    let domains: Vec<&str> =
+        capabilities.iter().filter_map(|c| c.get("domain").and_then(Value::as_str)).collect();
+    assert!(domains.contains(&"dag"), "should contain dag domain");
+    assert!(domains.contains(&"health"), "should contain health domain");
+    assert!(domains.contains(&"capability"), "should contain capability domain");
 }
 
 #[tokio::test]
@@ -475,7 +491,7 @@ async fn test_slice_checkout_with_lender_borrower() {
     );
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
-    let req = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
+    let req = make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
     let zero_vertex = "0".repeat(64);
@@ -532,11 +548,11 @@ async fn test_dehydrate_status_handler() {
     let result = handle_request(primal.clone(), req).await.unwrap();
     let session_id = result.as_str().unwrap();
 
-    let req = make_request("dag.dehydrate.status", Some(json!({"session_id": session_id})));
+    let req = make_request("dag.dehydration.status", Some(json!({"session_id": session_id})));
     let result = handle_request(primal.clone(), req).await.unwrap();
     assert!(
         result.as_str().is_some() || result.as_object().is_some(),
-        "dehydrate.status should return string (unit variant) or object (struct variant)"
+        "dehydration.status should return string (unit variant) or object (struct variant)"
     );
 }
 
@@ -754,7 +770,7 @@ async fn test_slice_resolve_invalid_session_id() {
     );
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
-    let req = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
+    let req = make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
     let zero_vertex = "0".repeat(64);
@@ -790,12 +806,12 @@ async fn test_slice_list_with_null_params() {
     assert!(list.is_empty());
 }
 
-// --- dispatch_dehydrate_status error path ---
+// --- dispatch_dehydration_status error path ---
 
 #[tokio::test]
-async fn test_dehydrate_status_invalid_session_id() {
+async fn test_dehydration_status_invalid_session_id() {
     let primal = create_test_primal().await;
-    let req = make_request("dag.dehydrate.status", Some(json!({"session_id": "bad-uuid"})));
+    let req = make_request("dag.dehydration.status", Some(json!({"session_id": "bad-uuid"})));
     let err = handle_request(primal, req).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
@@ -850,7 +866,7 @@ async fn test_slice_checkout_with_mode_and_duration() {
     );
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
-    let req = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
+    let req = make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
     let _ = handle_request(primal.clone(), req).await.unwrap();
 
     let zero_vertex = "0".repeat(64);

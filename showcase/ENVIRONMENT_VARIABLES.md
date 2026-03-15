@@ -128,14 +128,16 @@ cargo run -p rhizocrypt-service -- server
 **Before**:
 ```bash
 RHIZOCRYPT_PORT=9400  # Hardcoded
-curl http://localhost:9400/health
+curl http://localhost:9400/health  # Wrong: no HTTP GET endpoint
 ```
 
 **After**:
 ```bash
 source showcase-env.sh  # Gets defaults from env
-RHIZOCRYPT_PORT=${RHIZOCRYPT_PORT:-9400}  # Fallback
-curl "http://${RHIZOCRYPT_HOST}:${RHIZOCRYPT_PORT}/health"
+JSONRPC_PORT=${RHIZOCRYPT_JSONRPC_PORT:-9401}
+curl -s -X POST "http://${RHIZOCRYPT_HOST:-127.0.0.1}:${JSONRPC_PORT}/rpc" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}'
 ```
 
 ---

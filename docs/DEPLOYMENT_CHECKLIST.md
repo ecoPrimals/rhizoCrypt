@@ -9,13 +9,13 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **882+ tests passing** (default features), 0 failures
-- [x] **90.88% line coverage** (llvm-cov verified)
+- [x] **1177 tests passing** (all features), 0 failures
+- [x] **91.47% line coverage** (llvm-cov verified)
 - [x] **Zero unsafe code** (workspace-level `#![forbid(unsafe_code)]`)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo, all features)
 - [x] **100% file size compliance** (all files under 1000 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 105 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 106 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
@@ -31,8 +31,8 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 882+ tests, 90.88% coverage)
-- [x] **CHANGELOG.md** (version history through session 7)
+- [x] **README.md** (current metrics — 1177 tests, 91.47% coverage)
+- [x] **CHANGELOG.md** (version history through session 9)
 - [x] **showcase/** (70+ comprehensive demos)
 - [x] **specs/** (10 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
@@ -53,7 +53,7 @@ cargo build --release -p rhizocrypt-service
 # Health check via JSON-RPC
 curl -s -X POST http://localhost:9400/rpc \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"system.health","params":{},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}'
 ```
 
 **Environment Variables**:
@@ -149,7 +149,7 @@ spec:
 ```bash
 curl -s -X POST http://localhost:9400/rpc \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"system.health","params":{},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}'
 ```
 
 ### Metrics (JSON-RPC)
@@ -157,7 +157,7 @@ curl -s -X POST http://localhost:9400/rpc \
 ```bash
 curl -s -X POST http://localhost:9400/rpc \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"system.metrics","params":{},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"health.metrics","params":{},"id":1}'
 ```
 
 ### Doctor (CLI)
@@ -193,7 +193,7 @@ See [ENV_VARS.md](./ENV_VARS.md) for the complete capability-based configuration
 
 ### Monitoring
 
-**Key Metrics** (via `system.metrics` JSON-RPC):
+**Key Metrics** (via `health.metrics` JSON-RPC):
 - `rhizocrypt_sessions_active` — currently active sessions
 - `rhizocrypt_rpc_errors_total` — errors by type
 - `rhizocrypt_rpc_request_duration_seconds_mean` — latency by method

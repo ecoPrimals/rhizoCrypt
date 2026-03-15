@@ -142,9 +142,9 @@ mod tests {
 
     #[test]
     fn test_request_deserialize() {
-        let json = r#"{"jsonrpc":"2.0","method":"system.health","params":{},"id":1}"#;
+        let json = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
         let req: JsonRpcRequest = serde_json::from_str(json).expect("parse");
-        assert_eq!(req.method, "system.health");
+        assert_eq!(req.method, "health.check");
         assert_eq!(req.id, Some(JsonRpcId::Number(1)));
     }
 

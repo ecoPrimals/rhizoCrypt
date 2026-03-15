@@ -817,3 +817,171 @@ async fn tarpc_register_then_discover_signing_provider() {
     assert!(signer.is_some());
     assert_eq!(signer.unwrap().endpoint, "127.0.0.1:9500");
 }
+
+// ============================================================================
+// Additional tests for coverage (75% → 90%)
+// ============================================================================
+
+#[test]
+fn test_with_defaults() {
+    let client = SongbirdClient::with_defaults();
+    assert!(!client.config.service_name.is_empty());
+}
+
+#[test]
+fn test_from_env() {
+    let client = SongbirdClient::from_env();
+    assert!(!client.config.service_name.is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_disconnect_idempotent_when_already_disconnected() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+
+    // Disconnect when never connected - should not panic
+    client.disconnect().await;
+
+    assert_eq!(client.state().await, ClientState::Disconnected);
+    assert!(client.endpoint().await.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_endpoint_none_when_disconnected() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+
+    assert!(client.endpoint().await.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_service_id_some_when_registered() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Registered;
+    *client.service_id.write().await = Some("my-service-123".to_string());
+
+    let id = client.service_id().await;
+    assert_eq!(id, Some("my-service-123".to_string()));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_populate_registry_skips_invalid_endpoint() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    // Add service with invalid endpoint (cannot parse as SocketAddr)
+    client
+        .cache_discovery(
+            "signing",
+            vec![ServiceInfo {
+                id: "bad-1".to_string(),
+                name: "bad-endpoint".to_string(),
+                endpoint: "not-a-valid-address".to_string(),
+                capabilities: vec!["signing".to_string()],
+                status: "healthy".to_string(),
+                metadata: HashMap::new(),
+            }],
+        )
+        .await;
+
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    let result = client.populate_registry(&registry).await;
+    assert!(result.is_ok());
+    assert!(!registry.is_available(&Capability::Signing).await);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_register_fails_when_disconnected() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+
+    let result = client.register("127.0.0.1:9400").await;
+    assert!(result.is_err(), "register should fail when not connected");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_signing_provider_returns_none_when_empty() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    let signer = client.discover_signing_provider().await.unwrap();
+    assert!(signer.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_permanent_storage_provider_returns_none_when_empty() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    let storage = client.discover_permanent_storage_provider().await.unwrap();
+    assert!(storage.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_payload_storage_provider_returns_none_when_empty() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+    *client.state.write().await = ClientState::Connected;
+
+    let storage = client.discover_payload_storage_provider().await.unwrap();
+    assert!(storage.is_none());
+}
+
+#[test]
+fn test_config_debug_impl() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let debug_str = format!("{config:?}");
+    assert!(debug_str.contains("SongbirdConfig"));
+}
+
+#[test]
+fn test_client_state_debug() {
+    let state = ClientState::Connecting;
+    let debug_str = format!("{state:?}");
+    assert!(debug_str.contains("Connecting"));
+}
+
+#[test]
+fn test_registration_result_debug() {
+    use crate::clients::songbird_types::RegistrationResult;
+    let result = RegistrationResult {
+        success: true,
+        message: "OK".to_string(),
+        service_id: Some("id-1".to_string()),
+    };
+    let debug_str = format!("{result:?}");
+    assert!(debug_str.contains("RegistrationResult"));
+}
+
+#[test]
+fn test_federation_status_debug() {
+    use crate::clients::songbird_types::FederationStatus;
+    let status = FederationStatus {
+        total_services: 5,
+        total_peers: 3,
+        uptime_seconds: 3600,
+        version: "1.0".to_string(),
+    };
+    let debug_str = format!("{status:?}");
+    assert!(debug_str.contains("FederationStatus"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_stop_heartbeat_when_not_running() {
+    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let client = SongbirdClient::new(config);
+
+    // Stopping when no heartbeat is running should be safe (no panic)
+    client.stop_heartbeat().await;
+}
+
+#[test]
+fn test_config_with_address_owned() {
+    let config = SongbirdConfig::with_address(String::from("10.0.0.5:8080"));
+    assert_eq!(config.address.as_ref(), "10.0.0.5:8080");
+    assert!(config.is_configured());
+}

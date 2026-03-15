@@ -244,7 +244,7 @@ impl DagStore for SledDagStore {
         let mut genesis_batch = Batch::default();
 
         // Store vertex
-        vertices_batch.insert(key.as_slice(), value.as_slice());
+        vertices_batch.insert(key.as_slice(), &value[..]);
 
         // Update children index for each parent
         for parent_id in &vertex.parents {
@@ -554,3 +554,8 @@ impl std::fmt::Debug for SledDagStore {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[path = "store_sled_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[path = "store_sled_tests_advanced.rs"]
+mod tests_advanced;

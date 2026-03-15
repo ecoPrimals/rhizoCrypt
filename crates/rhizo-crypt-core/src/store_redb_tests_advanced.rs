@@ -844,3 +844,156 @@ async fn test_storage_stats_debug_format() {
     assert!(debug_str.contains("read_ops"));
     assert!(debug_str.contains("write_ops"));
 }
+
+// === Additional coverage: parse_vertex_set empty, stats error paths, concurrent ops ===
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_parse_vertex_set_empty_data() {
+    let (store, _dir) = create_test_store();
+    let session_id = SessionId::now();
+    let frontier = store.get_frontier(session_id).await.expect("Failed to get frontier");
+    assert!(frontier.is_empty(), "parse_vertex_set should return empty set for empty session");
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_stats_bytes_used_when_path_deleted() {
+    let (store, _dir) = create_test_store();
+    let session_id = SessionId::now();
+    store
+        .put_vertex(session_id, VertexBuilder::new(EventType::SessionStart).build())
+        .await
+        .expect("Failed to put");
+    let db_path = store.path().to_path_buf();
+    let _ = std::fs::remove_file(&db_path);
+    let stats = store.stats().await;
+    assert_eq!(stats.bytes_used, 0, "bytes_used should be 0 when path metadata fails");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_concurrent_update_frontier() {
+    let (store, _dir) = create_test_store();
+    let store = std::sync::Arc::new(store);
+    let session_id = SessionId::now();
+    let v1 = VertexId::from_bytes(b"concurrent_frontier_1__________");
+    store.update_frontier(session_id, v1, &[]).await.expect("Failed to add v1");
+    let mut handles = Vec::new();
+    for i in 0u32..5 {
+        let store_clone = store.clone();
+        let sid = session_id;
+        let new_id = VertexId::from_bytes(&{
+            let mut b = [0u8; 32];
+            b[..4].copy_from_slice(&i.to_le_bytes());
+            b
+        });
+        handles.push(tokio::spawn(async move {
+            store_clone.update_frontier(sid, new_id, &[v1]).await.expect("update");
+        }));
+    }
+    for h in handles {
+        h.await.expect("task panicked");
+    }
+    let frontier = store.get_frontier(session_id).await.expect("Failed to get frontier");
+    assert!(!frontier.is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_very_large_vertex_set_serialization() {
+    let (store, _dir) = create_test_store();
+    let session_id = SessionId::now();
+    let parent = VertexBuilder::new(EventType::SessionStart).build();
+    let mut parent_clone = parent.clone();
+    let parent_id = parent_clone.id().expect("Failed to compute parent ID");
+    store.put_vertex(session_id, parent).await.expect("Failed to put parent");
+    for i in 0..150 {
+        let child = VertexBuilder::new(EventType::DataCreate {
+            schema: Some(format!("large_set_{i}")),
+        })
+        .with_parent(parent_id)
+        .build();
+        store.put_vertex(session_id, child).await.expect("Failed to put child");
+    }
+    let children = store.get_children(session_id, parent_id).await.expect("Failed to get children");
+    assert_eq!(children.len(), 150);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_delete_session_empty_tables_no_panic() {
+    let (store, _dir) = create_test_store();
+    let session_id = SessionId::now();
+    store.delete_session(session_id).await.expect("Failed to delete empty session");
+    let count = store.count_vertices(session_id).await.expect("Failed to count");
+    assert_eq!(count, 0);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_count_vertices_session_prefix_range() {
+    let (store, _dir) = create_test_store();
+    let session1 = SessionId::now();
+    let session2 = SessionId::now();
+    for _ in 0..4 {
+        store
+            .put_vertex(session1, VertexBuilder::new(EventType::SessionStart).build())
+            .await
+            .expect("Failed to put");
+    }
+    for _ in 0..6 {
+        store
+            .put_vertex(session2, VertexBuilder::new(EventType::SessionStart).build())
+            .await
+            .expect("Failed to put");
+    }
+    assert_eq!(store.count_vertices(session1).await.expect("count"), 4);
+    assert_eq!(store.count_vertices(session2).await.expect("count"), 6);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_put_vertex_with_multiple_parents_children_index() {
+    let (store, _dir) = create_test_store();
+    let session_id = SessionId::now();
+    let a = VertexBuilder::new(EventType::SessionStart).build();
+    let mut a_clone = a.clone();
+    let a_id = a_clone.id().expect("Failed to compute A ID");
+    let b = VertexBuilder::new(EventType::SessionStart).build();
+    let mut b_clone = b.clone();
+    let b_id = b_clone.id().expect("Failed to compute B ID");
+    let c = VertexBuilder::new(EventType::SessionStart).build();
+    let mut c_clone = c.clone();
+    let c_id = c_clone.id().expect("Failed to compute C ID");
+    store.put_vertex(session_id, a).await.expect("Failed to put A");
+    store.put_vertex(session_id, b).await.expect("Failed to put B");
+    store.put_vertex(session_id, c).await.expect("Failed to put C");
+    let merge = VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .with_parents([a_id, b_id, c_id])
+    .build();
+    let mut merge_clone = merge.clone();
+    let merge_id = merge_clone.id().expect("Failed to compute merge ID");
+    store.put_vertex(session_id, merge).await.expect("Failed to put merge");
+    let children_a = store.get_children(session_id, a_id).await.expect("Failed to get children");
+    let children_b = store.get_children(session_id, b_id).await.expect("Failed to get children");
+    let children_c = store.get_children(session_id, c_id).await.expect("Failed to get children");
+    assert_eq!(children_a.len(), 1);
+    assert_eq!(children_b.len(), 1);
+    assert_eq!(children_c.len(), 1);
+    assert!(children_a.contains(&merge_id));
+    assert!(children_b.contains(&merge_id));
+    assert!(children_c.contains(&merge_id));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_update_frontier_consumed_parents_not_in_frontier() {
+    let (store, _dir) = create_test_store();
+    let session_id = SessionId::now();
+    let v1 = VertexId::from_bytes(b"frontier_v1____________________");
+    let v2 = VertexId::from_bytes(b"frontier_v2____________________");
+    store.update_frontier(session_id, v1, &[]).await.expect("Failed to add v1");
+    store
+        .update_frontier(session_id, v2, &[VertexId::from_bytes(b"nonexistent_______________")])
+        .await
+        .expect("Failed to update frontier");
+    let frontier = store.get_frontier(session_id).await.expect("Failed to get frontier");
+    assert!(frontier.contains(&v1));
+    assert!(frontier.contains(&v2));
+}

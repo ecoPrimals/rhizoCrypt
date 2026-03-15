@@ -263,7 +263,7 @@ impl SigningClient {
     ///
     /// Returns error if signing fails.
     pub async fn sign_vertex(&self, vertex: &Vertex, signer: &Did) -> Result<Signature> {
-        let canonical = bytes::Bytes::from(vertex.to_canonical_bytes()?);
+        let canonical = vertex.to_canonical_bytes()?;
         self.sign_owned(canonical, signer).await
     }
 
@@ -278,7 +278,7 @@ impl SigningClient {
     /// Returns error if verification fails.
     pub async fn verify_vertex(&self, vertex: &Vertex) -> Result<bool> {
         if let (Some(sig), Some(agent)) = (&vertex.signature, &vertex.agent) {
-            let canonical = bytes::Bytes::from(vertex.to_canonical_bytes()?);
+            let canonical = vertex.to_canonical_bytes()?;
             self.verify_owned(canonical, sig, agent).await
         } else {
             Ok(false)

@@ -79,10 +79,12 @@ impl Vertex {
 
     /// Serialize to canonical CBOR bytes (for hashing).
     ///
+    /// Returns `Bytes` for zero-copy downstream use (signing, storage, hashing).
+    ///
     /// # Errors
     ///
     /// Returns an error if CBOR serialization fails.
-    pub fn to_canonical_bytes(&self) -> crate::error::Result<Vec<u8>> {
+    pub fn to_canonical_bytes(&self) -> crate::error::Result<bytes::Bytes> {
         let serializable = SerializableVertex {
             parents: &self.parents,
             timestamp: self.timestamp,
@@ -96,7 +98,7 @@ impl Vertex {
         ciborium::into_writer(&serializable, &mut buf).map_err(|e| {
             crate::error::RhizoCryptError::internal(format!("vertex CBOR serialization: {e}"))
         })?;
-        Ok(buf)
+        Ok(bytes::Bytes::from(buf))
     }
 
     /// Deserialize from CBOR bytes.

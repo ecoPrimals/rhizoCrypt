@@ -224,7 +224,7 @@ mod tests {
 
         let request_body = serde_json::json!({
             "jsonrpc": "2.0",
-            "method": "system.health",
+            "method": "health.check",
             "params": {},
             "id": 1
         });
@@ -405,8 +405,8 @@ mod tests {
         let app = JsonRpcServer::router(primal);
 
         let batch = serde_json::json!([
-            {"jsonrpc": "2.0", "method": "system.health", "params": {}, "id": 1},
-            {"jsonrpc": "2.0", "method": "system.metrics", "params": {}, "id": 2}
+            {"jsonrpc": "2.0", "method": "health.check", "params": {}, "id": 1},
+            {"jsonrpc": "2.0", "method": "health.metrics", "params": {}, "id": 2}
         ]);
 
         let response = app
@@ -437,7 +437,7 @@ mod tests {
 
         let request_body = serde_json::json!({
             "jsonrpc": "1.0",
-            "method": "system.health",
+            "method": "health.check",
             "params": {},
             "id": 1
         });
@@ -468,7 +468,7 @@ mod tests {
 
         let request_body = serde_json::json!({
             "jsonrpc": "2.0",
-            "method": "system.health",
+            "method": "health.check",
             "params": {}
         });
 

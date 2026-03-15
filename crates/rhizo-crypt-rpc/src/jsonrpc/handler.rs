@@ -63,10 +63,11 @@ pub async fn handle_request(
         "dag.slice.get" => dispatch_slice_get(&server, params).await,
         "dag.slice.list" => dispatch_slice_list(&server).await,
         "dag.slice.resolve" => dispatch_slice_resolve(&server, params).await,
-        "dag.dehydrate" => dispatch_dehydrate(&server, params).await,
-        "dag.dehydrate.status" => dispatch_dehydrate_status(&server, params).await,
-        "system.health" => dispatch_health(&server).await,
-        "system.metrics" => dispatch_metrics(&server).await,
+        "dag.dehydration.trigger" => dispatch_dehydrate(&server, params).await,
+        "dag.dehydration.status" => dispatch_dehydrate_status(&server, params).await,
+        "health.check" => dispatch_health(&server).await,
+        "health.metrics" => dispatch_metrics(&server).await,
+        "capability.list" => dispatch_capability_list(&server).await,
         _ => Err(HandlerError::MethodNotFound(request.method)),
     }
 }
@@ -483,6 +484,11 @@ async fn dispatch_health(server: &RhizoCryptRpcServer) -> Result<Value, HandlerE
 async fn dispatch_metrics(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
     let metrics = server.clone().metrics(tarpc::context::current()).await?;
     serde_json::to_value(&metrics).map_err(|e| HandlerError::InvalidParams(e.to_string()))
+}
+
+async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
+    let capabilities = server.clone().list_capabilities(tarpc::context::current()).await?;
+    serde_json::to_value(&capabilities).map_err(|e| HandlerError::InvalidParams(e.to_string()))
 }
 
 #[cfg(test)]
