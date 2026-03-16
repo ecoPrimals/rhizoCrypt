@@ -5,6 +5,64 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-16 (session 14)
+
+### Changed
+
+#### Deep Debt Execution — Structured IPC, tarpc 0.37, Capability Domains, NDJSON Streaming
+
+**1. Structured IPC Error Types** (absorbed from healthSpring V28 `SendError` pattern)
+- Added `IpcErrorPhase` enum (7 variants: Connect, Write, Read, InvalidJson, HttpStatus, NoResult, JsonRpcError)
+- Evolved `unix_socket.rs` from opaque `Integration(String)` to structured `Ipc { phase, message }`
+- Each IPC lifecycle phase now emits typed errors for targeted retry and observability
+
+**2. tarpc 0.34 → 0.37**
+- Bumped workspace tarpc dependency; resolved `RUSTSEC-2024-0387` (opentelemetry_api)
+- Updated `deny.toml` to remove resolved advisory ignore
+- opentelemetry, tokio-serde, tarpc-plugins all upgraded
+
+**3. Capability Domain Introspection** (absorbed from ludoSpring V20 `capability_domains.rs`)
+- Added `CapabilityDomain`, `CapabilityMethod` structs with `external: bool` flag to `niche.rs`
+- `capability_list()` now includes `domains`, `locality` (local/external counts), per-method `external` flag
+- All 23 rhizoCrypt methods classified as local (CPU-only infrastructure)
+
+**4. DI Config Reader Pattern** (absorbed from sweetGrass v0.7.15)
+- Added `RpcConfig::from_env_reader(F)` — dependency-injected environment reader
+- Tests can supply mock readers without `temp-env` or `unsafe` env mutation
+
+**5. NDJSON Streaming Support** (absorbed from biomeOS v2.43 Pipeline coordination)
+- New `streaming` module: `StreamItem` enum (Data, Progress, End, Error)
+- `StreamingAppendResult` for streaming `event.append_batch` responses
+- `parse_ndjson_line()` for pipeline consumption
+- biomeOS Pipeline coordination graphs can now wire bounded channels
+
+**6. Constant Provenance Documentation**
+- All key constants in `constants.rs` now include `Derivation:` / `Source:` / `Chosen:` provenance
+- Explains origin, validation context, and rationale for each constant
+
+**7. Debris Cleanup**
+- Fixed `Edition: 2021` → `Edition: 2024` in `rhizocrypt version` output
+- Fixed K8s ConfigMap env vars: `RHIZOCRYPT_HOST` → `RHIZOCRYPT_RPC_HOST`, `RHIZOCRYPT_PORT` → `RHIZOCRYPT_RPC_PORT`
+- Updated README: 1222→1244 tests, 110→118 SPDX files, tarpc 0.37, NDJSON streaming
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery + cargo, all features) | Clean (0 warnings) |
+| `cargo doc --workspace --all-features --no-deps` | Clean |
+| `cargo test --workspace --all-features` | 1244 pass, 0 fail |
+| `cargo deny check` | Clean |
+| `unsafe_code = "deny"` | Workspace-wide |
+| `unwrap_used`/`expect_used` | `"deny"` workspace-wide |
+| Coverage gate | 92.32% lines (`--fail-under-lines 90` CI enforced) |
+| SPDX headers | All 118 `.rs` files |
+| Max file size | All under 1000 lines |
+| Production unwrap/expect | Zero |
+
+---
+
 ## [0.13.0-dev] - 2026-03-16 (session 13)
 
 ### Added
@@ -747,6 +805,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.13.0-dev** (2026-03-16 s14): Deep debt — structured IPC errors, tarpc 0.37, capability domain introspection, NDJSON streaming, DI config, constant provenance, debris cleanup
 - **0.13.0-dev** (2026-03-16 s12): Deep audit — `#[expect]` migration (42 files), safe `TryFrom` casts, zero-copy signing, file refactoring, rustfmt edition sync
 - **0.13.0-dev** (2026-03-16 s11): Cross-ecosystem absorption — niche.rs, enhanced capability.list, temp-env, deploy fallback, CI coverage gate, deny unwrap/expect
 - **0.13.0-dev** (2026-03-15 s10): Edition 2024, deploy graph, capability registry, `#[expect]` lint migration

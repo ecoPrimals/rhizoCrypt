@@ -61,6 +61,7 @@ mod metrics;
 mod rate_limit;
 pub mod server;
 mod service;
+pub mod streaming;
 
 pub use client::RpcClient;
 pub use error::{RpcError, RpcResult};
@@ -74,6 +75,7 @@ pub use service::{
     HealthStatus, MethodDescriptor, QueryRequest, RhizoCryptRpc, RhizoCryptRpcServer,
     ServiceMetrics, SessionInfo, build_capability_descriptors,
 };
+pub use streaming::{StreamItem, StreamingAppendResult, parse_ndjson_line};
 
 // Re-export core types for convenience
 pub use rhizo_crypt_core::{

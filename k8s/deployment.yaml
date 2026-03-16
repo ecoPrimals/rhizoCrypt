@@ -13,8 +13,8 @@ metadata:
   name: rhizocrypt-config
   namespace: rhizocrypt
 data:
-  RHIZOCRYPT_HOST: "0.0.0.0"
-  RHIZOCRYPT_PORT: "9400"
+  RHIZOCRYPT_RPC_HOST: "0.0.0.0"
+  RHIZOCRYPT_RPC_PORT: "9400"
   RHIZOCRYPT_LOG_LEVEL: "info"
   RUST_LOG: "rhizocrypt=info,rhizo_crypt_core=info"
 

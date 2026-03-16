@@ -276,24 +276,35 @@ impl RpcConfig {
     /// - `RHIZOCRYPT_RPC_ENABLED` — Enable RPC ("true"/"false")
     #[must_use]
     pub fn from_env_or_default() -> Self {
-        let host = std::env::var("RHIZOCRYPT_RPC_HOST")
+        Self::from_env_reader(|key| std::env::var(key))
+    }
+
+    /// Create config from an arbitrary environment reader (DI pattern).
+    ///
+    /// Absorbed from sweetGrass v0.7.15 `config_from_reader` pattern.
+    /// Enables test isolation without `temp-env` or `unsafe` env mutation.
+    #[must_use]
+    pub fn from_env_reader<F>(reader: F) -> Self
+    where
+        F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+    {
+        let host = reader("RHIZOCRYPT_RPC_HOST")
             .map(Cow::Owned)
             .unwrap_or(Cow::Borrowed(Self::DEFAULT_HOST));
 
-        let port = std::env::var("RHIZOCRYPT_RPC_PORT")
+        let port = reader("RHIZOCRYPT_RPC_PORT")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(Self::DEFAULT_PORT);
 
-        let enabled = std::env::var("RHIZOCRYPT_RPC_ENABLED")
-            .map(|s| s.to_lowercase() != "false")
-            .unwrap_or(true);
+        let enabled =
+            reader("RHIZOCRYPT_RPC_ENABLED").map(|s| s.to_lowercase() != "false").unwrap_or(true);
 
         Self {
             host,
             port,
             enabled,
-            max_connections: 1000,
+            max_connections: constants::DEFAULT_MAX_CONNECTIONS,
         }
     }
 
@@ -304,7 +315,7 @@ impl RpcConfig {
             host: host.into(),
             port,
             enabled: true,
-            max_connections: 1000,
+            max_connections: constants::DEFAULT_MAX_CONNECTIONS,
         }
     }
 
@@ -317,7 +328,7 @@ impl RpcConfig {
             host: Cow::Borrowed(constants::LOCALHOST),
             port: 0,
             enabled: true,
-            max_connections: 1000,
+            max_connections: constants::DEFAULT_MAX_CONNECTIONS,
         }
     }
 
@@ -436,6 +447,48 @@ mod tests {
                 assert!(!rpc.enabled);
             },
         );
+    }
+
+    #[test]
+    fn test_config_from_env_reader_di_pattern() {
+        use std::collections::HashMap;
+        let env: HashMap<&str, &str> = [
+            ("RHIZOCRYPT_RPC_HOST", "10.0.0.1"),
+            ("RHIZOCRYPT_RPC_PORT", "8888"),
+            ("RHIZOCRYPT_RPC_ENABLED", "true"),
+        ]
+        .into_iter()
+        .collect();
+
+        let rpc = RpcConfig::from_env_reader(|key| {
+            env.get(key).map(|v| (*v).to_string()).ok_or(std::env::VarError::NotPresent)
+        });
+        assert_eq!(rpc.host.as_ref(), "10.0.0.1");
+        assert_eq!(rpc.port, 8888);
+        assert!(rpc.enabled);
+    }
+
+    #[test]
+    fn test_config_from_env_reader_defaults() {
+        let rpc = RpcConfig::from_env_reader(|_| Err(std::env::VarError::NotPresent));
+        assert_eq!(rpc.host.as_ref(), constants::DEFAULT_RPC_HOST);
+        assert_eq!(rpc.port, constants::DEFAULT_RPC_PORT);
+        assert!(rpc.enabled);
+        assert_eq!(rpc.max_connections, constants::DEFAULT_MAX_CONNECTIONS);
+    }
+
+    #[test]
+    fn test_config_from_env_reader_partial_override() {
+        let rpc = RpcConfig::from_env_reader(|key| {
+            if key == "RHIZOCRYPT_RPC_PORT" {
+                Ok("7777".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
+        assert_eq!(rpc.host.as_ref(), constants::DEFAULT_RPC_HOST);
+        assert_eq!(rpc.port, 7777);
+        assert!(rpc.enabled);
     }
 
     #[test]

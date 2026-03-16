@@ -188,12 +188,194 @@ pub const COST_ESTIMATES: &[(&str, u32, bool)] = &[
     ("capability.list", 1, false),
 ];
 
+/// Capability domain descriptor for biomeOS introspection.
+///
+/// Absorbed from ludoSpring V20 `capability_domains.rs` pattern. The `external`
+/// flag tells biomeOS which methods require IPC routing vs in-process dispatch.
+#[derive(Clone, Debug)]
+pub struct CapabilityMethod {
+    /// Short method name (e.g., "session.create").
+    pub name: &'static str,
+    /// Fully qualified capability (e.g., "dag.session.create").
+    pub fqn: &'static str,
+    /// Whether this method requires external IPC routing (false = in-process).
+    pub external: bool,
+}
+
+/// Structured capability domain for biomeOS routing decisions.
+///
+/// biomeOS uses the `external` flag to determine whether a `capability.call`
+/// for this primal needs IPC routing (external) or can be dispatched in-process
+/// (local). All rhizoCrypt methods are local since it processes requests directly.
+#[derive(Clone, Debug)]
+pub struct CapabilityDomain {
+    /// Domain prefix (e.g., "dag").
+    pub prefix: &'static str,
+    /// Human-readable domain description.
+    pub description: &'static str,
+    /// Methods within this domain.
+    pub methods: &'static [CapabilityMethod],
+}
+
+/// Capability domain definitions with external/local classification.
+///
+/// All rhizoCrypt methods are local (in-process) since the primal processes
+/// all requests directly. The classification helps biomeOS plan dispatch.
+pub const CAPABILITY_DOMAINS: &[CapabilityDomain] = &[
+    CapabilityDomain {
+        prefix: "dag",
+        description: "Ephemeral DAG session and vertex operations",
+        methods: &[
+            CapabilityMethod {
+                name: "session.create",
+                fqn: "dag.session.create",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "session.get",
+                fqn: "dag.session.get",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "session.list",
+                fqn: "dag.session.list",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "session.discard",
+                fqn: "dag.session.discard",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "event.append",
+                fqn: "dag.event.append",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "event.append_batch",
+                fqn: "dag.event.append_batch",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "vertex.get",
+                fqn: "dag.vertex.get",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "vertex.query",
+                fqn: "dag.vertex.query",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "vertex.children",
+                fqn: "dag.vertex.children",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "frontier.get",
+                fqn: "dag.frontier.get",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "genesis.get",
+                fqn: "dag.genesis.get",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "merkle.root",
+                fqn: "dag.merkle.root",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "merkle.proof",
+                fqn: "dag.merkle.proof",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "merkle.verify",
+                fqn: "dag.merkle.verify",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "slice.checkout",
+                fqn: "dag.slice.checkout",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "slice.get",
+                fqn: "dag.slice.get",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "slice.list",
+                fqn: "dag.slice.list",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "slice.resolve",
+                fqn: "dag.slice.resolve",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "dehydration.trigger",
+                fqn: "dag.dehydration.trigger",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "dehydration.status",
+                fqn: "dag.dehydration.status",
+                external: false,
+            },
+        ],
+    },
+    CapabilityDomain {
+        prefix: "health",
+        description: "Health and introspection",
+        methods: &[
+            CapabilityMethod {
+                name: "check",
+                fqn: "health.check",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "metrics",
+                fqn: "health.metrics",
+                external: false,
+            },
+        ],
+    },
+    CapabilityDomain {
+        prefix: "capability",
+        description: "Capability introspection",
+        methods: &[CapabilityMethod {
+            name: "list",
+            fqn: "capability.list",
+            external: false,
+        }],
+    },
+];
+
+/// Returns all methods across all domains.
+#[must_use]
+pub fn all_methods() -> Vec<&'static CapabilityMethod> {
+    CAPABILITY_DOMAINS.iter().flat_map(|domain| domain.methods.iter()).collect()
+}
+
+/// Returns the count of local (in-process) vs external (IPC-routed) methods.
+#[must_use]
+pub fn method_locality_counts() -> (usize, usize) {
+    let methods = all_methods();
+    let local = methods.iter().filter(|m| !m.external).count();
+    let external = methods.iter().filter(|m| m.external).count();
+    (local, external)
+}
+
 /// Cost tier for a given estimated latency.
 #[must_use]
 pub const fn cost_tier(estimated_ms: u32) -> &'static str {
-    if estimated_ms <= 2 {
+    if estimated_ms <= crate::constants::COST_TIER_LOW_THRESHOLD_MS {
         "low"
-    } else if estimated_ms <= 10 {
+    } else if estimated_ms <= crate::constants::COST_TIER_MEDIUM_THRESHOLD_MS {
         "medium"
     } else {
         "high"
@@ -237,20 +419,37 @@ pub fn operation_dependencies() -> serde_json::Value {
 ///
 /// Implements the `capability.list` semantic method. Aligns with loamSpine
 /// and sweetGrass enhanced format: domain, method, dependencies, cost tier.
+/// Includes ludoSpring V20 domain introspection with external/local flags.
 #[must_use]
 pub fn capability_list() -> serde_json::Value {
     let deps = operation_dependencies();
     let methods: Vec<serde_json::Value> = COST_ESTIMATES
         .iter()
         .map(|(method, ms, _gpu)| {
+            let all = all_methods();
+            let external = all.iter().find(|m| m.fqn == *method).is_some_and(|m| m.external);
             serde_json::json!({
                 "method": method,
                 "domain": method.split('.').next().unwrap_or("unknown"),
                 "cost": cost_tier(*ms),
+                "external": external,
                 "deps": deps.get(method).cloned().unwrap_or(serde_json::json!([])),
             })
         })
         .collect();
+
+    let domains: Vec<serde_json::Value> = CAPABILITY_DOMAINS
+        .iter()
+        .map(|d| {
+            serde_json::json!({
+                "prefix": d.prefix,
+                "description": d.description,
+                "method_count": d.methods.len(),
+            })
+        })
+        .collect();
+
+    let (local_count, external_count) = method_locality_counts();
 
     serde_json::json!({
         "primal": PRIMAL_ID,
@@ -262,6 +461,8 @@ pub fn capability_list() -> serde_json::Value {
         "protocol": PROTOCOL,
         "capabilities": CAPABILITIES,
         "consumed_capabilities": CONSUMED_CAPABILITIES,
+        "domains": domains,
+        "locality": { "local": local_count, "external": external_count },
         "methods": methods,
     })
 }
@@ -397,6 +598,68 @@ mod tests {
                 !primal_names.contains(domain),
                 "dependency {domain} references a primal name, not a capability domain"
             );
+        }
+    }
+
+    #[test]
+    fn capability_domains_cover_all_capabilities() {
+        let domain_fqns: Vec<&str> = all_methods().iter().map(|m| m.fqn).collect();
+        for cap in CAPABILITIES {
+            assert!(
+                domain_fqns.contains(cap),
+                "capability {cap} not covered by any CapabilityDomain"
+            );
+        }
+    }
+
+    #[test]
+    fn all_domain_methods_are_valid_capabilities() {
+        for method in all_methods() {
+            assert!(
+                CAPABILITIES.contains(&method.fqn),
+                "domain method {} not in CAPABILITIES",
+                method.fqn
+            );
+        }
+    }
+
+    #[test]
+    fn all_rhizocrypt_methods_are_local() {
+        let (local, external) = method_locality_counts();
+        assert_eq!(external, 0, "rhizoCrypt is CPU-only infrastructure — all methods local");
+        assert_eq!(local, CAPABILITIES.len());
+    }
+
+    #[test]
+    fn capability_list_includes_domains_and_locality() {
+        let list = capability_list();
+        assert!(list.get("domains").is_some(), "missing 'domains' field");
+        assert!(list.get("locality").is_some(), "missing 'locality' field");
+
+        let locality = &list["locality"];
+        assert_eq!(
+            locality["local"].as_u64().expect("local count"),
+            u64::try_from(CAPABILITIES.len()).expect("cap len fits u64")
+        );
+        assert_eq!(locality["external"].as_u64().expect("external count"), 0);
+
+        let methods = list["methods"].as_array().expect("methods array");
+        for method in methods {
+            assert!(method.get("external").is_some(), "method missing 'external' flag");
+        }
+    }
+
+    #[test]
+    fn capability_domains_have_consistent_prefixes() {
+        for domain in CAPABILITY_DOMAINS {
+            for method in domain.methods {
+                assert!(
+                    method.fqn.starts_with(domain.prefix),
+                    "method {} doesn't start with domain prefix {}",
+                    method.fqn,
+                    domain.prefix
+                );
+            }
         }
     }
 }

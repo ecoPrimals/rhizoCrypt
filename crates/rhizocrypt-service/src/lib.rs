@@ -304,7 +304,7 @@ pub async fn register_with_discovery(
 /// Print version information.
 pub fn print_version() {
     println!("rhizoCrypt v{}", env!("CARGO_PKG_VERSION"));
-    println!("Edition: 2021");
+    println!("Edition: 2024");
     println!("License: AGPL-3.0-or-later");
     println!("Architecture: UniBin / ecoBin (Pure Rust)");
 }

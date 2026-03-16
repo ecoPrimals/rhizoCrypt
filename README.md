@@ -6,19 +6,20 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-or-later |
-| Tests | 1222 passing (all features) |
+| Tests | 1244 passing (all features) |
 | Coverage | 92.32% line coverage (`--fail-under-lines 90` CI gate) |
 | Clippy | 0 warnings (pedantic + nursery + cargo, `unwrap_used`/`expect_used = "deny"`) |
 | Edition | 2024 (rust-version 1.87) |
 | Unsafe | `unsafe_code = "deny"` workspace-wide, zero `unsafe` in tests (temp-env) |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
-| IPC | JSON-RPC 2.0 (HTTP) + tarpc (bincode) — dual-transport first |
+| IPC | JSON-RPC 2.0 (HTTP) + tarpc 0.37 (bincode) — dual-transport first |
+| Streaming | NDJSON pipeline coordination for `event.append_batch` |
 | Transport | Platform-agnostic (Unix socket / TCP / abstract socket) |
 | Storage | redb (Pure Rust, default) / sled (optional) |
 | Deps | ecoBin compliant — zero application C dependencies |
 | Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 110 `.rs` files |
-| Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps) |
+| SPDX | `AGPL-3.0-or-later` header on all 118 `.rs` files |
+| Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps, domains) |
 | Registry | `capability_registry.toml` (23 methods, 7 domains) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
 
@@ -79,7 +80,7 @@ fallback) for forward/backward compatibility.
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc service (24 ops), JSON-RPC 2.0 handler, rate limiting, metrics |
+| `rhizo-crypt-rpc` | tarpc 0.37 service (24 ops), JSON-RPC 2.0 handler, NDJSON streaming, rate limiting, metrics |
 | `rhizocrypt-service` | UniBin binary and library (`server`, `client`, `status`, `version`, `doctor`) |
 
 ---

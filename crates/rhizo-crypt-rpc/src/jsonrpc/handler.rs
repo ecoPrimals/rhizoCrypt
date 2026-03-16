@@ -494,3 +494,7 @@ async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Value,
 #[cfg(test)]
 #[path = "handler_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "handler_tests_validation.rs"]
+mod tests_validation;

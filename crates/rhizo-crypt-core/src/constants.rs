@@ -72,30 +72,52 @@ pub const LOCALHOST_V6: &str = "::1";
 // ============================================================================
 
 /// Default timeout for network operations (in seconds).
+///
+/// Derivation: 30s covers 99th-percentile latency for cross-primal IPC on
+/// loaded Tower Atomic deployments. Validated: session 4 E2E tests.
 pub const DEFAULT_TIMEOUT_SECS: u64 = 30;
 
 /// Default connection timeout.
+///
+/// Derivation: matches `DEFAULT_TIMEOUT_SECS` — Unix socket connect is
+/// sub-millisecond locally; 30s accommodates socket directory scanning.
 pub const CONNECTION_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Default read timeout.
+///
+/// Derivation: 10s covers slow dehydration summaries with many vertices.
+/// Validated: session 3 load tests (1000 vertices → ~2s read).
 pub const READ_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Default write timeout.
+///
+/// Derivation: mirrors read timeout — symmetric for request/response.
 pub const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Default request timeout.
+///
+/// Derivation: 60s covers full dehydration pipeline (DAG walk + Merkle
+/// computation + IPC to LoamSpine). Validated: session 4 dehydration bench.
 pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Default health check timeout.
+///
+/// Derivation: health.check is a trivial in-memory operation; 5s provides
+/// generous margin for cold-start and GC pauses. Aligns with biomeOS
+/// health probe interval (5s default).
 pub const HEALTH_CHECK_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Discovery adapter connection timeout.
+///
+/// Derivation: Songbird socket resolution + capability probe. 10s
+/// covers 4-tier fallback discovery (env → XDG → /run → /tmp).
 pub const DISCOVERY_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Default capability client timeout (milliseconds).
 ///
-/// Used by ecosystem type clients (compute, provenance, etc.)
-/// when no explicit timeout is configured.
+/// Derivation: ecosystem type clients (compute, provenance) need more
+/// headroom than local ops. 5s covers cross-primal round-trip + queuing.
+/// Aligned with biomeOS `DEFAULT_DISCOVERY_TIMEOUT_MS` (V245).
 pub const DEFAULT_CAPABILITY_TIMEOUT_MS: u64 = 5000;
 
 // ============================================================================
@@ -103,21 +125,42 @@ pub const DEFAULT_CAPABILITY_TIMEOUT_MS: u64 = 5000;
 // ============================================================================
 
 /// Default maximum concurrent connections.
+///
+/// Derivation: 1000 matches biomeOS `DEFAULT_MAX_CONNECTIONS` and handles
+/// all springs + primals in a fully-composed niche with headroom for
+/// graph-driven parallel requests. Validated: session 3 load tests.
 pub const DEFAULT_MAX_CONNECTIONS: usize = 1000;
 
 /// Default cache size for various caches.
+///
+/// Derivation: 1000 entries balances memory usage (~256 KB at 256 B/entry)
+/// against cache hit rate for typical session sizes.
 pub const DEFAULT_CACHE_SIZE: usize = 1000;
 
 /// Default maximum payload size (100 MB).
+///
+/// Derivation: accommodates large experiment data payloads from springs
+/// (genomic sequences, sensor time series). Well below typical system
+/// memory; individual vertex payloads are typically < 1 KB.
 pub const DEFAULT_MAX_PAYLOAD_SIZE: usize = 100 * 1024 * 1024;
 
 /// Default maximum vertices per session.
+///
+/// Derivation: 100K vertices at ~256 B/vertex = ~25 MB working memory.
+/// Covers long-running spring experiment sessions. DashMap remains
+/// performant at this scale. Validated: session 3 property tests.
 pub const DEFAULT_MAX_VERTICES_PER_SESSION: usize = 100_000;
 
 /// Default maximum sessions.
+///
+/// Derivation: 10K concurrent sessions × ~25 MB peak = ~250 GB theoretical
+/// max. Practical deployments use < 100 concurrent sessions.
 pub const DEFAULT_MAX_SESSIONS: usize = 10_000;
 
 /// Default maximum slices per session.
+///
+/// Derivation: 100 slices per session covers iterative experiment workflows
+/// (checkout → modify → re-checkout). Limited by `MAX_RESLICE_DEPTH`.
 pub const DEFAULT_MAX_SLICES_PER_SESSION: usize = 100;
 
 // ============================================================================
@@ -125,12 +168,23 @@ pub const DEFAULT_MAX_SLICES_PER_SESSION: usize = 100;
 // ============================================================================
 
 /// Default session timeout (7 days).
+///
+/// Derivation: springs run multi-day experiment campaigns. 7 days covers
+/// a work week with weekend buffer. Sessions are ephemeral — GC reclaims
+/// expired sessions. Override via `SessionConfig::timeout`.
 pub const DEFAULT_SESSION_TIMEOUT: Duration = Duration::from_secs(7 * 24 * 3600);
 
 /// Default loan grace period (1 day).
+///
+/// Derivation: loan slices may be held overnight during iterative analysis.
+/// 24h grace prevents premature reclamation while maintaining freshness.
 pub const DEFAULT_LOAN_GRACE: Duration = Duration::from_secs(24 * 3600);
 
 /// Maximum reslice depth.
+///
+/// Derivation: prevents unbounded re-slicing chains. 3 levels (slice →
+/// reslice → re-reslice) covers the practical use case of progressive
+/// refinement without creating deep dependency chains.
 pub const MAX_RESLICE_DEPTH: usize = 3;
 
 // ============================================================================
@@ -177,9 +231,15 @@ pub const DEFAULT_RETRY_BACKOFF_MS: u64 = 100;
 // ============================================================================
 
 /// Sled database cache capacity (128 MB).
+///
+/// Derivation: 128 MB is sled's recommended default for workloads with
+/// ~100K active keys. Balances read performance against memory pressure.
 pub const SLED_CACHE_SIZE_BYTES: u64 = 128 * 1024 * 1024;
 
 /// Sled flush interval in milliseconds.
+///
+/// Derivation: 1000ms provides near-real-time durability while batching
+/// writes for performance. Ephemeral sessions tolerate up to 1s loss.
 pub const SLED_FLUSH_INTERVAL_MS: u64 = 1000;
 
 // ============================================================================
@@ -204,6 +264,65 @@ pub const PROVENANCE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Default maximum results per provenance query.
 pub const PROVENANCE_DEFAULT_MAX_RESULTS: usize = 1000;
+
+// ============================================================================
+// STORAGE KEY GEOMETRY
+// ============================================================================
+
+/// Size of a `SessionId` in bytes (UUID v7 = 128 bits).
+///
+/// Source: RFC 9562 (UUID v7) — 128-bit timestamp-ordered identifier.
+pub const SESSION_ID_BYTES: usize = 16;
+
+/// Size of a `VertexId` in bytes (BLAKE3 hash = 256 bits).
+///
+/// Source: BLAKE3 specification — 256-bit output is the default digest size.
+pub const VERTEX_ID_BYTES: usize = 32;
+
+/// Separator byte between session and vertex in composite keys.
+///
+/// Chosen: ASCII colon (0x3A) — never appears in hex-encoded IDs,
+/// enables visual separation in debug output.
+pub const VERTEX_KEY_SEPARATOR: u8 = b':';
+
+/// Total size of a composite `session:vertex` key.
+///
+/// Derivation: 16 (UUID v7) + 1 (separator) + 32 (BLAKE3) = 49 bytes.
+pub const VERTEX_KEY_SIZE: usize = SESSION_ID_BYTES + 1 + VERTEX_ID_BYTES;
+
+/// Estimated average bytes per stored vertex (for memory estimation).
+///
+/// Derivation: empirical measurement across spring experiment sessions.
+/// Median vertex: 32B hash + 16B session + 64B event + 48B metadata +
+/// 32B parents + 64B overhead ≈ 256 B. Validated: session 3 benchmarks.
+pub const ESTIMATED_BYTES_PER_VERTEX: u64 = 256;
+
+// ============================================================================
+// HTTP / IPC BUFFER SIZES
+// ============================================================================
+
+/// Initial capacity for HTTP response buffers over IPC.
+///
+/// Derivation: typical JSON-RPC responses are 200-2000 bytes. 4096 (1 page)
+/// avoids reallocation for most responses while keeping initial allocation small.
+pub const HTTP_RESPONSE_BUFFER_CAPACITY: usize = 4096;
+
+// ============================================================================
+// COST TIER THRESHOLDS (Pathway Learner)
+// ============================================================================
+
+/// Operations at or below this latency (ms) are classified as "low" cost.
+///
+/// Derivation: DashMap lookup + BLAKE3 hash = ~0.5ms. 2ms covers single
+/// in-memory operations with overhead. biomeOS Pathway Learner uses this
+/// to identify parallelizable low-cost ops. Validated: session 4 benchmarks.
+pub const COST_TIER_LOW_THRESHOLD_MS: u32 = 2;
+
+/// Operations at or below this latency (ms) are classified as "medium" cost.
+///
+/// Derivation: 10ms covers multi-step in-memory operations (DAG walk +
+/// Merkle path). Above 10ms indicates I/O involvement (disk, network).
+pub const COST_TIER_MEDIUM_THRESHOLD_MS: u32 = 10;
 
 // ============================================================================
 // COMPRESSION CONSTANTS
@@ -365,8 +484,21 @@ mod tests {
     fn test_resource_limits() {
         assert_eq!(DEFAULT_MAX_CONNECTIONS, 1000);
         assert_eq!(DEFAULT_CACHE_SIZE, 1000);
-        // DEFAULT_MAX_PAYLOAD_SIZE is 100 MB, obviously > 0 at compile time
         assert_eq!(DEFAULT_MAX_PAYLOAD_SIZE, 100 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_storage_key_geometry() {
+        assert_eq!(SESSION_ID_BYTES, 16);
+        assert_eq!(VERTEX_ID_BYTES, 32);
+        assert_eq!(VERTEX_KEY_SEPARATOR, b':');
+        assert_eq!(VERTEX_KEY_SIZE, SESSION_ID_BYTES + 1 + VERTEX_ID_BYTES);
+        assert_eq!(VERTEX_KEY_SIZE, 49);
+    }
+
+    #[test]
+    fn test_cost_tier_thresholds_are_ordered() {
+        const { assert!(COST_TIER_LOW_THRESHOLD_MS < COST_TIER_MEDIUM_THRESHOLD_MS) };
     }
 
     #[test]

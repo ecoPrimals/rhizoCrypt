@@ -125,11 +125,11 @@ impl RedbDagStore {
         })
     }
 
-    /// Create a key from session and vertex IDs (49 bytes: 16 + 1 + 32).
+    /// Create a composite key from session and vertex IDs.
     fn vertex_key(session_id: SessionId, vertex_id: VertexId) -> Vec<u8> {
-        let mut key = Vec::with_capacity(49);
+        let mut key = Vec::with_capacity(crate::constants::VERTEX_KEY_SIZE);
         key.extend_from_slice(session_id.as_bytes());
-        key.push(b':');
+        key.push(crate::constants::VERTEX_KEY_SEPARATOR);
         key.extend_from_slice(vertex_id.as_bytes());
         key
     }
@@ -140,12 +140,14 @@ impl RedbDagStore {
     }
 
     /// Create prefix range for session-scoped keys (vertices, children).
-    /// Returns (start, end) where start = session_id + ':' and end = session_id + ';'.
+    ///
+    /// Returns `(start, end)` where `start = session_id + ':'` and
+    /// `end = session_id + ';'` (separator + 1 for exclusive upper bound).
     fn session_prefix_range(session_id: SessionId) -> (Vec<u8>, Vec<u8>) {
         let mut start = session_id.as_bytes().to_vec();
-        start.push(b':');
+        start.push(crate::constants::VERTEX_KEY_SEPARATOR);
         let mut end = session_id.as_bytes().to_vec();
-        end.push(b';'); // ':' + 1 = ';'
+        end.push(crate::constants::VERTEX_KEY_SEPARATOR + 1);
         (start, end)
     }
 
@@ -155,9 +157,9 @@ impl RedbDagStore {
             return hashbrown::HashSet::new();
         }
 
-        data.chunks_exact(32)
+        data.chunks_exact(crate::constants::VERTEX_ID_BYTES)
             .map(|chunk| {
-                let mut arr = [0u8; 32];
+                let mut arr = [0u8; crate::constants::VERTEX_ID_BYTES];
                 arr.copy_from_slice(chunk);
                 VertexId::new(arr)
             })
@@ -166,7 +168,7 @@ impl RedbDagStore {
 
     /// Serialize a vertex ID set to bytes.
     fn serialize_vertex_set(set: &hashbrown::HashSet<VertexId>) -> Vec<u8> {
-        let mut data = Vec::with_capacity(set.len() * 32);
+        let mut data = Vec::with_capacity(set.len() * crate::constants::VERTEX_ID_BYTES);
         for id in set {
             data.extend_from_slice(id.as_bytes());
         }

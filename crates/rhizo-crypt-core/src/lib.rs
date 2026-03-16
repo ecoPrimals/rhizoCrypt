@@ -114,7 +114,7 @@ pub use discovery::{
 };
 
 // Error handling
-pub use error::{Result, RhizoCryptError};
+pub use error::{IpcErrorPhase, Result, RhizoCryptError};
 
 // Events
 pub use event::EventType;

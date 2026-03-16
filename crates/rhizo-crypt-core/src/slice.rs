@@ -206,8 +206,8 @@ pub struct LoanTerms {
 impl Default for LoanTerms {
     fn default() -> Self {
         Self {
-            max_duration: Some(Duration::from_secs(7 * 24 * 3600)), // 1 week
-            grace_period: Some(Duration::from_secs(24 * 3600)),     // 1 day
+            max_duration: Some(crate::constants::DEFAULT_SESSION_TIMEOUT),
+            grace_period: Some(crate::constants::DEFAULT_LOAN_GRACE),
             auto_return: true,
         }
     }

@@ -8,9 +8,8 @@ all-features = true
 
 [advisories]
 ignore = [
-    # Transitive dependencies from tarpc; awaiting tarpc update
+    # Transitive dependencies from tarpc 0.37; tracked for upstream resolution
     { id = "RUSTSEC-2024-0384", reason = "instant is a transitive dep from tarpc" },
-    { id = "RUSTSEC-2024-0387", reason = "opentelemetry_api is a transitive dep from tarpc" },
     { id = "RUSTSEC-2025-0057", reason = "fxhash is a transitive dep from tarpc" },
     { id = "RUSTSEC-2025-0141", reason = "bincode v1 is a transitive dep from tarpc" },
     { id = "RUSTSEC-2026-0007", reason = "opentelemetry_sdk is a transitive dep from tarpc" },
@@ -40,7 +39,7 @@ ignore = true
 
 [bans]
 multiple-versions = "warn"
-wildcards = "allow"
+wildcards = "warn"
 highlight = "all"
 
 # ecoBin compliance: these C-backed crates are banned from default features.

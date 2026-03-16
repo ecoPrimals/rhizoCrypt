@@ -20,7 +20,7 @@
 //! ```
 
 use super::ProtocolAdapter;
-use crate::error::{Result, RhizoCryptError};
+use crate::error::{IpcErrorPhase, Result, RhizoCryptError};
 use async_trait::async_trait;
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -107,79 +107,91 @@ impl UnixSocketAdapter {
     }
 
     /// Parse JSON-RPC 2.0 response body into result string.
-    /// Returns error for JSON-RPC error objects or missing result.
+    ///
+    /// Returns structured [`IpcErrorPhase`] errors for each failure mode:
+    /// - [`IpcErrorPhase::InvalidJson`] if the body is not valid JSON
+    /// - [`IpcErrorPhase::JsonRpcError`] if the response contains an error object
+    /// - [`IpcErrorPhase::NoResult`] if the response lacks a `result` field
     pub fn parse_json_rpc_response(body: &[u8]) -> Result<String> {
         let response: serde_json::Value = serde_json::from_slice(body).map_err(|e| {
-            RhizoCryptError::integration(format!("Failed to parse JSON-RPC response: {e}"))
+            RhizoCryptError::ipc(IpcErrorPhase::InvalidJson, format!("parse failed: {e}"))
         })?;
 
         if let Some(error) = response.get("error") {
             let code = error.get("code").and_then(serde_json::Value::as_i64).unwrap_or(-1);
             let message =
                 error.get("message").and_then(serde_json::Value::as_str).unwrap_or("Unknown error");
-            return Err(RhizoCryptError::integration(format!(
-                "JSON-RPC error [{code}]: {message}"
-            )));
+            return Err(RhizoCryptError::ipc(
+                IpcErrorPhase::JsonRpcError(code),
+                message.to_string(),
+            ));
         }
 
         let result = response.get("result").ok_or_else(|| {
-            RhizoCryptError::integration("JSON-RPC response missing 'result' field")
+            RhizoCryptError::ipc(IpcErrorPhase::NoResult, "response missing 'result' field")
         })?;
 
-        serde_json::to_string(result)
-            .map_err(|e| RhizoCryptError::integration(format!("Failed to serialize result: {e}")))
+        serde_json::to_string(result).map_err(|e| {
+            RhizoCryptError::ipc(IpcErrorPhase::InvalidJson, format!("result serialize: {e}"))
+        })
     }
 
     /// Send an HTTP/1.1 POST over the Unix socket and return the response body.
-    async fn http_post(&self, path: &str, body: &[u8]) -> Result<Vec<u8>> {
+    ///
+    /// Each failure maps to a structured [`IpcErrorPhase`] for diagnostics.
+    async fn http_post(&self, path: &str, body: &[u8]) -> Result<bytes::Bytes> {
+        let display_path = self.socket_path.display();
+
         let mut stream = tokio::time::timeout(self.timeout, UnixStream::connect(&self.socket_path))
             .await
             .map_err(|_| {
-                RhizoCryptError::integration(format!(
-                    "Unix socket connection timed out: {}",
-                    self.socket_path.display()
-                ))
+                RhizoCryptError::ipc(
+                    IpcErrorPhase::Connect,
+                    format!("connection timed out: {display_path}"),
+                )
             })?
             .map_err(|e| {
-                RhizoCryptError::integration(format!(
-                    "Unix socket connection failed at {}: {e}",
-                    self.socket_path.display()
-                ))
+                RhizoCryptError::ipc(
+                    IpcErrorPhase::Connect,
+                    format!("connection failed at {display_path}: {e}"),
+                )
             })?;
 
         let header = Self::build_http_request(path, body.len());
 
-        stream
-            .write_all(header.as_bytes())
-            .await
-            .map_err(|e| RhizoCryptError::integration(format!("Unix socket write failed: {e}")))?;
+        stream.write_all(header.as_bytes()).await.map_err(|e| {
+            RhizoCryptError::ipc(IpcErrorPhase::Write, format!("header write: {e}"))
+        })?;
         stream
             .write_all(body)
             .await
-            .map_err(|e| RhizoCryptError::integration(format!("Unix socket write failed: {e}")))?;
+            .map_err(|e| RhizoCryptError::ipc(IpcErrorPhase::Write, format!("body write: {e}")))?;
 
-        let mut response_buf = Vec::with_capacity(4096);
+        let mut response_buf = Vec::with_capacity(crate::constants::HTTP_RESPONSE_BUFFER_CAPACITY);
         tokio::time::timeout(self.timeout, stream.read_to_end(&mut response_buf))
             .await
-            .map_err(|_| RhizoCryptError::integration("Unix socket read timed out"))?
-            .map_err(|e| RhizoCryptError::integration(format!("Unix socket read failed: {e}")))?;
+            .map_err(|_| RhizoCryptError::ipc(IpcErrorPhase::Read, "response read timed out"))?
+            .map_err(|e| {
+                RhizoCryptError::ipc(IpcErrorPhase::Read, format!("response read: {e}"))
+            })?;
 
         Self::parse_http_response(&response_buf)
     }
 
     /// Parse an HTTP/1.1 response, extracting the body after status validation.
-    fn parse_http_response(raw: &[u8]) -> Result<Vec<u8>> {
+    ///
+    /// Returns the body as zero-copy `Bytes` sliced from the raw response.
+    /// Uses structured [`IpcErrorPhase`] for each failure mode.
+    fn parse_http_response(raw: &[u8]) -> Result<bytes::Bytes> {
         let header_end = raw.windows(4).position(|w| w == b"\r\n\r\n").ok_or_else(|| {
-            RhizoCryptError::integration("Malformed HTTP response: no header boundary")
+            RhizoCryptError::ipc(IpcErrorPhase::Read, "malformed HTTP response: no header boundary")
         })?;
 
         let header_bytes = &raw[..header_end];
         let body = &raw[header_end + 4..];
 
         let Ok(header_str) = std::str::from_utf8(header_bytes) else {
-            return Err(RhizoCryptError::integration(
-                "Invalid HTTP response encoding: headers are not valid UTF-8",
-            ));
+            return Err(RhizoCryptError::ipc(IpcErrorPhase::Read, "headers are not valid UTF-8"));
         };
 
         let status_line = header_str.lines().next().unwrap_or("");
@@ -188,12 +200,13 @@ impl UnixSocketAdapter {
 
         if !(200..300).contains(&status_code) {
             let body_preview = String::from_utf8_lossy(body);
-            return Err(RhizoCryptError::integration(format!(
-                "Unix socket HTTP {status_code}: {body_preview}"
-            )));
+            return Err(RhizoCryptError::ipc(
+                IpcErrorPhase::HttpStatus(status_code),
+                body_preview.into_owned(),
+            ));
         }
 
-        Ok(body.to_vec())
+        Ok(bytes::Bytes::copy_from_slice(body))
     }
 }
 
@@ -319,7 +332,7 @@ mod tests {
         let raw = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n\
                      {\"jsonrpc\":\"2.0\",\"result\":true,\"id\":1}";
         let body = UnixSocketAdapter::parse_http_response(raw).unwrap();
-        assert_eq!(body, b"{\"jsonrpc\":\"2.0\",\"result\":true,\"id\":1}");
+        assert_eq!(body.as_ref(), b"{\"jsonrpc\":\"2.0\",\"result\":true,\"id\":1}");
     }
 
     #[test]
@@ -327,7 +340,9 @@ mod tests {
         let raw = b"HTTP/1.1 500 Internal Server Error\r\n\r\nSomething went wrong";
         let result = UnixSocketAdapter::parse_http_response(raw);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("500"));
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("http_500"));
+        assert!(err.to_string().contains("Something went wrong"));
     }
 
     #[test]
@@ -335,6 +350,7 @@ mod tests {
         let raw = b"garbage data without headers";
         let result = UnixSocketAdapter::parse_http_response(raw);
         assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no header boundary"));
     }
 
     #[test]
@@ -393,7 +409,7 @@ mod tests {
             br#"{"jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found"},"id":1}"#;
         let err = UnixSocketAdapter::parse_json_rpc_response(body).unwrap_err();
         assert!(err.to_string().contains("Method not found"));
-        assert!(err.to_string().contains("-32601"));
+        assert!(err.to_string().contains("jsonrpc_-32601"));
     }
 
     #[test]
@@ -401,13 +417,14 @@ mod tests {
         let body = b"not valid json";
         let result = UnixSocketAdapter::parse_json_rpc_response(body);
         assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("invalid_json"));
     }
 
     #[test]
     fn test_parse_json_rpc_response_missing_result() {
         let body = br#"{"jsonrpc":"2.0","id":1}"#;
         let err = UnixSocketAdapter::parse_json_rpc_response(body).unwrap_err();
-        assert!(err.to_string().contains("missing 'result'"));
+        assert!(err.to_string().contains("no_result"));
     }
 
     #[test]
@@ -415,7 +432,7 @@ mod tests {
         let raw = b"HTTP/1.1 200 OK\r\nX-Custom: \xff\xfe\r\n\r\nbody";
         let result = UnixSocketAdapter::parse_http_response(raw);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("UTF-8"));
+        assert!(result.unwrap_err().to_string().contains("not valid UTF-8"));
     }
 
     #[test]

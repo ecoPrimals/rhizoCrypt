@@ -345,8 +345,7 @@ impl DagStore for InMemoryDagStore {
         let vertex_count: u64 =
             sessions.values().map(|s| u64::try_from(s.vertices.len()).unwrap_or(u64::MAX)).sum();
 
-        // Rough estimate of bytes: 256 bytes per vertex average
-        let bytes_estimate = vertex_count * 256;
+        let bytes_estimate = vertex_count * crate::constants::ESTIMATED_BYTES_PER_VERTEX;
 
         StorageStats {
             sessions: session_count,

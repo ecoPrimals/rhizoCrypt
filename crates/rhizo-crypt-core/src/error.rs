@@ -6,6 +6,7 @@
 //! This module defines all error types used throughout the DAG engine.
 
 use crate::types::{SessionId, VertexId};
+use std::fmt;
 use thiserror::Error;
 
 /// Main error type for RhizoCrypt operations.
@@ -182,6 +183,19 @@ pub enum RhizoCryptError {
     #[error("integration error: {0}")]
     Integration(String),
 
+    // === IPC Errors (structured, absorbed from healthSpring V28) ===
+    /// Unix socket IPC error with structured phase context.
+    ///
+    /// Provides observability into which phase of the IPC call failed,
+    /// enabling targeted retries and diagnostics without a logging dependency.
+    #[error("IPC error ({phase}): {message}")]
+    Ipc {
+        /// Phase of the IPC call that failed.
+        phase: IpcErrorPhase,
+        /// Human-readable error detail.
+        message: String,
+    },
+
     // === Internal Errors ===
     /// Internal error.
     #[error("internal error: {0}")]
@@ -194,6 +208,43 @@ pub enum RhizoCryptError {
     /// Operation was cancelled.
     #[error("operation was cancelled")]
     Cancelled,
+}
+
+/// Structured phase for IPC errors.
+///
+/// Absorbed from healthSpring V28 `SendError` pattern. Each variant identifies
+/// the exact point of failure in the Unix socket IPC lifecycle, enabling
+/// targeted retry strategies and structured observability.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum IpcErrorPhase {
+    /// Socket connection failed (primal unreachable or socket missing).
+    Connect,
+    /// Request write to socket failed (broken pipe, timeout).
+    Write,
+    /// Response read from socket failed (timeout, truncated).
+    Read,
+    /// Response is not valid JSON.
+    InvalidJson,
+    /// HTTP response status was not 2xx.
+    HttpStatus(u16),
+    /// Response lacks a `result` field (JSON-RPC protocol violation).
+    NoResult,
+    /// JSON-RPC error object returned by the remote primal.
+    JsonRpcError(i64),
+}
+
+impl fmt::Display for IpcErrorPhase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Connect => write!(f, "connect"),
+            Self::Write => write!(f, "write"),
+            Self::Read => write!(f, "read"),
+            Self::InvalidJson => write!(f, "invalid_json"),
+            Self::HttpStatus(code) => write!(f, "http_{code}"),
+            Self::NoResult => write!(f, "no_result"),
+            Self::JsonRpcError(code) => write!(f, "jsonrpc_{code}"),
+        }
+    }
 }
 
 impl RhizoCryptError {
@@ -242,6 +293,15 @@ impl RhizoCryptError {
         Self::Integration(msg.into())
     }
 
+    /// Create a structured IPC error with phase context.
+    #[must_use]
+    pub fn ipc(phase: IpcErrorPhase, msg: impl Into<String>) -> Self {
+        Self::Ipc {
+            phase,
+            message: msg.into(),
+        }
+    }
+
     /// Create an invalid input error.
     #[must_use]
     pub fn invalid_input(msg: impl Into<String>) -> Self {
@@ -257,6 +317,7 @@ impl RhizoCryptError {
                 | Self::Storage(_)
                 | Self::Integration(_)
                 | Self::CapabilityProvider { .. }
+                | Self::Ipc { .. }
         )
     }
 
@@ -324,5 +385,50 @@ mod tests {
         let session_id = SessionId::now();
         assert!(RhizoCryptError::SessionNotFound(session_id).is_not_found());
         assert!(!RhizoCryptError::config("test").is_not_found());
+    }
+
+    #[test]
+    fn test_ipc_error_phases() {
+        let connect = RhizoCryptError::ipc(IpcErrorPhase::Connect, "socket missing");
+        assert!(connect.to_string().contains("connect"));
+        assert!(connect.to_string().contains("socket missing"));
+        assert!(connect.is_recoverable());
+
+        let write = RhizoCryptError::ipc(IpcErrorPhase::Write, "broken pipe");
+        assert!(write.to_string().contains("write"));
+
+        let read = RhizoCryptError::ipc(IpcErrorPhase::Read, "timeout");
+        assert!(read.to_string().contains("read"));
+
+        let invalid = RhizoCryptError::ipc(IpcErrorPhase::InvalidJson, "unexpected EOF");
+        assert!(invalid.to_string().contains("invalid_json"));
+
+        let http = RhizoCryptError::ipc(IpcErrorPhase::HttpStatus(500), "internal");
+        assert!(http.to_string().contains("http_500"));
+
+        let no_result = RhizoCryptError::ipc(IpcErrorPhase::NoResult, "missing field");
+        assert!(no_result.to_string().contains("no_result"));
+
+        let rpc = RhizoCryptError::ipc(IpcErrorPhase::JsonRpcError(-32601), "method not found");
+        assert!(rpc.to_string().contains("jsonrpc_-32601"));
+    }
+
+    #[test]
+    fn test_ipc_error_phase_display() {
+        assert_eq!(IpcErrorPhase::Connect.to_string(), "connect");
+        assert_eq!(IpcErrorPhase::Write.to_string(), "write");
+        assert_eq!(IpcErrorPhase::Read.to_string(), "read");
+        assert_eq!(IpcErrorPhase::InvalidJson.to_string(), "invalid_json");
+        assert_eq!(IpcErrorPhase::HttpStatus(404).to_string(), "http_404");
+        assert_eq!(IpcErrorPhase::NoResult.to_string(), "no_result");
+        assert_eq!(IpcErrorPhase::JsonRpcError(-32600).to_string(), "jsonrpc_-32600");
+    }
+
+    #[test]
+    fn test_ipc_error_phase_equality() {
+        assert_eq!(IpcErrorPhase::Connect, IpcErrorPhase::Connect);
+        assert_ne!(IpcErrorPhase::Connect, IpcErrorPhase::Write);
+        assert_eq!(IpcErrorPhase::HttpStatus(500), IpcErrorPhase::HttpStatus(500));
+        assert_ne!(IpcErrorPhase::HttpStatus(500), IpcErrorPhase::HttpStatus(404));
     }
 }
