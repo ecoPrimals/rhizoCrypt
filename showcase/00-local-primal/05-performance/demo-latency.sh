@@ -80,7 +80,7 @@ echo -e "${GREEN}▶ Running latency benchmark...${NC}"
 echo ""
 
 # Compile and run
-rustc --edition 2021 /tmp/latency_bench.rs \
+rustc --edition 2024 /tmp/latency_bench.rs \
     -L ../../target/release/deps \
     --extern rhizo_crypt_core=../../target/release/librhizo_crypt_core.rlib \
     --extern tokio=../../target/release/deps/libtokio-*.rlib \

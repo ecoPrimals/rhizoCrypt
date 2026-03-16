@@ -1,8 +1,8 @@
 # RhizoCrypt — Architecture Specification
 
-**Version**: 0.2.0  
-**Status**: Draft  
-**Last Updated**: December 22, 2025
+**Version**: 0.3.0  
+**Status**: Active  
+**Last Updated**: March 16, 2026
 
 ---
 
@@ -296,49 +296,52 @@ rhizoCrypt/
 │   ├── rhizo-crypt-core/         # Core library
 │   │   ├── src/
 │   │   │   ├── lib.rs            # Main entry, re-exports
-│   │   │   ├── config.rs         # Configuration types
-│   │   │   ├── error.rs          # Error types
-│   │   │   ├── vertex.rs         # Vertex data structure
-│   │   │   ├── session.rs        # Session management
-│   │   │   ├── dag.rs            # DAG operations
+│   │   │   ├── error.rs          # Error types (thiserror)
+│   │   │   ├── vertex.rs         # Vertex data structure (Blake3, Bytes)
+│   │   │   ├── session.rs        # Session management (DashMap)
+│   │   │   ├── rhizocrypt.rs     # Core engine orchestration
 │   │   │   ├── merkle.rs         # Merkle tree construction
-│   │   │   └── slice.rs          # Slice semantics
+│   │   │   ├── slice.rs          # Slice semantics (6 modes)
+│   │   │   ├── dehydration.rs    # DAG → LoamSpine commit protocol
+│   │   │   ├── store.rs          # DagStore trait + in-memory impl
+│   │   │   ├── store_redb.rs     # redb storage backend (default)
+│   │   │   ├── store_sled.rs     # sled storage backend (optional)
+│   │   │   ├── types.rs          # Shared types (Signature, Bytes)
+│   │   │   ├── metrics.rs        # Internal metrics tracking
+│   │   │   ├── niche.rs          # Self-knowledge (identity, capabilities)
+│   │   │   ├── primal.rs         # Primal trait implementation
+│   │   │   ├── event.rs          # Event construction helpers
+│   │   │   ├── constants.rs      # Configuration constants
+│   │   │   ├── safe_env/         # Capability-based env resolution
+│   │   │   ├── discovery/        # Runtime service discovery
+│   │   │   ├── integration/      # Capability provider integration
+│   │   │   ├── clients/          # Primal clients (songbird, adapters)
+│   │   │   └── types_ecosystem/  # Ecosystem types (compute, provenance)
 │   │   └── Cargo.toml
 │   │
-│   ├── rhizo-crypt-store/        # Storage backends
+│   ├── rhizo-crypt-rpc/          # RPC layer
 │   │   ├── src/
 │   │   │   ├── lib.rs
-│   │   │   ├── traits.rs         # DagStore, PayloadStore traits
-│   │   │   ├── memory.rs         # In-memory implementation
-│   │   │   ├── rocksdb.rs        # RocksDB implementation
-│   │   │   └── lmdb.rs           # LMDB implementation
+│   │   │   ├── service.rs        # tarpc service (24 operations)
+│   │   │   ├── server.rs         # Axum HTTP + tarpc server
+│   │   │   ├── client.rs         # RPC client
+│   │   │   ├── jsonrpc/          # JSON-RPC 2.0 handler (dag.* methods)
+│   │   │   ├── rate_limit.rs     # Request rate limiting
+│   │   │   ├── metrics.rs        # RPC metrics
+│   │   │   └── error.rs          # RPC error types
 │   │   └── Cargo.toml
 │   │
-│   ├── rhizo-crypt-dehydrate/    # Dehydration engine
-│   │   ├── src/
-│   │   │   ├── lib.rs
-│   │   │   ├── summary.rs        # Summary generation
-│   │   │   ├── commit.rs         # LoamSpine commit
-│   │   │   └── gc.rs             # Garbage collection
-│   │   └── Cargo.toml
-│   │
-│   ├── rhizo-crypt-api/          # API layer
-│   │   ├── src/
-│   │   │   ├── lib.rs
-│   │   │   ├── grpc.rs           # gRPC service
-│   │   │   └── rest.rs           # REST handlers
-│   │   ├── proto/
-│   │   │   └── rhizocrypt.proto  # gRPC definitions
-│   │   └── Cargo.toml
-│   │
-│   └── rhizo-crypt-service/      # Runnable service
+│   └── rhizocrypt-service/       # UniBin binary
 │       ├── src/
-│       │   └── main.rs           # Service entry point
+│       │   ├── main.rs           # Entry point
+│       │   ├── lib.rs            # Subcommands (server, client, status, version, doctor)
+│       │   └── doctor.rs         # Diagnostic health checks
 │       └── Cargo.toml
 │
-├── specs/                        # Specifications
-├── showcase/                     # Demo applications
-└── tests/                        # Integration tests
+├── specs/                        # Specifications (9 complete + 1 experimental)
+├── showcase/                     # Progressive demo suite (70+ demos)
+├── docs/                         # Operational docs (ENV_VARS, DEPLOYMENT_CHECKLIST)
+└── graphs/                       # biomeOS deploy graph
 ```
 
 ---
@@ -355,8 +358,8 @@ RhizoCrypt uses Tokio as its async runtime:
 ├───────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐   │
-│  │ gRPC Server │  │ REST Server │  │  Background Tasks   │   │
-│  │   (tonic)   │  │   (axum)    │  │                     │   │
+│  │ tarpc Server│  │ JSON-RPC    │  │  Background Tasks   │   │
+│  │  (bincode)  │  │   (axum)    │  │                     │   │
 │  └──────┬──────┘  └──────┬──────┘  │  - Session timeout  │   │
 │         │                │         │  - GC sweep         │   │
 │         │                │         │  - Metrics emit     │   │
@@ -488,14 +491,14 @@ rhizocrypt_gc_duration_seconds: Histogram
 All operations emit OpenTelemetry spans:
 
 ```
-rhizocrypt.session.create
-rhizocrypt.session.resolve
-rhizocrypt.event.append
-rhizocrypt.merkle.compute
-rhizocrypt.dehydrate.commit
-rhizocrypt.slice.checkout
-rhizocrypt.slice.resolve
-rhizocrypt.gc.sweep
+dag.session.create
+dag.session.resolve
+dag.event.append
+dag.merkle.compute
+dag.dehydrate.commit
+dag.slice.checkout
+dag.slice.resolve
+dag.gc.sweep
 ```
 
 ### 7.3 Health Checks
@@ -520,7 +523,7 @@ impl PrimalHealth for RhizoCrypt {
 
 ### 8.1 Authentication
 
-- All API requests must include BearDog authentication
+- API requests authenticate via the signing capability provider (not hardcoded to any primal)
 - Session creation requires valid DID
 - Event signing is optional but recommended
 
@@ -545,27 +548,25 @@ impl PrimalHealth for RhizoCrypt {
 
 ## 9. Deployment Modes
 
-### 9.1 Embedded Mode
+### 9.1 Library Mode
 
-RhizoCrypt runs in-process with the application:
+RhizoCrypt core can be embedded in-process:
 
 ```rust
-let rhizo = RhizoCrypt::embedded()
-    .with_store(InMemoryStore::new())
-    .build()?;
+use rhizo_crypt_core::{RhizoCrypt, DagStore};
+
+let store = rhizo_crypt_core::MemoryDagStore::new();
+let rhizo = RhizoCrypt::new(store);
 
 let session = rhizo.create_session(config).await?;
 ```
 
 ### 9.2 Service Mode
 
-RhizoCrypt runs as a standalone service:
+RhizoCrypt runs as a standalone UniBin service:
 
 ```bash
-rhizo-crypt-service \
-    --config /etc/rhizocrypt/config.toml \
-    --grpc-addr 0.0.0.0:50051 \
-    --rest-addr 0.0.0.0:8080
+rhizocrypt server --port 9400
 ```
 
 ### 9.3 Federated Mode

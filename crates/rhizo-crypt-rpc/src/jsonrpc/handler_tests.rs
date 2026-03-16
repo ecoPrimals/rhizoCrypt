@@ -887,3 +887,188 @@ async fn test_slice_checkout_with_mode_and_duration() {
     let result = handle_request(primal.clone(), req).await.unwrap();
     assert!(uuid::Uuid::parse_str(result.as_str().unwrap()).is_ok());
 }
+
+// === Additional coverage: parent_session, metadata, invalid event_type, edge cases ===
+
+#[tokio::test]
+async fn test_session_create_with_parent_session() {
+    let primal = create_test_primal().await;
+
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({"session_type": "General", "description": "parent"})),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let parent_id = result.as_str().unwrap().to_string();
+
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({
+            "session_type": "General",
+            "description": "child",
+            "parent_session": parent_id,
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_session_create_with_invalid_parent_session() {
+    let primal = create_test_primal().await;
+
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({
+            "session_type": "General",
+            "parent_session": "not-a-uuid",
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_event_append_with_metadata_array() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let session_id = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"SessionStart": null},
+            "metadata": [
+                {"key": "source", "value": "test"},
+                {"key": "version", "value": "1.0"},
+            ],
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_event_append_with_payload_ref() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let session_id = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"DataCreate": {"schema": "test-schema"}},
+            "payload_ref": "ipfs://QmTest123",
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_event_append_invalid_event_type() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let session_id = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"CompletelyInvalidType": {}},
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_event_append_missing_event_type() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let session_id = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request("dag.event.append", Some(json!({"session_id": session_id})));
+    let result = handle_request(primal.clone(), req).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_session_create_with_limits() {
+    let primal = create_test_primal().await;
+
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({
+            "session_type": "General",
+            "max_vertices": 1000,
+            "ttl_seconds": 3600,
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_slice_checkout_missing_entry_index() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let session_id = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"SessionStart": null}
+        })),
+    );
+    let _ = handle_request(primal.clone(), req).await.unwrap();
+
+    let req = make_request(
+        "dag.slice.checkout",
+        Some(json!({
+            "spine_id": "spine-0",
+            "entry_hash": "00".repeat(32),
+            "mode": {"Copy": {"allow_recopy": true}},
+            "owner": "did:eco:owner",
+            "holder": "did:eco:holder",
+            "session_id": session_id,
+            "checkout_vertex": "0".repeat(64),
+            "duration_seconds": 3600
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await;
+    assert!(result.is_err(), "should fail without entry_index");
+}
+
+#[tokio::test]
+async fn test_event_append_with_agent() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let session_id = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"SessionStart": null},
+            "agent": "did:eco:agent:test-001",
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await;
+    assert!(result.is_ok());
+}

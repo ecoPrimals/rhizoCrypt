@@ -343,31 +343,54 @@ impl SongbirdClient {
         }
     }
 
-    /// Get federation status.
+    /// Get federation status from Songbird.
+    ///
+    /// When the `live-clients` feature is enabled, this queries the real
+    /// Songbird orchestrator via tarpc. Otherwise it returns an integration
+    /// error indicating the feature is required.
     ///
     /// # Errors
     ///
     /// Returns `RhizoCryptError::Integration` if:
     /// - Not connected to Songbird
-    /// - Status query fails
+    /// - `live-clients` feature is not enabled
+    /// - Status query fails (network / tarpc error)
     pub async fn federation_status(&self) -> Result<FederationStatus> {
         if !self.is_connected().await {
             return Err(RhizoCryptError::integration("Not connected to Songbird"));
         }
 
-        // When Songbird tarpc client is available, wire here:
-        // let client = self.get_tarpc_client().await?;
-        // return client.federation_status(tarpc::context::current()).await?;
+        #[cfg(feature = "live-clients")]
+        {
+            let client_guard = self.tarpc_client.read().await;
+            let client = client_guard
+                .as_ref()
+                .ok_or_else(|| RhizoCryptError::integration("No tarpc client available"))?;
 
-        Ok(FederationStatus {
-            total_services: 0,
-            total_peers: 0,
-            uptime_seconds: 0,
-            version: "pending-integration".to_string(),
-        })
+            let health = client
+                .health(tarpc::context::current())
+                .await
+                .map_err(|e| RhizoCryptError::integration(format!("tarpc error: {e}")))?;
+
+            Ok(FederationStatus {
+                total_services: health.services_count,
+                total_peers: 0,
+                uptime_seconds: health.uptime_seconds,
+                version: health.version,
+            })
+        }
+
+        #[cfg(not(feature = "live-clients"))]
+        {
+            Err(RhizoCryptError::integration("federation_status requires the live-clients feature"))
+        }
     }
 
     /// Unregister from the mesh.
+    ///
+    /// When the `live-clients` feature is enabled, this sends a real
+    /// unregistration request to Songbird. Otherwise it only clears
+    /// local state.
     ///
     /// # Errors
     ///
@@ -378,9 +401,15 @@ impl SongbirdClient {
         if let Some(id) = service_id {
             info!(service_id = %id, "Unregistering from Songbird mesh");
 
-            // When Songbird tarpc client is available, wire here:
-            // let client = self.get_tarpc_client().await?;
-            // client.unregister(tarpc::context::current(), id).await??;
+            #[cfg(feature = "live-clients")]
+            {
+                let client_guard = self.tarpc_client.read().await;
+                if let Some(client) = client_guard.as_ref()
+                    && let Err(e) = client.unregister(tarpc::context::current(), id.clone()).await
+                {
+                    warn!(error = %e, service_id = %id, "Failed to unregister from Songbird");
+                }
+            }
 
             *self.service_id.write().await = None;
             *self.state.write().await = ClientState::Connected;
@@ -391,8 +420,10 @@ impl SongbirdClient {
 
     /// Disconnect from Songbird.
     pub async fn disconnect(&self) {
-        if self.is_connected().await {
-            let _ = self.unregister().await;
+        if self.is_connected().await
+            && let Err(e) = self.unregister().await
+        {
+            warn!(error = %e, "Failed to unregister during disconnect");
         }
         *self.resolved_endpoint.write().await = None;
         *self.state.write().await = ClientState::Disconnected;
@@ -426,7 +457,22 @@ impl Clone for SongbirdClient {
     }
 }
 
-// Tests are in tests.rs (as a sibling module with access to private fields)
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+#[path = "tests_config.rs"]
+mod tests_config;
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
+#[path = "tests_discovery.rs"]
+mod tests_discovery;
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
+#[path = "tests_tarpc.rs"]
+mod tests_tarpc;

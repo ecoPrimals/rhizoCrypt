@@ -172,7 +172,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 EOF
 
 echo -e "${YELLOW}Compiling workflow integration demo...${NC}"
-rustc --edition 2021 /tmp/workflow_integration.rs \
+rustc --edition 2024 /tmp/workflow_integration.rs \
     -L target/release/deps \
     --extern rhizo_crypt_core=target/release/librhizo_crypt_core.rlib \
     --extern tokio=target/release/deps/libtokio-*.rlib \

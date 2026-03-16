@@ -245,8 +245,8 @@ ls -la ../bins/
 - **Conditional transfers** (escrow, consignment)
 
 ### 5. 🚀 Production Ready
-- **1188+ passing tests** (all features)
-- **91.47% line coverage** (`--fail-under-lines 90` CI gate)
+- **1222 passing tests** (all features)
+- **92.32% line coverage** (`--fail-under-lines 90` CI gate)
 - **Zero unsafe code** (`unsafe_code = "deny"`, zero `unsafe` in tests)
 - **Zero Clippy warnings** (pedantic + nursery, `unwrap_used`/`expect_used = "deny"`)
 - **Service mode** with monitoring
@@ -335,7 +335,7 @@ ls -la ../bins/
 ### Common Questions:
 - **"Where do I start?"** → [00-local-primal/00_START_HERE.md](./00-local-primal/00_START_HERE.md)
 - **"What's unique about rhizoCrypt?"** → Slice semantics + Dehydration
-- **"Is it production-ready?"** → Yes! 1188+ tests, 91.47% coverage, zero unsafe code
+- **"Is it production-ready?"** → Yes! 1222 tests, 92.32% coverage, zero unsafe code
 - **"How do I integrate?"** → See [01-inter-primal-live/](./01-inter-primal-live/)
 
 ---

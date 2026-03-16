@@ -250,10 +250,13 @@ impl Default for Did {
 pub struct Signature(pub Bytes);
 
 impl Signature {
-    /// Create a new signature from a byte vector.
+    /// Create a new signature from any type convertible to `Bytes`.
+    ///
+    /// Accepts `Vec<u8>`, `&'static [u8]`, `Bytes`, etc. — callers
+    /// that already hold a `Bytes` value avoid an extra allocation.
     #[must_use]
-    pub fn new(bytes: Vec<u8>) -> Self {
-        Self(Bytes::from(bytes))
+    pub fn new(bytes: impl Into<Bytes>) -> Self {
+        Self(bytes.into())
     }
 
     /// Create a signature from a static byte slice (zero-copy).

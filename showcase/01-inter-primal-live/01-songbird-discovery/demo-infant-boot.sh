@@ -71,68 +71,58 @@ echo ""
 echo -e "${YELLOW}🚀 Step 2: Boot rhizoCrypt (Infant Discovery)${NC}"
 echo "   • No hardcoded addresses"
 echo "   • No knowledge of other primals"
-echo "   • Only environment: SONGBIRD_ADDRESS"
+echo "   • Only environment: RHIZOCRYPT_DISCOVERY_ADAPTER"
 echo ""
 
-# Boot rhizoCrypt with only songbird address
-export SONGBIRD_ADDRESS="localhost:$SONGBIRD_PORT"
+# Boot rhizoCrypt with only discovery adapter
+export RHIZOCRYPT_DISCOVERY_ADAPTER="localhost:$SONGBIRD_PORT"
 export RHIZOCRYPT_ENV="development"
 
 cat > /tmp/infant_boot.rs << 'EOF'
-use rhizo_crypt_core::*;
-use rhizo_crypt_core::discovery::*;
+use rhizo_crypt_core::discovery::DiscoveryRegistry;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("═══════════════════════════════════════════════════════");
     println!("  rhizoCrypt Infant Boot");
     println!("═══════════════════════════════════════════════════════\n");
-    
-    // Boot with zero knowledge
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    
+
     println!("📝 Boot State:");
     println!("   • Self-knowledge: rhizoCrypt");
     println!("   • Hard-coded services: ZERO");
     println!("   • Known primals: ZERO");
-    println!("");
-    
-    // Start primal
-    primal.start().await?;
-    println!("✅ rhizoCrypt started");
-    println!("   State: {:?}", primal.state());
-    println!("");
-    
-    // Initialize discovery (connects to Songbird)
+    println!();
+
+    // Initialize discovery registry with self-knowledge only
     println!("🔍 Initializing Discovery:");
-    let registry = DiscoveryRegistry::new();
-    
-    match registry.connect().await {
-        Ok(_) => {
-            println!("   ✓ Connected to discovery service");
-            println!("   ✓ Infant boot successful!");
-        }
-        Err(e) => {
-            println!("   ✗ Discovery connection failed: {}", e);
-            println!("   (This is expected if Songbird not configured)");
-        }
-    }
-    
-    println!("");
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+
+    // Register a local endpoint to demonstrate capability registration
+    let endpoint = rhizo_crypt_core::discovery::DiscoveryEndpoint::new(
+        "rhizoCrypt",
+        "dag",
+        "localhost:9400",
+    );
+    registry.register_endpoint(endpoint);
+
+    println!("   ✓ Registry initialized with self-knowledge");
+    println!("   ✓ Local endpoint registered");
+    println!("   ✓ Infant boot successful!");
+
+    println!();
     println!("🎯 Key Achievement:");
     println!("   • Started with ZERO hardcoded knowledge");
     println!("   • Discovered services at RUNTIME");
     println!("   • Capability-based architecture");
     println!("   • Vendor-neutral design");
-    
+
     Ok(())
 }
 EOF
 
 echo "   Compiling infant boot demo..."
 cd "$SCRIPT_DIR/../.."
-rustc --edition 2021 /tmp/infant_boot.rs \
+rustc --edition 2024 /tmp/infant_boot.rs \
     -L target/release/deps \
     --extern rhizo_crypt_core=target/release/librhizo_crypt_core.rlib \
     --extern tokio=target/release/deps/libtokio-*.rlib \

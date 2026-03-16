@@ -141,7 +141,7 @@ EOF
 
 echo "Compiling discovery demo..."
 cd "$SCRIPT_DIR/../.."
-rustc --edition 2021 /tmp/beardog_discovery.rs \
+rustc --edition 2024 /tmp/beardog_discovery.rs \
     -L target/release/deps \
     --extern rhizo_crypt_core=target/release/librhizo_crypt_core.rlib \
     --extern tokio=target/release/deps/libtokio-*.rlib \

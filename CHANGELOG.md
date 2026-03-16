@@ -5,6 +5,46 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-16 (session 13)
+
+### Added
+
+#### Content Similarity Index Experiment Spec
+
+- New spec: `specs/CONTENT_INDEX_EXPERIMENT.md` — locality-sensitive cross-session discovery
+- Proposes a secondary hash index using LSH for structural vertex similarity
+- Feature-gated behind `content-index` (no impact on default builds)
+- Bridges DAG branching (rhizoCrypt) with linear layering (LoamSpine) concepts
+- Spring participation guide published to `wateringHole/CONTENT_SIMILARITY_EXPERIMENT_GUIDE.md`
+- ISSUE-012 opened in `SPRING_EVOLUTION_ISSUES.md` for cross-primal coordination
+
+### Changed
+
+#### Documentation Refresh
+
+- Updated `specs/00_SPECIFICATIONS_INDEX.md` with experimental spec section
+- Updated `README.md`: test count (1222), coverage (92.32%), SPDX file count (110)
+- Updated `CHANGELOG.md` with session 13
+- Handoff published to `wateringHole/handoffs/`
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery + cargo, all features) | Clean (0 warnings) |
+| `cargo doc --workspace --all-features --no-deps` | Clean |
+| `cargo test --workspace --all-features` | 1222 pass, 0 fail |
+| `cargo deny check` | Clean |
+| `unsafe_code = "deny"` | Workspace-wide |
+| `unwrap_used`/`expect_used` | `"deny"` workspace-wide |
+| Coverage gate | 92.32% lines (`--fail-under-lines 90` CI enforced) |
+| SPDX headers | All 110 `.rs` files |
+| Max file size | All under 1000 lines |
+| Production unwrap/expect | Zero |
+
+---
+
 ## [0.13.0-dev] - 2026-03-16 (session 12)
 
 ### Changed

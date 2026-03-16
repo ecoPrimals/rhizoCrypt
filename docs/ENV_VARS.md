@@ -22,7 +22,8 @@ rhizoCrypt follows the **infant discovery** pattern: it starts with **zero knowl
 |----------|------|---------|-------------|
 | `RHIZOCRYPT_ENV` | string | `production` | Environment mode (`development` or `production`) |
 | `RHIZOCRYPT_RPC_HOST` | string | `0.0.0.0` | RPC server bind address |
-| `RHIZOCRYPT_PORT` | u16 | `9400` | RPC server port |
+| `RHIZOCRYPT_RPC_PORT` | u16 | `9400` | RPC server port (preferred) |
+| `RHIZOCRYPT_PORT` | u16 | `9400` | RPC server port (legacy alias for `RHIZOCRYPT_RPC_PORT`) |
 | `RHIZOCRYPT_METRICS_PORT` | u16 | `9401` | Prometheus metrics port |
 
 ### Capability Endpoints (Preferred ✅)

@@ -123,7 +123,7 @@ EOF
 echo -e "${GREEN}▶ Running event sourcing demo...${NC}"
 echo ""
 
-rustc --edition 2021 /tmp/event_sourcing.rs \
+rustc --edition 2024 /tmp/event_sourcing.rs \
     -L ../../target/release/deps \
     --extern rhizo_crypt_core=../../target/release/librhizo_crypt_core.rlib \
     --extern tokio=../../target/release/deps/libtokio-*.rlib \

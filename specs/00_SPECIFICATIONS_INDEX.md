@@ -1,6 +1,6 @@
 # 🔐 RhizoCrypt — Specifications Index
 
-**Last Updated**: March 14, 2026  
+**Last Updated**: March 16, 2026  
 **Version**: 0.13.0-dev  
 **Status**: Active Development
 
@@ -62,6 +62,12 @@ RhizoCrypt respects human dignity by:
 | [INTEGRATION_SPECIFICATION.md](./archive/INTEGRATION_SPECIFICATION.md) | Legacy v1 integration (superseded by V2) | 📦 Archived |
 | [INTEGRATION_SPECIFICATION_V2.md](./INTEGRATION_SPECIFICATION_V2.md) | Capability-based integration (current) | ✅ Complete |
 | [STORAGE_BACKENDS.md](./STORAGE_BACKENDS.md) | redb (default), sled (optional), in-memory | ✅ Complete |
+
+### Experimental Specifications
+
+| Document | Purpose | Status |
+|----------|---------|--------|
+| [CONTENT_INDEX_EXPERIMENT.md](./CONTENT_INDEX_EXPERIMENT.md) | Locality-sensitive cross-session similarity index | 🧪 Proposed |
 
 ---
 
@@ -128,6 +134,7 @@ For new developers, we recommend this reading order:
 | **Frontier** | The tips of the DAG (vertices with no children) |
 | **Merkle Root** | Cryptographic summary of entire session for proofs |
 | **tarpc** | Pure Rust RPC via traits — no protobuf |
+| **Content Index** | Locality-sensitive secondary index for cross-session similarity (experimental) |
 
 ---
 

@@ -91,7 +91,7 @@ EOF
 echo -e "${GREEN}▶ Running scale benchmark (this may take 30-60 seconds)...${NC}"
 echo ""
 
-rustc --edition 2021 /tmp/scale_bench.rs \
+rustc --edition 2024 /tmp/scale_bench.rs \
     -L ../../target/release/deps \
     --extern rhizo_crypt_core=../../target/release/librhizo_crypt_core.rlib \
     --extern tokio=../../target/release/deps/libtokio-*.rlib \

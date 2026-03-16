@@ -124,7 +124,7 @@ cd /tmp
 rustc rhizo_quick_start.rs \
     -L "$PROJECT_ROOT/target/release/deps" \
     --extern rhizo_crypt_core="$PROJECT_ROOT/target/release/librhizo_crypt_core.rlib" \
-    --edition 2021 \
+    --edition 2024 \
     -o /tmp/rhizo_quick_start 2>/dev/null || {
     echo -e "${YELLOW}⚠️  Quick compile failed, running full build...${NC}"
     cd "$PROJECT_ROOT"

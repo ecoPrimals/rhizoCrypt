@@ -103,7 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 EOF
 
 echo "Compiling signing demo..."
-rustc --edition 2021 /tmp/sign_vertex.rs \
+rustc --edition 2024 /tmp/sign_vertex.rs \
     -L target/release/deps \
     --extern rhizo_crypt_core=target/release/librhizo_crypt_core.rlib \
     --extern tokio=target/release/deps/libtokio-*.rlib \

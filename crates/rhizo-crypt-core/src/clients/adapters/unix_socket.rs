@@ -259,7 +259,13 @@ impl ProtocolAdapter for UnixSocketAdapter {
             "Unix socket adapter sending notification"
         );
 
-        let _ = self.http_post(&self.rpc_path, &body).await;
+        if let Err(e) = self.http_post(&self.rpc_path, &body).await {
+            tracing::warn!(
+                method = %method,
+                error = %e,
+                "Notification delivery failed (fire-and-forget)"
+            );
+        }
         Ok(())
     }
 

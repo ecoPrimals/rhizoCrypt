@@ -122,7 +122,7 @@ EOF
 echo -e "${GREEN}▶ Running capability discovery demo...${NC}"
 echo ""
 
-rustc --edition 2021 /tmp/capability_discovery.rs \
+rustc --edition 2024 /tmp/capability_discovery.rs \
     -L ../../target/release/deps \
     --extern rhizo_crypt_core=../../target/release/librhizo_crypt_core.rlib \
     --extern tokio=../../target/release/deps/libtokio-*.rlib \

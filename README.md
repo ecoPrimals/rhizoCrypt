@@ -6,8 +6,8 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-or-later |
-| Tests | 1188+ passing (all features) |
-| Coverage | 91.63% line coverage (`--fail-under-lines 90` CI gate) |
+| Tests | 1222 passing (all features) |
+| Coverage | 92.32% line coverage (`--fail-under-lines 90` CI gate) |
 | Clippy | 0 warnings (pedantic + nursery + cargo, `unwrap_used`/`expect_used = "deny"`) |
 | Edition | 2024 (rust-version 1.87) |
 | Unsafe | `unsafe_code = "deny"` workspace-wide, zero `unsafe` in tests (temp-env) |
@@ -17,7 +17,7 @@
 | Storage | redb (Pure Rust, default) / sled (optional) |
 | Deps | ecoBin compliant — zero application C dependencies |
 | Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 107 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 110 `.rs` files |
 | Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps) |
 | Registry | `capability_registry.toml` (23 methods, 7 domains) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
@@ -143,7 +143,7 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — Environment variable reference
 - [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) — Production deployment
-- [specs/](specs/) — Formal specifications (architecture, data model, protocols)
+- [specs/](specs/) — Formal specifications (architecture, data model, protocols, experiments)
 - [showcase/](showcase/) — Progressive demo suite (70+ working demos)
 - [CHANGELOG.md](CHANGELOG.md) — Version history
 - [deny.toml](deny.toml) — Dependency audit policy (`cargo-deny`)

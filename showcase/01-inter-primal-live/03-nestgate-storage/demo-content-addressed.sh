@@ -133,7 +133,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 EOF
 
 echo -e "${YELLOW}Compiling content-addressed demo...${NC}"
-rustc --edition 2021 /tmp/content_addressed.rs \
+rustc --edition 2024 /tmp/content_addressed.rs \
     -L target/release/deps \
     --extern rhizo_crypt_core=target/release/librhizo_crypt_core.rlib \
     --extern tokio=target/release/deps/libtokio-*.rlib \

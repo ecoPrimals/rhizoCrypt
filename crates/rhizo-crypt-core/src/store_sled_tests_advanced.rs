@@ -412,3 +412,131 @@ async fn test_export_empty_store() {
     let export_data = store.export();
     assert!(!export_data.is_empty(), "export returns tree metadata even when empty");
 }
+
+// === Additional coverage tests ===
+
+#[test]
+fn test_open_creates_nested_dirs() {
+    let dir = TempDir::new().expect("temp dir");
+    let nested_path = dir.path().join("a/b/c/sled_db");
+    let store = SledDagStore::open(&nested_path).expect("open");
+    assert!(store.path().exists());
+}
+
+#[test]
+fn test_parse_vertex_set_empty() {
+    let set = SledDagStore::parse_vertex_set(&[]);
+    assert!(set.is_empty());
+}
+
+#[test]
+fn test_serialize_then_parse_roundtrips() {
+    let ids: hashbrown::HashSet<VertexId> = (0..5u8)
+        .map(|i| {
+            let buf = [i; 32];
+            VertexId::new(buf)
+        })
+        .collect();
+    let serialized = SledDagStore::serialize_vertex_set(&ids);
+    let parsed = SledDagStore::parse_vertex_set(&serialized);
+    assert_eq!(ids, parsed);
+}
+
+#[test]
+fn test_parse_vertex_set_trailing_bytes_ignored() {
+    let id = VertexId::from_bytes(b"exactly 32 bytes vertex id here!");
+    let mut data = id.as_bytes().to_vec();
+    data.extend_from_slice(&[0xFF; 10]);
+    let set = SledDagStore::parse_vertex_set(&data);
+    assert_eq!(set.len(), 1);
+    assert!(set.contains(&id));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_delete_session_complex_dag() {
+    let (store, _dir) = create_test_store();
+    let session_id = SessionId::now();
+
+    let genesis = VertexBuilder::new(EventType::SessionStart).build();
+    let mut gc = genesis.clone();
+    let gid = gc.id().expect("gid");
+    store.put_vertex(session_id, genesis).await.expect("put genesis");
+
+    let a = VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .with_parent(gid)
+    .build();
+    store.put_vertex(session_id, a).await.expect("put a");
+
+    let b = VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .with_parent(gid)
+    .build();
+    store.put_vertex(session_id, b).await.expect("put b");
+
+    assert_eq!(store.count_vertices(session_id).await.expect("count"), 3);
+    store.delete_session(session_id).await.expect("delete");
+    assert_eq!(store.count_vertices(session_id).await.expect("count"), 0);
+    assert!(store.get_genesis(session_id).await.expect("genesis").is_empty());
+    assert!(store.get_frontier(session_id).await.expect("frontier").is_empty());
+    assert!(store.get_children(session_id, gid).await.expect("children").is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_delete_session_twice_idempotent() {
+    let (store, _dir) = create_test_store();
+    let session_id = SessionId::now();
+    let v = VertexBuilder::new(EventType::SessionStart).build();
+    store.put_vertex(session_id, v).await.expect("put");
+    store.delete_session(session_id).await.expect("first delete");
+    store.delete_session(session_id).await.expect("second delete");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_clone_shares_state() {
+    let (store, _dir) = create_test_store();
+    let store2 = store.clone();
+    let session_id = SessionId::now();
+    let v = VertexBuilder::new(EventType::SessionStart).build();
+    let mut vc = v.clone();
+    let vid = vc.id().expect("id");
+    store.put_vertex(session_id, v).await.expect("put");
+
+    let got = store2.get_vertex(session_id, vid).await.expect("get");
+    assert!(got.is_some());
+    assert_eq!(store.stats().await.write_ops, store2.stats().await.write_ops);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_update_frontier_replaces_multiple_parents() {
+    let (store, _dir) = create_test_store();
+    let session_id = SessionId::now();
+    let p1 = VertexId::from_bytes(b"parent_1________________________");
+    let p2 = VertexId::from_bytes(b"parent_2________________________");
+    let child = VertexId::from_bytes(b"child___________________________");
+
+    store.update_frontier(session_id, p1, &[]).await.expect("add p1");
+    store.update_frontier(session_id, p2, &[]).await.expect("add p2");
+    store.update_frontier(session_id, child, &[p1, p2]).await.expect("merge");
+
+    let frontier = store.get_frontier(session_id).await.expect("frontier");
+    assert!(frontier.contains(&child));
+    assert!(!frontier.contains(&p1));
+    assert!(!frontier.contains(&p2));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_exists_wrong_session() {
+    let (store, _dir) = create_test_store();
+    let s1 = SessionId::now();
+    let s2 = SessionId::now();
+    let v = VertexBuilder::new(EventType::SessionStart).build();
+    let mut vc = v.clone();
+    let vid = vc.id().expect("id");
+    store.put_vertex(s1, v).await.expect("put");
+
+    assert!(store.exists(s1, vid).await.expect("exists"));
+    assert!(!store.exists(s2, vid).await.expect("exists"));
+}
