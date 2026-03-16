@@ -5,7 +5,7 @@
 //!
 //! Tests the service configuration, startup behavior, and basic functionality.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::uninlined_format_args, unsafe_code)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::uninlined_format_args)]
 
 use rhizo_crypt_core::{PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, StorageBackend};
 use rhizo_crypt_rpc::server::RpcServer;
@@ -243,8 +243,6 @@ async fn test_service_in_memory_storage() {
 
 // --- Doctor integration tests ---
 
-static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
 /// Test doctor runs in basic (non-comprehensive) mode.
 #[tokio::test]
 async fn test_doctor_run_basic() {
@@ -258,65 +256,75 @@ async fn test_doctor_run_comprehensive() {
 }
 
 /// Test doctor reports Unhealthy when configuration has empty host.
-#[tokio::test]
-async fn test_doctor_unhealthy_config_empty_host() {
-    {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        unsafe { std::env::set_var("RHIZOCRYPT_RPC_HOST", "") };
-    }
-    run_doctor(false).await;
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
+#[test]
+fn test_doctor_unhealthy_config_empty_host() {
+    temp_env::with_vars([("RHIZOCRYPT_RPC_HOST", Some(""))], || {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async { run_doctor(false).await });
+    });
 }
 
 /// Test doctor reports Healthy (standalone mode) when discovery is not configured.
-#[tokio::test]
-async fn test_doctor_standalone_mode() {
-    {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
-        unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
-        unsafe { std::env::remove_var("DISCOVERY_ADDRESS") };
-    }
-    run_doctor(false).await;
+#[test]
+fn test_doctor_standalone_mode() {
+    temp_env::with_vars(
+        [
+            ("RHIZOCRYPT_DISCOVERY_ADAPTER", None::<&str>),
+            ("DISCOVERY_ENDPOINT", None),
+            ("DISCOVERY_ADDRESS", None),
+        ],
+        || {
+            tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(async { run_doctor(false).await });
+        },
+    );
 }
 
 /// Test doctor with discovery configured but non-comprehensive (Pass path).
-#[tokio::test]
-async fn test_doctor_discovery_configured_non_comprehensive() {
-    {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999") };
-    }
-    run_doctor(false).await;
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
+#[test]
+fn test_doctor_discovery_configured_non_comprehensive() {
+    temp_env::with_vars([("DISCOVERY_ENDPOINT", Some("127.0.0.1:99999"))], || {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async { run_doctor(false).await });
+    });
 }
 
 /// Test doctor with discovery configured and comprehensive (unreachable -> Warn).
-#[tokio::test]
-async fn test_doctor_discovery_comprehensive_unreachable() {
-    {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999") };
-    }
-    run_doctor(true).await;
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
+#[test]
+fn test_doctor_discovery_comprehensive_unreachable() {
+    temp_env::with_vars([("DISCOVERY_ENDPOINT", Some("127.0.0.1:99999"))], || {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async { run_doctor(true).await });
+    });
 }
 
 /// Test doctor with discovery reachable in comprehensive mode.
-#[tokio::test]
-async fn test_doctor_discovery_comprehensive_reachable() {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-    {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        unsafe { std::env::set_var("DISCOVERY_ENDPOINT", format!("http://{addr}")) };
-    }
-    run_doctor(true).await;
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
+#[test]
+fn test_doctor_discovery_comprehensive_reachable() {
+    let rt =
+        tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().unwrap();
+    let addr = rt.block_on(async {
+        tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap().local_addr().unwrap()
+    });
+    temp_env::with_vars([("DISCOVERY_ENDPOINT", Some(format!("http://{addr}")))], || {
+        rt.block_on(async { run_doctor(true).await });
+    });
 }
 
 /// Test check_dag_engine passes.
@@ -522,124 +530,154 @@ async fn test_run_client_metrics() {
 /// Test resolve_bind_addr with invalid host returns AddrParse error.
 #[test]
 fn test_resolve_bind_addr_invalid_host() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let result = resolve_bind_addr(Some(9999), Some("not-an-ip".to_string()));
     assert!(result.is_err());
     assert!(matches!(&result.unwrap_err(), ServiceError::AddrParse(_)));
 }
 
 /// Test run_server starts in standalone mode when no discovery configured.
-#[tokio::test]
-async fn test_run_server_standalone_mode_no_discovery() {
-    {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
-        unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
-        unsafe { std::env::remove_var("DISCOVERY_ADDRESS") };
-    }
-
-    let handle =
-        tokio::spawn(async { run_server(Some(19709), Some("127.0.0.1".to_string())).await });
-
-    sleep(Duration::from_secs(1)).await;
-
-    handle.abort();
-    let _ = handle.await;
+#[test]
+fn test_run_server_standalone_mode_no_discovery() {
+    temp_env::with_vars(
+        [
+            ("RHIZOCRYPT_DISCOVERY_ADAPTER", None::<&str>),
+            ("DISCOVERY_ENDPOINT", None),
+            ("DISCOVERY_ADDRESS", None),
+        ],
+        || {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .unwrap();
+            let handle = rt.spawn(async {
+                let _ = run_server(Some(19709), Some("127.0.0.1".to_string())).await;
+            });
+            rt.block_on(async {
+                sleep(Duration::from_secs(1)).await;
+                handle.abort();
+                let _ = handle.await;
+            });
+        },
+    );
 }
 
 /// Test run_server continues when discovery registration fails (standalone fallback).
-#[tokio::test]
-async fn test_run_server_discovery_failure_continues_standalone() {
-    {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        unsafe { std::env::set_var("RHIZOCRYPT_PORT", "19710") };
-        unsafe { std::env::set_var("RHIZOCRYPT_HOST", "127.0.0.1") };
-        unsafe {
-            std::env::set_var(
-                "RHIZOCRYPT_DISCOVERY_ADAPTER",
-                "http://invalid-discovery-12345:99999",
-            );
-        }
-        unsafe { std::env::set_var("RUST_LOG", "error") };
-    }
-
-    let handle =
-        tokio::spawn(async { run_server(Some(19710), Some("127.0.0.1".to_string())).await });
-
-    sleep(Duration::from_secs(2)).await;
-
-    handle.abort();
-    let _ = handle.await;
-
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    unsafe { std::env::remove_var("RHIZOCRYPT_PORT") };
-    unsafe { std::env::remove_var("RHIZOCRYPT_HOST") };
-    unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
-}
-
-/// Clear all env vars that affect `resolve_bind_addr` so tests are isolated
-/// from async tests that may have leaked values outside their lock window.
-fn clear_bind_addr_env() {
-    unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
-    unsafe { std::env::remove_var("RHIZOCRYPT_PORT") };
-    unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
-    unsafe { std::env::remove_var("RHIZOCRYPT_HOST") };
-    unsafe { std::env::remove_var("RHIZOCRYPT_ENV") };
+#[test]
+fn test_run_server_discovery_failure_continues_standalone() {
+    temp_env::with_vars(
+        [
+            ("RHIZOCRYPT_PORT", Some("19710")),
+            ("RHIZOCRYPT_HOST", Some("127.0.0.1")),
+            ("RHIZOCRYPT_DISCOVERY_ADAPTER", Some("http://invalid-discovery-12345:99999")),
+            ("RUST_LOG", Some("error")),
+        ],
+        || {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .unwrap();
+            let handle = rt.spawn(async {
+                let _ = run_server(Some(19710), Some("127.0.0.1".to_string())).await;
+            });
+            rt.block_on(async {
+                sleep(Duration::from_secs(2)).await;
+                handle.abort();
+                let _ = handle.await;
+            });
+        },
+    );
 }
 
 /// Test resolve_bind_addr with RHIZOCRYPT_RPC_PORT env.
 #[test]
 fn test_resolve_bind_addr_rpc_port_env() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    clear_bind_addr_env();
-    unsafe { std::env::set_var("RHIZOCRYPT_RPC_PORT", "19701") };
-    let addr = resolve_bind_addr(None, None).unwrap();
-    assert_eq!(addr.port(), 19701);
-    clear_bind_addr_env();
+    temp_env::with_vars(
+        [
+            ("RHIZOCRYPT_RPC_PORT", Some("19701")),
+            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("RHIZOCRYPT_RPC_HOST", None),
+            ("RHIZOCRYPT_HOST", None),
+            ("RHIZOCRYPT_ENV", None),
+        ],
+        || {
+            let addr = resolve_bind_addr(None, None).unwrap();
+            assert_eq!(addr.port(), 19701);
+        },
+    );
 }
 
 /// Test resolve_bind_addr with RHIZOCRYPT_PORT (legacy) env.
 #[test]
 fn test_resolve_bind_addr_port_legacy_env() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    clear_bind_addr_env();
-    unsafe { std::env::set_var("RHIZOCRYPT_PORT", "19702") };
-    let addr = resolve_bind_addr(None, None).unwrap();
-    assert_eq!(addr.port(), 19702);
-    clear_bind_addr_env();
+    temp_env::with_vars(
+        [
+            ("RHIZOCRYPT_PORT", Some("19702")),
+            ("RHIZOCRYPT_RPC_PORT", None::<&str>),
+            ("RHIZOCRYPT_RPC_HOST", None),
+            ("RHIZOCRYPT_HOST", None),
+            ("RHIZOCRYPT_ENV", None),
+        ],
+        || {
+            let addr = resolve_bind_addr(None, None).unwrap();
+            assert_eq!(addr.port(), 19702);
+        },
+    );
 }
 
 /// Test resolve_bind_addr with RHIZOCRYPT_RPC_HOST env.
 #[test]
 fn test_resolve_bind_addr_rpc_host_env() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    clear_bind_addr_env();
-    unsafe { std::env::set_var("RHIZOCRYPT_RPC_HOST", "127.0.0.1") };
-    let addr = resolve_bind_addr(None, None).unwrap();
-    assert_eq!(addr.ip().to_string(), "127.0.0.1");
-    clear_bind_addr_env();
+    temp_env::with_vars(
+        [
+            ("RHIZOCRYPT_RPC_HOST", Some("127.0.0.1")),
+            ("RHIZOCRYPT_RPC_PORT", None::<&str>),
+            ("RHIZOCRYPT_PORT", None),
+            ("RHIZOCRYPT_HOST", None),
+            ("RHIZOCRYPT_ENV", None),
+        ],
+        || {
+            let addr = resolve_bind_addr(None, None).unwrap();
+            assert_eq!(addr.ip().to_string(), "127.0.0.1");
+        },
+    );
 }
 
 /// Test resolve_bind_addr with RHIZOCRYPT_HOST (legacy) env.
 #[test]
 fn test_resolve_bind_addr_host_legacy_env() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    clear_bind_addr_env();
-    unsafe { std::env::set_var("RHIZOCRYPT_HOST", "0.0.0.0") };
-    let addr = resolve_bind_addr(None, None).unwrap();
-    assert_eq!(addr.ip().to_string(), "0.0.0.0");
-    clear_bind_addr_env();
+    temp_env::with_vars(
+        [
+            ("RHIZOCRYPT_HOST", Some("0.0.0.0")),
+            ("RHIZOCRYPT_RPC_PORT", None::<&str>),
+            ("RHIZOCRYPT_PORT", None),
+            ("RHIZOCRYPT_RPC_HOST", None),
+            ("RHIZOCRYPT_ENV", None),
+        ],
+        || {
+            let addr = resolve_bind_addr(None, None).unwrap();
+            assert_eq!(addr.ip().to_string(), "0.0.0.0");
+        },
+    );
 }
 
 /// Test resolve_bind_addr with development env uses default port.
 #[test]
 fn test_resolve_bind_addr_development_env() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    clear_bind_addr_env();
-    unsafe { std::env::set_var("RHIZOCRYPT_ENV", "development") };
-    let addr = resolve_bind_addr(None, None).unwrap();
-    assert!(addr.port() > 0 || addr.port() == 0);
-    clear_bind_addr_env();
+    temp_env::with_vars(
+        [
+            ("RHIZOCRYPT_ENV", Some("development")),
+            ("RHIZOCRYPT_RPC_PORT", None::<&str>),
+            ("RHIZOCRYPT_PORT", None),
+            ("RHIZOCRYPT_RPC_HOST", None),
+            ("RHIZOCRYPT_HOST", None),
+        ],
+        || {
+            let addr = resolve_bind_addr(None, None).unwrap();
+            assert!(addr.port() > 0 || addr.port() == 0);
+        },
+    );
 }
 
 // --- print_version and print_status ---

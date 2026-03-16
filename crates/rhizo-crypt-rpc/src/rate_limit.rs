@@ -12,12 +12,6 @@ use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-#[cfg(test)]
-use std::sync::Mutex;
-
-/// Lock for env-based tests to prevent parallel execution from corrupting env vars.
-#[cfg(test)]
-static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
 use tokio::sync::RwLock;
 
 /// Rate limit configuration.
@@ -295,7 +289,7 @@ impl std::fmt::Display for RateLimitExceeded {
 impl std::error::Error for RateLimitExceeded {}
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, unsafe_code)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use std::net::Ipv4Addr;
@@ -419,33 +413,27 @@ mod tests {
 
     #[test]
     fn test_config_from_env() {
-        let _guard = ENV_TEST_LOCK.lock().unwrap();
-        unsafe { std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS") };
-        unsafe { std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_WRITE_RPS") };
-        unsafe { std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS") };
-
-        unsafe { std::env::set_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS", "42") };
-        unsafe { std::env::set_var("RHIZOCRYPT_RATE_LIMIT_WRITE_RPS", "21") };
-        unsafe { std::env::set_var("RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS", "7") };
-
-        let config = RateLimitConfig::from_env();
-        assert_eq!(config.read_rps, 42);
-        assert_eq!(config.write_rps, 21);
-        assert_eq!(config.expensive_rps, 7);
-
-        unsafe { std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS") };
-        unsafe { std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_WRITE_RPS") };
-        unsafe { std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS") };
+        temp_env::with_vars(
+            [
+                ("RHIZOCRYPT_RATE_LIMIT_READ_RPS", Some("42")),
+                ("RHIZOCRYPT_RATE_LIMIT_WRITE_RPS", Some("21")),
+                ("RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS", Some("7")),
+            ],
+            || {
+                let config = RateLimitConfig::from_env();
+                assert_eq!(config.read_rps, 42);
+                assert_eq!(config.write_rps, 21);
+                assert_eq!(config.expensive_rps, 7);
+            },
+        );
     }
 
     #[test]
     fn test_config_from_env_invalid_ignored() {
-        let _guard = ENV_TEST_LOCK.lock().unwrap();
-        unsafe { std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS") };
-        unsafe { std::env::set_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS", "not-a-number") };
-        let config = RateLimitConfig::from_env();
-        assert_eq!(config.read_rps, 1000);
-        unsafe { std::env::remove_var("RHIZOCRYPT_RATE_LIMIT_READ_RPS") };
+        temp_env::with_vars([("RHIZOCRYPT_RATE_LIMIT_READ_RPS", Some("not-a-number"))], || {
+            let config = RateLimitConfig::from_env();
+            assert_eq!(config.read_rps, 1000);
+        });
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

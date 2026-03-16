@@ -317,12 +317,9 @@ pub fn print_status() {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, unsafe_code)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_resolve_bind_addr_with_overrides() {
@@ -487,93 +484,104 @@ mod tests {
         run_doctor(true).await;
     }
 
-    #[tokio::test]
-    async fn test_check_configuration_default_env() {
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
-            unsafe { std::env::remove_var("RHIZOCRYPT_PORT") };
-            unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
-            unsafe { std::env::remove_var("RHIZOCRYPT_HOST") };
-            unsafe { std::env::remove_var("RHIZOCRYPT_ENV") };
-        }
-        run_doctor(false).await;
+    #[test]
+    fn test_check_configuration_default_env() {
+        temp_env::with_vars(
+            [
+                ("RHIZOCRYPT_RPC_PORT", None::<&str>),
+                ("RHIZOCRYPT_PORT", None),
+                ("RHIZOCRYPT_RPC_HOST", None),
+                ("RHIZOCRYPT_HOST", None),
+                ("RHIZOCRYPT_ENV", None),
+            ],
+            || {
+                let rt = tokio::runtime::Builder::new_multi_thread()
+                    .worker_threads(2)
+                    .enable_all()
+                    .build()
+                    .unwrap();
+                rt.block_on(run_doctor(false));
+            },
+        );
     }
 
-    #[tokio::test]
-    async fn test_check_configuration_with_port_override() {
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::set_var("RHIZOCRYPT_RPC_PORT", "9401") };
-        }
-        run_doctor(false).await;
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
-        }
+    #[test]
+    fn test_check_configuration_with_port_override() {
+        temp_env::with_vars([("RHIZOCRYPT_RPC_PORT", Some("9401"))], || {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(run_doctor(false));
+        });
     }
 
-    #[tokio::test]
-    async fn test_check_configuration_with_host_override() {
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::set_var("RHIZOCRYPT_RPC_HOST", "0.0.0.0") };
-        }
-        run_doctor(false).await;
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
-        }
+    #[test]
+    fn test_check_configuration_with_host_override() {
+        temp_env::with_vars([("RHIZOCRYPT_RPC_HOST", Some("0.0.0.0"))], || {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(run_doctor(false));
+        });
     }
 
-    #[tokio::test]
-    async fn test_check_configuration_development_mode() {
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::set_var("RHIZOCRYPT_ENV", "development") };
-        }
-        run_doctor(false).await;
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::remove_var("RHIZOCRYPT_ENV") };
-        }
+    #[test]
+    fn test_check_configuration_development_mode() {
+        temp_env::with_vars([("RHIZOCRYPT_ENV", Some("development"))], || {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(run_doctor(false));
+        });
     }
 
-    #[tokio::test]
-    async fn test_check_discovery_without_endpoint() {
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
-            unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
-            unsafe { std::env::remove_var("DISCOVERY_ADDRESS") };
-        }
-        run_doctor(false).await;
+    #[test]
+    fn test_check_discovery_without_endpoint() {
+        temp_env::with_vars(
+            [
+                ("RHIZOCRYPT_DISCOVERY_ADAPTER", None::<&str>),
+                ("DISCOVERY_ENDPOINT", None),
+                ("DISCOVERY_ADDRESS", None),
+            ],
+            || {
+                let rt = tokio::runtime::Builder::new_multi_thread()
+                    .worker_threads(2)
+                    .enable_all()
+                    .build()
+                    .unwrap();
+                rt.block_on(run_doctor(false));
+            },
+        );
     }
 
-    #[tokio::test]
-    async fn test_check_discovery_with_endpoint_non_comprehensive() {
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999") };
-        }
-        run_doctor(false).await;
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
-        }
+    #[test]
+    fn test_check_discovery_with_endpoint_non_comprehensive() {
+        temp_env::with_vars([("DISCOVERY_ENDPOINT", Some("127.0.0.1:99999"))], || {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(run_doctor(false));
+        });
     }
 
-    #[tokio::test]
-    async fn test_check_discovery_with_endpoint_comprehensive() {
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "127.0.0.1:99999") };
-        }
-        run_doctor(true).await;
-        {
-            let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
-        }
+    #[test]
+    fn test_check_discovery_with_endpoint_comprehensive() {
+        temp_env::with_vars([("DISCOVERY_ENDPOINT", Some("127.0.0.1:99999"))], || {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(run_doctor(true));
+        });
     }
 
     #[tokio::test]

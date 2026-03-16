@@ -71,7 +71,8 @@ pub use rate_limit::{OperationType, RateLimitConfig, RateLimitExceeded, RateLimi
 pub use server::RpcServer;
 pub use service::{
     AppendEventRequest, CapabilityDescriptor, CheckoutSliceRequest, CreateSessionRequest,
-    HealthStatus, QueryRequest, RhizoCryptRpc, RhizoCryptRpcServer, ServiceMetrics, SessionInfo,
+    HealthStatus, MethodDescriptor, QueryRequest, RhizoCryptRpc, RhizoCryptRpcServer,
+    ServiceMetrics, SessionInfo, build_capability_descriptors,
 };
 
 // Re-export core types for convenience

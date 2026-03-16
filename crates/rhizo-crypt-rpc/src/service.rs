@@ -8,6 +8,7 @@
 //! type safety across the network boundary.
 
 use crate::error::RpcError;
+use rhizo_crypt_core::niche;
 use rhizo_crypt_core::{
     DagStore, Did, EventType, MerkleProof, MerkleRoot, Session, SessionBuilder, SessionId,
     SessionState, SessionType, SliceId, SliceMode, Timestamp, Vertex, VertexBuilder, VertexId,
@@ -145,14 +146,68 @@ pub struct ServiceMetrics {
 /// Capability descriptor per Spring-as-Niche deployment standard.
 ///
 /// Describes a capability this primal exposes for runtime discovery.
+/// Enhanced with `cost` and `deps` per method to support biomeOS Pathway
+/// Learner scheduling (aligned with loamSpine and sweetGrass).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapabilityDescriptor {
     /// Capability domain (e.g. "dag", "health").
     pub domain: String,
     /// Semantic method names within this domain.
-    pub methods: Vec<String>,
+    pub methods: Vec<MethodDescriptor>,
     /// Protocol version.
     pub version: String,
+}
+
+/// Per-method descriptor with cost and dependency information.
+///
+/// The biomeOS Pathway Learner uses `cost` and `deps` to optimize
+/// graph execution order and parallelization.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MethodDescriptor {
+    /// Fully qualified method name (e.g. "dag.session.create").
+    pub name: String,
+    /// Cost tier: "low" (≤2ms), "medium" (3-10ms), "high" (>10ms).
+    pub cost: String,
+    /// Prerequisite operations that must complete before this one.
+    pub deps: Vec<String>,
+}
+
+/// Build the full capability descriptor list from `niche.rs` constants.
+///
+/// Groups capabilities by domain and attaches per-method cost/deps from
+/// the niche module, ensuring a single source of truth.
+#[must_use]
+pub fn build_capability_descriptors() -> Vec<CapabilityDescriptor> {
+    use std::collections::BTreeMap;
+
+    let deps = niche::operation_dependencies();
+
+    let mut domain_methods: BTreeMap<String, Vec<MethodDescriptor>> = BTreeMap::new();
+
+    for &(method, estimated_ms, _gpu) in niche::COST_ESTIMATES {
+        let domain = method.split('.').next().unwrap_or("unknown").to_string();
+
+        let method_deps = deps
+            .get(method)
+            .and_then(serde_json::Value::as_array)
+            .map(|arr| arr.iter().filter_map(serde_json::Value::as_str).map(String::from).collect())
+            .unwrap_or_default();
+
+        domain_methods.entry(domain).or_default().push(MethodDescriptor {
+            name: method.to_string(),
+            cost: niche::cost_tier(estimated_ms).to_string(),
+            deps: method_deps,
+        });
+    }
+
+    domain_methods
+        .into_iter()
+        .map(|(domain, methods)| CapabilityDescriptor {
+            domain,
+            methods,
+            version: niche::PRIMAL_VERSION.to_string(),
+        })
+        .collect()
 }
 
 // ============================================================================
@@ -612,50 +667,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         self,
         _: tarpc::context::Context,
     ) -> Result<Vec<CapabilityDescriptor>, RpcError> {
-        Ok(vec![
-            CapabilityDescriptor {
-                domain: "dag".to_string(),
-                methods: vec![
-                    "dag.session.create",
-                    "dag.session.get",
-                    "dag.session.list",
-                    "dag.session.discard",
-                    "dag.event.append",
-                    "dag.event.append_batch",
-                    "dag.vertex.get",
-                    "dag.vertex.query",
-                    "dag.vertex.children",
-                    "dag.frontier.get",
-                    "dag.genesis.get",
-                    "dag.merkle.root",
-                    "dag.merkle.proof",
-                    "dag.merkle.verify",
-                    "dag.slice.checkout",
-                    "dag.slice.get",
-                    "dag.slice.list",
-                    "dag.slice.resolve",
-                    "dag.dehydration.trigger",
-                    "dag.dehydration.status",
-                ]
-                .into_iter()
-                .map(String::from)
-                .collect(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-            },
-            CapabilityDescriptor {
-                domain: "health".to_string(),
-                methods: vec!["health.check", "health.metrics"]
-                    .into_iter()
-                    .map(String::from)
-                    .collect(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-            },
-            CapabilityDescriptor {
-                domain: "capability".to_string(),
-                methods: vec!["capability.list".to_string()],
-                version: env!("CARGO_PKG_VERSION").to_string(),
-            },
-        ])
+        Ok(build_capability_descriptors())
     }
 }
 

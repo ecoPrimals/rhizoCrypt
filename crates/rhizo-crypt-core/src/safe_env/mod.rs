@@ -187,11 +187,9 @@ impl SafeEnv {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, unsafe_code)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-
-    static ENV_LOCK: parking_lot::Mutex<()> = parking_lot::Mutex::new(());
 
     #[test]
     fn test_get_or_default() {
@@ -209,10 +207,10 @@ mod tests {
 
     #[test]
     fn test_is_development_default() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::remove_var("RHIZOCRYPT_ENV") };
-        assert!(!SafeEnv::is_development());
-        assert!(SafeEnv::is_production());
+        temp_env::with_vars([("RHIZOCRYPT_ENV", None::<&str>)], || {
+            assert!(!SafeEnv::is_development());
+            assert!(SafeEnv::is_production());
+        });
     }
 
     #[test]
@@ -231,62 +229,56 @@ mod tests {
 
     #[test]
     fn test_get_or_default_with_value() {
-        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_WITH_VALUE";
-        unsafe { std::env::set_var(key, "custom_value") };
-        let result = SafeEnv::get_or_default(key, "fallback");
-        assert_eq!(result, "custom_value");
-        unsafe { std::env::remove_var(key) };
+        temp_env::with_vars([(key, Some("custom_value"))], || {
+            let result = SafeEnv::get_or_default(key, "fallback");
+            assert_eq!(result, "custom_value");
+        });
     }
 
     #[test]
     fn test_get_optional_with_value() {
-        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_OPTIONAL_WITH_VALUE";
-        unsafe { std::env::set_var(key, "some_value") };
-        let result = SafeEnv::get_optional(key);
-        assert_eq!(result, Some("some_value".to_string()));
-        unsafe { std::env::remove_var(key) };
+        temp_env::with_vars([(key, Some("some_value"))], || {
+            let result = SafeEnv::get_optional(key);
+            assert_eq!(result, Some("some_value".to_string()));
+        });
     }
 
     #[test]
     fn test_parse_with_valid_value() {
-        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_VALID";
-        unsafe { std::env::set_var(key, "9999") };
-        let result: u16 = SafeEnv::parse(key, 8080);
-        assert_eq!(result, 9999);
-        unsafe { std::env::remove_var(key) };
+        temp_env::with_vars([(key, Some("9999"))], || {
+            let result: u16 = SafeEnv::parse(key, 8080);
+            assert_eq!(result, 9999);
+        });
     }
 
     #[test]
     fn test_parse_with_invalid_value() {
-        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_INVALID";
-        unsafe { std::env::set_var(key, "not_a_number") };
-        let result: u16 = SafeEnv::parse(key, 8080);
-        assert_eq!(result, 8080, "Should use default on parse failure");
-        unsafe { std::env::remove_var(key) };
+        temp_env::with_vars([(key, Some("not_a_number"))], || {
+            let result: u16 = SafeEnv::parse(key, 8080);
+            assert_eq!(result, 8080, "Should use default on parse failure");
+        });
     }
 
     #[test]
     fn test_parse_optional_with_valid() {
-        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_OPT_VALID";
-        unsafe { std::env::set_var(key, "7777") };
-        let result: Option<u16> = SafeEnv::parse_optional(key);
-        assert_eq!(result, Some(7777));
-        unsafe { std::env::remove_var(key) };
+        temp_env::with_vars([(key, Some("7777"))], || {
+            let result: Option<u16> = SafeEnv::parse_optional(key);
+            assert_eq!(result, Some(7777));
+        });
     }
 
     #[test]
     fn test_parse_optional_with_invalid() {
-        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_OPT_INVALID";
-        unsafe { std::env::set_var(key, "invalid") };
-        let result: Option<u16> = SafeEnv::parse_optional(key);
-        assert_eq!(result, None);
-        unsafe { std::env::remove_var(key) };
+        temp_env::with_vars([(key, Some("invalid"))], || {
+            let result: Option<u16> = SafeEnv::parse_optional(key);
+            assert_eq!(result, None);
+        });
     }
 
     #[test]
@@ -298,167 +290,163 @@ mod tests {
 
     #[test]
     fn test_parse_empty_string() {
-        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_EMPTY";
-        unsafe { std::env::set_var(key, "") };
-        let result: u16 = SafeEnv::parse(key, 8080);
-        assert_eq!(result, 8080, "Empty string should use default");
-        unsafe { std::env::remove_var(key) };
+        temp_env::with_vars([(key, Some(""))], || {
+            let result: u16 = SafeEnv::parse(key, 8080);
+            assert_eq!(result, 8080, "Empty string should use default");
+        });
     }
 
     #[test]
     fn test_parse_whitespace() {
-        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_WHITESPACE";
-        unsafe { std::env::set_var(key, "   ") };
-        let result: u16 = SafeEnv::parse(key, 8080);
-        assert_eq!(result, 8080, "Whitespace-only should use default");
-        unsafe { std::env::remove_var(key) };
+        temp_env::with_vars([(key, Some("   "))], || {
+            let result: u16 = SafeEnv::parse(key, 8080);
+            assert_eq!(result, 8080, "Whitespace-only should use default");
+        });
     }
 
     #[test]
     fn test_parse_optional_empty_string() {
-        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_OPT_EMPTY";
-        unsafe { std::env::set_var(key, "") };
-        let result: Option<u16> = SafeEnv::parse_optional(key);
-        assert_eq!(result, None);
-        unsafe { std::env::remove_var(key) };
+        temp_env::with_vars([(key, Some(""))], || {
+            let result: Option<u16> = SafeEnv::parse_optional(key);
+            assert_eq!(result, None);
+        });
     }
 
     #[test]
     fn test_parse_bool_type() {
-        let _guard = ENV_LOCK.lock();
         let key = "RHIZOCRYPT_TEST_PARSE_BOOL";
-        unsafe { std::env::set_var(key, "true") };
-        let result: bool = SafeEnv::parse(key, false);
-        assert!(result);
-        unsafe { std::env::remove_var(key) };
+        temp_env::with_vars([(key, Some("true"))], || {
+            let result: bool = SafeEnv::parse(key, false);
+            assert!(result);
+        });
     }
 
     #[test]
     fn test_get_discovery_address_rhizocrypt_adapter() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("RHIZOCRYPT_DISCOVERY_ADAPTER", "adapter.example.com:7500") };
-        let result = SafeEnv::get_discovery_address();
-        assert_eq!(result, Some("adapter.example.com:7500".to_string()));
-        unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
+        temp_env::with_vars(
+            [("RHIZOCRYPT_DISCOVERY_ADAPTER", Some("adapter.example.com:7500"))],
+            || {
+                let result = SafeEnv::get_discovery_address();
+                assert_eq!(result, Some("adapter.example.com:7500".to_string()));
+            },
+        );
     }
 
     #[test]
     fn test_get_discovery_address_priority() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("RHIZOCRYPT_DISCOVERY_ADAPTER", "primary.example.com:7500") };
-        unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "fallback.example.com:8091") };
-        let result = SafeEnv::get_discovery_address();
-        assert_eq!(result, Some("primary.example.com:7500".to_string()));
-        unsafe { std::env::remove_var("RHIZOCRYPT_DISCOVERY_ADAPTER") };
-        unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
+        temp_env::with_vars(
+            [
+                ("RHIZOCRYPT_DISCOVERY_ADAPTER", Some("primary.example.com:7500")),
+                ("DISCOVERY_ENDPOINT", Some("fallback.example.com:8091")),
+            ],
+            || {
+                let result = SafeEnv::get_discovery_address();
+                assert_eq!(result, Some("primary.example.com:7500".to_string()));
+            },
+        );
     }
 
     #[test]
     fn test_get_rpc_port_legacy() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
-        unsafe { std::env::set_var("RHIZOCRYPT_PORT", "8888") };
-        let result = SafeEnv::get_rpc_port(1000);
-        assert_eq!(result, 8888);
-        unsafe { std::env::remove_var("RHIZOCRYPT_PORT") };
+        temp_env::with_vars(
+            [("RHIZOCRYPT_RPC_PORT", None::<&str>), ("RHIZOCRYPT_PORT", Some("8888"))],
+            || {
+                let result = SafeEnv::get_rpc_port(1000);
+                assert_eq!(result, 8888);
+            },
+        );
     }
 
     #[test]
     fn test_get_rpc_port_preferred_takes_priority() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("RHIZOCRYPT_RPC_PORT", "9500") };
-        unsafe { std::env::set_var("RHIZOCRYPT_PORT", "9400") };
-        let result = SafeEnv::get_rpc_port(9000);
-        assert_eq!(result, 9500);
-        unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
-        unsafe { std::env::remove_var("RHIZOCRYPT_PORT") };
+        temp_env::with_vars(
+            [("RHIZOCRYPT_RPC_PORT", Some("9500")), ("RHIZOCRYPT_PORT", Some("9400"))],
+            || {
+                let result = SafeEnv::get_rpc_port(9000);
+                assert_eq!(result, 9500);
+            },
+        );
     }
 
     #[test]
     fn test_get_capability_endpoint_with_address_suffix() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("CRYPTO_SIGNING_ADDRESS", "signing-addr.example.com:9500") };
-        let result = SafeEnv::get_capability_endpoint("crypto:signing");
-        assert_eq!(result, Some("signing-addr.example.com:9500".to_string()));
-        unsafe { std::env::remove_var("CRYPTO_SIGNING_ADDRESS") };
+        temp_env::with_vars(
+            [("CRYPTO_SIGNING_ADDRESS", Some("signing-addr.example.com:9500"))],
+            || {
+                let result = SafeEnv::get_capability_endpoint("crypto:signing");
+                assert_eq!(result, Some("signing-addr.example.com:9500".to_string()));
+            },
+        );
     }
 
     #[test]
     fn test_is_development_true() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("RHIZOCRYPT_ENV", "development") };
-        assert!(SafeEnv::is_development());
-        assert!(!SafeEnv::is_production());
-        unsafe { std::env::remove_var("RHIZOCRYPT_ENV") };
+        temp_env::with_vars([("RHIZOCRYPT_ENV", Some("development"))], || {
+            assert!(SafeEnv::is_development());
+            assert!(!SafeEnv::is_production());
+        });
     }
 
     #[test]
     fn test_is_development_case_insensitive() {
-        let _guard = ENV_LOCK.lock();
-        let original = std::env::var("RHIZOCRYPT_ENV").ok();
-
-        unsafe { std::env::set_var("RHIZOCRYPT_ENV", "DEVELOPMENT") };
-        assert!(SafeEnv::is_development());
-
-        unsafe { std::env::set_var("RHIZOCRYPT_ENV", "Development") };
-        assert!(SafeEnv::is_development());
-
-        match original {
-            Some(val) => unsafe { std::env::set_var("RHIZOCRYPT_ENV", val) },
-            None => unsafe { std::env::remove_var("RHIZOCRYPT_ENV") },
-        }
+        temp_env::with_vars([("RHIZOCRYPT_ENV", Some("DEVELOPMENT"))], || {
+            assert!(SafeEnv::is_development());
+        });
+        temp_env::with_vars([("RHIZOCRYPT_ENV", Some("Development"))], || {
+            assert!(SafeEnv::is_development());
+        });
     }
 
     #[test]
     fn test_is_production_default() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::remove_var("RHIZOCRYPT_ENV") };
-        assert!(SafeEnv::is_production());
-        assert!(!SafeEnv::is_development());
+        temp_env::with_vars([("RHIZOCRYPT_ENV", None::<&str>)], || {
+            assert!(SafeEnv::is_production());
+            assert!(!SafeEnv::is_development());
+        });
     }
 
     #[test]
     fn test_is_production_explicit() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("RHIZOCRYPT_ENV", "production") };
-        assert!(SafeEnv::is_production());
-        assert!(!SafeEnv::is_development());
-        unsafe { std::env::remove_var("RHIZOCRYPT_ENV") };
+        temp_env::with_vars([("RHIZOCRYPT_ENV", Some("production"))], || {
+            assert!(SafeEnv::is_production());
+            assert!(!SafeEnv::is_development());
+        });
     }
 
     #[test]
     fn test_get_endpoint_with_endpoint_suffix() {
-        let _guard = ENV_LOCK.lock();
         let prefix = "TEST_SERVICE";
-        unsafe { std::env::set_var("TEST_SERVICE_ENDPOINT", "service.example.com:9000") };
-        let result = SafeEnv::get_endpoint(prefix);
-        assert_eq!(result, Some("service.example.com:9000".to_string()));
-        unsafe { std::env::remove_var("TEST_SERVICE_ENDPOINT") };
+        temp_env::with_vars([("TEST_SERVICE_ENDPOINT", Some("service.example.com:9000"))], || {
+            let result = SafeEnv::get_endpoint(prefix);
+            assert_eq!(result, Some("service.example.com:9000".to_string()));
+        });
     }
 
     #[test]
     fn test_get_endpoint_with_address_suffix() {
-        let _guard = ENV_LOCK.lock();
         let prefix = "TEST_SERVICE";
-        unsafe { std::env::set_var("TEST_SERVICE_ADDRESS", "service.example.com:9001") };
-        let result = SafeEnv::get_endpoint(prefix);
-        assert_eq!(result, Some("service.example.com:9001".to_string()));
-        unsafe { std::env::remove_var("TEST_SERVICE_ADDRESS") };
+        temp_env::with_vars([("TEST_SERVICE_ADDRESS", Some("service.example.com:9001"))], || {
+            let result = SafeEnv::get_endpoint(prefix);
+            assert_eq!(result, Some("service.example.com:9001".to_string()));
+        });
     }
 
     #[test]
     fn test_get_endpoint_priority_endpoint_over_address() {
-        let _guard = ENV_LOCK.lock();
         let prefix = "TEST_SERVICE";
-        unsafe { std::env::set_var("TEST_SERVICE_ENDPOINT", "endpoint.example.com:9000") };
-        unsafe { std::env::set_var("TEST_SERVICE_ADDRESS", "address.example.com:9001") };
-        let result = SafeEnv::get_endpoint(prefix);
-        assert_eq!(result, Some("endpoint.example.com:9000".to_string()));
-        unsafe { std::env::remove_var("TEST_SERVICE_ENDPOINT") };
-        unsafe { std::env::remove_var("TEST_SERVICE_ADDRESS") };
+        temp_env::with_vars(
+            [
+                ("TEST_SERVICE_ENDPOINT", Some("endpoint.example.com:9000")),
+                ("TEST_SERVICE_ADDRESS", Some("address.example.com:9001")),
+            ],
+            || {
+                let result = SafeEnv::get_endpoint(prefix);
+                assert_eq!(result, Some("endpoint.example.com:9000".to_string()));
+            },
+        );
     }
 
     #[test]
@@ -470,81 +458,82 @@ mod tests {
 
     #[test]
     fn test_get_capability_endpoint() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "signing.example.com:9500") };
-        let result = SafeEnv::get_capability_endpoint("crypto:signing");
-        assert_eq!(result, Some("signing.example.com:9500".to_string()));
-        unsafe { std::env::remove_var("CRYPTO_SIGNING_ENDPOINT") };
+        temp_env::with_vars(
+            [("CRYPTO_SIGNING_ENDPOINT", Some("signing.example.com:9500"))],
+            || {
+                let result = SafeEnv::get_capability_endpoint("crypto:signing");
+                assert_eq!(result, Some("signing.example.com:9500".to_string()));
+            },
+        );
     }
 
     #[test]
     fn test_get_discovery_address() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("DISCOVERY_ENDPOINT", "discovery.example.com:8091") };
-        let result = SafeEnv::get_discovery_address();
-        assert_eq!(result, Some("discovery.example.com:8091".to_string()));
-        unsafe { std::env::remove_var("DISCOVERY_ENDPOINT") };
+        temp_env::with_vars([("DISCOVERY_ENDPOINT", Some("discovery.example.com:8091"))], || {
+            let result = SafeEnv::get_discovery_address();
+            assert_eq!(result, Some("discovery.example.com:8091".to_string()));
+        });
     }
 
     #[test]
     fn test_get_rpc_port_default() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
-        let result = SafeEnv::get_rpc_port(9400);
-        assert_eq!(result, 9400);
+        temp_env::with_vars([("RHIZOCRYPT_RPC_PORT", None::<&str>)], || {
+            let result = SafeEnv::get_rpc_port(9400);
+            assert_eq!(result, 9400);
+        });
     }
 
     #[test]
     fn test_get_rpc_port_custom() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("RHIZOCRYPT_RPC_PORT", "9999") };
-        let result = SafeEnv::get_rpc_port(9400);
-        assert_eq!(result, 9999);
-        unsafe { std::env::remove_var("RHIZOCRYPT_RPC_PORT") };
+        temp_env::with_vars([("RHIZOCRYPT_RPC_PORT", Some("9999"))], || {
+            let result = SafeEnv::get_rpc_port(9400);
+            assert_eq!(result, 9999);
+        });
     }
 
     #[test]
     fn test_get_rpc_host_default() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
-        unsafe { std::env::remove_var("RHIZOCRYPT_HOST") };
-        let result = SafeEnv::get_rpc_host();
-        assert_eq!(result, "0.0.0.0");
+        temp_env::with_vars(
+            [("RHIZOCRYPT_RPC_HOST", None::<&str>), ("RHIZOCRYPT_HOST", None::<&str>)],
+            || {
+                let result = SafeEnv::get_rpc_host();
+                assert_eq!(result, "0.0.0.0");
+            },
+        );
     }
 
     #[test]
     fn test_get_rpc_host_custom() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("RHIZOCRYPT_RPC_HOST", "127.0.0.1") };
-        let result = SafeEnv::get_rpc_host();
-        assert_eq!(result, "127.0.0.1");
-        unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
+        temp_env::with_vars([("RHIZOCRYPT_RPC_HOST", Some("127.0.0.1"))], || {
+            let result = SafeEnv::get_rpc_host();
+            assert_eq!(result, "127.0.0.1");
+        });
     }
 
     #[test]
     fn test_get_rpc_host_legacy_fallback() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::remove_var("RHIZOCRYPT_RPC_HOST") };
-        unsafe { std::env::set_var("RHIZOCRYPT_HOST", "10.0.0.1") };
-        let result = SafeEnv::get_rpc_host();
-        assert_eq!(result, "10.0.0.1");
-        unsafe { std::env::remove_var("RHIZOCRYPT_HOST") };
+        temp_env::with_vars(
+            [("RHIZOCRYPT_RPC_HOST", None::<&str>), ("RHIZOCRYPT_HOST", Some("10.0.0.1"))],
+            || {
+                let result = SafeEnv::get_rpc_host();
+                assert_eq!(result, "10.0.0.1");
+            },
+        );
     }
 
     #[test]
     fn test_get_metrics_port_default() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::remove_var("RHIZOCRYPT_METRICS_PORT") };
-        let result = SafeEnv::get_metrics_port(9401);
-        assert_eq!(result, 9401);
+        temp_env::with_vars([("RHIZOCRYPT_METRICS_PORT", None::<&str>)], || {
+            let result = SafeEnv::get_metrics_port(9401);
+            assert_eq!(result, 9401);
+        });
     }
 
     #[test]
     fn test_get_metrics_port_custom() {
-        let _guard = ENV_LOCK.lock();
-        unsafe { std::env::set_var("RHIZOCRYPT_METRICS_PORT", "8888") };
-        let result = SafeEnv::get_metrics_port(9401);
-        assert_eq!(result, 8888);
-        unsafe { std::env::remove_var("RHIZOCRYPT_METRICS_PORT") };
+        temp_env::with_vars([("RHIZOCRYPT_METRICS_PORT", Some("8888"))], || {
+            let result = SafeEnv::get_metrics_port(9401);
+            assert_eq!(result, 8888);
+        });
     }
 }

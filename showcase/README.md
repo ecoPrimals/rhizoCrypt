@@ -105,7 +105,7 @@ showcase/
 ### Path A: "Just Show Me!" (5 minutes) ⚡
 ```bash
 cd showcase/00-local-primal/01-hello-rhizocrypt
-./demo-quick-start.sh
+./demo-first-session.sh
 
 cd ../07-dehydration
 ./demo-simple-dehydration.sh
@@ -149,7 +149,7 @@ done
 cd showcase/01-inter-primal-live
 
 cd 01-songbird-discovery && ./start-songbird.sh
-./demo-real-discovery.sh
+./demo-discover.sh
 
 cd ../02-beardog-signing
 ./demo-real-signing.sh
@@ -245,10 +245,10 @@ ls -la ../bins/
 - **Conditional transfers** (escrow, consignment)
 
 ### 5. 🚀 Production Ready
-- **502 passing tests** (100%)
-- **87%+ coverage**
-- **Zero unsafe code** (forbidden)
-- **Zero Clippy warnings**
+- **1188+ passing tests** (all features)
+- **91.47% line coverage** (`--fail-under-lines 90` CI gate)
+- **Zero unsafe code** (`unsafe_code = "deny"`, zero `unsafe` in tests)
+- **Zero Clippy warnings** (pedantic + nursery, `unwrap_used`/`expect_used = "deny"`)
 - **Service mode** with monitoring
 
 ---
@@ -335,7 +335,7 @@ ls -la ../bins/
 ### Common Questions:
 - **"Where do I start?"** → [00-local-primal/00_START_HERE.md](./00-local-primal/00_START_HERE.md)
 - **"What's unique about rhizoCrypt?"** → Slice semantics + Dehydration
-- **"Is it production-ready?"** → Yes! 502 tests, 87% coverage, zero unsafe code
+- **"Is it production-ready?"** → Yes! 1188+ tests, 91.47% coverage, zero unsafe code
 - **"How do I integrate?"** → See [01-inter-primal-live/](./01-inter-primal-live/)
 
 ---
@@ -388,8 +388,7 @@ ls -la ../bins/
 
 ---
 
-**Updated**: December 27, 2025  
-**Version**: rhizoCrypt 0.13.0  
-**Status**: Local 100% Complete, Inter-Primal 60% Complete  
-**Grade**: A+ (96/100) — Ecosystem Leader 🏆
+**Updated**: March 16, 2026  
+**Version**: rhizoCrypt 0.13.0-dev  
+**Status**: Local 100% Complete, Inter-Primal 60% Complete
 

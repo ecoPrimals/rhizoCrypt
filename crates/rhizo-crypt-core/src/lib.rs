@@ -76,6 +76,7 @@ pub mod event;
 pub mod integration;
 pub mod merkle;
 pub mod metrics;
+pub mod niche;
 pub mod primal;
 pub mod rhizocrypt;
 pub mod safe_env;

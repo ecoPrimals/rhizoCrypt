@@ -21,7 +21,7 @@ async-trait = "0.1"
 futures-util = "0.3"
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 toml = "0.8"
 ciborium = "0.2"
@@ -68,6 +68,9 @@ redb = "2.4"
 # Provenance trio canonical wire types
 provenance-trio-types = { path = "../provenance-trio-types" }
 
+# Test utilities
+temp-env = "0.3"
+
 [workspace.lints.rust]
 # deny (not forbid) so test modules can #[allow(unsafe_code)] for env var
 # mutation, which became unsafe in Edition 2024. Production code has zero
@@ -91,9 +94,9 @@ significant_drop_tightening = "allow"
 # Multiple crate versions caused by transitive dependencies (not actionable)
 multiple_crate_versions = "allow"
 
-# Production code quality
-unwrap_used = "warn"
-expect_used = "warn"
+# Production code quality — deny prevents regression from zero unwrap/expect
+unwrap_used = "deny"
+expect_used = "deny"
 
 [profile.release]
 lto = true

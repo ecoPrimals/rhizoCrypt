@@ -88,6 +88,9 @@ jobs:
       - name: Generate coverage
         run: cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info
 
+      - name: Enforce coverage threshold
+        run: cargo llvm-cov --workspace --all-features --fail-under-lines 90
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:

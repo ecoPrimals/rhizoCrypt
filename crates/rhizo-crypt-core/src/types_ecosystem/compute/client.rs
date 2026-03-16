@@ -243,7 +243,7 @@ impl ComputeProviderClient {
 
     /// Get the discovery registry (if configured).
     #[must_use]
-    #[expect(clippy::missing_const_for_fn)] // as_ref() is not const-stable
+    #[expect(clippy::missing_const_for_fn, reason = "as_ref() is not const-stable")]
     pub fn registry(&self) -> Option<&Arc<DiscoveryRegistry>> {
         self.registry.as_ref()
     }

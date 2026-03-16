@@ -342,7 +342,7 @@ pub const HEALTH_CHECK_PATH: &str = "/api/v1/health";
 pub const TEST_PORT_RANGE_START: u16 = 0;
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, unsafe_code)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use std::path::Path;
@@ -386,32 +386,30 @@ mod tests {
     fn test_socket_dir_respects_xdg_runtime_dir() {
         let temp = tempfile::tempdir().expect("temp dir");
         let runtime_path = temp.path().to_path_buf();
-        unsafe { std::env::set_var("XDG_RUNTIME_DIR", runtime_path.to_str().unwrap()) };
-
-        let result = socket_dir();
-        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-
-        if cfg!(target_os = "android") || cfg!(target_os = "windows") {
-            assert!(result.is_none(), "Android/Windows should return None");
-        } else {
-            let dir = result.expect("Unix-like should return Some");
-            assert_eq!(dir, runtime_path.join("ecoPrimals"));
-        }
+        let path_str = runtime_path.to_str().unwrap();
+        temp_env::with_vars([("XDG_RUNTIME_DIR", Some(path_str))], || {
+            let result = socket_dir();
+            if cfg!(target_os = "android") || cfg!(target_os = "windows") {
+                assert!(result.is_none(), "Android/Windows should return None");
+            } else {
+                let dir = result.expect("Unix-like should return Some");
+                assert_eq!(dir, runtime_path.join("ecoPrimals"));
+            }
+        });
     }
 
     #[test]
     fn test_socket_dir_fallback_without_xdg() {
-        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-
-        let result = socket_dir();
-
-        if cfg!(target_os = "android") || cfg!(target_os = "windows") {
-            assert!(result.is_none());
-        } else if cfg!(target_os = "linux") {
-            assert_eq!(result, Some(PathBuf::from(DEFAULT_SOCKET_DIR)));
-        } else {
-            assert_eq!(result, Some(PathBuf::from("/tmp/ecoPrimals")));
-        }
+        temp_env::with_vars([("XDG_RUNTIME_DIR", None::<&str>)], || {
+            let result = socket_dir();
+            if cfg!(target_os = "android") || cfg!(target_os = "windows") {
+                assert!(result.is_none());
+            } else if cfg!(target_os = "linux") {
+                assert_eq!(result, Some(PathBuf::from(DEFAULT_SOCKET_DIR)));
+            } else {
+                assert_eq!(result, Some(PathBuf::from("/tmp/ecoPrimals")));
+            }
+        });
     }
 
     #[test]
@@ -423,13 +421,12 @@ mod tests {
         }
 
         let temp = tempfile::tempdir().expect("temp dir");
-        unsafe { std::env::set_var("XDG_RUNTIME_DIR", temp.path().to_str().unwrap()) };
-
-        let path = socket_path_for_primal("rhizoCrypt").expect("should return path");
-        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-
-        assert!(path.ends_with("rhizoCrypt.sock"));
-        assert_eq!(path.file_name().unwrap(), "rhizoCrypt.sock");
+        let path_str = temp.path().to_str().unwrap();
+        temp_env::with_vars([("XDG_RUNTIME_DIR", Some(path_str))], || {
+            let path = socket_path_for_primal("rhizoCrypt").expect("should return path");
+            assert!(path.ends_with("rhizoCrypt.sock"));
+            assert_eq!(path.file_name().unwrap(), "rhizoCrypt.sock");
+        });
     }
 
     #[test]
@@ -480,15 +477,14 @@ mod tests {
         }
 
         let temp = tempfile::tempdir().expect("temp dir");
-        unsafe { std::env::set_var("XDG_RUNTIME_DIR", temp.path().to_str().unwrap()) };
-
-        let hint = preferred_transport("rhizoCrypt", 9400);
-        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-
-        assert!(matches!(hint, TransportHint::UnixSocket(_)));
-        if let TransportHint::UnixSocket(path) = hint {
-            assert!(path.ends_with("rhizoCrypt.sock"));
-        }
+        let path_str = temp.path().to_str().unwrap();
+        temp_env::with_vars([("XDG_RUNTIME_DIR", Some(path_str))], || {
+            let hint = preferred_transport("rhizoCrypt", 9400);
+            assert!(matches!(hint, TransportHint::UnixSocket(_)));
+            if let TransportHint::UnixSocket(path) = hint {
+                assert!(path.ends_with("rhizoCrypt.sock"));
+            }
+        });
     }
 
     #[test]
@@ -497,25 +493,25 @@ mod tests {
             return;
         }
 
-        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-        let hint = preferred_transport("rhizoCrypt", 9400);
-
-        match &hint {
-            TransportHint::UnixSocket(path) => {
-                assert!(
-                    path.starts_with(Path::new(DEFAULT_SOCKET_DIR))
-                        || path.starts_with(Path::new("/tmp/ecoPrimals"))
-                );
+        temp_env::with_vars([("XDG_RUNTIME_DIR", None::<&str>)], || {
+            let hint = preferred_transport("rhizoCrypt", 9400);
+            match &hint {
+                TransportHint::UnixSocket(path) => {
+                    assert!(
+                        path.starts_with(Path::new(DEFAULT_SOCKET_DIR))
+                            || path.starts_with(Path::new("/tmp/ecoPrimals"))
+                    );
+                }
+                TransportHint::Tcp {
+                    host,
+                    port,
+                } => {
+                    assert_eq!(host, "127.0.0.1");
+                    assert_eq!(*port, 9400);
+                }
+                TransportHint::AbstractSocket(_) => panic!("Unexpected AbstractSocket on Unix"),
             }
-            TransportHint::Tcp {
-                host,
-                port,
-            } => {
-                assert_eq!(host, "127.0.0.1");
-                assert_eq!(*port, 9400);
-            }
-            TransportHint::AbstractSocket(_) => panic!("Unexpected AbstractSocket on Unix"),
-        }
+        });
     }
 
     #[test]
@@ -546,11 +542,11 @@ mod tests {
         if cfg!(target_os = "android") || cfg!(target_os = "windows") {
             return;
         }
-        unsafe { std::env::set_var("XDG_RUNTIME_DIR", "") };
-        let result = socket_dir();
-        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-        let dir = result.expect("Empty XDG_RUNTIME_DIR still yields Some on Unix");
-        assert_eq!(dir, PathBuf::from("ecoPrimals"));
+        temp_env::with_vars([("XDG_RUNTIME_DIR", Some(""))], || {
+            let result = socket_dir();
+            let dir = result.expect("Empty XDG_RUNTIME_DIR still yields Some on Unix");
+            assert_eq!(dir, PathBuf::from("ecoPrimals"));
+        });
     }
 
     #[test]

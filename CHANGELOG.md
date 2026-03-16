@@ -5,6 +5,69 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-16 (session 11)
+
+### Changed
+
+#### Cross-Ecosystem Absorption (8 patterns from springs + primals)
+
+**1. Niche Self-Knowledge Module** (absorbed from squirrel, neuralSpring, groundSpring, airSpring)
+- Created `crates/rhizo-crypt-core/src/niche.rs` — single source of truth for primal identity, capabilities, consumed capabilities, cost estimates, operation dependencies, and semantic mappings
+- `capability.list` now sources all data from `niche.rs` instead of hardcoded inline vectors
+- 11 new niche module tests (consistency, cross-reference, domain validation)
+
+**2. Enhanced `capability.list` Response** (absorbed from loamSpine, sweetGrass)
+- `CapabilityDescriptor` now includes per-method `MethodDescriptor` with `cost` tier (low/medium/high) and `deps` (prerequisite operations)
+- biomeOS Pathway Learner can now optimize graph execution order for rhizoCrypt
+- `build_capability_descriptors()` builds response from `niche.rs` constants
+
+**3. `temp-env` for Test Isolation** (absorbed from squirrel, groundSpring)
+- Replaced all 183 `unsafe { std::env::set_var/remove_var }` blocks across 7 files with `temp_env::with_vars`
+- Eliminated all `#[allow(unsafe_code)]` from test modules — zero `unsafe` in the entire codebase
+- Removed all `ENV_LOCK` / `ENV_TEST_LOCK` static mutexes and manual cleanup helpers
+- Added `temp-env = "0.3"` as workspace dev-dependency
+
+**4. Deploy Graph `fallback = "skip"`** (absorbed from wetSpring)
+- Added `fallback = "skip"` to all 4 optional nodes in `graphs/rhizocrypt_deploy.toml` (beardog, songbird, loamspine, sweetgrass)
+- biomeOS ConditionalDag now gracefully skips unavailable optional dependencies
+
+**5. CI Coverage Threshold** (absorbed from beardog, biomeOS, barraCuda)
+- Added `--fail-under-lines 90` enforcement to CI coverage job in `.github/workflows/ci.yml`
+- Prevents coverage regressions below 90%
+
+**6. Workspace Lint Strictness** (absorbed from ludoSpring, squirrel, provenance-trio-types)
+- Upgraded `unwrap_used` and `expect_used` from `"warn"` to `"deny"` in workspace lints
+- Production code already had zero instances; this prevents regressions
+
+**7. `#[expect(reason = "...")]` Strings** (absorbed from toadstool, loamSpine)
+- Added `reason = "..."` strings to all 4 `#[expect()]` attrs in production code
+- Documents *why* each lint suppression exists for audit trail
+
+**8. wateringHole Documentation Updates**
+- Updated `RHIZOCRYPT_LEVERAGE_GUIDE.md` with niche self-knowledge section, enhanced capability.list format
+- Updated `PRIMAL_REGISTRY.md` with post-absorption status
+
+#### Additional Improvements
+- Added `serde` `rc` feature to workspace deps (fixes pre-existing `Arc<str>` serialization issue)
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery + cargo, all features) | Clean (0 warnings) |
+| `cargo doc --workspace --all-features --no-deps` | Clean |
+| `cargo test --workspace --all-features` | 1188+ pass, 0 fail |
+| `cargo deny check` | Clean |
+| `unsafe_code = "deny"` | Workspace-wide (zero unsafe in tests via temp-env) |
+| `unwrap_used`/`expect_used` | `"deny"` workspace-wide |
+| Coverage gate | `--fail-under-lines 90` CI enforced |
+| SPDX headers | All 110 `.rs` files |
+| Max file size | All under 1000 lines |
+| Production unwrap/expect | Zero |
+
+---
+
 ## [0.13.0-dev] - 2026-03-15 (session 10)
 
 ### Changed
@@ -593,6 +656,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.13.0-dev** (2026-03-16 s11): Cross-ecosystem absorption — niche.rs, enhanced capability.list, temp-env, deploy fallback, CI coverage gate, deny unwrap/expect
 - **0.13.0-dev** (2026-03-15 s10): Edition 2024, deploy graph, capability registry, `#[expect]` lint migration
 - **0.13.0-dev** (2026-03-15 s8): O(1) vertex-to-session index, checkout_slice evolution, Did→Arc\<str\>, 907 tests
 - **0.13.0-dev** (2026-03-15 s7): scyBorg license, zero-copy signing, store_redb refactor, modern async traits, docs cleanup

@@ -191,7 +191,11 @@ impl Histogram {
             // Truncation is acceptable: latencies exceeding u64::MAX µs (~584 millennia) are
             // not realistic, and sub-microsecond fractional loss is immaterial for observability.
             // Sign loss is guarded by the `> 0.0` predicate.
-            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "truncation and sign loss are guarded by the > 0.0 predicate above"
+            )]
             let v = micros as u64;
             v
         } else {
@@ -239,7 +243,10 @@ impl HistogramSnapshot {
         // Precision loss: f64 mantissa is 53 bits; u64 values above 2^53 lose
         // low-order bits. For microsecond sums this corresponds to ~285 years of
         // accumulated latency — acceptable for observability.
-        #[expect(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "f64 precision loss only matters above 2^53 µs (~285 years of accumulated latency)"
+        )]
         let mean = (self.sum_micros as f64 / 1_000_000.0) / self.count as f64;
         mean
     }

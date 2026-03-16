@@ -78,7 +78,10 @@ impl TestHarness {
     }
 
     /// Create a test session.
-    #[expect(clippy::unused_self)] // Self for consistency with other methods
+    #[expect(
+        clippy::unused_self,
+        reason = "Self parameter for API consistency with other harness methods"
+    )]
     pub fn create_test_session(&self, name: &str) -> Session {
         SessionBuilder::new(SessionType::General).with_name(name).build()
     }

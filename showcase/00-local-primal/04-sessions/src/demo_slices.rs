@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 // Demo: Working with Slices
 //
 // This demo shows slice checkout patterns
