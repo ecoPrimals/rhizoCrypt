@@ -98,7 +98,7 @@ RhizoCrypt is named after the **rhizome**—the branching, underground fungal ne
 
 ### Foundational
 - [sourDough Core](../../sourDough/)
-- [Phase 2 Architecture](../../ARCHITECTURE.md)
+- [Phase 2 Architecture](./ARCHITECTURE.md)
 
 ---
 

@@ -1,6 +1,6 @@
 # Stable Rust Formatting Configuration
 # Matches ecoPrimals phase1 standards
-edition = "2021"
+edition = "2024"
 hard_tabs = false
 tab_spaces = 4
 newline_style = "Unix"

@@ -286,7 +286,6 @@ impl RhizoCryptError {
 pub type Result<T> = std::result::Result<T, RhizoCryptError>;
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

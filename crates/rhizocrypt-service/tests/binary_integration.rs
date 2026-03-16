@@ -6,7 +6,7 @@
 //! Tests the main service entry point, configuration, startup, shutdown,
 //! and error handling scenarios using the `server` subcommand.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::cast_possible_wrap)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use rhizocrypt_service::exit_codes;
 use std::process::{Command, Stdio};
@@ -252,7 +252,8 @@ async fn test_service_graceful_shutdown_sigterm() {
         use nix::sys::signal::{Signal, kill};
         use nix::unistd::Pid;
 
-        let pid = Pid::from_raw(child.id() as i32);
+        let raw_pid = i32::try_from(child.id()).expect("pid fits in i32");
+        let pid = Pid::from_raw(raw_pid);
         let _ = kill(pid, Signal::SIGTERM);
     }
 
@@ -406,7 +407,8 @@ async fn test_service_signal_handling() {
 
     sleep(Duration::from_millis(500)).await;
 
-    let pid = Pid::from_raw(child.id() as i32);
+    let raw_pid = i32::try_from(child.id()).expect("pid fits in i32");
+    let pid = Pid::from_raw(raw_pid);
 
     let result = kill(pid, Signal::SIGTERM);
     assert!(result.is_ok(), "Should be able to send SIGTERM");

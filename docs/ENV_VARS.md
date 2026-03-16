@@ -1,6 +1,6 @@
 # 🔐 rhizoCrypt — Environment Variables
 
-**Last Updated**: March 15, 2026  
+**Last Updated**: March 16, 2026  
 **Version**: 0.13.0-dev  
 **Philosophy**: Capability-based, not primal-based
 
@@ -244,6 +244,18 @@ SIGNING_ENDPOINT=new-signing-primal:9500
 # Use secret management for sensitive endpoints
 SIGNING_ENDPOINT=$(vault kv get -field=endpoint secret/signing)
 PERMANENT_STORAGE_ENDPOINT=$(kubectl get secret storage-endpoint -o jsonpath='{.data.endpoint}' | base64 -d)
+```
+
+---
+
+## Build Environment
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `CARGO_TARGET_DIR` | path | (from `.cargo/config.toml`) | Build artifact directory. Set explicitly if global `~/.cargo/config.toml` overrides the project-local config (e.g. when global target-dir is on a noexec mount). |
+
+```bash
+export CARGO_TARGET_DIR="$HOME/.cargo-build/rhizoCrypt/target"
 ```
 
 ---

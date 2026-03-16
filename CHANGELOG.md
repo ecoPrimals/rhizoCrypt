@@ -5,6 +5,57 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-16 (session 12)
+
+### Changed
+
+#### Comprehensive Audit — Deep Debt, Idiomatic Rust, Zero-Copy
+
+**1. `#[allow]` → `#[expect]` Migration (42 test modules)**
+- Migrated all remaining `#[allow(clippy::unwrap_used, clippy::expect_used)]` to precise `#[expect(...)]` attributes across 42 test files
+- Each module now declares only the lint suppressions it actually triggers — unfulfilled `#[expect]` fails the build
+- Removed suppressions entirely where tests used neither `unwrap()` nor `expect()`
+
+**2. Safe Type Conversions (10 files)**
+- Replaced all `as` casts with `TryFrom`/`TryInto` + saturating fallback (`unwrap_or(MAX)`)
+- `binary_integration.rs`: `child.id() as i32` → `i32::try_from(...).expect("pid fits in i32")`; removed `#![allow(clippy::cast_possible_wrap)]`
+- `service.rs`: `l as usize` → `usize::try_from(l).unwrap_or(usize::MAX)`, `session_count as u64` → `u64::try_from(...)`
+- `store_redb.rs`, `store_sled.rs`, `types.rs`, `dehydration.rs`: all `len() as u64` → `u64::try_from(len).unwrap_or(u64::MAX)`
+- `loamspine_http.rs`: `MethodSupport as u8` → `MethodSupport::to_u8()` typed conversion method
+
+**3. Zero-Copy: `SignResponse.signature`**
+- Evolved `signing.rs` `SignResponse.signature` from `Vec<u8>` to `bytes::Bytes`
+- Eliminates intermediate allocation on signing response deserialization
+
+**4. Smart File Refactoring — `store_redb_tests_advanced.rs`**
+- Extracted stats/metrics test domain into `store_redb_tests_stats.rs` (324 lines)
+- `store_redb_tests_advanced.rs` reduced from 1001 → 681 lines (was 1 line over limit)
+- Both files under 1000-line limit with coherent domain grouping
+
+**5. `rustfmt.toml` Edition Sync**
+- Updated `edition = "2021"` → `edition = "2024"` to match workspace `Cargo.toml`
+
+**6. Build Environment Documentation**
+- Documented `CARGO_TARGET_DIR` workaround in `docs/ENV_VARS.md` for noexec mount conflicts
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery + cargo, all features) | Clean (0 warnings) |
+| `cargo doc --workspace --all-features --no-deps` | Clean |
+| `cargo test --workspace --all-features` | 1188 pass, 0 fail |
+| `cargo deny check` | Clean |
+| `unsafe_code = "deny"` | Workspace-wide (zero unsafe in tests via temp-env) |
+| `unwrap_used`/`expect_used` | `"deny"` workspace-wide |
+| Coverage gate | 91.63% lines (`--fail-under-lines 90` CI enforced) |
+| SPDX headers | All 107 `.rs` files |
+| Max file size | All under 1000 lines |
+| Production unwrap/expect | Zero |
+
+---
+
 ## [0.13.0-dev] - 2026-03-16 (session 11)
 
 ### Changed
@@ -656,6 +707,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.13.0-dev** (2026-03-16 s12): Deep audit — `#[expect]` migration (42 files), safe `TryFrom` casts, zero-copy signing, file refactoring, rustfmt edition sync
 - **0.13.0-dev** (2026-03-16 s11): Cross-ecosystem absorption — niche.rs, enhanced capability.list, temp-env, deploy fallback, CI coverage gate, deny unwrap/expect
 - **0.13.0-dev** (2026-03-15 s10): Edition 2024, deploy graph, capability registry, `#[expect]` lint migration
 - **0.13.0-dev** (2026-03-15 s8): O(1) vertex-to-session index, checkout_slice evolution, Did→Arc\<str\>, 907 tests

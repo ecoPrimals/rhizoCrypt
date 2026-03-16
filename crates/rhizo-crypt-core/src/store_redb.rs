@@ -432,7 +432,7 @@ impl DagStore for RedbDagStore {
             .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
 
         let count = range.count();
-        Ok(count as u64)
+        Ok(u64::try_from(count).unwrap_or(u64::MAX))
     }
 
     async fn delete_session(&self, session_id: SessionId) -> Result<()> {
@@ -621,16 +621,21 @@ impl std::fmt::Debug for RedbDagStore {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "store_redb_tests.rs"]
 mod tests;
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "store_redb_tests_advanced.rs"]
 mod tests_advanced;
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "store_redb_tests_query.rs"]
 mod tests_query;
+
+#[cfg(test)]
+#[expect(clippy::expect_used, reason = "test code")]
+#[path = "store_redb_tests_stats.rs"]
+mod tests_stats;

@@ -504,7 +504,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
     ) -> Result<Vec<Vertex>, RpcError> {
         let event_types = request.event_types;
         let agent = request.agent;
-        let limit = request.limit.map(|l| l as usize);
+        let limit = request.limit.map(|l| usize::try_from(l).unwrap_or(usize::MAX));
 
         self.primal
             .query_vertices(request.session_id, event_types.as_deref(), agent.as_ref(), limit)
@@ -644,7 +644,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         Ok(HealthStatus {
             healthy: state.is_running(),
             state: format!("{state}"),
-            active_sessions: session_count as u64,
+            active_sessions: u64::try_from(session_count).unwrap_or(u64::MAX),
             total_vertices: vertex_count,
             uptime_seconds: self.start_time.elapsed().as_secs(),
         })
@@ -672,7 +672,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 mod tests {
     use super::*;
     use rhizo_crypt_core::{PrimalLifecycle, RhizoCrypt, RhizoCryptConfig};

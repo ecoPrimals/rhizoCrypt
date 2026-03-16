@@ -98,7 +98,6 @@ impl From<std::io::Error> for RpcError {
 pub type RpcResult<T> = Result<T, RpcError>;
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

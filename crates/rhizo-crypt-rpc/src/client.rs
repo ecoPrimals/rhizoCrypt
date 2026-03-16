@@ -377,7 +377,7 @@ impl RpcClient {
 // ============================================================================
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
     use rhizo_crypt_core::{Did, EventType, SessionState, SessionType, SliceMode, Timestamp};

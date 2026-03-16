@@ -289,7 +289,6 @@ impl std::fmt::Display for RateLimitExceeded {
 impl std::error::Error for RateLimitExceeded {}
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use std::net::Ipv4Addr;

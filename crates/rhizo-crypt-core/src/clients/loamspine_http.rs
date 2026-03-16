@@ -103,7 +103,7 @@ impl LoamSpineHttpClient {
             client,
             request_id: std::sync::Arc::new(AtomicU64::new(1)),
             native_methods: std::sync::Arc::new(std::sync::atomic::AtomicU8::new(
-                MethodSupport::Unknown as u8,
+                MethodSupport::Unknown.to_u8(),
             )),
         })
     }
@@ -144,7 +144,7 @@ impl LoamSpineHttpClient {
 
     /// Record the negotiation result after a call.
     fn record_support(&self, support: MethodSupport) {
-        self.native_methods.store(support as u8, Ordering::Relaxed);
+        self.native_methods.store(support.to_u8(), Ordering::Relaxed);
     }
 
     /// Make a JSON-RPC 2.0 call with method negotiation.
@@ -253,7 +253,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
             summary: RpcDehydrationSummary {
                 session_type: summary.session_type.clone(),
                 vertex_count: summary.vertex_count,
-                leaf_count: summary.results.len() as u64,
+                leaf_count: u64::try_from(summary.results.len()).unwrap_or(u64::MAX),
                 started_at: summary.created_at.as_nanos(),
                 ended_at: summary.resolved_at.as_nanos(),
                 outcome: format!("{:?}", summary.outcome),
@@ -476,6 +476,14 @@ impl MethodSupport {
             1 => Self::Native,
             2 => Self::Compat,
             _ => Self::Unknown,
+        }
+    }
+
+    const fn to_u8(self) -> u8 {
+        match self {
+            Self::Unknown => 0,
+            Self::Native => 1,
+            Self::Compat => 2,
         }
     }
 }

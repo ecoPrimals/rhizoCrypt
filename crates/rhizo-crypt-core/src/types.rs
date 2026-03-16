@@ -148,7 +148,7 @@ impl PayloadRef {
     pub fn from_bytes(data: &[u8]) -> Self {
         Self {
             hash: blake3::hash(data).into(),
-            size: data.len() as u64,
+            size: u64::try_from(data.len()).unwrap_or(u64::MAX),
         }
     }
 
@@ -366,7 +366,7 @@ pub fn hash_pair(left: &ContentHash, right: &ContentHash) -> ContentHash {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
     use crate::merkle::MerkleRoot;

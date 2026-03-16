@@ -307,7 +307,9 @@ impl DagStore for InMemoryDagStore {
     async fn count_vertices(&self, session_id: SessionId) -> Result<u64> {
         self.read_ops.fetch_add(1, Ordering::Relaxed);
         let sessions = self.sessions.read().await;
-        Ok(sessions.get(&session_id).map_or(0, |s| s.vertices.len() as u64))
+        Ok(sessions
+            .get(&session_id)
+            .map_or(0, |s| u64::try_from(s.vertices.len()).unwrap_or(u64::MAX)))
     }
 
     async fn delete_session(&self, session_id: SessionId) -> Result<()> {
@@ -339,8 +341,9 @@ impl DagStore for InMemoryDagStore {
 
     async fn stats(&self) -> StorageStats {
         let sessions = self.sessions.read().await;
-        let session_count = sessions.len() as u64;
-        let vertex_count: u64 = sessions.values().map(|s| s.vertices.len() as u64).sum();
+        let session_count = u64::try_from(sessions.len()).unwrap_or(u64::MAX);
+        let vertex_count: u64 =
+            sessions.values().map(|s| u64::try_from(s.vertices.len()).unwrap_or(u64::MAX)).sum();
 
         // Rough estimate of bytes: 256 bytes per vertex average
         let bytes_estimate = vertex_count * 256;
@@ -454,11 +457,12 @@ impl PayloadStore for InMemoryPayloadStore {
 
     async fn stats(&self) -> StorageStats {
         let payloads = self.payloads.read().await;
-        let bytes_used: u64 = payloads.values().map(|b| b.len() as u64).sum();
+        let bytes_used: u64 =
+            payloads.values().map(|b| u64::try_from(b.len()).unwrap_or(u64::MAX)).sum();
 
         StorageStats {
-            sessions: 0, // Payloads don't have sessions
-            vertices: payloads.len() as u64,
+            sessions: 0,
+            vertices: u64::try_from(payloads.len()).unwrap_or(u64::MAX),
             bytes_used,
             read_ops: self.read_ops.load(Ordering::Relaxed),
             write_ops: self.write_ops.load(Ordering::Relaxed),
@@ -467,7 +471,7 @@ impl PayloadStore for InMemoryPayloadStore {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
     use crate::event::EventType;

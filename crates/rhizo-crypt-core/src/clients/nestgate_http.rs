@@ -320,7 +320,7 @@ impl std::error::Error for NestGateHttpError {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
 

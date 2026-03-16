@@ -206,7 +206,7 @@ impl SigningClient {
 
         let response: SignResponse = self.adapter.call("sign", request).await?;
 
-        Ok(Signature::new(response.signature))
+        Ok(Signature::from(response.signature))
     }
 
     /// Verify a signature.
@@ -363,7 +363,7 @@ struct SignRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SignResponse {
-    signature: Vec<u8>,
+    signature: bytes::Bytes,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -476,12 +476,12 @@ mod tests {
     #[test]
     fn test_signing_response_serialization() {
         let response = SignResponse {
-            signature: vec![1, 2, 3, 4],
+            signature: bytes::Bytes::from_static(&[1, 2, 3, 4]),
         };
 
         let serialized = serde_json::to_string(&response).unwrap();
         let deserialized: SignResponse = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized.signature, vec![1, 2, 3, 4]);
+        assert_eq!(&deserialized.signature[..], &[1, 2, 3, 4]);
     }
 
     #[test]
@@ -619,11 +619,11 @@ mod tests {
     #[test]
     fn test_sign_response_roundtrip() {
         let response = SignResponse {
-            signature: vec![1, 2, 3, 4, 5, 6],
+            signature: bytes::Bytes::from_static(&[1, 2, 3, 4, 5, 6]),
         };
         let serialized = serde_json::to_string(&response).unwrap();
         let deserialized: SignResponse = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized.signature, response.signature);
+        assert_eq!(&deserialized.signature[..], &response.signature[..]);
     }
 
     #[test]

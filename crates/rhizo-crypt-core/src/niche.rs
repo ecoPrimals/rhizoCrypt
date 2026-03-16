@@ -267,7 +267,7 @@ pub fn capability_list() -> serde_json::Value {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[expect(clippy::expect_used, reason = "test code")]
 mod tests {
     use super::*;
 

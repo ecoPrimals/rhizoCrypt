@@ -342,7 +342,7 @@ pub const HEALTH_CHECK_PATH: &str = "/api/v1/health";
 pub const TEST_PORT_RANGE_START: u16 = 0;
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
     use std::path::Path;

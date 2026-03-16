@@ -522,10 +522,9 @@ impl DagStore for SledDagStore {
 
     async fn stats(&self) -> StorageStats {
         // Count sessions from genesis tree
-        let session_count = self.genesis.iter().count() as u64;
+        let session_count = u64::try_from(self.genesis.iter().count()).unwrap_or(u64::MAX);
 
-        // Count vertices
-        let vertex_count = self.vertices.iter().count() as u64;
+        let vertex_count = u64::try_from(self.vertices.iter().count()).unwrap_or(u64::MAX);
 
         // Get disk usage
         let bytes_used = self.db.size_on_disk().unwrap_or(0);
@@ -551,11 +550,11 @@ impl std::fmt::Debug for SledDagStore {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "store_sled_tests.rs"]
 mod tests;
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "store_sled_tests_advanced.rs"]
 mod tests_advanced;

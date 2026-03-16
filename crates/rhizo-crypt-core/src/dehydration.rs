@@ -284,7 +284,7 @@ impl From<&DehydrationSummary> for provenance_trio_types::DehydrationSummary {
             session_id: s.session_id.to_string(),
             merkle_root: hex::encode(s.merkle_root.0),
             vertex_count: s.vertex_count,
-            branch_count: s.results.len() as u64,
+            branch_count: u64::try_from(s.results.len()).unwrap_or(u64::MAX),
             payload_bytes: s.payload_bytes,
             agents: s.agents.iter().map(|a| a.agent.to_string()).collect(),
             session_start: s.created_at.as_nanos(),
@@ -421,7 +421,6 @@ impl DehydrationSummaryBuilder {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
