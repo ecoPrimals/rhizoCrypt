@@ -166,6 +166,25 @@ impl SafeEnv {
             .unwrap_or(default)
     }
 
+    /// Get the JSON-RPC port, with environment override.
+    ///
+    /// Priority order:
+    /// 1. `RHIZOCRYPT_JSONRPC_PORT` (explicit override)
+    /// 2. Calculated from `tarpc_port + JSONRPC_PORT_OFFSET`
+    ///
+    /// When the tarpc port is 0 (OS-assigned), returns 0 so the OS also
+    /// assigns the JSON-RPC port independently.
+    #[must_use]
+    pub fn get_jsonrpc_port(tarpc_port: u16) -> u16 {
+        Self::parse_optional::<u16>("RHIZOCRYPT_JSONRPC_PORT").unwrap_or_else(|| {
+            if tarpc_port == 0 {
+                0
+            } else {
+                tarpc_port.saturating_add(crate::constants::JSONRPC_PORT_OFFSET)
+            }
+        })
+    }
+
     /// Get the RPC host, with environment override.
     ///
     /// Priority order:
@@ -537,6 +556,38 @@ mod tests {
         temp_env::with_vars([("RHIZOCRYPT_RPC_PORT", Some("9999"))], || {
             let result = SafeEnv::get_rpc_port(9400);
             assert_eq!(result, 9999);
+        });
+    }
+
+    #[test]
+    fn test_get_jsonrpc_port_default_offset() {
+        temp_env::with_vars([("RHIZOCRYPT_JSONRPC_PORT", None::<&str>)], || {
+            let result = SafeEnv::get_jsonrpc_port(9400);
+            assert_eq!(result, 9400 + crate::constants::JSONRPC_PORT_OFFSET);
+        });
+    }
+
+    #[test]
+    fn test_get_jsonrpc_port_explicit_override() {
+        temp_env::with_vars([("RHIZOCRYPT_JSONRPC_PORT", Some("7777"))], || {
+            let result = SafeEnv::get_jsonrpc_port(9400);
+            assert_eq!(result, 7777);
+        });
+    }
+
+    #[test]
+    fn test_get_jsonrpc_port_zero_passthrough() {
+        temp_env::with_vars([("RHIZOCRYPT_JSONRPC_PORT", None::<&str>)], || {
+            let result = SafeEnv::get_jsonrpc_port(0);
+            assert_eq!(result, 0, "OS-assigned tarpc port should yield OS-assigned JSON-RPC port");
+        });
+    }
+
+    #[test]
+    fn test_get_jsonrpc_port_saturating() {
+        temp_env::with_vars([("RHIZOCRYPT_JSONRPC_PORT", None::<&str>)], || {
+            let result = SafeEnv::get_jsonrpc_port(u16::MAX);
+            assert_eq!(result, u16::MAX, "should saturate rather than overflow");
         });
     }
 

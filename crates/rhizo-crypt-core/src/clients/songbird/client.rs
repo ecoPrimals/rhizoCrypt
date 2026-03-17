@@ -463,7 +463,6 @@ impl Clone for SongbirdClient {
 mod tests;
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 #[path = "tests_config.rs"]
 mod tests_config;
 

@@ -5,6 +5,54 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-17 (session 18)
+
+### Changed
+
+#### Deep Debt Execution — Refactoring, Cross-Compile CI, JSON-RPC Port, Docs Refresh
+
+**1. Smart File Refactoring — `validation.rs` Module Extraction**
+- Extracted `ValidationHarness`, `ValidationSink`, `StderrSink`, `StringSink` from `error.rs` (863 → 660 lines) to canonical `validation.rs` (236 lines)
+- New module declared in `lib.rs`, re-exported from both `error` and root for backward compatibility
+
+**2. Smart File Refactoring — `registry_tests.rs` Extraction**
+- Extracted all `#[cfg(test)]` tests from `discovery/registry.rs` (886 → 399 lines) to `registry_tests.rs` (452 lines)
+- Uses `#[path]` attribute for clean separation while preserving module-private access
+
+**3. `RHIZOCRYPT_JSONRPC_PORT` Configuration**
+- Added `JSONRPC_PORT_OFFSET` constant to `constants.rs` (default: tarpc port + 1)
+- Added `SafeEnv::get_jsonrpc_port(tarpc_port)` to `safe_env/mod.rs` with env override
+- `rhizocrypt-service` `run_server` now uses `SafeEnv::get_jsonrpc_port()` instead of hardcoded offset
+
+**4. Cross-Compile CI Job (ecoBin v3.0)**
+- Added `cross-compile` matrix job to `.github/workflows/ci.yml`
+- Targets: `x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`, `riscv64gc-unknown-linux-gnu`
+- Uses `cross` for cross-compilation, validates default-features-only builds
+
+**5. Dependency Evolution Documentation**
+- Documented `ring` → `rustls-rustcrypto`, `sled` → `redb`, tarpc transitive debt in `deny.toml`
+- Documented `sled` deprecation status in `rhizo-crypt-core/Cargo.toml`
+
+**6. Lint Cleanup**
+- Removed unfulfilled `#[expect(clippy::unwrap_used)]` from `songbird/client.rs` test module
+
+**7. Documentation Refresh (Session 18)**
+- Updated README: 1327 tests, 124 SPDX files, ecoBin v3.0, cross-compile CI, `RHIZOCRYPT_JSONRPC_PORT`, validation module
+- Updated CHANGELOG with session 17 + session 18
+- Updated `docs/ENV_VARS.md` with `RHIZOCRYPT_JSONRPC_PORT`
+- Cleaned stale `showcase/00_START_HERE.md` stats and dead references
+- Wrote wateringHole handoff for sessions 17–18
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` — 0 warnings
+- `cargo doc --workspace --all-features --no-deps` — 0 warnings (`-D warnings`)
+- `cargo test --workspace --all-features` — **1,327 tests passing**, 0 failures
+- All `.rs` files under 1000 lines (max refactored: `error.rs` 660, `registry.rs` 399)
+
+---
+
 ## [0.13.0-dev] - 2026-03-17 (session 17)
 
 ### Changed
@@ -962,6 +1010,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.13.0-dev** (2026-03-17 s18): Deep debt — validation module extraction, registry test extraction, JSON-RPC port config, cross-compile CI, docs refresh
+- **0.13.0-dev** (2026-03-17 s17): Deep debt — health probes, 4-format capabilities, ValidationSink, JSON-RPC fuzz
 - **0.13.0-dev** (2026-03-16 s14): Deep debt — structured IPC errors, tarpc 0.37, capability domain introspection, NDJSON streaming, DI config, constant provenance, debris cleanup
 - **0.13.0-dev** (2026-03-16 s12): Deep audit — `#[expect]` migration (42 files), safe `TryFrom` casts, zero-copy signing, file refactoring, rustfmt edition sync
 - **0.13.0-dev** (2026-03-16 s11): Cross-ecosystem absorption — niche.rs, enhanced capability.list, temp-env, deploy fallback, CI coverage gate, deny unwrap/expect

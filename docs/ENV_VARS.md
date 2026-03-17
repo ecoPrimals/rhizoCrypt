@@ -1,6 +1,6 @@
 # 🔐 rhizoCrypt — Environment Variables
 
-**Last Updated**: March 16, 2026  
+**Last Updated**: March 17, 2026  
 **Version**: 0.13.0-dev  
 **Philosophy**: Capability-based, not primal-based
 
@@ -22,8 +22,9 @@ rhizoCrypt follows the **infant discovery** pattern: it starts with **zero knowl
 |----------|------|---------|-------------|
 | `RHIZOCRYPT_ENV` | string | `production` | Environment mode (`development` or `production`) |
 | `RHIZOCRYPT_RPC_HOST` | string | `0.0.0.0` | RPC server bind address |
-| `RHIZOCRYPT_RPC_PORT` | u16 | `9400` | RPC server port (preferred) |
-| `RHIZOCRYPT_PORT` | u16 | `9400` | RPC server port (legacy alias for `RHIZOCRYPT_RPC_PORT`) |
+| `RHIZOCRYPT_RPC_PORT` | u16 | `9400` | tarpc server port (preferred) |
+| `RHIZOCRYPT_PORT` | u16 | `9400` | tarpc server port (legacy alias for `RHIZOCRYPT_RPC_PORT`) |
+| `RHIZOCRYPT_JSONRPC_PORT` | u16 | tarpc port + 1 | JSON-RPC HTTP port. Defaults to tarpc port + `JSONRPC_PORT_OFFSET` (1). Set to `0` for OS-assigned. |
 | `RHIZOCRYPT_METRICS_PORT` | u16 | `9401` | Prometheus metrics port |
 
 ### Capability Endpoints (Preferred ✅)

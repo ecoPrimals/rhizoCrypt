@@ -3,7 +3,7 @@
 **Welcome to rhizoCrypt** - The ephemeral working memory for the ecoPrimals ecosystem.
 
 **Version**: 0.13.0-dev  
-**Status**: Production Ready (1102+ tests passing, 92.32% coverage)  
+**Status**: Production Ready (1327 tests passing, 92.32% coverage)  
 **Date**: March 17, 2026
 
 ---
@@ -82,22 +82,6 @@ cd 00-local-primal
 **Prerequisites**: Phase 1 binaries in `../bins/`
 
 **Start**: `cd 01-inter-primal-live && cat README.md`
-
----
-
-### 🔴 **Level 2: Complete Workflows** (90 minutes)
-**Goal**: Experience full ecosystem coordination
-
-**What you'll learn**:
-- Gaming session with ML training
-- Document workflow with provenance
-- Multi-agent ML pipeline
-- Supply chain with slice semantics
-- **Real-world scenarios, end-to-end**
-
-**Prerequisites**: All Phase 1 primals running
-
-**Start**: `cd 01-inter-primal-live/05-complete-workflows && cat README.md`
 
 ---
 
@@ -204,8 +188,8 @@ Best concurrency model in the ecoPrimals ecosystem. DashMap provides zero-blocki
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 600/600 passing (100%) |
-| **Coverage** | 86.17% |
+| **Tests** | 1327 passing (all features) |
+| **Coverage** | 92.32% |
 | **Unsafe Code** | 0 blocks |
 | **Clippy Warnings** | 0 (pedantic mode) |
 | **Vertex Creation** | ~720 ns |
@@ -231,24 +215,17 @@ showcase/
 │   ├── 06-advanced-patterns/ (3 demos)
 │   └── 06-real-world-scenarios/ (4 demos) ⭐
 │
-├── 01-inter-primal-live/     Level 1 (60 min)
-│   ├── 01-songbird-discovery/ (real bins)
-│   ├── 02-beardog-signing/ (real bins)
-│   ├── 03-nestgate-storage/ (real bins)
-│   ├── 04-toadstool-compute/ (real bins)
-│   └── GAPS_DISCOVERED.md (integration learnings)
-│
-└── 02-complete-workflows/    Level 2 (90 min) 🚧
-    ├── gaming-session/
-    ├── document-workflow/
-    ├── ml-pipeline/
-    └── supply-chain/
+└── 01-inter-primal-live/     Level 1 (60 min)
+    ├── 01-songbird-discovery/ (real bins)
+    ├── 02-beardog-signing/ (real bins)
+    ├── 03-nestgate-storage/ (real bins)
+    ├── 04-toadstool-compute/ (real bins)
+    └── 05-complete-workflows/ (real bins)
 ```
 
 **Legend**:
 - ✅ Complete and tested
 - ⭐ Recently enhanced
-- 🚧 Work in progress
 
 ---
 
@@ -280,7 +257,7 @@ Checkout portions of permanent data into ephemeral DAG for computation. 6 modes 
 ### For Level 0 (Local)
 ```bash
 # Just Rust
-rustc --version  # Should be 1.70+
+rustc --version  # Should be 1.87+
 cargo --version
 ```
 
@@ -293,14 +270,6 @@ ls ../bins/
 # Ports available
 # 8888 (Songbird), 9400 (rhizoCrypt), 9500 (BearDog), etc.
 ```
-
-### For Level 2 (Complete Workflows)
-```bash
-# All Phase 1 primals running
-# See 02-complete-workflows/00_START_HERE.md for setup
-```
-
----
 
 ## 🎯 Success Criteria
 
@@ -316,12 +285,6 @@ ls ../bins/
 - [ ] You've signed a vertex with BearDog
 - [ ] You've stored a payload in NestGate
 - [ ] You understand capability-based architecture
-
-### Level 2 Complete When:
-- [ ] You've run a complete workflow end-to-end
-- [ ] You've seen multi-primal coordination
-- [ ] You can explain dehydration to someone else
-- [ ] You're ready to integrate rhizoCrypt
 
 ---
 
@@ -383,7 +346,7 @@ A: Each demo has a README with troubleshooting.
 A: Not recommended. Concepts build on each other.
 
 **Q: Is this production-ready?**  
-A: Yes! 862 tests passing, 87.78% coverage, zero unsafe code, production infrastructure ready.
+A: Yes! 1327 tests passing, 92.32% coverage, zero unsafe code, production infrastructure ready.
 
 ---
 
@@ -409,5 +372,5 @@ cat 00_START_HERE.md
 
 *Questions? See individual level READMEs or check `../specs/`*
 
-*Last Updated: December 26, 2025*
+*Last Updated: March 17, 2026*
 

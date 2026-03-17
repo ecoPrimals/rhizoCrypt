@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-or-later |
-| Tests | 1102+ passing (default features; +feature-gated with `--all-features`) |
+| Tests | 1327 passing (`--all-features`; 948 default) |
 | Coverage | 92.32% line coverage (`--fail-under-lines 90` CI gate) |
 | Clippy | 0 warnings (pedantic + nursery + cargo, `unwrap_used`/`expect_used = "deny"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -14,18 +14,20 @@
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
 | IPC | JSON-RPC 2.0 (HTTP) + tarpc 0.37 (bincode) — dual-transport first |
 | Streaming | NDJSON pipeline coordination for `event.append_batch` |
-|| Resilience | CircuitBreaker + RetryPolicy for IPC clients |
-|| Error Model | Structured `IpcErrorPhase` + `DispatchOutcome` (protocol vs application) |
-|| Discovery | Capability-based + manifest-based (`$XDG_RUNTIME_DIR/ecoPrimals/*.json`) |
-|| Chaos | `ChaosEngine` framework with 7 fault classes |
+| Resilience | CircuitBreaker + RetryPolicy for IPC clients |
+| Error Model | Structured `IpcErrorPhase` + `DispatchOutcome` (protocol vs application) |
+| Discovery | Capability-based + manifest-based (`$XDG_RUNTIME_DIR/ecoPrimals/*.json`) |
+| Chaos | `ChaosEngine` framework with 7 fault classes |
 | Transport | Platform-agnostic (Unix socket / TCP / abstract socket) |
-| Storage | redb (Pure Rust, default) / sled (optional) |
+| Storage | redb (Pure Rust, default) / sled (optional, deprecated) |
 | Deps | ecoBin compliant — zero application C dependencies |
 | Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 122 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 124 `.rs` files |
 | Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps, domains) |
+| Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `capability_registry.toml` (23 methods, 7 domains) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
+| Cross-compile | CI: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
 
 ---
 
@@ -84,7 +86,7 @@ fallback) for forward/backward compatibility.
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc 0.37 service (24 ops), JSON-RPC 2.0 handler, NDJSON streaming, rate limiting, metrics |
+| `rhizo-crypt-rpc` | tarpc 0.37 service (24 ops), JSON-RPC 2.0 handler (incl. `health.liveness`, `health.readiness`), NDJSON streaming, rate limiting, metrics |
 | `rhizocrypt-service` | UniBin binary and library (`server`, `client`, `status`, `version`, `doctor`) |
 
 ---
@@ -125,7 +127,8 @@ rhizoCrypt discovers all services at runtime via environment variables:
 | `SIGNING_ENDPOINT` | Direct signing provider endpoint |
 | `COMPUTE_ENDPOINT` | Direct compute orchestration endpoint |
 | `PROVENANCE_ENDPOINT` | Direct provenance query endpoint |
-| `RHIZOCRYPT_PORT` | Service listen port (default: OS-assigned dev, 9400 production) |
+| `RHIZOCRYPT_PORT` | tarpc listen port (default: OS-assigned dev, 9400 production) |
+| `RHIZOCRYPT_JSONRPC_PORT` | JSON-RPC HTTP port (default: tarpc port + 1) |
 
 See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 
@@ -136,11 +139,11 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 | Standard | Status | Notes |
 |----------|--------|-------|
 | UniBin | Compliant | Single `rhizocrypt` binary with clap subcommands |
-| ecoBin | Compliant | Default `redb` backend is 100% Pure Rust; `sled` available as optional feature |
+| ecoBin v3.0 | Compliant | Default `redb` backend is 100% Pure Rust; cross-compile CI (musl, RISC-V) |
 | Universal IPC v3 | Compliant | JSON-RPC 2.0 + tarpc, semantic method names |
 | Semantic Naming | Compliant | Native (`commit.*`) + compat (`permanent-storage.*`) with negotiation |
 | `unsafe_code = "deny"` | Compliant | Workspace-wide, `forbid` in non-test builds |
-| AGPL-3.0-or-later | Compliant | SPDX headers on all source files |
+| AGPL-3.0-or-later | Compliant | SPDX headers on all 124 source files |
 
 ---
 

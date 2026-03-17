@@ -245,7 +245,7 @@ By the end of Level 0, you should:
 
 ## 🔗 Quick Links
 
-- **Next**: Level 1 (../01-inter-primal-live/00_START_HERE.md)
+- **Next**: Level 1 (../01-inter-primal-live/README.md)
 - **Showcase Overview**: ../00_START_HERE.md
 - **Specs**: ../../specs/RHIZOCRYPT_SPECIFICATION.md
 - **Architecture**: ../../specs/ARCHITECTURE.md
@@ -288,4 +288,4 @@ cd 01-hello-rhizocrypt
 
 *Questions? See individual demo READMEs or check ../../specs/*
 
-*Last Updated: December 26, 2025*
+*Last Updated: March 17, 2026*

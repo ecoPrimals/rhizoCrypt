@@ -67,6 +67,12 @@ pub const LOCALHOST: &str = "127.0.0.1";
 /// Localhost IPv6 address.
 pub const LOCALHOST_V6: &str = "::1";
 
+/// Port offset for the JSON-RPC server relative to the tarpc port.
+///
+/// When the JSON-RPC port is not explicitly configured, it is calculated as
+/// `tarpc_port + JSONRPC_PORT_OFFSET`. Override via `RHIZOCRYPT_JSONRPC_PORT`.
+pub const JSONRPC_PORT_OFFSET: u16 = 1;
+
 // ============================================================================
 // TIMEOUT CONSTANTS
 // ============================================================================

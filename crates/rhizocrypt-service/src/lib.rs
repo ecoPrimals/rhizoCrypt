@@ -220,11 +220,7 @@ pub async fn run_server(
 
     let port = addr.port();
     let host = addr.ip();
-    let jsonrpc_port = if port == 0 {
-        0
-    } else {
-        port + 1
-    };
+    let jsonrpc_port = SafeEnv::get_jsonrpc_port(port);
     let jsonrpc_addr: SocketAddr = format!("{host}:{jsonrpc_port}").parse()?;
     let jsonrpc_server = JsonRpcServer::new(primal, jsonrpc_addr);
     tokio::spawn(async move {

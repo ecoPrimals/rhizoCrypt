@@ -72,6 +72,7 @@ pub mod slice;
 pub mod store;
 pub mod types;
 pub mod types_ecosystem;
+pub mod validation;
 pub mod vertex;
 
 #[cfg(test)]
@@ -105,9 +106,11 @@ pub use discovery::{
 
 // Error handling
 pub use error::{
-    DispatchOutcome, IpcErrorPhase, OrExit, Result, RhizoCryptError, StderrSink, StringSink,
-    ValidationHarness, ValidationSink, extract_rpc_error,
+    DispatchOutcome, IpcErrorPhase, OrExit, Result, RhizoCryptError, extract_rpc_error,
 };
+
+// Validation harness (canonical home: `validation` module; also re-exported from `error`)
+pub use validation::{StderrSink, StringSink, ValidationHarness, ValidationSink};
 
 // Events
 pub use event::EventType;

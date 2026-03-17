@@ -58,6 +58,9 @@ deny = [
 ]
 # ring is tolerated only via the optional http-clients feature (reqwest → rustls → ring).
 # Default builds (ecoBin-compliant) have zero C application dependencies.
+# Evolution: migrate to rustls-rustcrypto when it reaches stable, then ban ring too.
+# Evolution: sled (optional) pulls libc for file locking; prefer redb (default, pure Rust).
+# Evolution: tarpc transitive deps (instant, fxhash, bincode v1) tracked upstream.
 skip = []
 
 [sources]
