@@ -68,11 +68,11 @@ print_info "Sessions are scoped DAGs with lifecycle: Create → Grow → Resolve
 
 # Use the Rust API to create a session
 cat > /tmp/rhizo_quick_start.rs << 'EOF'
-use rhizo_crypt_core::{RhizoCrypt, Event, EventType};
+use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig, Event, EventType};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Creating rhizoCrypt instance...");
-    let rhizo = RhizoCrypt::new();
+    let rhizo = RhizoCrypt::new(RhizoCryptConfig::default());
     
     println!("Creating session...");
     let session = rhizo.create_session()?;
@@ -212,7 +212,7 @@ echo "   → Real Songbird, BearDog, NestGate, ToadStool integration"
 echo "   → Zero mocks, all real binaries from ../bins/"
 echo ""
 echo "🌟 ${BOLD}Level 2: Complete Workflows${NC} (90 minutes)"
-echo "   cd 02-complete-workflows && cat 00_START_HERE.md"
+echo "   cd 01-inter-primal-live/05-complete-workflows && cat README.md"
 echo "   → Gaming session, ML pipeline, Document workflow, Supply chain"
 echo ""
 echo "📖 ${BOLD}Read the Documentation${NC}"

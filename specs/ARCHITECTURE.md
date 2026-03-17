@@ -380,7 +380,7 @@ RhizoCrypt uses Tokio as its async runtime:
 
 | Component | Concurrency Strategy |
 |-----------|---------------------|
-| Session Manager | `RwLock<HashMap<SessionId, Session>>` |
+| Session Manager | `DashMap<SessionId, Session>` (lock-free) |
 | DAG Store | Per-session locks, concurrent reads |
 | Event Ingester | Lock-free append with atomic frontier |
 | Merkle Builder | Lazy computation, cached results |
@@ -429,12 +429,9 @@ pub enum RhizoCryptError {
     #[error("Storage error: {0}")]
     Storage(#[from] StorageError),
     
-    // Integration errors
-    #[error("BearDog error: {0}")]
-    BearDog(String),
-    
-    #[error("LoamSpine error: {0}")]
-    LoamSpine(String),
+    // Capability provider errors (vendor-agnostic)
+    #[error("IPC error: {phase}")]
+    Ipc { phase: IpcErrorPhase },
     
     // Internal errors
     #[error("Internal error: {0}")]
@@ -492,13 +489,16 @@ All operations emit OpenTelemetry spans:
 
 ```
 dag.session.create
-dag.session.resolve
+dag.session.discard
 dag.event.append
-dag.merkle.compute
-dag.dehydrate.commit
+dag.event.append_batch
+dag.merkle.root
+dag.dehydration.trigger
 dag.slice.checkout
 dag.slice.resolve
-dag.gc.sweep
+health.check
+health.liveness
+health.readiness
 ```
 
 ### 7.3 Health Checks
