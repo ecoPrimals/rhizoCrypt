@@ -23,5 +23,5 @@ mod resolution;
 pub use capability::Capability;
 pub use endpoint::ServiceEndpoint;
 pub use manifest::{PrimalManifest, discover_by_capability, scan_manifests};
-pub use registry::{DiscoveryRegistry, DiscoveryStatus};
+pub use registry::{DiscoveryRegistry, DiscoveryStatus, extract_capabilities};
 pub use resolution::ClientProvider;

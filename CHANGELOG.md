@@ -5,6 +5,59 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-17 (session 17)
+
+### Changed
+
+#### Deep Debt Execution — Health Probes, 4-Format Capabilities, ValidationSink, JSON-RPC Fuzz
+
+**1. `health.liveness` + `health.readiness` JSON-RPC Methods** (ecosystem convergence pattern)
+- Added zero-cost liveness probe (`{ "alive": true }`) — Kubernetes/biomeOS compatible
+- Added readiness probe (checks primal health state, returns version + primal ID)
+- Registered in CAPABILITIES, COST_ESTIMATES, SEMANTIC_MAPPINGS, CAPABILITY_DOMAINS
+- Wired into JSON-RPC handler dispatch table
+
+**2. `deny.toml` Yanked Crate Hardening** (absorbed from wateringHole standard)
+- Added `yanked = "deny"` to `[advisories]` — yanked crates now fail CI
+
+**3. 4-Format Capability Parsing** (absorbed from airSpring v0.8.7)
+- Format A: flat string array `["dag.session.create"]`
+- Format B: nested objects `[{"name": "dag.session.create"}]`
+- Format C: wrapper object `{"capabilities": [...]}` (biomeOS/neuralSpring)
+- Format D: double-nested `{"capabilities": [{"name": "..."}]}` (toadStool S155+)
+- Also handles `{"methods": [...]}` wrapper (coralReef variant)
+- Exported as `discovery::extract_capabilities()`
+
+**4. `ValidationSink` Trait** (absorbed from ludoSpring V22)
+- Pluggable output trait for `ValidationHarness` — redirect to JSON, files, buffers
+- `StderrSink` (default), `StringSink` (testing)
+- `finish_to(sink)` method on `ValidationHarness`
+- `checks()` accessor for programmatic inspection
+
+**5. JSON-RPC Proptest Fuzz** (7 new property tests)
+- `prop_jsonrpc_request_roundtrip` — valid method/id parsing
+- `prop_jsonrpc_error_any_code` — error extraction across full code range
+- `prop_jsonrpc_success_no_error` — success responses never extract errors
+- `prop_ipc_phase_mutual_exclusion` — retriable and application error are disjoint
+- `prop_validation_harness_counts` — pass + fail always equals total
+- `prop_validation_sink_captures` — sink output matches harness state
+
+**6. 4-Format Capability Parsing Proptest** (4 new property tests)
+- `prop_capabilities_format_a` — flat strings roundtrip
+- `prop_capabilities_format_b` — nested object extraction
+- `prop_capabilities_format_c` — wrapper object extraction
+- `prop_capabilities_format_d` — double-nested extraction
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-targets -- -D warnings` — 0 warnings
+- `cargo doc --workspace --no-deps` — 0 warnings
+- `cargo test --workspace` — **1,102 tests passing**, 0 failures
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok
+
+---
+
 ## [0.13.0-dev] - 2026-03-16 (session 16)
 
 ### Changed

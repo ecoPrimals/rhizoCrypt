@@ -308,6 +308,50 @@ fn parse_capability(name: &str) -> Option<Capability> {
 /// - Nested: `[{"name": "Signing", "version": "1.0"}, ...]`
 ///
 /// This deserializer normalizes both into `Vec<String>`.
+/// Extracts capability names from any of the 4 ecosystem response formats.
+///
+/// - **Format A** (flat): `["dag.session.create", "health.check"]`
+/// - **Format B** (nested objects): `[{"name": "dag.session.create", ...}]`
+/// - **Format C** (wrapper): `{"capabilities": ["dag.session.create"]}` — biomeOS/neuralSpring
+/// - **Format D** (double-nested): `{"capabilities": [{"name": "...", ...}]}` — toadStool S155+
+///
+/// Absorbed from airSpring v0.8.7 4-format parser. Any unknown shape is
+/// silently skipped (graceful degradation).
+pub fn extract_capabilities(value: &serde_json::Value) -> Vec<String> {
+    match value {
+        serde_json::Value::Array(arr) => extract_from_array(arr),
+        serde_json::Value::Object(map) => extract_from_object(map),
+        serde_json::Value::String(s) => vec![s.clone()],
+        _ => Vec::new(),
+    }
+}
+
+fn extract_from_object(map: &serde_json::Map<String, serde_json::Value>) -> Vec<String> {
+    if let Some(inner) = map.get("capabilities").or_else(|| map.get("methods")) {
+        return extract_capabilities(inner);
+    }
+    match map.get("name") {
+        Some(serde_json::Value::String(name)) => vec![name.clone()],
+        _ => Vec::new(),
+    }
+}
+
+fn extract_from_array(arr: &[serde_json::Value]) -> Vec<String> {
+    let mut caps = Vec::with_capacity(arr.len());
+    for item in arr {
+        match item {
+            serde_json::Value::String(s) => caps.push(s.clone()),
+            serde_json::Value::Object(map) => {
+                if let Some(serde_json::Value::String(name)) = map.get("name") {
+                    caps.push(name.clone());
+                }
+            }
+            _ => {}
+        }
+    }
+    caps
+}
+
 fn deserialize_dual_capabilities<'de, D>(
     deserializer: D,
 ) -> std::result::Result<Vec<String>, D::Error>
@@ -791,5 +835,52 @@ mod tests {
 
         let ep = registry.get_endpoint(&Capability::Signing).await;
         assert!(ep.is_some());
+    }
+
+    #[test]
+    fn extract_capabilities_format_a_flat_strings() {
+        let v = serde_json::json!(["dag.session.create", "health.check"]);
+        let caps = extract_capabilities(&v);
+        assert_eq!(caps, vec!["dag.session.create", "health.check"]);
+    }
+
+    #[test]
+    fn extract_capabilities_format_b_nested_objects() {
+        let v = serde_json::json!([
+            {"name": "dag.session.create", "version": "1.0"},
+            {"name": "health.check"}
+        ]);
+        let caps = extract_capabilities(&v);
+        assert_eq!(caps, vec!["dag.session.create", "health.check"]);
+    }
+
+    #[test]
+    fn extract_capabilities_format_c_wrapper() {
+        let v = serde_json::json!({"capabilities": ["dag.session.create", "health.check"]});
+        let caps = extract_capabilities(&v);
+        assert_eq!(caps, vec!["dag.session.create", "health.check"]);
+    }
+
+    #[test]
+    fn extract_capabilities_format_d_double_nested() {
+        let v = serde_json::json!({"capabilities": [{"name": "dag.session.create"}, {"name": "health.check"}]});
+        let caps = extract_capabilities(&v);
+        assert_eq!(caps, vec!["dag.session.create", "health.check"]);
+    }
+
+    #[test]
+    fn extract_capabilities_methods_key() {
+        let v = serde_json::json!({"methods": ["a.b", "c.d"]});
+        let caps = extract_capabilities(&v);
+        assert_eq!(caps, vec!["a.b", "c.d"]);
+    }
+
+    #[test]
+    fn extract_capabilities_empty() {
+        let v = serde_json::json!([]);
+        assert!(extract_capabilities(&v).is_empty());
+
+        let v = serde_json::json!(null);
+        assert!(extract_capabilities(&v).is_empty());
     }
 }

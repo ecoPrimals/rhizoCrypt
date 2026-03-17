@@ -448,18 +448,81 @@ impl ValidationHarness {
     /// ```
     #[must_use]
     pub fn finish(&self) -> u8 {
+        self.finish_to(&mut StderrSink)
+    }
+
+    /// Print a summary to the given sink and return the exit code.
+    ///
+    /// Absorbed from ludoSpring V22 `ValidationSink` pattern. Enables
+    /// pluggable output (JSON, file, buffer) for composable validation.
+    #[must_use]
+    pub fn finish_to(&self, sink: &mut dyn ValidationSink) -> u8 {
         let total = self.checks.len();
         let passed = self.pass_count();
-        eprintln!("[{}] {passed}/{total} checks passed", self.label);
+        sink.header(&self.label, passed, total);
         for (name, ok) in &self.checks {
-            let mark = if *ok {
-                "\u{2713}"
-            } else {
-                "\u{2717}"
-            };
-            eprintln!("  {mark} {name}");
+            sink.check(name, *ok);
         }
         self.exit_code()
+    }
+
+    /// Get the raw check results for programmatic access.
+    #[must_use]
+    pub fn checks(&self) -> &[(String, bool)] {
+        &self.checks
+    }
+}
+
+/// Pluggable output sink for [`ValidationHarness`].
+///
+/// Absorbed from ludoSpring V22. Implement this trait to redirect
+/// validation output to JSON, files, or test buffers instead of stderr.
+pub trait ValidationSink {
+    /// Write the header line (e.g., `[label] 5/6 checks passed`).
+    fn header(&mut self, label: &str, passed: usize, total: usize);
+    /// Write a single check result line.
+    fn check(&mut self, name: &str, passed: bool);
+}
+
+/// Default sink that writes to stderr.
+pub struct StderrSink;
+
+impl ValidationSink for StderrSink {
+    fn header(&mut self, label: &str, passed: usize, total: usize) {
+        eprintln!("[{label}] {passed}/{total} checks passed");
+    }
+
+    fn check(&mut self, name: &str, passed: bool) {
+        let mark = if passed {
+            "\u{2713}"
+        } else {
+            "\u{2717}"
+        };
+        eprintln!("  {mark} {name}");
+    }
+}
+
+/// Sink that collects output into a `String` buffer (useful for testing).
+#[derive(Debug, Default)]
+pub struct StringSink {
+    /// The collected output.
+    pub output: String,
+}
+
+impl ValidationSink for StringSink {
+    fn header(&mut self, label: &str, passed: usize, total: usize) {
+        use std::fmt::Write;
+        let _ = writeln!(self.output, "[{label}] {passed}/{total} checks passed");
+    }
+
+    fn check(&mut self, name: &str, passed: bool) {
+        use std::fmt::Write;
+        let mark = if passed {
+            "\u{2713}"
+        } else {
+            "\u{2717}"
+        };
+        let _ = writeln!(self.output, "  {mark} {name}");
     }
 }
 
@@ -770,5 +833,31 @@ mod tests {
         let v = ValidationHarness::new("empty");
         assert!(v.all_passed());
         assert_eq!(v.exit_code(), 0);
+    }
+
+    #[test]
+    fn test_validation_sink_string() {
+        let mut v = ValidationHarness::new("sink_test");
+        v.check("passes", true);
+        v.check("fails", false);
+
+        let mut sink = StringSink::default();
+        let code = v.finish_to(&mut sink);
+        assert_eq!(code, 1);
+        assert!(sink.output.contains("[sink_test]"));
+        assert!(sink.output.contains("1/2 checks passed"));
+        assert!(sink.output.contains("\u{2713} passes"));
+        assert!(sink.output.contains("\u{2717} fails"));
+    }
+
+    #[test]
+    fn test_validation_checks_accessor() {
+        let mut v = ValidationHarness::new("accessor");
+        v.check("a", true);
+        v.check("b", false);
+        let checks = v.checks();
+        assert_eq!(checks.len(), 2);
+        assert_eq!(checks[0], ("a".to_string(), true));
+        assert_eq!(checks[1], ("b".to_string(), false));
     }
 }

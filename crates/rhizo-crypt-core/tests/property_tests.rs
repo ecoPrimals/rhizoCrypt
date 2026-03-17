@@ -447,3 +447,139 @@ proptest! {
         prop_assert!(err.to_string().contains(&expected));
     }
 }
+
+// ============================================================================
+// JSON-RPC Proptest Fuzz (absorbed from airSpring v0.8.7)
+// ============================================================================
+
+proptest! {
+    /// Any JSON-RPC 2.0 request with a valid method is parseable.
+    #[test]
+    fn prop_jsonrpc_request_roundtrip(
+        method in "[a-z]+\\.[a-z]+\\.[a-z]+",
+        id in 1u64..u64::MAX,
+    ) {
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": {},
+            "id": id,
+        });
+        let parsed: serde_json::Value = serde_json::from_str(&request.to_string()).unwrap();
+        prop_assert_eq!(parsed["method"].as_str().unwrap(), &method);
+        prop_assert_eq!(parsed["id"].as_u64().unwrap(), id);
+    }
+
+    /// JSON-RPC error responses with any code/message are extractable.
+    #[test]
+    fn prop_jsonrpc_error_any_code(code in -50000i64..50000i64) {
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": { "code": code, "message": "fuzz" },
+            "id": 1,
+        });
+        let result = rhizo_crypt_core::error::extract_rpc_error(&response);
+        prop_assert!(result.is_some());
+        let (extracted_code, _) = result.unwrap();
+        prop_assert_eq!(extracted_code, code);
+    }
+
+    /// JSON-RPC success responses never extract an error.
+    #[test]
+    fn prop_jsonrpc_success_no_error(val in 0u32..10000) {
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "result": val,
+            "id": 1,
+        });
+        prop_assert!(rhizo_crypt_core::error::extract_rpc_error(&response).is_none());
+    }
+
+    /// IpcErrorPhase is_retriable and is_application_error are mutually exclusive.
+    #[test]
+    fn prop_ipc_phase_mutual_exclusion(code in -50000i64..50000i64) {
+        use rhizo_crypt_core::error::IpcErrorPhase;
+        let phase = IpcErrorPhase::JsonRpcError(code);
+        prop_assert!(!(phase.is_retriable() && phase.is_application_error()));
+    }
+
+    /// ValidationHarness pass/fail counts always sum to total checks.
+    #[test]
+    fn prop_validation_harness_counts(
+        checks in prop::collection::vec(prop::bool::ANY, 0..50),
+    ) {
+        let mut v = rhizo_crypt_core::error::ValidationHarness::new("test");
+        for (i, passed) in checks.iter().enumerate() {
+            v.check(format!("check_{i}"), *passed);
+        }
+        prop_assert_eq!(v.pass_count() + v.fail_count(), checks.len());
+        prop_assert_eq!(v.all_passed(), checks.iter().all(|p| *p));
+        let expected_code = u8::from(!checks.iter().all(|p| *p));
+        prop_assert_eq!(v.exit_code(), expected_code);
+    }
+
+    /// ValidationSink receives same data as finish() would output.
+    #[test]
+    fn prop_validation_sink_captures(
+        checks in prop::collection::vec(prop::bool::ANY, 1..20),
+    ) {
+        let mut v = rhizo_crypt_core::error::ValidationHarness::new("sink_test");
+        for (i, passed) in checks.iter().enumerate() {
+            v.check(format!("c{i}"), *passed);
+        }
+        let mut sink = rhizo_crypt_core::error::StringSink::default();
+        let code = v.finish_to(&mut sink);
+        prop_assert_eq!(code, v.exit_code());
+        let expected_header = format!("{}/{}", v.pass_count(), checks.len());
+        prop_assert!(sink.output.contains("sink_test"));
+        prop_assert!(sink.output.contains(&expected_header));
+    }
+}
+
+// ============================================================================
+// 4-Format Capability Parsing Properties
+// ============================================================================
+
+proptest! {
+    /// Format A: flat string array always extracts all capabilities.
+    #[test]
+    fn prop_capabilities_format_a(
+        caps in prop::collection::vec("[a-z]+\\.[a-z]+", 0..20),
+    ) {
+        let value = serde_json::json!(caps);
+        let extracted = rhizo_crypt_core::discovery::extract_capabilities(&value);
+        prop_assert_eq!(extracted.len(), caps.len());
+    }
+
+    /// Format B: nested objects with "name" field.
+    #[test]
+    fn prop_capabilities_format_b(
+        cap in "[a-z]+\\.[a-z]+"
+    ) {
+        let value = serde_json::json!([{"name": cap, "version": "1.0"}]);
+        let extracted = rhizo_crypt_core::discovery::extract_capabilities(&value);
+        prop_assert_eq!(extracted.len(), 1);
+        prop_assert_eq!(&extracted[0], &cap);
+    }
+
+    /// Format C: wrapper object with "capabilities" key.
+    #[test]
+    fn prop_capabilities_format_c(
+        caps in prop::collection::vec("[a-z]+\\.[a-z]+", 0..10),
+    ) {
+        let value = serde_json::json!({"capabilities": caps});
+        let extracted = rhizo_crypt_core::discovery::extract_capabilities(&value);
+        prop_assert_eq!(extracted.len(), caps.len());
+    }
+
+    /// Format D: double-nested (wrapper + objects).
+    #[test]
+    fn prop_capabilities_format_d(
+        cap in "[a-z]+\\.[a-z]+"
+    ) {
+        let value = serde_json::json!({"capabilities": [{"name": cap}]});
+        let extracted = rhizo_crypt_core::discovery::extract_capabilities(&value);
+        prop_assert_eq!(extracted.len(), 1);
+        prop_assert_eq!(&extracted[0], &cap);
+    }
+}

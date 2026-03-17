@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-or-later |
-| Tests | 1080+ passing (default features; +feature-gated with `--all-features`) |
+| Tests | 1102+ passing (default features; +feature-gated with `--all-features`) |
 | Coverage | 92.32% line coverage (`--fail-under-lines 90` CI gate) |
 | Clippy | 0 warnings (pedantic + nursery + cargo, `unwrap_used`/`expect_used = "deny"`) |
 | Edition | 2024 (rust-version 1.87) |

@@ -105,8 +105,8 @@ pub use discovery::{
 
 // Error handling
 pub use error::{
-    DispatchOutcome, IpcErrorPhase, OrExit, Result, RhizoCryptError, ValidationHarness,
-    extract_rpc_error,
+    DispatchOutcome, IpcErrorPhase, OrExit, Result, RhizoCryptError, StderrSink, StringSink,
+    ValidationHarness, ValidationSink, extract_rpc_error,
 };
 
 // Events

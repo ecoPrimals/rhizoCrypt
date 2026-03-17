@@ -76,6 +76,8 @@ pub const CAPABILITIES: &[&str] = &[
     "dag.dehydration.status",
     // Health and introspection
     "health.check",
+    "health.liveness",
+    "health.readiness",
     "health.metrics",
     "capability.list",
 ];
@@ -107,6 +109,8 @@ pub const SEMANTIC_MAPPINGS: &[(&str, &str)] = &[
     ("dehydration.trigger", "dag.dehydration.trigger"),
     ("dehydration.status", "dag.dehydration.status"),
     ("health", "health.check"),
+    ("liveness", "health.liveness"),
+    ("readiness", "health.readiness"),
     ("metrics", "health.metrics"),
     ("capabilities", "capability.list"),
 ];
@@ -184,6 +188,8 @@ pub const COST_ESTIMATES: &[(&str, u32, bool)] = &[
     ("dag.dehydration.status", 1, false),
     // Health and introspection
     ("health.check", 1, false),
+    ("health.liveness", 1, false),
+    ("health.readiness", 1, false),
     ("health.metrics", 1, false),
     ("capability.list", 1, false),
 ];
@@ -330,11 +336,21 @@ pub const CAPABILITY_DOMAINS: &[CapabilityDomain] = &[
     },
     CapabilityDomain {
         prefix: "health",
-        description: "Health and introspection",
+        description: "Health probes and introspection",
         methods: &[
             CapabilityMethod {
                 name: "check",
                 fqn: "health.check",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "liveness",
+                fqn: "health.liveness",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "readiness",
+                fqn: "health.readiness",
                 external: false,
             },
             CapabilityMethod {
@@ -464,6 +480,31 @@ pub fn capability_list() -> serde_json::Value {
         "domains": domains,
         "locality": { "local": local_count, "external": external_count },
         "methods": methods,
+    })
+}
+
+/// Zero-cost liveness probe.
+///
+/// Returns immediately with `{ "alive": true }`. Absorbed from the
+/// emerging ecosystem pattern (sweetGrass V0.7.19, coralReef Iter52,
+/// healthSpring V32). Suitable for Kubernetes liveness probes and
+/// biomeOS health monitoring.
+#[must_use]
+pub fn health_liveness() -> serde_json::Value {
+    serde_json::json!({ "alive": true })
+}
+
+/// Readiness probe — checks whether the primal can accept work.
+///
+/// Unlike liveness (always `true` if the process is running), readiness
+/// verifies that the store is initialized and the primal is in a state
+/// to process requests. Absorbed from the ecosystem convergence pattern.
+#[must_use]
+pub fn health_readiness(is_running: bool) -> serde_json::Value {
+    serde_json::json!({
+        "ready": is_running,
+        "primal": PRIMAL_ID,
+        "version": PRIMAL_VERSION,
     })
 }
 
@@ -661,5 +702,31 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn health_liveness_returns_alive() {
+        let result = health_liveness();
+        assert_eq!(result["alive"], true);
+    }
+
+    #[test]
+    fn health_readiness_running() {
+        let result = health_readiness(true);
+        assert_eq!(result["ready"], true);
+        assert_eq!(result["primal"], PRIMAL_ID);
+        assert!(!result["version"].as_str().expect("version").is_empty());
+    }
+
+    #[test]
+    fn health_readiness_not_running() {
+        let result = health_readiness(false);
+        assert_eq!(result["ready"], false);
+    }
+
+    #[test]
+    fn capabilities_include_health_probes() {
+        assert!(CAPABILITIES.contains(&"health.liveness"));
+        assert!(CAPABILITIES.contains(&"health.readiness"));
     }
 }
