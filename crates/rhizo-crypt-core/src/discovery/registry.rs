@@ -155,7 +155,7 @@ impl DiscoveryRegistry {
         struct DiscoveredEndpoint {
             service_id: String,
             address: String,
-            #[serde(default)]
+            #[serde(default, deserialize_with = "deserialize_dual_capabilities")]
             capabilities: Vec<String>,
         }
 
@@ -257,27 +257,96 @@ impl DiscoveryRegistry {
 }
 
 /// Parse a capability name string into a `Capability` variant.
+///
+/// Accepts PascalCase, snake_case, and colon-delimited (`domain:operation`)
+/// formats. This handles the three naming conventions seen across the
+/// ecoPrimals ecosystem (groundSpring, neuralSpring, airSpring, wetSpring).
 fn parse_capability(name: &str) -> Option<Capability> {
     match name {
-        "DidVerification" | "did_verification" => Some(Capability::DidVerification),
-        "Signing" | "signing" => Some(Capability::Signing),
-        "SignatureVerification" | "signature_verification" => {
+        "DidVerification" | "did_verification" | "did:verification" => {
+            Some(Capability::DidVerification)
+        }
+        "Signing" | "signing" | "crypto:signing" => Some(Capability::Signing),
+        "SignatureVerification" | "signature_verification" | "crypto:verification" => {
             Some(Capability::SignatureVerification)
         }
-        "Attestation" | "attestation" => Some(Capability::Attestation),
-        "ServiceDiscovery" | "service_discovery" => Some(Capability::ServiceDiscovery),
-        "PayloadStorage" | "payload_storage" => Some(Capability::PayloadStorage),
-        "PayloadRetrieval" | "payload_retrieval" => Some(Capability::PayloadRetrieval),
-        "PermanentCommit" | "permanent_commit" => Some(Capability::PermanentCommit),
-        "SliceCheckout" | "slice_checkout" => Some(Capability::SliceCheckout),
-        "SliceResolution" | "slice_resolution" => Some(Capability::SliceResolution),
-        "ComputeOrchestration" | "compute_orchestration" => Some(Capability::ComputeOrchestration),
-        "ComputeEvents" | "compute_events" => Some(Capability::ComputeEvents),
-        "ProvenanceQuery" | "provenance_query" => Some(Capability::ProvenanceQuery),
-        "Attribution" | "attribution" => Some(Capability::Attribution),
+        "Attestation" | "attestation" | "attestation:request" => Some(Capability::Attestation),
+        "ServiceDiscovery" | "service_discovery" | "discovery:service" => {
+            Some(Capability::ServiceDiscovery)
+        }
+        "PayloadStorage" | "payload_storage" | "payload:storage" => {
+            Some(Capability::PayloadStorage)
+        }
+        "PayloadRetrieval" | "payload_retrieval" | "payload:retrieval" => {
+            Some(Capability::PayloadRetrieval)
+        }
+        "PermanentCommit" | "permanent_commit" | "storage:permanent:commit" => {
+            Some(Capability::PermanentCommit)
+        }
+        "SliceCheckout" | "slice_checkout" | "slice:checkout" => Some(Capability::SliceCheckout),
+        "SliceResolution" | "slice_resolution" | "slice:resolution" => {
+            Some(Capability::SliceResolution)
+        }
+        "ComputeOrchestration" | "compute_orchestration" | "compute:orchestration" => {
+            Some(Capability::ComputeOrchestration)
+        }
+        "ComputeEvents" | "compute_events" | "compute:events" => Some(Capability::ComputeEvents),
+        "ProvenanceQuery" | "provenance_query" | "provenance:query" => {
+            Some(Capability::ProvenanceQuery)
+        }
+        "Attribution" | "attribution" | "provenance:attribution" => Some(Capability::Attribution),
         other if !other.is_empty() => Some(Capability::custom(other.to_string())),
         _ => None,
     }
+}
+
+/// Deserialize capabilities from dual formats: flat string array or nested objects.
+///
+/// Absorbed from groundSpring/neuralSpring/airSpring/wetSpring dual-format pattern.
+/// Songbird may return capabilities as either:
+/// - Flat: `["Signing", "did_verification"]`
+/// - Nested: `[{"name": "Signing", "version": "1.0"}, ...]`
+///
+/// This deserializer normalizes both into `Vec<String>`.
+fn deserialize_dual_capabilities<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de;
+    use std::fmt;
+
+    struct DualCapVisitor;
+
+    impl<'de> de::Visitor<'de> for DualCapVisitor {
+        type Value = Vec<String>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a list of capability strings or objects with a 'name' field")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Vec<String>, A::Error>
+        where
+            A: de::SeqAccess<'de>,
+        {
+            let mut caps = Vec::with_capacity(seq.size_hint().unwrap_or(0));
+            while let Some(item) = seq.next_element::<serde_json::Value>()? {
+                match item {
+                    serde_json::Value::String(s) => caps.push(s),
+                    serde_json::Value::Object(ref map) => {
+                        if let Some(serde_json::Value::String(name)) = map.get("name") {
+                            caps.push(name.clone());
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Ok(caps)
+        }
+    }
+
+    deserializer.deserialize_seq(DualCapVisitor)
 }
 
 #[cfg(test)]
@@ -568,6 +637,42 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_capability_colon_format() {
+        assert!(matches!(parse_capability("did:verification"), Some(Capability::DidVerification)));
+        assert!(matches!(parse_capability("crypto:signing"), Some(Capability::Signing)));
+        assert!(matches!(
+            parse_capability("crypto:verification"),
+            Some(Capability::SignatureVerification)
+        ));
+        assert!(matches!(parse_capability("attestation:request"), Some(Capability::Attestation)));
+        assert!(matches!(
+            parse_capability("discovery:service"),
+            Some(Capability::ServiceDiscovery)
+        ));
+        assert!(matches!(parse_capability("payload:storage"), Some(Capability::PayloadStorage)));
+        assert!(matches!(
+            parse_capability("payload:retrieval"),
+            Some(Capability::PayloadRetrieval)
+        ));
+        assert!(matches!(
+            parse_capability("storage:permanent:commit"),
+            Some(Capability::PermanentCommit)
+        ));
+        assert!(matches!(parse_capability("slice:checkout"), Some(Capability::SliceCheckout)));
+        assert!(matches!(parse_capability("slice:resolution"), Some(Capability::SliceResolution)));
+        assert!(matches!(
+            parse_capability("compute:orchestration"),
+            Some(Capability::ComputeOrchestration)
+        ));
+        assert!(matches!(parse_capability("compute:events"), Some(Capability::ComputeEvents)));
+        assert!(matches!(parse_capability("provenance:query"), Some(Capability::ProvenanceQuery)));
+        assert!(matches!(
+            parse_capability("provenance:attribution"),
+            Some(Capability::Attribution)
+        ));
+    }
+
+    #[test]
     fn test_parse_capability_custom_and_empty() {
         let custom = parse_capability("MyCustomCapability");
         assert!(custom.is_some());
@@ -577,6 +682,55 @@ mod tests {
         }
 
         assert!(parse_capability("").is_none());
+    }
+
+    #[test]
+    fn test_dual_format_capabilities_flat_strings() {
+        let json = r#"[
+            {"service_id": "svc1", "address": "127.0.0.1:9000", "capabilities": ["Signing", "Attestation"]}
+        ]"#;
+        let endpoints: Vec<serde_json::Value> = serde_json::from_str(json).unwrap();
+        assert_eq!(endpoints.len(), 1);
+    }
+
+    #[test]
+    fn test_dual_format_capabilities_nested_objects() {
+        #[derive(serde::Deserialize)]
+        struct TestEndpoint {
+            #[serde(deserialize_with = "super::deserialize_dual_capabilities")]
+            capabilities: Vec<String>,
+        }
+
+        let json =
+            r#"{"capabilities": [{"name": "Signing", "version": "1.0"}, {"name": "Attestation"}]}"#;
+        let ep: TestEndpoint = serde_json::from_str(json).unwrap();
+        assert_eq!(ep.capabilities, vec!["Signing", "Attestation"]);
+    }
+
+    #[test]
+    fn test_dual_format_capabilities_mixed() {
+        #[derive(serde::Deserialize)]
+        struct TestEndpoint {
+            #[serde(deserialize_with = "super::deserialize_dual_capabilities")]
+            capabilities: Vec<String>,
+        }
+
+        let json = r#"{"capabilities": ["signing", {"name": "Attestation"}]}"#;
+        let ep: TestEndpoint = serde_json::from_str(json).unwrap();
+        assert_eq!(ep.capabilities, vec!["signing", "Attestation"]);
+    }
+
+    #[test]
+    fn test_dual_format_capabilities_empty() {
+        #[derive(serde::Deserialize)]
+        struct TestEndpoint {
+            #[serde(default, deserialize_with = "super::deserialize_dual_capabilities")]
+            capabilities: Vec<String>,
+        }
+
+        let json = r#"{"capabilities": []}"#;
+        let ep: TestEndpoint = serde_json::from_str(json).unwrap();
+        assert!(ep.capabilities.is_empty());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

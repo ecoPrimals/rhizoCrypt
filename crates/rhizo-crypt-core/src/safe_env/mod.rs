@@ -184,6 +184,56 @@ impl SafeEnv {
     pub fn get_metrics_port(default: u16) -> u16 {
         Self::parse("RHIZOCRYPT_METRICS_PORT", default)
     }
+
+    /// Construct the canonical socket env var name for any primal.
+    ///
+    /// Absorbed from sweetGrass V0717 generic helper pattern. Avoids
+    /// per-primal constant proliferation — any primal can be discovered
+    /// via `{UPPER_NAME}_SOCKET` at runtime.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rhizo_crypt_core::safe_env::SafeEnv;
+    /// assert_eq!(SafeEnv::socket_env_var("rhizoCrypt"), "RHIZOCRYPT_SOCKET");
+    /// assert_eq!(SafeEnv::socket_env_var("loamSpine"), "LOAMSPINE_SOCKET");
+    /// ```
+    #[must_use]
+    pub fn socket_env_var(primal_name: &str) -> String {
+        format!("{}_SOCKET", primal_name.to_uppercase())
+    }
+
+    /// Construct the canonical address env var name for any primal.
+    ///
+    /// Absorbed from sweetGrass V0717 generic helper pattern.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rhizo_crypt_core::safe_env::SafeEnv;
+    /// assert_eq!(SafeEnv::address_env_var("bearDog"), "BEARDOG_ADDRESS");
+    /// ```
+    #[must_use]
+    pub fn address_env_var(primal_name: &str) -> String {
+        format!("{}_ADDRESS", primal_name.to_uppercase())
+    }
+
+    /// Get the socket path for a primal by name.
+    ///
+    /// Looks up `{PRIMAL}_SOCKET` env var and falls back to the XDG
+    /// runtime directory convention: `$XDG_RUNTIME_DIR/ecoPrimals/{name}.sock`.
+    #[must_use]
+    pub fn get_socket_path(primal_name: &str) -> Option<std::path::PathBuf> {
+        let env_key = Self::socket_env_var(primal_name);
+        if let Some(path) = Self::get_optional(&env_key) {
+            return Some(std::path::PathBuf::from(path));
+        }
+
+        // XDG fallback
+        std::env::var("XDG_RUNTIME_DIR").ok().map(|xdg| {
+            std::path::PathBuf::from(xdg).join("ecoPrimals").join(format!("{primal_name}.sock"))
+        })
+    }
 }
 
 #[cfg(test)]
@@ -534,5 +584,54 @@ mod tests {
             let result = SafeEnv::get_metrics_port(9401);
             assert_eq!(result, 8888);
         });
+    }
+
+    #[test]
+    fn test_socket_env_var() {
+        assert_eq!(SafeEnv::socket_env_var("rhizoCrypt"), "RHIZOCRYPT_SOCKET");
+        assert_eq!(SafeEnv::socket_env_var("loamSpine"), "LOAMSPINE_SOCKET");
+        assert_eq!(SafeEnv::socket_env_var("bearDog"), "BEARDOG_SOCKET");
+    }
+
+    #[test]
+    fn test_address_env_var() {
+        assert_eq!(SafeEnv::address_env_var("bearDog"), "BEARDOG_ADDRESS");
+        assert_eq!(SafeEnv::address_env_var("songbird"), "SONGBIRD_ADDRESS");
+    }
+
+    #[test]
+    fn test_get_socket_path_from_env() {
+        temp_env::with_vars(
+            [("RHIZOCRYPT_SOCKET", Some("/run/ecoPrimals/rhizoCrypt.sock"))],
+            || {
+                let path = SafeEnv::get_socket_path("rhizoCrypt");
+                assert_eq!(path, Some(std::path::PathBuf::from("/run/ecoPrimals/rhizoCrypt.sock")));
+            },
+        );
+    }
+
+    #[test]
+    fn test_get_socket_path_xdg_fallback() {
+        temp_env::with_vars(
+            [("RHIZOCRYPT_SOCKET", None::<&str>), ("XDG_RUNTIME_DIR", Some("/run/user/1000"))],
+            || {
+                let path = SafeEnv::get_socket_path("rhizoCrypt");
+                assert_eq!(
+                    path,
+                    Some(std::path::PathBuf::from("/run/user/1000/ecoPrimals/rhizoCrypt.sock"))
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_get_socket_path_none() {
+        temp_env::with_vars(
+            [("RHIZOCRYPT_SOCKET", None::<&str>), ("XDG_RUNTIME_DIR", None::<&str>)],
+            || {
+                let path = SafeEnv::get_socket_path("rhizoCrypt");
+                assert!(path.is_none());
+            },
+        );
     }
 }

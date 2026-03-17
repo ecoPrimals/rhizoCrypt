@@ -151,7 +151,7 @@ verify_proof:        1.4 µs
 4. Use in-memory storage for hot data
 
 ### For Low Latency
-1. Use InMemoryDagStore (not RocksDB)
+1. Use InMemoryDagStore (not redb/sled persistent backends)
 2. Keep sessions small (< 10K vertices)
 3. Avoid unnecessary cloning
 4. Use Arc for shared data

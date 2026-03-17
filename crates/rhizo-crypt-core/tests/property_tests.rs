@@ -332,3 +332,118 @@ proptest! {
         prop_assert_eq!(ref1, ref2);
     }
 }
+
+// ============================================================================
+// Niche / Capability Introspection Properties
+// ============================================================================
+
+proptest! {
+    /// capability_list() JSON roundtrips through serde without data loss
+    #[test]
+    fn prop_capability_list_json_roundtrip(_dummy: u8) {
+        let list = rhizo_crypt_core::niche::capability_list();
+        let json_str = serde_json::to_string(&list).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        prop_assert_eq!(
+            parsed.get("primal").and_then(|v| v.as_str()),
+            Some("rhizocrypt")
+        );
+        prop_assert!(parsed.get("capabilities").unwrap().as_array().is_some());
+        prop_assert!(parsed.get("methods").unwrap().as_array().is_some());
+        prop_assert!(parsed.get("domains").unwrap().as_array().is_some());
+    }
+}
+
+// ============================================================================
+// IpcErrorPhase Properties
+// ============================================================================
+
+proptest! {
+    /// is_retriable and is_application_error are mutually exclusive for known phases
+    #[test]
+    fn prop_ipc_phase_retriable_vs_application(code in -40000i64..0i64) {
+        use rhizo_crypt_core::error::IpcErrorPhase;
+
+        let phases = [
+            IpcErrorPhase::Connect,
+            IpcErrorPhase::Write,
+            IpcErrorPhase::Read,
+            IpcErrorPhase::InvalidJson,
+            IpcErrorPhase::HttpStatus(500),
+            IpcErrorPhase::NoResult,
+            IpcErrorPhase::JsonRpcError(code),
+        ];
+
+        for phase in &phases {
+            // No phase should be both retriable and an application error
+            prop_assert!(!(phase.is_retriable() && phase.is_application_error()));
+        }
+    }
+}
+
+// ============================================================================
+// extract_rpc_error Properties
+// ============================================================================
+
+proptest! {
+    /// extract_rpc_error returns None for any JSON without an "error" field
+    #[test]
+    fn prop_extract_rpc_error_none_without_error(result_val in r"[a-z0-9]{1,20}") {
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "result": result_val,
+            "id": 1
+        });
+        prop_assert!(rhizo_crypt_core::error::extract_rpc_error(&response).is_none());
+    }
+
+    /// extract_rpc_error returns Some for any JSON with an "error" field
+    #[test]
+    fn prop_extract_rpc_error_some_with_error(
+        code in -40000i64..0i64,
+        msg in r"[a-z ]{1,50}"
+    ) {
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": {"code": code, "message": msg},
+            "id": 1
+        });
+        let (extracted_code, extracted_msg) =
+            rhizo_crypt_core::error::extract_rpc_error(&response).unwrap();
+        prop_assert_eq!(extracted_code, code);
+        prop_assert_eq!(extracted_msg, msg);
+    }
+}
+
+// ============================================================================
+// DispatchOutcome Properties
+// ============================================================================
+
+proptest! {
+    /// DispatchOutcome::Ok always converts to Ok result
+    #[test]
+    fn prop_dispatch_outcome_ok_roundtrip(val in 0u32..u32::MAX) {
+        use rhizo_crypt_core::error::DispatchOutcome;
+
+        let outcome: DispatchOutcome<u32> = DispatchOutcome::Ok(val);
+        prop_assert!(outcome.is_ok());
+        let result = outcome.into_result().unwrap();
+        prop_assert_eq!(result, val);
+    }
+
+    /// DispatchOutcome::ApplicationError always converts to Err
+    #[test]
+    fn prop_dispatch_outcome_app_error(code in -40000i64..0i64) {
+        use rhizo_crypt_core::error::DispatchOutcome;
+
+        let outcome: DispatchOutcome<u32> = DispatchOutcome::ApplicationError {
+            code,
+            message: "test".into(),
+        };
+        prop_assert!(!outcome.is_ok());
+        let err = outcome.into_result().unwrap_err();
+        let expected = format!("jsonrpc_{code}");
+        prop_assert!(err.to_string().contains(&expected));
+    }
+}

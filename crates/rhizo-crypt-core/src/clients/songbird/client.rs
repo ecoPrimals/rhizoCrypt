@@ -473,6 +473,6 @@ mod tests_config;
 mod tests_discovery;
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test code")]
+#[cfg_attr(feature = "live-clients", expect(clippy::unwrap_used, reason = "test code"))]
 #[path = "tests_tarpc.rs"]
 mod tests_tarpc;

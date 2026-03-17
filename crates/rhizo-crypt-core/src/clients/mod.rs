@@ -45,7 +45,8 @@
 // NEW: Capability-based clients (vendor-agnostic)
 pub mod adapters;
 pub mod capabilities;
-pub mod factory; // Factory for creating and caching capability clients
+pub mod factory;
+pub mod resilience;
 
 // HTTP/RPC client implementations (reqwest-based, feature-gated)
 // For pure Rust builds, use Unix socket IPC via adapters::UnixSocketAdapter instead.
@@ -72,6 +73,7 @@ pub use capabilities::{
 };
 
 pub use adapters::{AdapterFactory, ProtocolAdapter, UnixSocketAdapter};
+pub use resilience::{BreakerState, CircuitBreaker, RetryPolicy};
 
 // Factory for creating and caching capability clients
 pub use factory::CapabilityClientFactory;

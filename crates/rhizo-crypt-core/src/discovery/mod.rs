@@ -15,11 +15,13 @@
 
 mod capability;
 mod endpoint;
+pub mod manifest;
 mod registry;
 mod resolution;
 
 // Re-export all public items to maintain the same API surface
 pub use capability::Capability;
 pub use endpoint::ServiceEndpoint;
+pub use manifest::{PrimalManifest, discover_by_capability, scan_manifests};
 pub use registry::{DiscoveryRegistry, DiscoveryStatus};
 pub use resolution::ClientProvider;

@@ -5,6 +5,110 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-16 (session 16)
+
+### Changed
+
+#### Deep Debt Execution — Ecosystem Absorption, Lint Migration, Manifest Discovery, Chaos Framework
+
+**1. `#[expect(reason)]` Lint Migration** (ecosystem-wide standard)
+- Migrated all crate-level lint attributes to workspace `Cargo.toml` (`[workspace.lints.clippy]`)
+- Removed redundant `#![warn(clippy::all/pedantic/nursery)]` from `lib.rs` (workspace handles these)
+- Added `missing_errors_doc`, `missing_panics_doc`, `field_reassign_with_default`, `unnecessary_literal_bound`, `similar_names` to workspace `"allow"` config
+- Test/bench files use `#[allow]` (blanket policy), production code uses `#[expect(reason)]` (stale suppressions auto-surface)
+
+**2. Generic Socket/Address Env Var Helpers** (absorbed from sweetGrass V0717)
+- `SafeEnv::socket_env_var(primal_name)` → `{PRIMAL}_SOCKET`
+- `SafeEnv::address_env_var(primal_name)` → `{PRIMAL}_ADDRESS`
+- `SafeEnv::get_socket_path(primal_name)` → checks env, falls back to `$XDG_RUNTIME_DIR/ecoPrimals/{name}.sock`
+- Eliminates per-primal constant proliferation
+
+**3. Manifest-Based Discovery** (absorbed from toadStool S156 / barraCuda v0.3.5)
+- New `discovery::manifest` module for `$XDG_RUNTIME_DIR/ecoPrimals/*.json` scanning
+- `PrimalManifest` struct: primal, version, socket, address, capabilities
+- `scan_manifests()`, `discover_by_capability()`, `publish_manifest()`, `unpublish_manifest()`
+- Filesystem-based discovery fallback when Songbird is unavailable
+
+**4. `ValidationHarness`** (absorbed from wetSpring V123 `Validator::finish_with_code()`)
+- Composable validation harness that collects all failures before deciding exit code
+- `check(name, passed)`, `all_passed()`, `pass_count()`, `fail_count()`, `finish()` with summary
+- Suitable for `rhizocrypt doctor` and `rhizocrypt validate` subcommands
+
+**5. Chaos Testing Framework** (absorbed from squirrel ChaosEngine pattern)
+- New `testing::chaos` module with `ChaosEngine`, `ChaosConfig`, `ChaosScenario` trait
+- 7 `FaultClass` variants: `NetworkPartition`, `Latency`, `ProcessCrash`, `ResourceExhaustion`, `ClockSkew`, `ConcurrencyStorm`, `CorruptInput`
+- `ChaosMetrics` with survival rate, error/recovery counts, duration tracking
+- Engine filters scenarios by enabled fault classes, respects max duration budget
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-targets -- -D warnings` — 0 warnings
+- `cargo doc --workspace --no-deps` — 0 warnings
+- `cargo test --workspace` — **1,080 tests passing**, 0 failures
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok
+
+---
+
+## [0.13.0-dev] - 2026-03-16 (session 15)
+
+### Changed
+
+#### Deep Debt Execution — Resilience, DispatchOutcome, OrExit, Dual-Format Discovery, Proptest
+
+**1. IpcErrorPhase Convenience Helpers**
+- Added `is_method_not_found()`, `is_timeout_likely()`, `is_retriable()`, `is_application_error()` to `IpcErrorPhase`
+- Enables targeted retry/escalation decisions without manual pattern-matching
+
+**2. DispatchOutcome Enum** (absorbed from airSpring / biomeOS dispatch patterns)
+- New `DispatchOutcome<T>` — separates protocol errors from application results
+- `Ok(T)`, `ApplicationError { code, message }`, `ProtocolError(RhizoCryptError)`
+- `into_result()` folds both error variants for callers that don't need the distinction
+
+**3. extract_rpc_error() Centralized Parser**
+- Extracts `(code, message)` from JSON-RPC error objects — used by every IPC adapter
+- Replaces inline error extraction in `unix_socket.rs` `parse_json_rpc_response()`
+
+**4. OrExit<T> Trait** (absorbed from wetSpring V123)
+- Zero-panic validation binaries — `or_exit(context)` prints structured error + exits
+- Implemented for `Result<T, E: Display>` and `Option<T>`
+
+**5. Dual-Format Capability Parsing** (absorbed from groundSpring / neuralSpring / airSpring / wetSpring)
+- Discovery response now handles flat strings (`["Signing"]`) and nested objects (`[{"name": "Signing", "version": "1.0"}]`)
+- Custom serde `Visitor` implementation for `DiscoveredEndpoint.capabilities`
+- `parse_capability()` now accepts colon-delimited names (`crypto:signing`, `did:verification`, etc.)
+
+**6. CircuitBreaker + RetryPolicy** (absorbed from healthSpring V28 / airSpring V15)
+- New `clients/resilience.rs` module with transport-agnostic resilience primitives
+- `CircuitBreaker`: consecutive-failure threshold → open → cooldown → half-open probe
+- `RetryPolicy`: exponential backoff with configurable max, `should_retry()` gates by `IpcErrorPhase`
+- Only transport-level failures (Connect, Write, Read) are retriable; application errors pass through
+
+**7. Proptest Roundtrip Coverage**
+- New property tests: `capability_list()` JSON roundtrip, `IpcErrorPhase` invariants,
+  `extract_rpc_error()` presence/absence, `DispatchOutcome` value preservation
+
+**8. Clippy Fix: Unused Feature-Gated Imports**
+- `tests_tarpc.rs` imports now `#[cfg(feature = "live-clients")]` to avoid unfulfilled lint expectations
+
+### Quality Gates
+
+| Gate | Status |
+|------|--------|
+| `cargo fmt --check` | Clean |
+| `cargo clippy` (pedantic + nursery + cargo, `-D warnings`) | Clean (0 warnings) |
+| `cargo doc --workspace --no-deps` | Clean (0 warnings) |
+| `cargo test --workspace` | 1056+ pass (default features), 0 fail |
+| `cargo deny check` | advisories ok, bans ok, licenses ok, sources ok |
+| `unsafe_code = "deny"` | Workspace-wide |
+| `unwrap_used`/`expect_used` | `"deny"` workspace-wide |
+| Coverage gate | 92.32% lines (`--fail-under-lines 90` CI enforced) |
+| SPDX headers | All `.rs` files |
+| Max file size | All under 1000 lines |
+| Production unwrap/expect | Zero |
+
+---
+
 ## [0.13.0-dev] - 2026-03-16 (session 14)
 
 ### Changed

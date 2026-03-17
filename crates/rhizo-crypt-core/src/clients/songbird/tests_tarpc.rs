@@ -7,7 +7,9 @@
 //! server for integration coverage. Songbird uses tarpc (TCP + bincode),
 //! not HTTP, so WireMock cannot be used here.
 
+#[cfg(feature = "live-clients")]
 use super::{SongbirdClient, SongbirdConfig};
+#[cfg(feature = "live-clients")]
 use crate::clients::songbird_types::ClientState;
 
 #[cfg(feature = "live-clients")]

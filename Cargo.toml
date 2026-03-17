@@ -89,6 +89,11 @@ must_use_candidate = "allow"
 doc_markdown = "allow"
 # Nursery lint has known issues with async code
 significant_drop_tightening = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+field_reassign_with_default = "allow"
+unnecessary_literal_bound = "allow"
+similar_names = "allow"
 # Multiple crate versions caused by transitive dependencies (not actionable)
 multiple_crate_versions = "allow"
 

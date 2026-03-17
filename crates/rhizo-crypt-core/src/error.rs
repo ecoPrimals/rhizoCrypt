@@ -247,6 +247,222 @@ impl fmt::Display for IpcErrorPhase {
     }
 }
 
+impl IpcErrorPhase {
+    /// Returns `true` for JSON-RPC "method not found" (-32601).
+    #[must_use]
+    pub const fn is_method_not_found(&self) -> bool {
+        matches!(self, Self::JsonRpcError(-32601))
+    }
+
+    /// Returns `true` for transport-level timeouts (Connect or Read phase).
+    #[must_use]
+    pub const fn is_timeout_likely(&self) -> bool {
+        matches!(self, Self::Connect | Self::Read)
+    }
+
+    /// Returns `true` when automatic retry is reasonable.
+    ///
+    /// Retriable: Connect (transient socket), Write (broken pipe), Read (timeout).
+    /// Not retriable: InvalidJson, NoResult, HttpStatus, JsonRpcError (application-level).
+    #[must_use]
+    pub const fn is_retriable(&self) -> bool {
+        matches!(self, Self::Connect | Self::Write | Self::Read)
+    }
+
+    /// Returns `true` for phases caused by a well-formed but failed JSON-RPC call.
+    #[must_use]
+    pub const fn is_application_error(&self) -> bool {
+        matches!(self, Self::JsonRpcError(_) | Self::NoResult)
+    }
+}
+
+/// Outcome of a dispatched JSON-RPC call, separating protocol errors
+/// from application results.
+///
+/// Absorbed from airSpring / biomeOS dispatch patterns. Protocol errors
+/// (transport failures, malformed responses) are fundamentally different
+/// from application errors (method returned an error object). Callers can
+/// pattern-match to decide retry strategy, logging, or escalation.
+#[derive(Debug)]
+pub enum DispatchOutcome<T> {
+    /// The call succeeded and returned a result.
+    Ok(T),
+    /// The remote primal returned a JSON-RPC error object.
+    ApplicationError {
+        /// JSON-RPC error code.
+        code: i64,
+        /// Human-readable error message.
+        message: String,
+    },
+    /// A transport or protocol-level failure occurred.
+    ProtocolError(RhizoCryptError),
+}
+
+impl<T> DispatchOutcome<T> {
+    /// Returns `true` if the outcome is a successful result.
+    #[must_use]
+    pub const fn is_ok(&self) -> bool {
+        matches!(self, Self::Ok(_))
+    }
+
+    /// Convert into a `Result`, folding both error variants into `RhizoCryptError`.
+    pub fn into_result(self) -> Result<T> {
+        match self {
+            Self::Ok(val) => Ok(val),
+            Self::ApplicationError {
+                code,
+                message,
+            } => Err(RhizoCryptError::ipc(IpcErrorPhase::JsonRpcError(code), message)),
+            Self::ProtocolError(e) => Err(e),
+        }
+    }
+}
+
+/// Extracts `(code, message)` from a JSON-RPC error object.
+///
+/// Centralizes the pattern used by every IPC adapter to parse the `error`
+/// field from a JSON-RPC 2.0 response. Returns `None` if no error is present.
+#[must_use]
+pub fn extract_rpc_error(response: &serde_json::Value) -> Option<(i64, String)> {
+    let error = response.get("error")?;
+    let code = error.get("code").and_then(serde_json::Value::as_i64).unwrap_or(-1);
+    let message = error
+        .get("message")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("Unknown error")
+        .to_string();
+    Some((code, message))
+}
+
+/// Extension trait for `Result<T, E>` that exits the process cleanly on error.
+///
+/// Absorbed from wetSpring V123 `OrExit` pattern. Validation binaries
+/// (e.g., `rhizocrypt validate`) should never panic — they should print
+/// a structured error message and exit with a non-zero status code.
+///
+/// # Usage
+///
+/// ```no_run
+/// use rhizo_crypt_core::error::OrExit;
+///
+/// let config = std::fs::read_to_string("config.toml")
+///     .or_exit("Failed to read configuration file");
+/// ```
+pub trait OrExit<T> {
+    /// Unwrap the value or print the context message + error and exit with code 1.
+    fn or_exit(self, context: &str) -> T;
+}
+
+impl<T, E: fmt::Display> OrExit<T> for std::result::Result<T, E> {
+    fn or_exit(self, context: &str) -> T {
+        match self {
+            Ok(val) => val,
+            Err(e) => {
+                eprintln!("fatal: {context}: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
+}
+
+impl<T> OrExit<T> for Option<T> {
+    fn or_exit(self, context: &str) -> T {
+        if let Some(val) = self {
+            return val;
+        }
+        eprintln!("fatal: {context}");
+        std::process::exit(1);
+    }
+}
+
+/// Composable validation harness for binaries that check preconditions.
+///
+/// Absorbed from wetSpring V123 `Validator::finish_with_code()` pattern.
+/// Unlike `OrExit`, this collects all failures before deciding the exit
+/// code, making it suitable for `rhizocrypt doctor` and `rhizocrypt validate`.
+///
+/// # Example
+///
+/// ```
+/// use rhizo_crypt_core::error::ValidationHarness;
+///
+/// let mut v = ValidationHarness::new("rhizocrypt doctor");
+/// v.check("config file readable", std::path::Path::new("/etc/hosts").exists());
+/// v.check("port available", true);
+/// assert!(v.all_passed());
+/// // In a real binary: std::process::exit(v.exit_code().into());
+/// ```
+#[derive(Debug)]
+pub struct ValidationHarness {
+    label: String,
+    checks: Vec<(String, bool)>,
+}
+
+impl ValidationHarness {
+    /// Create a new validation harness.
+    #[must_use]
+    pub fn new(label: impl Into<String>) -> Self {
+        Self {
+            label: label.into(),
+            checks: Vec::new(),
+        }
+    }
+
+    /// Record a named check result.
+    pub fn check(&mut self, name: impl Into<String>, passed: bool) {
+        self.checks.push((name.into(), passed));
+    }
+
+    /// Returns `true` if all checks passed.
+    #[must_use]
+    pub fn all_passed(&self) -> bool {
+        self.checks.iter().all(|(_, passed)| *passed)
+    }
+
+    /// Number of checks that passed.
+    #[must_use]
+    pub fn pass_count(&self) -> usize {
+        self.checks.iter().filter(|(_, p)| *p).count()
+    }
+
+    /// Number of checks that failed.
+    #[must_use]
+    pub fn fail_count(&self) -> usize {
+        self.checks.iter().filter(|(_, p)| !*p).count()
+    }
+
+    /// Composable exit code: 0 if all passed, 1 otherwise.
+    #[must_use]
+    pub fn exit_code(&self) -> u8 {
+        u8::from(!self.all_passed())
+    }
+
+    /// Print a summary to stderr and return the exit code.
+    ///
+    /// Format:
+    /// ```text
+    /// [rhizocrypt doctor] 5/6 checks passed
+    ///   ✓ config file readable
+    ///   ✓ port available
+    ///   ✗ discovery reachable
+    /// ```
+    #[must_use]
+    pub fn finish(&self) -> u8 {
+        let total = self.checks.len();
+        let passed = self.pass_count();
+        eprintln!("[{}] {passed}/{total} checks passed", self.label);
+        for (name, ok) in &self.checks {
+            let mark = if *ok {
+                "\u{2713}"
+            } else {
+                "\u{2717}"
+            };
+            eprintln!("  {mark} {name}");
+        }
+        self.exit_code()
+    }
+}
+
 impl RhizoCryptError {
     /// Create a configuration error.
     #[must_use]
@@ -430,5 +646,129 @@ mod tests {
         assert_ne!(IpcErrorPhase::Connect, IpcErrorPhase::Write);
         assert_eq!(IpcErrorPhase::HttpStatus(500), IpcErrorPhase::HttpStatus(500));
         assert_ne!(IpcErrorPhase::HttpStatus(500), IpcErrorPhase::HttpStatus(404));
+    }
+
+    #[test]
+    fn test_ipc_phase_is_method_not_found() {
+        assert!(IpcErrorPhase::JsonRpcError(-32601).is_method_not_found());
+        assert!(!IpcErrorPhase::JsonRpcError(-32600).is_method_not_found());
+        assert!(!IpcErrorPhase::Connect.is_method_not_found());
+    }
+
+    #[test]
+    fn test_ipc_phase_is_timeout_likely() {
+        assert!(IpcErrorPhase::Connect.is_timeout_likely());
+        assert!(IpcErrorPhase::Read.is_timeout_likely());
+        assert!(!IpcErrorPhase::Write.is_timeout_likely());
+        assert!(!IpcErrorPhase::JsonRpcError(-1).is_timeout_likely());
+    }
+
+    #[test]
+    fn test_ipc_phase_is_retriable() {
+        assert!(IpcErrorPhase::Connect.is_retriable());
+        assert!(IpcErrorPhase::Write.is_retriable());
+        assert!(IpcErrorPhase::Read.is_retriable());
+        assert!(!IpcErrorPhase::InvalidJson.is_retriable());
+        assert!(!IpcErrorPhase::NoResult.is_retriable());
+        assert!(!IpcErrorPhase::HttpStatus(500).is_retriable());
+        assert!(!IpcErrorPhase::JsonRpcError(-32601).is_retriable());
+    }
+
+    #[test]
+    fn test_ipc_phase_is_application_error() {
+        assert!(IpcErrorPhase::JsonRpcError(-32601).is_application_error());
+        assert!(IpcErrorPhase::NoResult.is_application_error());
+        assert!(!IpcErrorPhase::Connect.is_application_error());
+        assert!(!IpcErrorPhase::Read.is_application_error());
+    }
+
+    #[test]
+    fn test_dispatch_outcome_ok() {
+        let outcome: DispatchOutcome<i32> = DispatchOutcome::Ok(42);
+        assert!(outcome.is_ok());
+        assert_eq!(outcome.into_result().unwrap(), 42);
+    }
+
+    #[test]
+    fn test_dispatch_outcome_application_error() {
+        let outcome: DispatchOutcome<i32> = DispatchOutcome::ApplicationError {
+            code: -32601,
+            message: "method not found".into(),
+        };
+        assert!(!outcome.is_ok());
+        let err = outcome.into_result().unwrap_err();
+        assert!(err.to_string().contains("jsonrpc_-32601"));
+        assert!(err.to_string().contains("method not found"));
+    }
+
+    #[test]
+    fn test_dispatch_outcome_protocol_error() {
+        let outcome: DispatchOutcome<i32> =
+            DispatchOutcome::ProtocolError(RhizoCryptError::ipc(IpcErrorPhase::Connect, "timeout"));
+        assert!(!outcome.is_ok());
+        let err = outcome.into_result().unwrap_err();
+        assert!(err.to_string().contains("connect"));
+    }
+
+    #[test]
+    fn test_extract_rpc_error_present() {
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": {"code": -32601, "message": "Method not found"},
+            "id": 1
+        });
+        let (code, msg) = extract_rpc_error(&response).unwrap();
+        assert_eq!(code, -32601);
+        assert_eq!(msg, "Method not found");
+    }
+
+    #[test]
+    fn test_extract_rpc_error_absent() {
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "result": true,
+            "id": 1
+        });
+        assert!(extract_rpc_error(&response).is_none());
+    }
+
+    #[test]
+    fn test_extract_rpc_error_defaults() {
+        let response = serde_json::json!({
+            "error": {}
+        });
+        let (code, msg) = extract_rpc_error(&response).unwrap();
+        assert_eq!(code, -1);
+        assert_eq!(msg, "Unknown error");
+    }
+
+    #[test]
+    fn test_validation_harness_all_pass() {
+        let mut v = ValidationHarness::new("test");
+        v.check("check1", true);
+        v.check("check2", true);
+        assert!(v.all_passed());
+        assert_eq!(v.pass_count(), 2);
+        assert_eq!(v.fail_count(), 0);
+        assert_eq!(v.exit_code(), 0);
+    }
+
+    #[test]
+    fn test_validation_harness_with_failure() {
+        let mut v = ValidationHarness::new("test");
+        v.check("good", true);
+        v.check("bad", false);
+        v.check("also good", true);
+        assert!(!v.all_passed());
+        assert_eq!(v.pass_count(), 2);
+        assert_eq!(v.fail_count(), 1);
+        assert_eq!(v.exit_code(), 1);
+    }
+
+    #[test]
+    fn test_validation_harness_empty() {
+        let v = ValidationHarness::new("empty");
+        assert!(v.all_passed());
+        assert_eq!(v.exit_code(), 0);
     }
 }

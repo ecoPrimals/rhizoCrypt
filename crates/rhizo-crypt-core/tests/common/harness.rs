@@ -5,7 +5,7 @@
 //!
 //! Provides a standardized way to set up and tear down test environments.
 
-#![allow(dead_code)] // Test utilities may not all be used yet
+#![allow(dead_code)]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use rhizo_crypt_core::{

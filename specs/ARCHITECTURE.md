@@ -98,8 +98,8 @@ RhizoCrypt is the **ephemeral DAG engine** of the ecoPrimals ecosystem. It provi
 │  ┌─────────────────────────────▼─────────────────────────────┐  │
 │  │                     Storage Layer                          │  │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐    │  │
-│  │  │  In-Memory  │  │   RocksDB   │  │      LMDB       │    │  │
-│  │  │   Store     │  │    Store    │  │     Store       │    │  │
+│  │  │  In-Memory  │  │    redb     │  │      sled       │    │  │
+│  │  │   Store     │  │   (default) │  │   (optional)    │    │  │
 │  │  └─────────────┘  └─────────────┘  └─────────────────┘    │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                                │                                │
@@ -153,10 +153,10 @@ The heart of RhizoCrypt:
 - **Merkle Tree Builder**: Construct proofs on demand
 
 #### Storage Layer
-Pluggable storage backends:
+Pluggable storage backends (Pure Rust, zero C dependencies):
 - **In-Memory**: Fast, ephemeral, for short sessions
-- **RocksDB**: Persistent, for longer sessions
-- **LMDB**: Memory-mapped, balance of speed and durability
+- **redb** (default): Embedded ACID storage, Pure Rust, no external dependencies
+- **sled** (optional): Lock-free concurrent B-tree, Pure Rust
 
 #### Dehydration Engine
 Commits DAG results to LoamSpine:

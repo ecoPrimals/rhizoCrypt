@@ -46,21 +46,8 @@
 //! ```
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
-#![warn(missing_docs)]
-#![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
-#![allow(clippy::module_name_repetitions)]
-#![allow(clippy::must_use_candidate)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_panics_doc)]
-#![allow(clippy::doc_markdown)]
-#![allow(clippy::field_reassign_with_default)]
-#![allow(clippy::unnecessary_literal_bound)]
-#![allow(clippy::similar_names)]
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 #![cfg_attr(test, allow(clippy::expect_used))]
-#![allow(clippy::significant_drop_tightening)]
 
 // ============================================================================
 // Module Declarations
@@ -86,6 +73,9 @@ pub mod store;
 pub mod types;
 pub mod types_ecosystem;
 pub mod vertex;
+
+#[cfg(test)]
+pub mod testing;
 
 // Optional storage backends
 #[cfg(feature = "redb")]
@@ -114,7 +104,10 @@ pub use discovery::{
 };
 
 // Error handling
-pub use error::{IpcErrorPhase, Result, RhizoCryptError};
+pub use error::{
+    DispatchOutcome, IpcErrorPhase, OrExit, Result, RhizoCryptError, ValidationHarness,
+    extract_rpc_error,
+};
 
 // Events
 pub use event::EventType;

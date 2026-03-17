@@ -117,14 +117,8 @@ impl UnixSocketAdapter {
             RhizoCryptError::ipc(IpcErrorPhase::InvalidJson, format!("parse failed: {e}"))
         })?;
 
-        if let Some(error) = response.get("error") {
-            let code = error.get("code").and_then(serde_json::Value::as_i64).unwrap_or(-1);
-            let message =
-                error.get("message").and_then(serde_json::Value::as_str).unwrap_or("Unknown error");
-            return Err(RhizoCryptError::ipc(
-                IpcErrorPhase::JsonRpcError(code),
-                message.to_string(),
-            ));
+        if let Some((code, message)) = crate::error::extract_rpc_error(&response) {
+            return Err(RhizoCryptError::ipc(IpcErrorPhase::JsonRpcError(code), message));
         }
 
         let result = response.get("result").ok_or_else(|| {

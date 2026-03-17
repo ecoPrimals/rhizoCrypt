@@ -6,7 +6,7 @@
 //! This module provides shared infrastructure for integration testing across
 //! all test suites.
 
-#![allow(dead_code)] // Test utilities may not all be used yet
+#![allow(dead_code)]
 
 pub mod harness;
 
