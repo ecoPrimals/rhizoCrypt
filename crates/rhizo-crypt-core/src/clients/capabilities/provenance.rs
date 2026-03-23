@@ -22,6 +22,11 @@ pub struct ProvenanceClient {
 
 impl ProvenanceClient {
     /// Discover and connect to ANY provenance provider.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no provenance endpoint is available from discovery, the
+    /// available list is empty, or adapter creation fails for the resolved address.
     pub async fn discover(registry: &DiscoveryRegistry) -> Result<Self> {
         tracing::info!("🔍 Discovering provenance capability provider...");
 
@@ -55,6 +60,10 @@ impl ProvenanceClient {
     }
 
     /// Create client with explicit endpoint.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if [`AdapterFactory::create`] fails for the given endpoint.
     pub fn with_endpoint(endpoint: &str) -> Result<Self> {
         let adapter = AdapterFactory::create(endpoint)?;
 

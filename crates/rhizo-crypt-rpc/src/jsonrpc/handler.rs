@@ -66,11 +66,13 @@ pub async fn handle_request(
         "dag.slice.resolve" => dispatch_slice_resolve(&server, params).await,
         "dag.dehydration.trigger" => dispatch_dehydrate(&server, params).await,
         "dag.dehydration.status" => dispatch_dehydrate_status(&server, params).await,
-        "health.check" => dispatch_health(&server).await,
-        "health.liveness" => Ok(rhizo_crypt_core::niche::health_liveness()),
+        "health.check" | "status" | "check" => dispatch_health(&server).await,
+        "health.liveness" | "ping" | "health" => Ok(rhizo_crypt_core::niche::health_liveness()),
         "health.readiness" => dispatch_readiness(&server).await,
         "health.metrics" => dispatch_metrics(&server).await,
-        "capability.list" => dispatch_capability_list(&server).await,
+        "capabilities.list" | "capability.list" | "primal.capabilities" => {
+            dispatch_capability_list(&server).await
+        }
         _ => Err(HandlerError::MethodNotFound(request.method)),
     }
 }

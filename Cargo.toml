@@ -84,13 +84,19 @@ must_use_candidate = "allow"
 doc_markdown = "allow"
 # Nursery lint has known issues with async code
 significant_drop_tightening = "allow"
-missing_errors_doc = "allow"
+missing_errors_doc = "warn"
 missing_panics_doc = "allow"
 field_reassign_with_default = "allow"
 unnecessary_literal_bound = "allow"
 similar_names = "allow"
 # Multiple crate versions caused by transitive dependencies (not actionable)
 multiple_crate_versions = "allow"
+
+# Cast safety — prevent silent precision/sign/truncation regressions
+cast_lossless = "warn"
+cast_possible_truncation = "warn"
+cast_precision_loss = "warn"
+cast_sign_loss = "warn"
 
 # Production code quality — deny prevents regression from zero unwrap/expect
 unwrap_used = "deny"

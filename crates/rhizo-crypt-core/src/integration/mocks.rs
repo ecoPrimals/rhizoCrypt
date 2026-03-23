@@ -454,6 +454,10 @@ impl MockProtocolAdapter {
     /// Set a response for a specific method.
     ///
     /// The response should be JSON-serializable.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if serializing `response` to JSON fails.
     pub async fn set_response<T: serde::Serialize>(&self, method: &str, response: T) -> Result<()> {
         let json = serde_json::to_string(&response).map_err(|e| {
             crate::error::RhizoCryptError::integration(format!("Mock serialization failed: {e}"))

@@ -306,6 +306,11 @@ impl<T> DispatchOutcome<T> {
     }
 
     /// Convert into a `Result`, folding both error variants into `RhizoCryptError`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RhizoCryptError::ipc`] with the JSON-RPC error code for application
+    /// failures, or the original [`RhizoCryptError`] for protocol/transport failures.
     pub fn into_result(self) -> Result<T> {
         match self {
             Self::Ok(val) => Ok(val),

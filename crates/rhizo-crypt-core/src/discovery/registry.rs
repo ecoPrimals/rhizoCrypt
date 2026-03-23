@@ -76,6 +76,11 @@ impl DiscoveryRegistry {
         *self.discovery_source.write().await = Some(addr);
     }
 
+    /// Clear the configured discovery source (e.g., when Songbird is no longer used).
+    pub async fn clear_discovery_source(&self) {
+        *self.discovery_source.write().await = None;
+    }
+
     /// Register a known endpoint (for bootstrap or testing).
     pub async fn register_endpoint(&self, endpoint: ServiceEndpoint) {
         let mut endpoints = self.endpoints.write().await;

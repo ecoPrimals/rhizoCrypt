@@ -333,6 +333,15 @@ impl SigningClient {
         Ok(response.attestation)
     }
 
+    #[cfg(test)]
+    pub(crate) fn with_adapter(adapter: Box<dyn ProtocolAdapter>, endpoint: &str) -> Self {
+        Self {
+            adapter: Arc::new(adapter),
+            endpoint: endpoint.to_string(),
+            service_name: None,
+        }
+    }
+
     /// Check if service is available.
     pub async fn is_available(&self) -> bool {
         self.adapter.is_healthy().await

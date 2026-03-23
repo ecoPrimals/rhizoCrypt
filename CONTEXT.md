@@ -65,7 +65,7 @@ Three workspace crates:
 | Metric | Value |
 |--------|-------|
 | Tests | 1330 passing (all features) |
-| Coverage | 92.43% (CI gate: 90%) |
+| Coverage | 92.96% (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo) |
 | Source files | 129 `.rs`, ~43,900 lines |
 | Max file size | 867 lines (limit: 1000) |

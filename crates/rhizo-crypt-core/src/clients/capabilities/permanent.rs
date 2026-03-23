@@ -26,6 +26,11 @@ pub struct PermanentStorageClient {
 
 impl PermanentStorageClient {
     /// Discover and connect to ANY permanent storage provider.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no provider advertises `PermanentCommit` or the
+    /// adapter cannot be created for the discovered endpoint.
     pub async fn discover(registry: &DiscoveryRegistry) -> Result<Self> {
         tracing::info!("🔍 Discovering permanent storage capability provider...");
 
@@ -63,6 +68,10 @@ impl PermanentStorageClient {
     }
 
     /// Create client with explicit endpoint.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the endpoint address is invalid or unsupported.
     pub fn with_endpoint(endpoint: &str) -> Result<Self> {
         let adapter = AdapterFactory::create(endpoint)?;
 
@@ -74,6 +83,10 @@ impl PermanentStorageClient {
     }
 
     /// Commit dehydration summary to permanent storage.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the provider rejects the commit.
     pub async fn commit(&self, summary: &DehydrationSummary) -> Result<CommitRef> {
         tracing::debug!("Committing dehydration summary to permanent storage");
 
@@ -87,6 +100,10 @@ impl PermanentStorageClient {
     }
 
     /// Verify a commit exists and is valid.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
     pub async fn verify_commit(&self, commit_ref: &CommitRef) -> Result<bool> {
         let request = VerifyCommitRequest {
             commit_ref: commit_ref.clone(),
@@ -98,6 +115,10 @@ impl PermanentStorageClient {
     }
 
     /// Get a commit by reference.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
     pub async fn get_commit(&self, commit_ref: &CommitRef) -> Result<Option<DehydrationSummary>> {
         let request = GetCommitRequest {
             commit_ref: commit_ref.clone(),
@@ -109,6 +130,10 @@ impl PermanentStorageClient {
     }
 
     /// Checkout a slice from permanent storage.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the slice is unavailable.
     pub async fn checkout_slice(
         &self,
         spine_id: &str,
@@ -127,6 +152,10 @@ impl PermanentStorageClient {
     }
 
     /// Resolve a slice back to permanent storage.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
     pub async fn resolve_slice(&self, slice: &Slice, outcome: &ResolutionOutcome) -> Result<()> {
         let request = ResolveSliceRequest {
             slice: slice.clone(),

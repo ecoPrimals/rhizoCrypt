@@ -13,10 +13,10 @@
 //! ## Tower Atomic Pattern
 //!
 //! ```text
-//! rhizoCrypt ──unix socket──► BearDog    (crypto atoms)
-//! rhizoCrypt ──unix socket──► Songbird   (HTTP/TLS state machine)
-//! rhizoCrypt ──unix socket──► any primal  (permanent storage, signing, etc.)
-//! rhizoCrypt ──unix socket──► NestGate   (payload storage)
+//! rhizoCrypt ──unix socket──► any signing provider     (crypto atoms)
+//! rhizoCrypt ──unix socket──► any discovery provider   (mesh coordination)
+//! rhizoCrypt ──unix socket──► any commit provider      (permanent storage)
+//! rhizoCrypt ──unix socket──► any storage provider     (payload storage)
 //! ```
 
 use super::ProtocolAdapter;
@@ -112,6 +112,11 @@ impl UnixSocketAdapter {
     /// - [`IpcErrorPhase::InvalidJson`] if the body is not valid JSON
     /// - [`IpcErrorPhase::JsonRpcError`] if the response contains an error object
     /// - [`IpcErrorPhase::NoResult`] if the response lacks a `result` field
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RhizoCryptError::ipc`] with one of the phases above, or `InvalidJson` if
+    /// the `result` value cannot be serialized back to a JSON string.
     pub fn parse_json_rpc_response(body: &[u8]) -> Result<String> {
         let response: serde_json::Value = serde_json::from_slice(body).map_err(|e| {
             RhizoCryptError::ipc(IpcErrorPhase::InvalidJson, format!("parse failed: {e}"))

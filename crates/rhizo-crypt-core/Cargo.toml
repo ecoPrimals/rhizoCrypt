@@ -44,7 +44,6 @@ uuid = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 hashbrown = { workspace = true }
-lru = "0.12"
 async-trait = { workspace = true }
 dashmap = { workspace = true }
 # Optional storage backends

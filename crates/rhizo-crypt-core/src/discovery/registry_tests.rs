@@ -3,8 +3,41 @@
 
 use super::*;
 
+use std::sync::Arc;
+use std::sync::LazyLock;
+use std::sync::atomic::{AtomicU32, Ordering};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
+use tokio::sync::Mutex;
+
+static DISCOVERY_MOCK_TCP_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+async fn serve_one_http_json_response(
+    listener: TcpListener,
+    json_body: &str,
+    request_count: Option<Arc<AtomicU32>>,
+) {
+    if let Ok((mut stream, _)) = listener.accept().await {
+        if let Some(c) = request_count {
+            c.fetch_add(1, Ordering::SeqCst);
+        }
+        let mut buf = vec![0u8; 8192];
+        let _ = stream.read(&mut buf).await;
+        let body = json_body.as_bytes();
+        let header = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len(),
+        );
+        let _ = stream.write_all(header.as_bytes()).await;
+        let _ = stream.write_all(body).await;
+        let _ = stream.flush().await;
+        let _ = stream.shutdown().await;
+    }
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_registry_self_knowledge() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     assert!(!registry.is_available(&Capability::DidVerification).await);
@@ -12,6 +45,7 @@ async fn test_registry_self_knowledge() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_registry_registration() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     let endpoint = ServiceEndpoint::new(
@@ -58,6 +92,7 @@ fn test_discovery_status_clone() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_registry_discover() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     let status = registry.discover(&Capability::Signing).await;
@@ -78,6 +113,7 @@ async fn test_registry_discover() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_registry_get_endpoint() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     assert!(registry.get_endpoint(&Capability::PayloadStorage).await.is_none());
@@ -97,6 +133,7 @@ async fn test_registry_get_endpoint() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_registry_local_name() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("myPrimal");
     assert_eq!(registry.local_name(), "myPrimal");
 
@@ -107,6 +144,7 @@ async fn test_registry_local_name() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_registry_set_discovery_source() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     let addr: SocketAddr = "127.0.0.1:8091".parse().unwrap();
@@ -118,6 +156,7 @@ async fn test_registry_set_discovery_source() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_registry_all_endpoints() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     let all = registry.all_endpoints().await;
@@ -144,6 +183,7 @@ async fn test_registry_all_endpoints() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_registry_multiple_endpoints_for_capability() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     registry
@@ -172,6 +212,7 @@ async fn test_registry_multiple_endpoints_for_capability() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_registry_toadstool() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     registry
@@ -192,6 +233,7 @@ async fn test_registry_toadstool() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_registry_sweetgrass() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     registry
@@ -346,6 +388,7 @@ fn test_dual_format_capabilities_empty() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_unhealthy_endpoints_filtered() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     let mut endpoint = ServiceEndpoint::new(
@@ -364,6 +407,7 @@ async fn test_discover_unhealthy_endpoints_filtered() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_with_source_connection_refused() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
     registry.set_discovery_source("127.0.0.1:1".parse().unwrap()).await;
 
@@ -383,6 +427,7 @@ async fn test_discover_with_source_connection_refused() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_get_endpoint_with_multiple() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     registry
@@ -449,4 +494,167 @@ fn extract_capabilities_empty() {
 
     let v = serde_json::json!(null);
     assert!(extract_capabilities(&v).is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_clear_discovery_source() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    registry.set_discovery_source("127.0.0.1:8092".parse().unwrap()).await;
+    registry.clear_discovery_source().await;
+
+    let status = registry.discover(&Capability::Signing).await;
+    assert!(matches!(status, DiscoveryStatus::Unavailable));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_rpc_empty_array_returns_unavailable() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let body = r#"{"jsonrpc":"2.0","result":[],"id":1}"#;
+    tokio::spawn(serve_one_http_json_response(listener, body, None));
+
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    registry.set_discovery_source(addr).await;
+
+    let status = registry.discover(&Capability::Signing).await;
+    assert!(matches!(status, DiscoveryStatus::Unavailable));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_rpc_result_null_returns_unavailable() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let body = r#"{"jsonrpc":"2.0","result":null,"id":1}"#;
+    tokio::spawn(serve_one_http_json_response(listener, body, None));
+
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    registry.set_discovery_source(addr).await;
+
+    let status = registry.discover(&Capability::PayloadStorage).await;
+    assert!(matches!(status, DiscoveryStatus::Unavailable));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_rpc_invalid_json_returns_failed() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let body = "not valid json {{{";
+    tokio::spawn(serve_one_http_json_response(listener, body, None));
+
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    registry.set_discovery_source(addr).await;
+
+    let status = registry.discover(&Capability::Attestation).await;
+    match status {
+        DiscoveryStatus::Failed(msg) => assert!(msg.contains("parse") || msg.contains("Parse")),
+        _ => panic!("expected Failed"),
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_rpc_skips_invalid_address() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let body = r#"{"jsonrpc":"2.0","result":[{"service_id":"bad","address":"not-a-socket-addr","capabilities":["Signing"]}],"id":1}"#;
+    tokio::spawn(serve_one_http_json_response(listener, body, None));
+
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    registry.set_discovery_source(addr).await;
+
+    let status = registry.discover(&Capability::Signing).await;
+    assert!(matches!(status, DiscoveryStatus::Unavailable));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_rpc_skips_when_capabilities_empty() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let body = r#"{"jsonrpc":"2.0","result":[{"service_id":"x","address":"127.0.0.1:9300","capabilities":[]}],"id":1}"#;
+    tokio::spawn(serve_one_http_json_response(listener, body, None));
+
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    registry.set_discovery_source(addr).await;
+
+    let status = registry.discover(&Capability::Signing).await;
+    assert!(matches!(status, DiscoveryStatus::Unavailable));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_rpc_caches_endpoints_clear_source_still_hits_cache() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let body = r#"{"jsonrpc":"2.0","result":[{"service_id":"rpcSvc","address":"127.0.0.1:9201","capabilities":["Signing"]}],"id":1}"#;
+    let hits = Arc::new(AtomicU32::new(0));
+    let hits_bg = Arc::clone(&hits);
+    tokio::spawn(serve_one_http_json_response(listener, body, Some(hits_bg)));
+
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    registry.set_discovery_source(addr).await;
+
+    let s1 = registry.discover(&Capability::Signing).await;
+    assert!(s1.is_available());
+
+    registry.clear_discovery_source().await;
+
+    let s2 = registry.discover(&Capability::Signing).await;
+    assert!(s2.is_available());
+    assert_eq!(hits.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_unhealthy_then_empty_rpc_returns_unavailable() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let body = r#"{"jsonrpc":"2.0","result":[],"id":1}"#;
+    tokio::spawn(serve_one_http_json_response(listener, body, None));
+
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    let mut endpoint =
+        ServiceEndpoint::new("stale", "127.0.0.1:9000".parse().unwrap(), vec![Capability::Signing]);
+    endpoint.last_healthy =
+        std::time::Instant::now().checked_sub(std::time::Duration::from_secs(300)).unwrap();
+    registry.register_endpoint(endpoint).await;
+
+    registry.set_discovery_source(addr).await;
+
+    let status = registry.discover(&Capability::Signing).await;
+    assert!(matches!(status, DiscoveryStatus::Unavailable));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_registry_concurrent_register_and_discover() {
+    let _lock = DISCOVERY_MOCK_TCP_LOCK.lock().await;
+    let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
+    let mut handles = vec![];
+    for i in 0u16..8 {
+        let r = Arc::clone(&registry);
+        handles.push(tokio::spawn(async move {
+            let port = 19600 + i;
+            let sock: SocketAddr = format!("127.0.0.1:{port}").parse().unwrap();
+            r.register_endpoint(ServiceEndpoint::new(
+                format!("svc{i}"),
+                sock,
+                vec![Capability::Signing],
+            ))
+            .await;
+            r.discover(&Capability::Signing).await
+        }));
+    }
+    for h in handles {
+        let status = h.await.unwrap();
+        assert!(status.is_available());
+    }
+
+    match registry.discover(&Capability::Signing).await {
+        DiscoveryStatus::Available(eps) => assert!(eps.len() >= 8),
+        _ => panic!("expected Available"),
+    }
 }

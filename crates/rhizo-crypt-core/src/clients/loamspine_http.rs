@@ -116,6 +116,11 @@ impl LoamSpineHttpClient {
     ///
     /// Returns an error if no endpoint is configured. Primals discover
     /// endpoints at runtime - no hardcoded fallbacks.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if neither `PERMANENT_STORAGE_ENDPOINT` nor `LOAMSPINE_ADDRESS` is set,
+    /// or if [`Self::new`] fails while constructing the HTTP client.
     pub fn from_env() -> Result<Self> {
         use crate::safe_env::CapabilityEnv;
 

@@ -134,7 +134,8 @@ method = "health.metrics"
 domain = "health"
 description = "Operational metrics (sessions, vertices, latency, errors)"
 
-[capabilities.capability_list]
-method = "capability.list"
+[capabilities.capabilities_list]
+method = "capabilities.list"
+aliases = ["capability.list", "primal.capabilities"]
 domain = "capability"
 description = "List all capabilities this primal provides"

@@ -3,10 +3,9 @@
 
 //! Niche self-knowledge for the rhizoCrypt primal.
 //!
-//! Follows the ecoPrimals niche pattern established by squirrel, groundSpring,
-//! wetSpring, and airSpring. Every primal defines its self-knowledge in a single
-//! module so that biomeOS, Songbird, and the Pathway Learner can reason about it
-//! without hardcoded primal names or port numbers.
+//! Follows the ecoPrimals niche pattern. Every primal defines its self-knowledge
+//! in a single module so that orchestrators and discovery providers can reason
+//! about it without hardcoded primal names or port numbers.
 //!
 //! This module holds:
 //! - Identity (who am I?)
@@ -79,7 +78,7 @@ pub const CAPABILITIES: &[&str] = &[
     "health.liveness",
     "health.readiness",
     "health.metrics",
-    "capability.list",
+    "capabilities.list",
 ];
 
 /// Semantic mappings: short operation name → fully qualified capability.
@@ -112,7 +111,9 @@ pub const SEMANTIC_MAPPINGS: &[(&str, &str)] = &[
     ("liveness", "health.liveness"),
     ("readiness", "health.readiness"),
     ("metrics", "health.metrics"),
-    ("capabilities", "capability.list"),
+    ("capabilities", "capabilities.list"),
+    ("capability.list", "capabilities.list"),
+    ("primal.capabilities", "capabilities.list"),
 ];
 
 /// Consumed capabilities — what rhizoCrypt calls on other primals.
@@ -191,7 +192,7 @@ pub const COST_ESTIMATES: &[(&str, u32, bool)] = &[
     ("health.liveness", 1, false),
     ("health.readiness", 1, false),
     ("health.metrics", 1, false),
-    ("capability.list", 1, false),
+    ("capabilities.list", 1, false),
 ];
 
 /// Capability domain descriptor for biomeOS introspection.
@@ -361,11 +362,11 @@ pub const CAPABILITY_DOMAINS: &[CapabilityDomain] = &[
         ],
     },
     CapabilityDomain {
-        prefix: "capability",
+        prefix: "capabilities",
         description: "Capability introspection",
         methods: &[CapabilityMethod {
             name: "list",
-            fqn: "capability.list",
+            fqn: "capabilities.list",
             external: false,
         }],
     },
@@ -427,13 +428,13 @@ pub fn operation_dependencies() -> serde_json::Value {
         "dag.dehydration.status": ["dag.dehydration.trigger"],
         "health.check": [],
         "health.metrics": [],
-        "capability.list": [],
+        "capabilities.list": [],
     })
 }
 
 /// Return the capability list as a JSON-RPC response payload.
 ///
-/// Implements the `capability.list` semantic method. Aligns with the ecosystem
+/// Implements the `capabilities.list` semantic method. Aligns with the ecosystem
 /// enhanced format: domain, method, dependencies, cost tier.
 /// Includes ludoSpring V20 domain introspection with external/local flags.
 #[must_use]

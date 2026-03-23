@@ -474,7 +474,7 @@ async fn test_capability_list() {
         capabilities.iter().filter_map(|c| c.get("domain").and_then(Value::as_str)).collect();
     assert!(domains.contains(&"dag"), "should contain dag domain");
     assert!(domains.contains(&"health"), "should contain health domain");
-    assert!(domains.contains(&"capability"), "should contain capability domain");
+    assert!(domains.contains(&"capabilities"), "should contain capabilities domain");
 }
 
 // ============================================================================

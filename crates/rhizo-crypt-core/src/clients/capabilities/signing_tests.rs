@@ -348,3 +348,205 @@ fn test_signing_client_endpoint_formats() {
     let auto_http = SigningClient::with_endpoint("localhost:9500").unwrap();
     assert!(auto_http.endpoint().contains("localhost:9500"));
 }
+
+// ============================================================================
+// Mock adapter tests — exercise sign/verify/attest code paths
+// ============================================================================
+
+fn mock_client() -> SigningClient {
+    use crate::integration::mocks::MockProtocolAdapter;
+    let adapter = MockProtocolAdapter::permissive();
+    SigningClient::with_adapter(Box::new(adapter), "mock://test:9500")
+}
+
+#[tokio::test]
+async fn test_sign_via_mock() {
+    use crate::integration::mocks::MockProtocolAdapter;
+    let adapter = MockProtocolAdapter::permissive();
+    adapter
+        .set_response(
+            "sign",
+            SignResponse {
+                signature: bytes::Bytes::from_static(&[0xAA, 0xBB]),
+            },
+        )
+        .await
+        .unwrap();
+    let client = SigningClient::with_adapter(Box::new(adapter), "mock://test:9500");
+    let did = Did::new("did:key:signer");
+    let sig = client.sign(b"hello", &did).await.unwrap();
+    assert_eq!(sig.as_bytes(), &[0xAA, 0xBB]);
+}
+
+#[tokio::test]
+async fn test_sign_owned_via_mock() {
+    use crate::integration::mocks::MockProtocolAdapter;
+    let adapter = MockProtocolAdapter::permissive();
+    adapter
+        .set_response(
+            "sign",
+            SignResponse {
+                signature: bytes::Bytes::from_static(&[1, 2, 3]),
+            },
+        )
+        .await
+        .unwrap();
+    let client = SigningClient::with_adapter(Box::new(adapter), "mock://test:9500");
+    let did = Did::new("did:key:signer");
+    let sig = client.sign_owned(bytes::Bytes::from_static(b"data"), &did).await.unwrap();
+    assert_eq!(sig.as_bytes(), &[1, 2, 3]);
+}
+
+#[tokio::test]
+async fn test_verify_via_mock() {
+    use crate::integration::mocks::MockProtocolAdapter;
+    let adapter = MockProtocolAdapter::permissive();
+    adapter
+        .set_response(
+            "verify",
+            VerifyResponse {
+                valid: true,
+            },
+        )
+        .await
+        .unwrap();
+    let client = SigningClient::with_adapter(Box::new(adapter), "mock://test:9500");
+    let did = Did::new("did:key:verifier");
+    let sig = Signature::new(vec![1, 2, 3]);
+    let valid = client.verify(b"data", &sig, &did).await.unwrap();
+    assert!(valid);
+}
+
+#[tokio::test]
+async fn test_verify_owned_via_mock() {
+    use crate::integration::mocks::MockProtocolAdapter;
+    let adapter = MockProtocolAdapter::permissive();
+    adapter
+        .set_response(
+            "verify",
+            VerifyResponse {
+                valid: false,
+            },
+        )
+        .await
+        .unwrap();
+    let client = SigningClient::with_adapter(Box::new(adapter), "mock://test:9500");
+    let did = Did::new("did:key:verifier");
+    let sig = Signature::new(vec![4, 5, 6]);
+    let valid =
+        client.verify_owned(bytes::Bytes::from_static(b"payload"), &sig, &did).await.unwrap();
+    assert!(!valid);
+}
+
+#[tokio::test]
+async fn test_verify_did_via_mock() {
+    use crate::integration::mocks::MockProtocolAdapter;
+    let adapter = MockProtocolAdapter::permissive();
+    adapter
+        .set_response(
+            "verify_did",
+            VerifyDidResponse {
+                valid: true,
+            },
+        )
+        .await
+        .unwrap();
+    let client = SigningClient::with_adapter(Box::new(adapter), "mock://test:9500");
+    let did = Did::new("did:key:to-verify");
+    let valid = client.verify_did(&did).await.unwrap();
+    assert!(valid);
+}
+
+#[tokio::test]
+async fn test_sign_vertex_via_mock() {
+    use crate::event::EventType;
+    use crate::integration::mocks::MockProtocolAdapter;
+    use crate::vertex::VertexBuilder;
+
+    let adapter = MockProtocolAdapter::permissive();
+    adapter
+        .set_response(
+            "sign",
+            SignResponse {
+                signature: bytes::Bytes::from_static(&[0xDE, 0xAD]),
+            },
+        )
+        .await
+        .unwrap();
+    let client = SigningClient::with_adapter(Box::new(adapter), "mock://test:9500");
+    let vertex = VertexBuilder::new(EventType::SessionStart).build();
+    let did = Did::new("did:key:vertex-signer");
+    let sig = client.sign_vertex(&vertex, &did).await.unwrap();
+    assert_eq!(sig.as_bytes(), &[0xDE, 0xAD]);
+}
+
+#[tokio::test]
+async fn test_request_attestation_via_mock() {
+    use crate::dehydration::{Attestation, AttestationStatement};
+    use crate::event::SessionOutcome;
+    use crate::integration::mocks::MockProtocolAdapter;
+    use crate::merkle::MerkleRoot;
+    use crate::types::ContentHash;
+
+    let attester = Did::new("did:key:attester");
+    let attestation = Attestation {
+        attester: attester.clone(),
+        statement: AttestationStatement::SessionSummary {
+            summary_hash: ContentHash::from([0xABu8; 32]),
+        },
+        signature: bytes::Bytes::from_static(&[7, 8, 9]),
+        attested_at: crate::types::Timestamp::now(),
+        verified: true,
+    };
+
+    let adapter = MockProtocolAdapter::permissive();
+    adapter
+        .set_response(
+            "attest",
+            AttestResponse {
+                attestation,
+            },
+        )
+        .await
+        .unwrap();
+
+    let client = SigningClient::with_adapter(Box::new(adapter), "mock://test:9500");
+    let summary = DehydrationSummary {
+        session_id: crate::types::SessionId::new(uuid::Uuid::now_v7()),
+        session_type: "test".to_string(),
+        created_at: crate::types::Timestamp::now(),
+        resolved_at: crate::types::Timestamp::now(),
+        outcome: SessionOutcome::Success,
+        merkle_root: MerkleRoot::new(ContentHash::from([0u8; 32])),
+        vertex_count: 5,
+        payload_bytes: 500,
+        results: vec![],
+        agents: vec![],
+        attestations: vec![],
+    };
+
+    let result = client.request_attestation(&attester, &summary).await.unwrap();
+    assert_eq!(result.attester, attester);
+    assert!(result.verified);
+}
+
+#[tokio::test]
+async fn test_mock_client_is_available() {
+    let client = mock_client();
+    assert!(client.is_available().await);
+}
+
+#[tokio::test]
+async fn test_signing_discover_discovering_status() {
+    let registry = DiscoveryRegistry::new("test-rhizocrypt");
+    registry
+        .register_endpoint(ServiceEndpoint::new(
+            "signer".to_string(),
+            "127.0.0.1:9500".parse().unwrap(),
+            vec![Capability::PayloadStorage],
+        ))
+        .await;
+
+    let result = SigningClient::discover(&registry).await;
+    assert!(result.is_err());
+}

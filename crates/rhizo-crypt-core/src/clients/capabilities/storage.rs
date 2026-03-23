@@ -4,7 +4,7 @@
 //! Generic storage client - works with ANY payload storage provider.
 //!
 //! This client provides content-addressed payload storage without knowing
-//! or caring about who provides the service (NestGate, S3, IPFS, etc.).
+//! or caring about who provides the service.
 
 use crate::clients::adapters::{AdapterFactory, ProtocolAdapter, ProtocolAdapterExt};
 use crate::discovery::{Capability, DiscoveryRegistry};
@@ -16,7 +16,7 @@ use std::sync::Arc;
 /// Generic storage client - works with ANY provider.
 ///
 /// This client is vendor-agnostic. It works with any service that provides
-/// payload storage capabilities: NestGate, S3, IPFS, etc.
+/// payload storage capabilities from any provider.
 #[derive(Debug, Clone)]
 pub struct StorageClient {
     adapter: Arc<Box<dyn ProtocolAdapter>>,
@@ -26,6 +26,11 @@ pub struct StorageClient {
 
 impl StorageClient {
     /// Discover and connect to ANY storage provider.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if storage is unavailable, discovery is in progress, discovery
+    /// failed, the available list is empty, or adapter creation fails for the resolved address.
     pub async fn discover(registry: &DiscoveryRegistry) -> Result<Self> {
         tracing::info!("🔍 Discovering payload storage capability provider...");
 
@@ -72,6 +77,10 @@ impl StorageClient {
     }
 
     /// Create client with explicit endpoint.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if [`AdapterFactory::create`] fails for the given endpoint.
     pub fn with_endpoint(endpoint: &str) -> Result<Self> {
         let adapter = AdapterFactory::create(endpoint)?;
 

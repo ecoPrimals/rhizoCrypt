@@ -18,6 +18,11 @@ pub struct ComputeClient {
 
 impl ComputeClient {
     /// Discover and connect to ANY compute provider.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no compute endpoint is available from discovery, the available
+    /// list is empty, or adapter creation fails for the resolved address.
     pub async fn discover(registry: &DiscoveryRegistry) -> Result<Self> {
         tracing::info!("🔍 Discovering compute capability provider...");
 
@@ -51,6 +56,10 @@ impl ComputeClient {
     }
 
     /// Create client with explicit endpoint.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if [`AdapterFactory::create`] fails for the given endpoint.
     pub fn with_endpoint(endpoint: &str) -> Result<Self> {
         let adapter = AdapterFactory::create(endpoint)?;
 
