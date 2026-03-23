@@ -5,6 +5,71 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-dev] - 2026-03-23 (session 19)
+
+### Changed
+
+#### Deep Evolution — MCP Tools, DagBackend, GC Sweeper, Redb Wiring, Proptests
+
+**1. MCP Tool Definitions (`tools.list`, `tools.call`)**
+- `niche.rs` now exposes `mcp_tools()` returning JSON Schema tool definitions for AI agent coordination
+- JSON-RPC handler dispatches `tools.list` → tool catalog, `tools.call` → dynamic method routing
+- Aliases `mcp.tools.list`, `mcp.tools.call` for ecosystem compatibility
+- New `tools` capability domain added to `CAPABILITIES`, `COST_ESTIMATES`, `SEMANTIC_MAPPINGS`, `CAPABILITY_DOMAINS`
+
+**2. `DagBackend` Enum (Runtime Storage Dispatch)**
+- Introduced `DagBackend` enum (`Memory`, `Redb`) for runtime storage backend selection
+- `DagStore` trait uses RPITIT (non-object-safe) — enum dispatch is the idiomatic Rust solution
+- `RhizoCrypt.dag_store` field evolved from `Arc<RwLock<Option<InMemoryDagStore>>>` to `Arc<RwLock<Option<DagBackend>>>`
+- `session_count()`, `total_vertex_count()`, `get_all_vertices()` added as inherent methods
+
+**3. `RedbDagStore` Production Wiring**
+- `RhizoCrypt::start()` now instantiates `DagBackend::Redb` behind `#[cfg(feature = "redb")]`
+- `RedbDagStore::get_all_vertices()` implemented with topological iteration
+- `StorageBackend::Redb` added to config, `Sled` variant explicitly `#[deprecated]`
+
+**4. GC/TTL Background Sweeper**
+- `gc_sweep()` identifies and discards expired sessions based on `max_duration`
+- `spawn_gc_sweeper()` launches as Tokio background task driven by `config.gc_interval`
+- `Timestamp::duration_since()` (const fn) enables age calculations
+
+**5. `normalize_method()` Legacy Prefix Support**
+- Handles `rhizocrypt.` and `rhizo_crypt.` prefixes for backward compatibility
+- Integrated into JSON-RPC handler dispatch pipeline
+
+**6. Health Response Alignment**
+- `health.liveness` → `{"status": "alive"}`, `health.readiness` → `{"status": "ready" | "not_ready"}`
+- Aligned with ecosystem Semantic Method Naming Standard
+
+**7. 4-Format Capability Parsing (New Module)**
+- `clients::capabilities::parsing::parse_capability_response()` handles flat, nested, wrapper, and double-nested JSON formats
+- Sorted, deduplicated output for deterministic comparison
+
+**8. Property-Based Tests for JSON-RPC Handler**
+- 5 proptest suites: capability routing completeness, unknown method rejection, normalize_method idempotency, semantic mapping validity, liveness statelessness
+
+**9. Clippy + Lint Cleanup**
+- Fixed unused feature-gated variable in tarpc adapter tests
+- Fixed redundant clone in toadstool HTTP tests
+- `#[allow]` → `#[expect]` for test lint gates
+- `unwrap_or` → `unwrap_or_else` for lazy evaluation
+- Store sled magic numbers replaced with named constants
+
+**10. Debris Cleanup**
+- Removed `llvm-cov-full-output.txt` (build artifact)
+- Removed `target-ci-check/` (stale CI check target directory)
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` — 0 warnings
+- `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps` — 0 warnings
+- `cargo test --workspace --all-features` — **1,412 tests passing**, 0 failures
+- All `.rs` files under 1000 lines (max: 867)
+- Zero unsafe, zero production unwrap/expect, zero TODOs/FIXMEs
+
+---
+
 ## [0.13.0-dev] - 2026-03-17 (session 18)
 
 ### Changed
@@ -1030,6 +1095,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.13.0-dev** (2026-03-23 s19): MCP tools, DagBackend enum, GC sweeper, RedbDagStore wiring, 5 proptests, normalize_method, health alignment, debris cleanup, 1,412 tests
 - **0.13.0-dev** (2026-03-17 s18): Sovereignty — provenance-trio-types eliminated, wire types inlined, 14-crate ecoBin deny, 6 file extractions, cross-compile CI, RUSTSEC-2026-0049 fix
 - **0.13.0-dev** (2026-03-17 s17): Deep debt — health probes, 4-format capabilities, ValidationSink, JSON-RPC fuzz
 - **0.13.0-dev** (2026-03-16 s14): Deep debt — structured IPC errors, tarpc 0.37, capability domain introspection, NDJSON streaming, DI config, constant provenance, debris cleanup

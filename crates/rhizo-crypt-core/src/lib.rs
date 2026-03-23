@@ -46,8 +46,11 @@
 //! ```
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
-#![cfg_attr(test, allow(clippy::unwrap_used))]
-#![cfg_attr(test, allow(clippy::expect_used))]
+#![cfg_attr(test, expect(clippy::unwrap_used, reason = "tests use unwrap for concise assertions"))]
+#![cfg_attr(
+    test,
+    expect(clippy::expect_used, reason = "tests use expect for descriptive failures")
+)]
 
 // ============================================================================
 // Module Declarations
@@ -84,7 +87,6 @@ pub mod testing;
 #[cfg(feature = "redb")]
 pub mod store_redb;
 #[cfg(feature = "sled")]
-#[allow(deprecated)]
 pub mod store_sled;
 
 // ============================================================================
@@ -149,7 +151,8 @@ pub use slice::{
 
 // Storage
 pub use store::{
-    DagStore, InMemoryDagStore, InMemoryPayloadStore, PayloadStore, StorageHealth, StorageStats,
+    DagBackend, DagStore, InMemoryDagStore, InMemoryPayloadStore, PayloadStore, StorageHealth,
+    StorageStats,
 };
 
 #[cfg(feature = "redb")]

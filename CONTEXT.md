@@ -40,7 +40,7 @@ Three workspace crates:
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | DAG engine, sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc service (24 ops), JSON-RPC 2.0 handler, NDJSON streaming, rate limiting |
+| `rhizo-crypt-rpc` | tarpc service (24 ops), JSON-RPC 2.0 handler (27 methods incl. MCP), NDJSON streaming, rate limiting |
 | `rhizocrypt-service` | UniBin binary (`server`, `client`, `status`, `version`, `doctor`) |
 
 ## IPC
@@ -58,16 +58,16 @@ Three workspace crates:
 | genomeBin | Dockerfile with OCI labels, healthcheck |
 | Universal IPC v3 | JSON-RPC + tarpc, semantic naming |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 125 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 128 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,356 passing (all features) |
-| Coverage | 93.91% region / 94.95% line (CI gate: 90%) |
+| Tests | 1,412 passing (all features) |
+| Coverage | CI gate: `--fail-under-lines 90` |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `missing_errors_doc = "warn"`) |
-| Source files | 125 `.rs`, ~44,275 lines |
+| Source files | 128 `.rs`, ~36,336 lines |
 | Max file size | 867 lines (limit: 1000) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |
@@ -82,7 +82,13 @@ Three workspace crates:
 ## Key Files
 
 - `Cargo.toml` — Workspace config, lint policy, dependency pins
-- `capability_registry.toml` — Capability method registry (23 methods, 7 domains)
+- `capability_registry.toml` — Capability method registry (27 methods, 8 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
 - `specs/` — 10 specification documents
 - `showcase/` — 70+ progressive demos
+
+## Part of ecoPrimals
+
+Part of the [ecoPrimals](https://github.com/ecoPrimals) sovereign computing
+ecosystem. See [wateringHole](https://github.com/ecoPrimals/wateringHole) for
+ecosystem standards, primal registry, and inter-primal interaction documentation.

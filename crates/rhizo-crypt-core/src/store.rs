@@ -469,6 +469,190 @@ impl PayloadStore for InMemoryPayloadStore {
     }
 }
 
+// ============================================================================
+// DagBackend: runtime-dispatched storage backend
+// ============================================================================
+
+/// Runtime storage backend dispatch.
+///
+/// Wraps concrete `DagStore` implementations so `RhizoCrypt` can select
+/// the backend at startup without trait objects (RPITIT makes `DagStore`
+/// non-object-safe). Each variant delegates to its concrete store.
+#[derive(Clone)]
+pub enum DagBackend {
+    /// In-memory (default for tests and ephemeral workloads).
+    Memory(InMemoryDagStore),
+    /// redb (Pure Rust, ACID, MVCC — recommended for production).
+    #[cfg(feature = "redb")]
+    Redb(crate::store_redb::RedbDagStore),
+}
+
+impl DagBackend {
+    /// Get all vertices for a session in topological order.
+    ///
+    /// Delegates to the concrete backend's `get_all_vertices`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the backend encounters a storage failure.
+    pub async fn get_all_vertices(&self, session_id: SessionId) -> Result<Vec<Vertex>> {
+        match self {
+            Self::Memory(store) => store.get_all_vertices(session_id).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(store) => store.get_all_vertices(session_id).await,
+        }
+    }
+
+    /// Get the number of sessions (for testing and metrics).
+    pub async fn session_count(&self) -> usize {
+        match self {
+            Self::Memory(store) => store.session_count().await,
+            #[cfg(feature = "redb")]
+            Self::Redb(store) => {
+                let stats = store.stats().await;
+                usize::try_from(stats.sessions).unwrap_or(usize::MAX)
+            }
+        }
+    }
+
+    /// Get the total number of vertices across all sessions.
+    pub async fn total_vertex_count(&self) -> usize {
+        match self {
+            Self::Memory(store) => store.total_vertex_count().await,
+            #[cfg(feature = "redb")]
+            Self::Redb(store) => {
+                let stats = store.stats().await;
+                usize::try_from(stats.vertices).unwrap_or(usize::MAX)
+            }
+        }
+    }
+}
+
+impl DagStore for DagBackend {
+    async fn put_vertex(&self, session_id: SessionId, vertex: Vertex) -> Result<()> {
+        match self {
+            Self::Memory(s) => s.put_vertex(session_id, vertex).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.put_vertex(session_id, vertex).await,
+        }
+    }
+
+    async fn get_vertex(
+        &self,
+        session_id: SessionId,
+        vertex_id: VertexId,
+    ) -> Result<Option<Vertex>> {
+        match self {
+            Self::Memory(s) => s.get_vertex(session_id, vertex_id).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.get_vertex(session_id, vertex_id).await,
+        }
+    }
+
+    async fn get_vertices(
+        &self,
+        session_id: SessionId,
+        vertex_ids: &[VertexId],
+    ) -> Result<Vec<Option<Vertex>>> {
+        match self {
+            Self::Memory(s) => s.get_vertices(session_id, vertex_ids).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.get_vertices(session_id, vertex_ids).await,
+        }
+    }
+
+    async fn exists(&self, session_id: SessionId, vertex_id: VertexId) -> Result<bool> {
+        match self {
+            Self::Memory(s) => s.exists(session_id, vertex_id).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.exists(session_id, vertex_id).await,
+        }
+    }
+
+    async fn get_children(
+        &self,
+        session_id: SessionId,
+        parent_id: VertexId,
+    ) -> Result<Vec<VertexId>> {
+        match self {
+            Self::Memory(s) => s.get_children(session_id, parent_id).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.get_children(session_id, parent_id).await,
+        }
+    }
+
+    async fn get_genesis(&self, session_id: SessionId) -> Result<Vec<VertexId>> {
+        match self {
+            Self::Memory(s) => s.get_genesis(session_id).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.get_genesis(session_id).await,
+        }
+    }
+
+    async fn get_frontier(&self, session_id: SessionId) -> Result<Vec<VertexId>> {
+        match self {
+            Self::Memory(s) => s.get_frontier(session_id).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.get_frontier(session_id).await,
+        }
+    }
+
+    async fn count_vertices(&self, session_id: SessionId) -> Result<u64> {
+        match self {
+            Self::Memory(s) => s.count_vertices(session_id).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.count_vertices(session_id).await,
+        }
+    }
+
+    async fn delete_session(&self, session_id: SessionId) -> Result<()> {
+        match self {
+            Self::Memory(s) => s.delete_session(session_id).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.delete_session(session_id).await,
+        }
+    }
+
+    async fn update_frontier(
+        &self,
+        session_id: SessionId,
+        new_vertex: VertexId,
+        consumed_parents: &[VertexId],
+    ) -> Result<()> {
+        match self {
+            Self::Memory(s) => s.update_frontier(session_id, new_vertex, consumed_parents).await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.update_frontier(session_id, new_vertex, consumed_parents).await,
+        }
+    }
+
+    async fn health(&self) -> StorageHealth {
+        match self {
+            Self::Memory(s) => s.health().await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.health().await,
+        }
+    }
+
+    async fn stats(&self) -> StorageStats {
+        match self {
+            Self::Memory(s) => s.stats().await,
+            #[cfg(feature = "redb")]
+            Self::Redb(s) => s.stats().await,
+        }
+    }
+}
+
+impl std::fmt::Debug for DagBackend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Memory(_) => write!(f, "DagBackend::Memory"),
+            #[cfg(feature = "redb")]
+            Self::Redb(_) => write!(f, "DagBackend::Redb"),
+        }
+    }
+}
+
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {

@@ -1,4 +1,5 @@
 /target/
+/target-ci-check/
 *.swp
 *.swo
 .DS_Store
@@ -18,6 +19,7 @@ lcov.info
 *.profraw
 *.profdata
 tarpaulin-report.html
+llvm-cov-*.txt
 
 # Showcase runtime artifacts
 showcase/**/logs/

@@ -133,10 +133,15 @@ pub enum StorageBackend {
     #[default]
     Memory,
 
-    /// Sled storage (100% Pure Rust, persistent, ACID, lock-free).
+    /// redb storage (Pure Rust, persistent, ACID, MVCC, ecoBin compliant).
+    /// Recommended for production use.
+    Redb,
+
+    /// Sled storage (deprecated — depends on `zstd-sys` which violates ecoBin).
+    #[deprecated(note = "use Redb instead; sled depends on zstd-sys (C)")]
     Sled,
 
-    /// LMDB storage (persistent, memory-mapped) - Future consideration.
+    /// LMDB storage (persistent, memory-mapped) - not implemented.
     Lmdb,
 }
 
@@ -419,7 +424,7 @@ mod tests {
             .with_max_sessions(2000)
             .with_gc_interval(Duration::from_secs(90))
             .with_storage(StorageConfig {
-                backend: StorageBackend::Sled,
+                backend: StorageBackend::Redb,
                 path: Some("/tmp/rhizo".to_string()),
                 max_memory_bytes: Some(2 * 1024 * 1024 * 1024),
             });
@@ -427,7 +432,7 @@ mod tests {
         assert_eq!(config.name, "FullConfig");
         assert_eq!(config.max_sessions, 2000);
         assert_eq!(config.gc_interval, Duration::from_secs(90));
-        assert_eq!(config.storage.backend, StorageBackend::Sled);
+        assert_eq!(config.storage.backend, StorageBackend::Redb);
         assert_eq!(config.storage.path.as_deref(), Some("/tmp/rhizo"));
         assert_eq!(config.storage.max_memory_bytes, Some(2 * 1024 * 1024 * 1024));
     }
@@ -492,11 +497,13 @@ mod tests {
     }
 
     #[test]
+    #[expect(deprecated, reason = "testing deprecated Sled variant for backwards compatibility")]
     fn test_storage_backend_variants() {
         assert_eq!(StorageBackend::Memory, StorageBackend::Memory);
+        assert_eq!(StorageBackend::Redb, StorageBackend::Redb);
         assert_eq!(StorageBackend::Sled, StorageBackend::Sled);
         assert_eq!(StorageBackend::Lmdb, StorageBackend::Lmdb);
-        assert_ne!(StorageBackend::Memory, StorageBackend::Sled);
+        assert_ne!(StorageBackend::Memory, StorageBackend::Redb);
     }
 
     #[test]

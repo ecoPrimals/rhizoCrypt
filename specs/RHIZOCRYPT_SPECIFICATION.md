@@ -1154,38 +1154,61 @@ paths:
 
 ---
 
-## 10. Implementation Roadmap
+## 10. Implementation Status
 
-### Phase 1: Core Engine (4 weeks)
-- [ ] Vertex and Session data structures
-- [ ] In-memory DAG store
-- [ ] Basic event ingestion
-- [ ] Session lifecycle management
+### Phase 1: Core Engine — Complete
+- [x] Vertex and Session data structures (`vertex.rs`, `session.rs`)
+- [x] In-memory DAG store (`store.rs`)
+- [x] Event ingestion with BLAKE3 content addressing
+- [x] Session lifecycle management (create → grow → resolve → commit/discard/expire)
+- [x] Lock-free concurrency via DashMap
+- [x] Niche self-knowledge pattern (`niche.rs`)
 
-### Phase 2: Persistence (2 weeks)
-- [x] redb DAG store backend (Pure Rust, default)
-- [ ] Content-addressed payload store
-- [ ] Session serialization/deserialization
+### Phase 2: Storage Backends — Complete
+- [x] `InMemoryDagStore` (default for ephemeral workloads)
+- [x] `RedbDagStore` — Pure Rust, ACID, MVCC, ecoBin compliant (production)
+- [x] `SledDagStore` — deprecated, scheduled for removal (violates ecoBin)
+- [x] `DagBackend` enum dispatches at startup based on config
+- [x] Content-addressed payload store (`InMemoryPayloadStore`)
 
-### Phase 3: Merkle Trees (2 weeks)
-- [ ] Merkle tree construction
-- [ ] Proof generation
-- [ ] Proof verification
+### Phase 3: Merkle Trees — Complete
+- [x] Merkle tree construction (`MerkleRoot::compute`)
+- [x] Proof generation (`MerkleProof::generate`)
+- [x] Proof verification (`MerkleProof::verify`)
 
-### Phase 4: Dehydration (2 weeks)
-- [ ] Dehydration summary generation
-- [ ] LoamSpine commit integration
-- [ ] Garbage collection
+### Phase 4: Dehydration — Complete
+- [x] Dehydration summary generation with attestation support
+- [x] Capability-based permanent storage commit (discovers any provider)
+- [x] Provenance notification (non-fatal)
+- [x] GC/TTL background sweeper (`gc_sweep`, `spawn_gc_sweeper`)
 
-### Phase 5: Integration (2 weeks)
-- [ ] BearDog signing integration
-- [ ] ToadStool event source
-- [ ] Songbird UPA registration
+### Phase 5: Integration — Complete
+- [x] Capability-based signing client (any provider, not vendor-specific)
+- [x] Capability-based compute client (ToadStool or any GPU provider)
+- [x] Capability-based storage client (NestGate or any content store)
+- [x] Capability-based provenance client (sweetGrass or any attribution provider)
+- [x] Songbird discovery registration + heartbeat
+- [x] 4-tier fallback discovery (env → XDG → /run → /tmp)
+- [x] MCP tools.list + tools.call for AI coordination (Squirrel)
 
-### Phase 6: Performance & Hardening (2 weeks)
-- [ ] Benchmarking and optimization
-- [ ] Fuzz testing
-- [ ] Security audit
+### Phase 6: IPC & Protocol — Complete
+- [x] JSON-RPC 2.0 handler with 27 methods across 8 domains
+- [x] tarpc binary RPC service
+- [x] `normalize_method()` for backward-compatible routing
+- [x] 4-format capability response parsing
+- [x] `CircuitBreaker` and `RetryPolicy` for resilient IPC
+- [x] `DispatchOutcome<T>` for structured error handling
+
+### Phase 7: Quality & Hardening — Active
+- [x] 1,394+ tests, clippy-clean, fmt-clean, docs-clean
+- [x] 3 fuzz targets (merkle, session builder, vertex CBOR)
+- [x] 5 chaos test suites
+- [x] proptest for IPC protocol invariants
+- [x] `#[forbid(unsafe_code)]` (non-test), `#[deny(unwrap_used, expect_used)]`
+- [x] `cargo-deny` supply chain audit
+- [ ] Achieve 90%+ line coverage (CI gated)
+- [ ] `Arc<str>` for hot-path identifiers (zero-copy evolution)
+- [ ] Streaming/NDJSON for long-running operations
 
 ---
 

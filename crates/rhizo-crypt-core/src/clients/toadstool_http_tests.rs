@@ -335,6 +335,7 @@ fn test_client_debug() {
 fn test_client_clone() {
     let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
     let cloned = client.clone();
+    assert_eq!(client.base_url, cloned.base_url);
     assert_eq!(cloned.base_url, "http://localhost:8084");
 }
 

@@ -38,6 +38,7 @@
 //! ```
 
 pub mod compute;
+pub mod parsing;
 pub mod permanent;
 pub mod provenance;
 pub mod signing;
@@ -45,6 +46,7 @@ pub mod storage;
 
 // Re-exports
 pub use compute::ComputeClient;
+pub use parsing::parse_capability_response;
 pub use permanent::PermanentStorageClient;
 pub use provenance::ProvenanceClient;
 pub use signing::SigningClient;

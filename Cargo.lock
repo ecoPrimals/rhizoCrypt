@@ -1711,6 +1711,7 @@ dependencies = [
  "bincode",
  "futures-util",
  "hex",
+ "proptest",
  "rhizo-crypt-core",
  "serde",
  "serde_json",

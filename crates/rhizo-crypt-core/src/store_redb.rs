@@ -190,6 +190,47 @@ impl RedbDagStore {
             .storage_ctx("Failed to write vertex set")?;
         Ok(())
     }
+
+    /// Get all vertices for a session via topological sort from genesis.
+    ///
+    /// Scans the genesis set, then walks children depth-first to produce
+    /// a topologically-ordered list. Matches `InMemoryDagStore::get_all_vertices`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the database read transaction fails.
+    pub async fn get_all_vertices(&self, session_id: SessionId) -> Result<Vec<Vertex>> {
+        self.read_ops.fetch_add(1, Ordering::Relaxed);
+
+        let genesis_ids = self.get_genesis(session_id).await?;
+        if genesis_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut result = Vec::new();
+        let mut visited = hashbrown::HashSet::new();
+        let mut queue: std::collections::VecDeque<VertexId> = genesis_ids.into_iter().collect();
+
+        while let Some(vertex_id) = queue.pop_front() {
+            if visited.contains(&vertex_id) {
+                continue;
+            }
+            visited.insert(vertex_id);
+
+            if let Some(vertex) = self.get_vertex(session_id, vertex_id).await? {
+                result.push(vertex);
+            }
+
+            let children = self.get_children(session_id, vertex_id).await?;
+            for child_id in children {
+                if !visited.contains(&child_id) {
+                    queue.push_back(child_id);
+                }
+            }
+        }
+
+        Ok(result)
+    }
 }
 
 impl DagStore for RedbDagStore {

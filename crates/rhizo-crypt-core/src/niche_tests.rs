@@ -186,15 +186,15 @@ fn capability_domains_have_consistent_prefixes() {
 }
 
 #[test]
-fn health_liveness_returns_alive() {
+fn health_liveness_returns_status_alive() {
     let result = health_liveness();
-    assert_eq!(result["alive"], true);
+    assert_eq!(result["status"], "alive");
 }
 
 #[test]
 fn health_readiness_running() {
     let result = health_readiness(true);
-    assert_eq!(result["ready"], true);
+    assert_eq!(result["status"], "ready");
     assert_eq!(result["primal"], PRIMAL_ID);
     assert!(!result["version"].as_str().expect("version").is_empty());
 }
@@ -202,11 +202,41 @@ fn health_readiness_running() {
 #[test]
 fn health_readiness_not_running() {
     let result = health_readiness(false);
-    assert_eq!(result["ready"], false);
+    assert_eq!(result["status"], "not_ready");
 }
 
 #[test]
 fn capabilities_include_health_probes() {
     assert!(CAPABILITIES.contains(&"health.liveness"));
     assert!(CAPABILITIES.contains(&"health.readiness"));
+}
+
+#[test]
+fn normalize_method_strips_rhizocrypt_prefix() {
+    assert_eq!(normalize_method("rhizocrypt.dag.session.create"), "dag.session.create");
+    assert_eq!(normalize_method("rhizo_crypt.health.check"), "health.check");
+    assert_eq!(normalize_method("dag.session.create"), "dag.session.create");
+    assert_eq!(normalize_method("health.check"), "health.check");
+}
+
+#[test]
+fn mcp_tools_has_expected_structure() {
+    let tools = mcp_tools();
+    let arr = tools.as_array().expect("tools should be an array");
+    assert!(!arr.is_empty(), "MCP tools should not be empty");
+    for tool in arr {
+        assert!(tool.get("name").is_some(), "tool missing 'name'");
+        assert!(tool.get("description").is_some(), "tool missing 'description'");
+        assert!(tool.get("inputSchema").is_some(), "tool missing 'inputSchema'");
+    }
+}
+
+#[test]
+fn mcp_tool_names_are_valid_capabilities() {
+    let tools = mcp_tools();
+    let arr = tools.as_array().expect("tools array");
+    for tool in arr {
+        let name = tool["name"].as_str().expect("tool name");
+        assert!(CAPABILITIES.contains(&name), "MCP tool {name} not in CAPABILITIES");
+    }
 }

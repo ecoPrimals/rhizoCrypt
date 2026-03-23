@@ -165,9 +165,10 @@ impl SledDagStore {
 
     /// Create a key from session and vertex IDs.
     fn vertex_key(session_id: SessionId, vertex_id: VertexId) -> Vec<u8> {
-        let mut key = Vec::with_capacity(48);
+        use crate::constants::VERTEX_KEY_SIZE;
+        let mut key = Vec::with_capacity(VERTEX_KEY_SIZE);
         key.extend_from_slice(session_id.as_bytes());
-        key.push(b':');
+        key.push(crate::constants::VERTEX_KEY_SEPARATOR);
         key.extend_from_slice(vertex_id.as_bytes());
         key
     }
@@ -195,7 +196,7 @@ impl SledDagStore {
 
     /// Serialize a vertex ID set to bytes.
     fn serialize_vertex_set(set: &hashbrown::HashSet<VertexId>) -> Vec<u8> {
-        let mut data = Vec::with_capacity(set.len() * 32);
+        let mut data = Vec::with_capacity(set.len() * crate::constants::VERTEX_ID_BYTES);
         for id in set {
             data.extend_from_slice(id.as_bytes());
         }

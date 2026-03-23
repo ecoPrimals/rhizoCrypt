@@ -505,9 +505,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_ensure_connected_idempotent() {
-        let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
         #[cfg(not(feature = "live-clients"))]
         {
+            let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
             adapter.ensure_connected().await.unwrap();
             assert!(adapter.connection.read().await.is_some());
             adapter.ensure_connected().await.unwrap();

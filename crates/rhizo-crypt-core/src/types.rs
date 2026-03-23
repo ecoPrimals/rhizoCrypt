@@ -333,6 +333,16 @@ impl Timestamp {
     pub const fn as_secs(&self) -> u64 {
         self.0 / 1_000_000_000
     }
+
+    /// Compute the duration between `self` and an earlier timestamp.
+    ///
+    /// Returns `Duration::ZERO` if `earlier` is after `self` (saturating).
+    #[inline]
+    #[must_use]
+    pub const fn duration_since(self, earlier: Self) -> std::time::Duration {
+        let nanos = self.0.saturating_sub(earlier.0);
+        std::time::Duration::from_nanos(nanos)
+    }
 }
 
 impl fmt::Debug for Timestamp {

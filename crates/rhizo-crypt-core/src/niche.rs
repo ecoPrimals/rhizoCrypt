@@ -79,6 +79,9 @@ pub const CAPABILITIES: &[&str] = &[
     "health.readiness",
     "health.metrics",
     "capabilities.list",
+    // MCP tool exposure (Squirrel AI coordination)
+    "tools.list",
+    "tools.call",
 ];
 
 /// Semantic mappings: short operation name → fully qualified capability.
@@ -114,6 +117,9 @@ pub const SEMANTIC_MAPPINGS: &[(&str, &str)] = &[
     ("capabilities", "capabilities.list"),
     ("capability.list", "capabilities.list"),
     ("primal.capabilities", "capabilities.list"),
+    ("tools", "tools.list"),
+    ("mcp.tools.list", "tools.list"),
+    ("mcp.tools.call", "tools.call"),
 ];
 
 /// Consumed capabilities — what rhizoCrypt calls on other primals.
@@ -193,6 +199,8 @@ pub const COST_ESTIMATES: &[(&str, u32, bool)] = &[
     ("health.readiness", 1, false),
     ("health.metrics", 1, false),
     ("capabilities.list", 1, false),
+    ("tools.list", 1, false),
+    ("tools.call", 5, false),
 ];
 
 /// Capability domain descriptor for biomeOS introspection.
@@ -370,6 +378,22 @@ pub const CAPABILITY_DOMAINS: &[CapabilityDomain] = &[
             external: false,
         }],
     },
+    CapabilityDomain {
+        prefix: "tools",
+        description: "MCP tool exposure for AI coordination",
+        methods: &[
+            CapabilityMethod {
+                name: "list",
+                fqn: "tools.list",
+                external: false,
+            },
+            CapabilityMethod {
+                name: "call",
+                fqn: "tools.call",
+                external: false,
+            },
+        ],
+    },
 ];
 
 /// Returns all methods across all domains.
@@ -486,27 +510,110 @@ pub fn capability_list() -> serde_json::Value {
 
 /// Zero-cost liveness probe.
 ///
-/// Returns immediately with `{ "alive": true }`. Absorbed from the
-/// emerging ecosystem pattern (sweetGrass V0.7.19, coralReef Iter52,
-/// healthSpring V32). Suitable for Kubernetes liveness probes and
-/// biomeOS health monitoring.
+/// Returns `{ "status": "alive" }` per the Semantic Method Naming Standard
+/// (wateringHole `SEMANTIC_METHOD_NAMING_STANDARD.md`). Suitable for
+/// Kubernetes liveness probes and biomeOS health monitoring.
 #[must_use]
 pub fn health_liveness() -> serde_json::Value {
-    serde_json::json!({ "alive": true })
+    serde_json::json!({ "status": "alive" })
 }
 
 /// Readiness probe — checks whether the primal can accept work.
 ///
-/// Unlike liveness (always `true` if the process is running), readiness
-/// verifies that the store is initialized and the primal is in a state
-/// to process requests. Absorbed from the ecosystem convergence pattern.
+/// Returns `{ "status": "ready" | "not_ready", ... }` per the Semantic
+/// Method Naming Standard. Unlike liveness (always `"alive"` if the
+/// process is running), readiness verifies that the store is initialized
+/// and the primal is in a state to process requests.
 #[must_use]
 pub fn health_readiness(is_running: bool) -> serde_json::Value {
     serde_json::json!({
-        "ready": is_running,
+        "status": if is_running { "ready" } else { "not_ready" },
         "primal": PRIMAL_ID,
         "version": PRIMAL_VERSION,
     })
+}
+
+/// Normalize a JSON-RPC method name, handling legacy prefixes.
+///
+/// Absorbed from barraCuda v0.3.7 `normalize_method()` pattern. Allows
+/// backward-compatible routing when method names evolve across ecosystem
+/// versions (e.g., `rhizocrypt.dag.session.create` → `dag.session.create`).
+#[must_use]
+pub fn normalize_method(method: &str) -> &str {
+    method
+        .strip_prefix("rhizocrypt.")
+        .or_else(|| method.strip_prefix("rhizo_crypt."))
+        .unwrap_or(method)
+}
+
+/// MCP tool definitions for Squirrel AI coordination.
+///
+/// Absorbed from sweetGrass v0.7.24 / airSpring v0.10 MCP pattern.
+/// Returns a JSON array of tool definitions with JSON Schema input
+/// descriptions, enabling `tools.list` + `tools.call` for AI agents.
+#[must_use]
+pub fn mcp_tools() -> serde_json::Value {
+    serde_json::json!([
+        {
+            "name": "dag.session.create",
+            "description": "Create a new ephemeral DAG session for scoped working memory",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "session_type": { "type": "string", "enum": ["Ephemeral", "Persistent"], "default": "Ephemeral" },
+                    "description": { "type": "string" },
+                    "ttl_seconds": { "type": "integer" }
+                }
+            }
+        },
+        {
+            "name": "dag.event.append",
+            "description": "Append a content-addressed event vertex to a session DAG",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "session_id": { "type": "string", "format": "uuid" },
+                    "event_type": { "type": "string" },
+                    "agent": { "type": "string" },
+                    "parents": { "type": "array", "items": { "type": "string" } },
+                    "payload_ref": { "type": "string" }
+                },
+                "required": ["session_id", "event_type"]
+            }
+        },
+        {
+            "name": "dag.merkle.root",
+            "description": "Compute the Merkle root hash proving integrity of an entire session DAG",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "session_id": { "type": "string", "format": "uuid" }
+                },
+                "required": ["session_id"]
+            }
+        },
+        {
+            "name": "dag.dehydration.trigger",
+            "description": "Dehydrate a session: collapse to summary + commit to permanent storage",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "session_id": { "type": "string", "format": "uuid" }
+                },
+                "required": ["session_id"]
+            }
+        },
+        {
+            "name": "health.check",
+            "description": "Check rhizoCrypt service health, uptime, and version",
+            "inputSchema": { "type": "object", "properties": {} }
+        },
+        {
+            "name": "capabilities.list",
+            "description": "List all capabilities this primal exposes with cost and dependency info",
+            "inputSchema": { "type": "object", "properties": {} }
+        }
+    ])
 }
 
 #[cfg(test)]

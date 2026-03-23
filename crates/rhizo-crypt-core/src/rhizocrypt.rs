@@ -17,7 +17,7 @@ use crate::primal::{
 };
 use crate::session::{CommitRef, Session};
 use crate::slice::{self, ResolutionOutcome, Slice};
-use crate::store::{DagStore, InMemoryDagStore, InMemoryPayloadStore};
+use crate::store::{DagBackend, DagStore, InMemoryDagStore, InMemoryPayloadStore};
 use crate::types::{Did, SessionId, SliceId, Timestamp, VertexId};
 use crate::vertex::Vertex;
 
@@ -48,8 +48,8 @@ pub struct RhizoCrypt {
     config: RhizoCryptConfig,
     state: PrimalState,
     started_at: Option<Instant>,
-    // Storage backends (initialized once at startup)
-    dag_store: Arc<RwLock<Option<InMemoryDagStore>>>,
+    // Storage backends (initialized once at startup, dispatched via DagBackend)
+    dag_store: Arc<RwLock<Option<DagBackend>>>,
     payload_store: Arc<RwLock<Option<InMemoryPayloadStore>>>,
     // Lock-free concurrent maps for session data
     sessions: Arc<DashMap<SessionId, Session>>,
@@ -104,7 +104,7 @@ impl RhizoCrypt {
     /// # Errors
     ///
     /// Returns an error if the primal is not running.
-    pub async fn dag_store(&self) -> Result<InMemoryDagStore> {
+    pub async fn dag_store(&self) -> Result<DagBackend> {
         let store = self.dag_store.read().await;
         store.clone().ok_or_else(|| RhizoCryptError::internal("primal not running"))
     }
@@ -619,6 +619,72 @@ impl RhizoCrypt {
             .get(&session_id)
             .map_or(dehydration::DehydrationStatus::Pending, |entry| entry.value().clone())
     }
+
+    // ========================================================================
+    // GC / TTL Sweeper
+    // ========================================================================
+
+    /// Sweep expired sessions based on `max_duration` from `SessionConfig`.
+    ///
+    /// Walks all sessions, identifies those whose `created_at + max_duration`
+    /// has elapsed, discards them, and cleans up associated state. Returns
+    /// the number of sessions reaped.
+    pub async fn gc_sweep(&self) -> usize {
+        let now = Timestamp::now();
+        let mut expired = Vec::new();
+
+        for entry in self.sessions.iter() {
+            let session = entry.value();
+            if session.is_terminal() {
+                continue;
+            }
+            let age = now.duration_since(session.created_at);
+            if age >= session.config.max_duration {
+                expired.push(*entry.key());
+            }
+        }
+
+        let count = expired.len();
+        for session_id in expired {
+            tracing::info!(%session_id, "GC sweep: expiring session past TTL");
+            if let Some((_, mut session)) = self.sessions.remove(&session_id) {
+                session.discard(crate::session::DiscardReason::Timeout);
+            }
+            self.slices.retain(|_, v| v.session_id != session_id);
+            self.dehydration_status.remove(&session_id);
+            self.vertex_session_index.retain(|_, sid| *sid != session_id);
+
+            if let Ok(dag_store) = self.dag_store().await {
+                dag_store.delete_session(session_id).await.ok();
+            }
+        }
+
+        if count > 0 {
+            tracing::info!(reaped = count, "GC sweep complete");
+        }
+        count
+    }
+
+    /// Spawn a background GC task that runs periodically.
+    ///
+    /// Returns a `JoinHandle` that can be used to cancel the sweeper on
+    /// shutdown. The interval is taken from `config.gc_interval`.
+    pub fn spawn_gc_sweeper(self: &Arc<Self>) -> tokio::task::JoinHandle<()> {
+        let primal = Arc::clone(self);
+        let interval = primal.config.gc_interval;
+        tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(interval);
+            ticker.tick().await; // skip first immediate tick
+            loop {
+                ticker.tick().await;
+                if !primal.state.is_running() {
+                    tracing::debug!("GC sweeper exiting: primal no longer running");
+                    break;
+                }
+                primal.gc_sweep().await;
+            }
+        })
+    }
 }
 
 // ============================================================================
@@ -638,20 +704,48 @@ impl PrimalLifecycle for RhizoCrypt {
             });
         }
 
-        // Validate storage backend
-        if self.config.storage.backend == StorageBackend::Lmdb {
-            return Err(PrimalError::StartupFailed(
-                "LMDB storage backend not yet implemented. Use Memory or Sled.".to_string(),
-            ));
-        }
-
         self.state = PrimalState::Starting;
-        tracing::info!(primal = %self.config.name, "starting");
+        tracing::info!(primal = %self.config.name, backend = ?self.config.storage.backend, "starting");
 
-        // Initialize stores
+        // Initialize DAG store based on configured backend
         {
+            let backend = match &self.config.storage.backend {
+                StorageBackend::Memory => {
+                    tracing::info!("using in-memory DAG store");
+                    DagBackend::Memory(InMemoryDagStore::new())
+                }
+                #[cfg(feature = "redb")]
+                StorageBackend::Redb => {
+                    let path = self.config.storage.path.as_deref().unwrap_or("rhizocrypt.redb");
+                    tracing::info!(path = %path, "using redb DAG store");
+                    let store = crate::store_redb::RedbDagStore::open(path).map_err(|e| {
+                        PrimalError::StartupFailed(format!("redb open failed: {e}"))
+                    })?;
+                    DagBackend::Redb(store)
+                }
+                #[cfg(not(feature = "redb"))]
+                StorageBackend::Redb => {
+                    return Err(PrimalError::StartupFailed(
+                        "Redb storage requested but 'redb' feature not enabled. \
+                         Recompile with `--features redb`."
+                            .to_string(),
+                    ));
+                }
+                #[expect(deprecated, reason = "handling deprecated sled variant")]
+                StorageBackend::Sled => {
+                    tracing::warn!(
+                        "sled backend is deprecated; falling back to in-memory. Migrate to Redb."
+                    );
+                    DagBackend::Memory(InMemoryDagStore::new())
+                }
+                StorageBackend::Lmdb => {
+                    return Err(PrimalError::StartupFailed(
+                        "LMDB storage backend not implemented. Use Memory or Redb.".to_string(),
+                    ));
+                }
+            };
             let mut dag_store = self.dag_store.write().await;
-            *dag_store = Some(InMemoryDagStore::new());
+            *dag_store = Some(backend);
         }
         {
             let mut payload_store = self.payload_store.write().await;

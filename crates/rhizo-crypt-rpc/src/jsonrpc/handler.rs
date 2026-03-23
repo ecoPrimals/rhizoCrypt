@@ -40,12 +40,12 @@ pub async fn handle_request(
     request: JsonRpcRequest,
 ) -> Result<Value, HandlerError> {
     let server = RhizoCryptRpcServer::new(primal);
-    let method = request.method.as_str();
+    let normalized = rhizo_crypt_core::niche::normalize_method(&request.method);
     let params = request.params.unwrap_or(Value::Null);
 
-    debug!(method = %method, "JSON-RPC request");
+    debug!(method = %normalized, "JSON-RPC request");
 
-    match method {
+    match normalized {
         "dag.session.create" => dispatch_session_create(&server, params).await,
         "dag.session.get" => dispatch_session_get(&server, params).await,
         "dag.session.list" => dispatch_session_list(&server).await,
@@ -73,6 +73,8 @@ pub async fn handle_request(
         "capabilities.list" | "capability.list" | "primal.capabilities" => {
             dispatch_capability_list(&server).await
         }
+        "tools.list" | "mcp.tools.list" => Ok(rhizo_crypt_core::niche::mcp_tools()),
+        "tools.call" | "mcp.tools.call" => dispatch_tools_call(&server, params).await,
         _ => Err(HandlerError::MethodNotFound(request.method)),
     }
 }
@@ -510,6 +512,33 @@ async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Value,
     to_json(&capabilities)
 }
 
+/// MCP `tools.call` dispatcher — routes tool invocations to JSON-RPC methods.
+///
+/// Absorbed from sweetGrass v0.7.24 / airSpring v0.10 MCP pattern. Enables
+/// Squirrel AI coordination by translating `tools.call { name, arguments }`
+/// into the corresponding `dag.*` / `health.*` method dispatch.
+async fn dispatch_tools_call(
+    server: &RhizoCryptRpcServer,
+    params: Value,
+) -> Result<Value, HandlerError> {
+    let obj = get_obj(&params)?;
+    let tool_name = get_str(obj, "name")?;
+    let arguments =
+        obj.get("arguments").cloned().unwrap_or_else(|| Value::Object(serde_json::Map::new()));
+
+    let normalized = rhizo_crypt_core::niche::normalize_method(tool_name);
+
+    match normalized {
+        "dag.session.create" => dispatch_session_create(server, arguments).await,
+        "dag.event.append" => dispatch_event_append(server, arguments).await,
+        "dag.merkle.root" => dispatch_merkle_root(server, arguments).await,
+        "dag.dehydration.trigger" => dispatch_dehydrate(server, arguments).await,
+        "health.check" | "status" => dispatch_health(server).await,
+        "capabilities.list" => dispatch_capability_list(server).await,
+        _ => Err(HandlerError::MethodNotFound(format!("tool not found: {tool_name}"))),
+    }
+}
+
 #[cfg(test)]
 #[path = "handler_tests.rs"]
 mod tests;
@@ -517,3 +546,7 @@ mod tests;
 #[cfg(test)]
 #[path = "handler_tests_validation.rs"]
 mod tests_validation;
+
+#[cfg(test)]
+#[path = "handler_proptests.rs"]
+mod handler_proptests;
