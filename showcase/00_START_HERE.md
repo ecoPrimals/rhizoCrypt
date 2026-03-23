@@ -3,7 +3,7 @@
 **Welcome to rhizoCrypt** - The ephemeral working memory for the ecoPrimals ecosystem.
 
 **Version**: 0.13.0-dev  
-**Status**: Production Ready (1327 tests passing, 92.32% coverage)  
+**Status**: Production Ready (1330 tests passing, 92.32% coverage)  
 **Date**: March 17, 2026
 
 ---
@@ -188,7 +188,7 @@ Best concurrency model in the ecoPrimals ecosystem. DashMap provides zero-blocki
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 1327 passing (all features) |
+| **Tests** | 1330 passing (all features) |
 | **Coverage** | 92.32% |
 | **Unsafe Code** | 0 blocks |
 | **Clippy Warnings** | 0 (pedantic mode) |
@@ -346,7 +346,7 @@ A: Each demo has a README with troubleshooting.
 A: Not recommended. Concepts build on each other.
 
 **Q: Is this production-ready?**  
-A: Yes! 1327 tests passing, 92.32% coverage, zero unsafe code, production infrastructure ready.
+A: Yes! 1330 tests passing, 92.32% coverage, zero unsafe code, production infrastructure ready.
 
 ---
 

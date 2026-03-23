@@ -60,12 +60,8 @@ showcase/
 │   ├── 01-songbird-discovery/    ✅ Real binary (4 demos)
 │   ├── 02-beardog-signing/       ✅ Real binary (4 demos)
 │   ├── 03-nestgate-storage/      ✅ Real binary (3 demos)
-│   ├── 04-toadstool-compute/     ⏸️ Planned (future)
-│   └── 05-complete-workflows/    ⏸️ Partial (can enhance)
-│
-└── 02-federation/                ⏸️ FUTURE (multi-instance)
-    ├── multi-rhizocrypt/         ⏸️ Multiple instances
-    └── distributed-dag/          ⏸️ Distributed coordination
+│   ├── 04-toadstool-compute/     ✅ 3 demos
+│   └── 05-complete-workflows/    ✅ 4 demos
 ```
 
 **Total**: **41 comprehensive demos** (30 local + 11 inter-primal)
@@ -245,7 +241,7 @@ ls -la ../bins/
 - **Conditional transfers** (escrow, consignment)
 
 ### 5. 🚀 Production Ready
-- **1102+ passing tests** (default features)
+- **1330 passing tests** (all features)
 - **92.32% line coverage** (`--fail-under-lines 90` CI gate)
 - **Zero unsafe code** (`unsafe_code = "deny"`, zero `unsafe` in tests)
 - **Zero Clippy warnings** (pedantic + nursery, `unwrap_used`/`expect_used = "deny"`)
@@ -335,7 +331,7 @@ ls -la ../bins/
 ### Common Questions:
 - **"Where do I start?"** → [00-local-primal/00_START_HERE.md](./00-local-primal/00_START_HERE.md)
 - **"What's unique about rhizoCrypt?"** → Slice semantics + Dehydration
-- **"Is it production-ready?"** → Yes! 1102+ tests, 92.32% coverage, zero unsafe code
+- **"Is it production-ready?"** → Yes! 1330 tests, 92.32% coverage, zero unsafe code
 - **"How do I integrate?"** → See [01-inter-primal-live/](./01-inter-primal-live/)
 
 ---

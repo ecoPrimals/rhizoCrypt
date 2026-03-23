@@ -3,8 +3,8 @@
 **Version:** 0.3.0  
 **Status:** Architectural Specification  
 **Author:** ecoPrimals Project  
-**Date:** December 2025  
-**License:** AGPL-3.0  
+**Date:** March 2026  
+**License:** AGPL-3.0-or-later  
 
 ---
 
