@@ -1,6 +1,6 @@
 # DEPLOYMENT CHECKLIST — rhizoCrypt v0.13.0-dev
 
-**Date**: March 17, 2026
+**Date**: March 23, 2026
 **Version**: 0.13.0-dev
 **Status**: PRODUCTION READY
 
@@ -9,10 +9,10 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1330 tests passing** (all features), 0 failures
-- [x] **92.96% line coverage** (`--fail-under-lines 90` CI gate)
+- [x] **1,348 tests passing** (all features), 0 failures
+- [x] **92.96% region / 94.05% line coverage** (`--fail-under-lines 90` CI gate)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
-- [x] **Zero clippy warnings** (pedantic + nursery + cargo, `unwrap_used`/`expect_used = "deny"`)
+- [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all files under 1000 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
 - [x] **AGPL-3.0-or-later** SPDX header on all 129 `.rs` files
@@ -31,7 +31,7 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1330 tests, 92.96% coverage)
+- [x] **README.md** (current metrics — 1,348 tests, 92.96% region / 94.05% line)
 - [x] **CHANGELOG.md** (version history through session 18)
 - [x] **showcase/** (70+ comprehensive demos)
 - [x] **specs/** (9 complete + 1 experimental specification documents)

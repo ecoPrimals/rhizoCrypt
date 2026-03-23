@@ -6,9 +6,9 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-or-later |
-| Tests | 1330 passing (`--all-features`) |
-| Coverage | 92.96% line coverage (`--fail-under-lines 90` CI gate) |
-| Clippy | 0 warnings (pedantic + nursery + cargo, `unwrap_used`/`expect_used = "deny"`) |
+| Tests | 1,348 passing (`--all-features`) |
+| Coverage | 92.96% region / 94.05% line (`--fail-under-lines 90` CI gate) |
+| Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
 | Unsafe | `unsafe_code = "deny"` workspace-wide, zero `unsafe` in tests (temp-env) |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
@@ -21,11 +21,11 @@
 | Transport | Platform-agnostic (Unix socket / TCP / abstract socket) |
 | Storage | redb (Pure Rust, default) / sled (optional, deprecated) |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps |
-| Audit | `cargo-deny` enforced (14-crate ecoBin ban list, advisories, licenses, sources) |
+| Audit | `cargo-deny` enforced (16-crate ecoBin ban list, advisories, licenses, sources) |
 | SPDX | `AGPL-3.0-or-later` header on all 129 `.rs` files |
 | Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps, domains) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
-| Registry | `capability_registry.toml` (23 methods, 7 domains) |
+| Registry | `capability_registry.toml` (23 methods, 7 domains, `capabilities.list` canonical) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
 | Cross-compile | CI: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
 

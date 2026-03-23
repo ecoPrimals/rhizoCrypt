@@ -1,5 +1,9 @@
-# Local override: global target-dir is on a noexec mount.
-# Build artifacts go to a path on the exec-capable root filesystem.
+# Local build override — this file may contain machine-specific paths.
+#
+# If your global target-dir is on a noexec mount (common with NFS/FUSE/encrypted
+# volumes), override target-dir to a writable exec-capable path.
+# Developers: adjust or remove the target-dir line to match your environment.
+# The CI workflow uses CARGO_TARGET_DIR env var instead.
 [build]
 target-dir = "/path/to/.cargo-build/rhizoCrypt/target"
 jobs = 16

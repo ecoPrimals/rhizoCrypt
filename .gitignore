@@ -2,6 +2,22 @@
 *.swp
 *.swo
 .DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Environment secrets
+.env
+*.env
+!deny.toml
+
+# Coverage artifacts
+lcov.info
+*.profraw
+*.profdata
+tarpaulin-report.html
 
 # Showcase runtime artifacts
 showcase/**/logs/

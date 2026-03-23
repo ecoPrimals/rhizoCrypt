@@ -64,9 +64,9 @@ Three workspace crates:
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1330 passing (all features) |
-| Coverage | 92.96% (CI gate: 90%) |
-| Clippy | 0 warnings (pedantic + nursery + cargo) |
+| Tests | 1,348 passing (all features) |
+| Coverage | 92.96% region / 94.05% line (CI gate: 90%) |
+| Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `missing_errors_doc = "warn"`) |
 | Source files | 129 `.rs`, ~43,900 lines |
 | Max file size | 867 lines (limit: 1000) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
