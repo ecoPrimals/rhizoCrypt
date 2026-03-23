@@ -48,9 +48,19 @@ highlight = "all"
 # enabled (reqwest → rustls → ring).  Once rustls-rustcrypto reaches stable,
 # we will migrate to a fully pure-Rust TLS stack.
 deny = [
+    # ecoBin v3.0 full C-sys ban list (14 canonical + ecosystem extras)
     { crate = "openssl-sys", wrappers = [] },
+    { crate = "openssl-src", wrappers = [] },
     { crate = "native-tls", wrappers = [] },
     { crate = "aws-lc-sys", wrappers = [] },
+    { crate = "cmake", wrappers = [] },
+    { crate = "cc", wrappers = ["ring", "blake3"] },
+    { crate = "bindgen", wrappers = [] },
+    { crate = "bzip2-sys", wrappers = [] },
+    { crate = "curl-sys", wrappers = [] },
+    { crate = "libz-sys", wrappers = [] },
+    { crate = "pkg-config", wrappers = ["ring"] },
+    { crate = "vcpkg", wrappers = [] },
     { crate = "zstd-sys", wrappers = [] },
     { crate = "lz4-sys", wrappers = [] },
     { crate = "libsqlite3-sys", wrappers = [] },

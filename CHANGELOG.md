@@ -43,10 +43,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **7. Lint Cleanup**
 - Removed unfulfilled `#[expect(clippy::unwrap_used)]` from `songbird/client.rs` test module
 
-**8. Documentation Refresh**
-- Updated README: 1330 tests, 125 SPDX files, zero cross-primal compile deps
-- Updated CHANGELOG with sessions 17–18 + sovereignty resolution
-- Updated `docs/ENV_VARS.md` with `RHIZOCRYPT_JSONRPC_PORT`
+**8. `deny.toml` Full ecoBin v3.0 Ban List**
+- Expanded from 7 to 16 banned C-sys crates: added `openssl-src`, `cmake`, `cc`, `bindgen`, `bzip2-sys`, `curl-sys`, `libz-sys`, `pkg-config`, `vcpkg`
+- `cc` allowed as wrapper for `ring` and `blake3` (build-time only, not runtime)
+- Resolved RUSTSEC-2026-0049: updated `rustls-webpki` 0.103.8 → 0.103.10
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok
+
+**9. Smart File Refactoring — 3 More Extractions**
+- `nestgate_http.rs`: 729 → 325 lines (tests → `nestgate_http_tests_wiremock.rs`, 407 lines)
+- `signing.rs`: 758 → 408 lines (tests → `signing_tests.rs`, 353 lines)
+- `niche.rs`: 732 → 514 lines (tests → `niche_tests.rs`, 221 lines)
+- All files now well under 1000-line limit (max: 867)
+
+**10. Ecosystem Documentation Updates**
+- Updated `PRIMAL_REGISTRY.md`: 1330 tests, 92.32% coverage, 14-crate ban list, cross-compile CI, sovereign wire types
+- Updated `genomeBin/manifest.toml`: `pie_verified = true`, UniBin binary description
+- Updated README: 128 SPDX files, 14-crate ecoBin ban list
 - Cleaned stale `showcase/00_START_HERE.md` stats and dead references
 - Wrote wateringHole handoffs for primalSpring resolution and sessions 17–18
 
@@ -56,7 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cargo clippy --workspace --all-targets --all-features -- -D warnings` — 0 warnings
 - `cargo doc --workspace --all-features --no-deps` — 0 warnings (`-D warnings`)
 - `cargo test --workspace --all-features` — **1,330 tests passing**, 0 failures
-- All `.rs` files under 1000 lines (max refactored: `error.rs` 660, `registry.rs` 399)
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok
+- All `.rs` files under 1000 lines (max: 867)
 
 ---
 
@@ -1017,7 +1030,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
-- **0.13.0-dev** (2026-03-17 s18): Sovereignty — provenance-trio-types eliminated, dehydration wire types inlined, validation/registry extraction, cross-compile CI, docs refresh
+- **0.13.0-dev** (2026-03-17 s18): Sovereignty — provenance-trio-types eliminated, wire types inlined, 14-crate ecoBin deny, 6 file extractions, cross-compile CI, RUSTSEC-2026-0049 fix
 - **0.13.0-dev** (2026-03-17 s17): Deep debt — health probes, 4-format capabilities, ValidationSink, JSON-RPC fuzz
 - **0.13.0-dev** (2026-03-16 s14): Deep debt — structured IPC errors, tarpc 0.37, capability domain introspection, NDJSON streaming, DI config, constant provenance, debris cleanup
 - **0.13.0-dev** (2026-03-16 s12): Deep audit — `#[expect]` migration (42 files), safe `TryFrom` casts, zero-copy signing, file refactoring, rustfmt edition sync
