@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.13.0-dev |
 | License | AGPL-3.0-or-later |
-| Tests | 1327 passing (`--all-features`; 948 default) |
+| Tests | 1330 passing (`--all-features`) |
 | Coverage | 92.32% line coverage (`--fail-under-lines 90` CI gate) |
 | Clippy | 0 warnings (pedantic + nursery + cargo, `unwrap_used`/`expect_used = "deny"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -20,9 +20,9 @@
 | Chaos | `ChaosEngine` framework with 7 fault classes |
 | Transport | Platform-agnostic (Unix socket / TCP / abstract socket) |
 | Storage | redb (Pure Rust, default) / sled (optional, deprecated) |
-| Deps | ecoBin compliant — zero application C dependencies |
+| Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps |
 | Audit | `cargo-deny` enforced (advisories, licenses, bans, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 124 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 125 `.rs` files |
 | Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps, domains) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `capability_registry.toml` (23 methods, 7 domains) |
@@ -143,7 +143,7 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 | Universal IPC v3 | Compliant | JSON-RPC 2.0 + tarpc, semantic method names |
 | Semantic Naming | Compliant | Native (`commit.*`) + compat (`permanent-storage.*`) with negotiation |
 | `unsafe_code = "deny"` | Compliant | Workspace-wide, `forbid` in non-test builds |
-| AGPL-3.0-or-later | Compliant | SPDX headers on all 124 source files |
+| AGPL-3.0-or-later | Compliant | SPDX headers on all 125 source files |
 
 ---
 

@@ -153,11 +153,9 @@ impl ProvenanceNotifier {
 
     /// Notify provenance provider of a completed dehydration with full summary.
     ///
-    /// Converts the internal [`DehydrationSummary`] to the canonical
-    /// [`provenance_trio_types::DehydrationSummary`] wire format, ensuring all
-    /// fields (attestations, agent summaries, operations, frontier, niche,
-    /// compression_ratio) are included in the `contribution.record_dehydration`
-    /// JSON-RPC call.
+    /// Converts the internal [`DehydrationSummary`] to a
+    /// [`DehydrationWireSummary`](crate::dehydration_wire::DehydrationWireSummary)
+    /// for the `contribution.record_dehydration` JSON-RPC call.
     ///
     /// # Errors
     ///
@@ -179,7 +177,7 @@ impl ProvenanceNotifier {
             "Notifying provenance provider of dehydration"
         );
 
-        let wire_summary: provenance_trio_types::DehydrationSummary = summary.into();
+        let wire_summary: crate::dehydration_wire::DehydrationWireSummary = summary.into();
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",

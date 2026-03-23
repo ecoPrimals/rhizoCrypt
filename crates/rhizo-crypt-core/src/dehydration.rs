@@ -277,7 +277,7 @@ impl DehydrationStatus {
     }
 }
 
-impl From<&DehydrationSummary> for provenance_trio_types::DehydrationSummary {
+impl From<&DehydrationSummary> for crate::dehydration_wire::DehydrationWireSummary {
     fn from(s: &DehydrationSummary) -> Self {
         Self {
             source_primal: crate::constants::PRIMAL_NAME.to_string(),
@@ -294,7 +294,7 @@ impl From<&DehydrationSummary> for provenance_trio_types::DehydrationSummary {
             agent_summaries: s
                 .agents
                 .iter()
-                .map(|a| provenance_trio_types::AgentRef {
+                .map(|a| crate::dehydration_wire::WireAgentRef {
                     agent: a.agent.to_string(),
                     joined_at: a.joined_at.as_nanos(),
                     left_at: a.left_at.map(|t| t.as_nanos()),
@@ -305,7 +305,7 @@ impl From<&DehydrationSummary> for provenance_trio_types::DehydrationSummary {
             attestations: s
                 .attestations
                 .iter()
-                .map(|a| provenance_trio_types::AttestationRef {
+                .map(|a| crate::dehydration_wire::WireAttestationRef {
                     agent: a.attester.to_string(),
                     signature: hex::encode(&a.signature),
                     attested_at: a.attested_at.as_nanos(),
@@ -523,7 +523,7 @@ mod tests {
                 })
                 .build();
 
-        let wire: provenance_trio_types::DehydrationSummary = (&summary).into();
+        let wire: crate::dehydration_wire::DehydrationWireSummary = (&summary).into();
         assert_eq!(wire.source_primal, "rhizoCrypt");
         assert_eq!(wire.vertex_count, 42);
         assert_eq!(wire.session_type, "experiment");

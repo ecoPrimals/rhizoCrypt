@@ -65,9 +65,6 @@ criterion = { version = "0.5", features = ["html_reports"] }
 # Embedded database (Pure Rust)
 redb = "2.4"
 
-# Provenance trio canonical wire types
-provenance-trio-types = { path = "../provenance-trio-types" }
-
 # Test utilities
 temp-env = "0.3"
 
