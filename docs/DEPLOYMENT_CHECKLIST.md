@@ -10,12 +10,12 @@
 
 ### Code Quality
 - [x] **1330 tests passing** (all features), 0 failures
-- [x] **92.32% line coverage** (`--fail-under-lines 90` CI gate)
+- [x] **92.43% line coverage** (`--fail-under-lines 90` CI gate)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo, `unwrap_used`/`expect_used = "deny"`)
 - [x] **100% file size compliance** (all files under 1000 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 122 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 129 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
@@ -27,11 +27,11 @@
 
 ### Storage Backends
 - [x] **redb** (default) — 100% Pure Rust, ACID, MVCC, ecoBin compliant
-- [x] **sled** (optional `--features sled`) — high-performance embedded
+- [x] **sled** (optional `--features sled`) — deprecated, being phased out
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1330 tests, 92.32% coverage)
+- [x] **README.md** (current metrics — 1330 tests, 92.43% coverage)
 - [x] **CHANGELOG.md** (version history through session 18)
 - [x] **showcase/** (70+ comprehensive demos)
 - [x] **specs/** (9 complete + 1 experimental specification documents)
@@ -248,5 +248,5 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: March 16, 2026
+**Last Updated**: March 23, 2026
 **Version**: rhizoCrypt 0.13.0-dev

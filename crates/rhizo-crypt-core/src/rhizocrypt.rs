@@ -15,7 +15,7 @@ use crate::metrics::PrimalMetrics;
 use crate::primal::{
     HealthReport, HealthStatus, PrimalError, PrimalHealth, PrimalLifecycle, PrimalState,
 };
-use crate::session::{LoamCommitRef, Session};
+use crate::session::{CommitRef, Session};
 use crate::slice::{self, ResolutionOutcome, Slice};
 use crate::store::{DagStore, InMemoryDagStore, InMemoryPayloadStore};
 use crate::types::{Did, SessionId, SliceId, Timestamp, VertexId};
@@ -577,10 +577,7 @@ impl RhizoCrypt {
     /// Commit dehydration summary to permanent storage.
     ///
     /// Uses capability-based discovery - any PermanentStorageProvider works.
-    async fn commit_to_permanent_storage(
-        &self,
-        summary: &DehydrationSummary,
-    ) -> Result<LoamCommitRef> {
+    async fn commit_to_permanent_storage(&self, summary: &DehydrationSummary) -> Result<CommitRef> {
         use crate::clients::PermanentStorageClient;
 
         let registry = DiscoveryRegistry::new(crate::constants::PRIMAL_NAME);
@@ -607,7 +604,7 @@ impl RhizoCrypt {
                     "No permanent storage provider available, creating local reference"
                 );
 
-                Ok(LoamCommitRef {
+                Ok(CommitRef {
                     spine_id: format!("local-{}", summary.session_id),
                     entry_hash: *summary.merkle_root.as_bytes(),
                     index: 0,

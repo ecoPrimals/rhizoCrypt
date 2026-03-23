@@ -43,8 +43,7 @@ async fn test_signing_client_discover_with_provider() {
 
     // Register a mock signing provider
     let addr: SocketAddr = "127.0.0.1:9500".parse().unwrap();
-    let endpoint =
-        ServiceEndpoint::new("test-signer".to_string(), addr, vec![Capability::Signing]);
+    let endpoint = ServiceEndpoint::new("test-signer".to_string(), addr, vec![Capability::Signing]);
     registry.register_endpoint(endpoint).await;
 
     let result = SigningClient::discover(&registry).await;
@@ -282,8 +281,7 @@ async fn test_signing_client_service_name_tracking() {
     let registry = DiscoveryRegistry::new("test-rhizocrypt");
 
     let addr: SocketAddr = "127.0.0.1:9500".parse().unwrap();
-    let endpoint =
-        ServiceEndpoint::new("beardog-hsm".to_string(), addr, vec![Capability::Signing]);
+    let endpoint = ServiceEndpoint::new("beardog-hsm".to_string(), addr, vec![Capability::Signing]);
     registry.register_endpoint(endpoint).await;
 
     let client = SigningClient::discover(&registry).await.unwrap();
@@ -312,9 +310,8 @@ async fn test_verify_vertex_no_signature_with_agent() {
     use crate::vertex::VertexBuilder;
 
     let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
-    let vertex = VertexBuilder::new(EventType::SessionStart)
-        .with_agent(Did::new("did:key:test"))
-        .build();
+    let vertex =
+        VertexBuilder::new(EventType::SessionStart).with_agent(Did::new("did:key:test")).build();
     assert!(vertex.signature.is_none());
     assert!(vertex.agent.is_some());
 

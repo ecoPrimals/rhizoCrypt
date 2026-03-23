@@ -66,7 +66,7 @@ pub enum EventType {
     },
 
     // === Slice Events ===
-    /// Slice checked out from LoamSpine.
+    /// Slice checked out from permanent storage.
     SliceCheckout {
         /// Slice identifier.
         slice_id: SliceId,

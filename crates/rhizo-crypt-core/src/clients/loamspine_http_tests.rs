@@ -561,7 +561,7 @@ async fn test_wiremock_verify_commit_success() {
         .await;
 
     let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
-    let commit_ref = LoamCommitRef {
+    let commit_ref = CommitRef {
         spine_id: "spine-1".to_string(),
         entry_hash: [1u8; 32],
         index: 0,
@@ -616,7 +616,7 @@ async fn test_wiremock_verify_commit_fallback_to_health() {
         .await;
 
     let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
-    let commit_ref = LoamCommitRef {
+    let commit_ref = CommitRef {
         spine_id: "spine-1".to_string(),
         entry_hash: [1u8; 32],
         index: 0,
@@ -661,7 +661,7 @@ async fn test_wiremock_get_commit_success() {
         .await;
 
     let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
-    let commit_ref = LoamCommitRef {
+    let commit_ref = CommitRef {
         spine_id: "spine-1".to_string(),
         entry_hash: [1u8; 32],
         index: 0,
@@ -694,7 +694,7 @@ async fn test_wiremock_get_commit_not_found_returns_none() {
         .await;
 
     let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
-    let commit_ref = LoamCommitRef {
+    let commit_ref = CommitRef {
         spine_id: "spine-1".to_string(),
         entry_hash: [1u8; 32],
         index: 0,

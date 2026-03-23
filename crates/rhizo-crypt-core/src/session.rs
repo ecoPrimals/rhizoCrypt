@@ -108,7 +108,7 @@ impl Session {
     /// # Errors
     ///
     /// Returns an error if the session is not resolving.
-    pub fn commit(&mut self, loam_ref: LoamCommitRef) -> Result<(), SessionStateError> {
+    pub fn commit(&mut self, commit_ref: CommitRef) -> Result<(), SessionStateError> {
         if !matches!(self.state, SessionState::Resolving { .. }) {
             return Err(SessionStateError::InvalidTransition {
                 from: self.state.name().to_string(),
@@ -116,7 +116,7 @@ impl Session {
             });
         }
         self.state = SessionState::Committed {
-            loam_ref,
+            commit_ref,
             committed_at: Timestamp::now(),
         };
         Ok(())
@@ -149,10 +149,10 @@ pub enum SessionState {
         started_at: Timestamp,
     },
 
-    /// Committed to LoamSpine.
+    /// Committed to permanent storage.
     Committed {
-        /// LoamSpine commit reference.
-        loam_ref: LoamCommitRef,
+        /// Permanent storage commit reference.
+        commit_ref: CommitRef,
         /// When committed.
         committed_at: Timestamp,
     },
@@ -251,9 +251,12 @@ pub enum DiscardReason {
     },
 }
 
-/// LoamSpine commit reference.
+/// Permanent storage commit reference.
+///
+/// Identifies a committed session in any permanent storage provider
+/// (addressed by spine ID + content hash + index).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LoamCommitRef {
+pub struct CommitRef {
     /// Spine identifier.
     pub spine_id: String,
     /// Entry hash.
@@ -261,6 +264,9 @@ pub struct LoamCommitRef {
     /// Entry index.
     pub index: u64,
 }
+
+/// Backward-compatible alias for [`CommitRef`].
+pub type LoamCommitRef = CommitRef;
 
 /// Reference to a slice in the session.
 #[derive(Clone, Debug)]
@@ -455,12 +461,12 @@ mod tests {
         assert!(matches!(session.state, SessionState::Resolving { .. }));
 
         // Commit
-        let loam_ref = LoamCommitRef {
+        let commit_ref = CommitRef {
             spine_id: "test".to_string(),
             entry_hash: [0u8; 32],
             index: 1,
         };
-        session.commit(loam_ref).unwrap();
+        session.commit(commit_ref).unwrap();
         assert!(session.is_terminal());
     }
 
@@ -587,15 +593,15 @@ mod tests {
 
     #[test]
     fn test_loam_commit_ref_serialization() {
-        let loam_ref = LoamCommitRef {
+        let commit_ref = CommitRef {
             spine_id: "spine-42".to_string(),
             entry_hash: [1u8; 32],
             index: 99,
         };
-        let json = serde_json::to_string(&loam_ref).unwrap();
+        let json = serde_json::to_string(&commit_ref).unwrap();
         let parsed: LoamCommitRef = serde_json::from_str(&json).unwrap();
-        assert_eq!(loam_ref.spine_id, parsed.spine_id);
-        assert_eq!(loam_ref.entry_hash, parsed.entry_hash);
-        assert_eq!(loam_ref.index, parsed.index);
+        assert_eq!(commit_ref.spine_id, parsed.spine_id);
+        assert_eq!(commit_ref.entry_hash, parsed.entry_hash);
+        assert_eq!(commit_ref.index, parsed.index);
     }
 }

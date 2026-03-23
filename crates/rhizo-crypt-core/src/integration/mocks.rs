@@ -21,7 +21,7 @@
 
 use crate::dehydration::{Attestation, AttestationStatement, DehydrationSummary};
 use crate::error::Result;
-use crate::session::LoamCommitRef;
+use crate::session::CommitRef;
 use crate::slice::{ResolutionOutcome, Slice, SliceOrigin};
 use crate::types::{Did, PayloadRef, Signature, Timestamp};
 use crate::vertex::Vertex;
@@ -142,20 +142,20 @@ impl MockPermanentStorageProvider {
 }
 
 impl PermanentStorageProvider for MockPermanentStorageProvider {
-    async fn commit(&self, _summary: &DehydrationSummary) -> Result<LoamCommitRef> {
+    async fn commit(&self, _summary: &DehydrationSummary) -> Result<CommitRef> {
         let index = self.next_index.fetch_add(1, Ordering::SeqCst);
-        Ok(LoamCommitRef {
+        Ok(CommitRef {
             spine_id: "mock-spine".to_string(),
             entry_hash: [0u8; 32],
             index,
         })
     }
 
-    async fn verify_commit(&self, _commit_ref: &LoamCommitRef) -> Result<bool> {
+    async fn verify_commit(&self, _commit_ref: &CommitRef) -> Result<bool> {
         Ok(true)
     }
 
-    async fn get_commit(&self, _commit_ref: &LoamCommitRef) -> Result<Option<DehydrationSummary>> {
+    async fn get_commit(&self, _commit_ref: &CommitRef) -> Result<Option<DehydrationSummary>> {
         Ok(None) // Mock doesn't persist
     }
 
@@ -332,7 +332,7 @@ mod tests {
     async fn test_mock_loamspine_get_commit() {
         let client = MockPermanentStorageProvider::new();
 
-        let commit_ref = LoamCommitRef {
+        let commit_ref = CommitRef {
             spine_id: "test-spine".to_string(),
             entry_hash: [1u8; 32],
             index: 0,

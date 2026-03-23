@@ -15,7 +15,7 @@
 //! ```text
 //! rhizoCrypt ──unix socket──► BearDog    (crypto atoms)
 //! rhizoCrypt ──unix socket──► Songbird   (HTTP/TLS state machine)
-//! rhizoCrypt ──unix socket──► LoamSpine  (permanent storage)
+//! rhizoCrypt ──unix socket──► any primal  (permanent storage, signing, etc.)
 //! rhizoCrypt ──unix socket──► NestGate   (payload storage)
 //! ```
 

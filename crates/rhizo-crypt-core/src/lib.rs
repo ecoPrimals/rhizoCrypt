@@ -9,14 +9,14 @@
 //!
 //! RhizoCrypt is the ephemeral DAG engine of the ecoPrimals ecosystem. It provides
 //! git-like functionality for capturing, linking, and eventually committing events
-//! to the permanent LoamSpine layer.
+//! to permanent storage via capability-discovered providers.
 //!
 //! ## Key Concepts
 //!
 //! - **Vertex**: A single event in the DAG, content-addressed by Blake3 hash
 //! - **Session**: A scoped DAG with lifecycle (create → grow → resolve → expire)
-//! - **Dehydration**: The process of committing DAG results to LoamSpine
-//! - **Slice**: A "checkout" of LoamSpine state into the DAG for async operations
+//! - **Dehydration**: The process of committing DAG results to permanent storage
+//! - **Slice**: A "checkout" of permanent storage state into the DAG for async operations
 //!
 //! ## Quick Start
 //!
@@ -71,6 +71,7 @@ pub mod safe_env;
 pub mod session;
 pub mod slice;
 pub mod store;
+pub mod transport;
 pub mod types;
 pub mod types_ecosystem;
 pub mod validation;

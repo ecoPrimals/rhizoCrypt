@@ -124,7 +124,7 @@ pub const CONSUMED_CAPABILITIES: &[&str] = &[
     // Signing (BearDog or any signing provider)
     "crypto.sign",
     "crypto.verify",
-    // Permanent storage (LoamSpine or any commit provider)
+    // Permanent storage (any commit provider)
     "commit.session",
     "commit.entry",
     // Payload storage (NestGate or any content-addressed store)
@@ -433,8 +433,8 @@ pub fn operation_dependencies() -> serde_json::Value {
 
 /// Return the capability list as a JSON-RPC response payload.
 ///
-/// Implements the `capability.list` semantic method. Aligns with loamSpine
-/// and sweetGrass enhanced format: domain, method, dependencies, cost tier.
+/// Implements the `capability.list` semantic method. Aligns with the ecosystem
+/// enhanced format: domain, method, dependencies, cost tier.
 /// Includes ludoSpring V20 domain introspection with external/local flags.
 #[must_use]
 pub fn capability_list() -> serde_json::Value {

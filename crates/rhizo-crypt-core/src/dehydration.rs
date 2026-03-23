@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Dehydration protocol for committing DAG sessions to LoamSpine.
+//! Dehydration protocol for committing DAG sessions to permanent storage.
 //!
 //! Dehydration is the process of committing a RhizoCrypt DAG session to
-//! permanent storage in LoamSpine. The name reflects the biological metaphor:
-//! the ephemeral, water-rich rhizome layer dries and compresses into the
-//! permanent loam fossil record.
+//! a capability-discovered permanent storage provider. The name reflects the
+//! biological metaphor: the ephemeral, water-rich rhizome layer dries and
+//! compresses into the permanent fossil record.
 
 use crate::constants;
 use crate::event::SessionOutcome;
 use crate::merkle::MerkleRoot;
-use crate::session::LoamCommitRef;
+use crate::session::CommitRef;
 use crate::types::{ContentHash, Did, PayloadRef, SessionId, Timestamp, VertexId};
 use serde::{Deserialize, Serialize};
 
-/// Summary of a dehydrated session for LoamSpine commit.
+/// Summary of a dehydrated session for permanent storage commit.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DehydrationSummary {
     /// Session identifier.
@@ -235,13 +235,13 @@ pub enum DehydrationStatus {
         required: usize,
     },
 
-    /// Committing to LoamSpine.
+    /// Committing to permanent storage.
     Committing,
 
     /// Successfully completed.
     Completed {
-        /// LoamSpine commit reference.
-        commit_ref: LoamCommitRef,
+        /// Permanent storage commit reference.
+        commit_ref: CommitRef,
     },
 
     /// Failed.
@@ -448,7 +448,7 @@ mod tests {
 
         assert!(DehydrationStatus::ComputingRoot.is_in_progress());
 
-        let commit_ref = LoamCommitRef {
+        let commit_ref = CommitRef {
             spine_id: "test".to_string(),
             entry_hash: [0u8; 32],
             index: 1,

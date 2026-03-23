@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Slice semantics for LoamSpine state checkout.
+//! Slice semantics for permanent storage state checkout.
 //!
-//! A slice is a reference to LoamSpine state that is temporarily "lifted" into
+//! A slice is a reference to permanent storage state that is temporarily "lifted" into
 //! a RhizoCrypt DAG for asynchronous operations. The slice carries information
 //! about how it should resolve back to permanence.
 
@@ -11,13 +11,13 @@ use crate::types::{ContentHash, Did, SessionId, SliceId, Timestamp, VertexId};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-/// A slice of LoamSpine state checked out into RhizoCrypt.
+/// A slice of permanent storage state checked out into RhizoCrypt.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Slice {
     /// Unique slice identifier.
     pub id: SliceId,
 
-    /// Origin in LoamSpine.
+    /// Origin in permanent storage.
     pub origin: SliceOrigin,
 
     /// Current holder of the slice.
@@ -78,7 +78,7 @@ impl Slice {
     }
 }
 
-/// Origin of a slice in LoamSpine.
+/// Origin of a slice in permanent storage.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SliceOrigin {
     /// Source spine identifier.

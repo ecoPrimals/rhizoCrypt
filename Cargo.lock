@@ -1713,7 +1713,6 @@ dependencies = [
  "hashbrown 0.14.5",
  "hex",
  "lru",
- "parking_lot 0.12.5",
  "proptest",
  "redb",
  "reqwest",
@@ -1734,13 +1733,11 @@ dependencies = [
 name = "rhizo-crypt-rpc"
 version = "0.13.0-dev"
 dependencies = [
- "anyhow",
  "async-trait",
  "axum",
  "bincode",
  "futures-util",
  "hex",
- "parking_lot 0.12.5",
  "rhizo-crypt-core",
  "serde",
  "serde_json",

@@ -43,7 +43,7 @@
 use crate::dehydration::{Attestation, DehydrationSummary};
 use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::Result;
-use crate::session::LoamCommitRef;
+use crate::session::CommitRef;
 use crate::slice::{ResolutionOutcome, Slice, SliceOrigin};
 use crate::types::{Did, PayloadRef, Signature};
 use crate::vertex::Vertex;
@@ -194,18 +194,18 @@ pub trait PermanentStorageProvider: Send + Sync {
     fn commit(
         &self,
         summary: &DehydrationSummary,
-    ) -> impl std::future::Future<Output = Result<LoamCommitRef>> + Send;
+    ) -> impl std::future::Future<Output = Result<CommitRef>> + Send;
 
     /// Verify a commit exists.
     fn verify_commit(
         &self,
-        commit_ref: &LoamCommitRef,
+        commit_ref: &CommitRef,
     ) -> impl std::future::Future<Output = Result<bool>> + Send;
 
     /// Get a commit by reference.
     fn get_commit(
         &self,
-        commit_ref: &LoamCommitRef,
+        commit_ref: &CommitRef,
     ) -> impl std::future::Future<Output = Result<Option<DehydrationSummary>>> + Send;
 
     /// Check out a slice from permanent storage.

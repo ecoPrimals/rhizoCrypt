@@ -48,8 +48,10 @@ pub mod capabilities;
 pub mod factory;
 pub mod resilience;
 
-// HTTP/RPC client implementations (reqwest-based, feature-gated)
-// For pure Rust builds, use Unix socket IPC via adapters::UnixSocketAdapter instead.
+// Legacy primal-specific HTTP/RPC clients (reqwest-based, feature-gated).
+// These are concrete adapters for named primals' REST/RPC APIs.
+// Prefer capability-based clients (above) for new code — they discover
+// providers at runtime and work with ANY service implementing the capability.
 #[cfg(feature = "live-clients")]
 pub mod beardog_http;
 #[cfg(feature = "http-clients")]

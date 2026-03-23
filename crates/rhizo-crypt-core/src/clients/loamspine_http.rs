@@ -18,7 +18,7 @@
 use crate::dehydration::DehydrationSummary;
 use crate::error::{Result, RhizoCryptError};
 use crate::integration::PermanentStorageProvider;
-use crate::session::LoamCommitRef;
+use crate::session::CommitRef;
 use crate::slice::{ResolutionOutcome, Slice, SliceOrigin};
 use crate::types::Did;
 use serde::{Deserialize, Serialize};
@@ -246,7 +246,7 @@ impl LoamSpineHttpClient {
 }
 
 impl PermanentStorageProvider for LoamSpineHttpClient {
-    async fn commit(&self, summary: &DehydrationSummary) -> Result<LoamCommitRef> {
+    async fn commit(&self, summary: &DehydrationSummary) -> Result<CommitRef> {
         let request = CommitSessionRequest {
             session_id: summary.session_id.to_string(),
             merkle_root: hex::encode(summary.merkle_root.as_bytes()),
@@ -293,14 +293,14 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
 
         let index = response.entry_index.unwrap_or(0);
 
-        Ok(LoamCommitRef {
+        Ok(CommitRef {
             spine_id,
             entry_hash: hash_bytes,
             index,
         })
     }
 
-    async fn verify_commit(&self, commit_ref: &LoamCommitRef) -> Result<bool> {
+    async fn verify_commit(&self, commit_ref: &CommitRef) -> Result<bool> {
         #[derive(Debug, Clone, Serialize)]
         struct VerifyRequest {
             spine_id: String,
@@ -344,7 +344,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
         }
     }
 
-    async fn get_commit(&self, commit_ref: &LoamCommitRef) -> Result<Option<DehydrationSummary>> {
+    async fn get_commit(&self, commit_ref: &CommitRef) -> Result<Option<DehydrationSummary>> {
         #[derive(Debug, Clone, Serialize)]
         struct GetCommitRequest {
             spine_id: String,

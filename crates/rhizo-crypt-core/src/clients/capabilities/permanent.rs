@@ -4,13 +4,13 @@
 //! Generic permanent storage client - works with ANY permanent storage provider.
 //!
 //! This client provides permanent/immutable storage commits without knowing
-//! or caring about who provides the service (LoamSpine, blockchain, etc.).
+//! or caring about who provides the service.
 
 use crate::clients::adapters::{AdapterFactory, ProtocolAdapter, ProtocolAdapterExt};
 use crate::dehydration::DehydrationSummary;
 use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::{Result, RhizoCryptError};
-use crate::session::LoamCommitRef;
+use crate::session::CommitRef;
 use crate::slice::{ResolutionOutcome, Slice, SliceOrigin};
 use crate::types::Did;
 use serde::{Deserialize, Serialize};
@@ -74,7 +74,7 @@ impl PermanentStorageClient {
     }
 
     /// Commit dehydration summary to permanent storage.
-    pub async fn commit(&self, summary: &DehydrationSummary) -> Result<LoamCommitRef> {
+    pub async fn commit(&self, summary: &DehydrationSummary) -> Result<CommitRef> {
         tracing::debug!("Committing dehydration summary to permanent storage");
 
         let request = CommitRequest {
@@ -87,7 +87,7 @@ impl PermanentStorageClient {
     }
 
     /// Verify a commit exists and is valid.
-    pub async fn verify_commit(&self, commit_ref: &LoamCommitRef) -> Result<bool> {
+    pub async fn verify_commit(&self, commit_ref: &CommitRef) -> Result<bool> {
         let request = VerifyCommitRequest {
             commit_ref: commit_ref.clone(),
         };
@@ -98,10 +98,7 @@ impl PermanentStorageClient {
     }
 
     /// Get a commit by reference.
-    pub async fn get_commit(
-        &self,
-        commit_ref: &LoamCommitRef,
-    ) -> Result<Option<DehydrationSummary>> {
+    pub async fn get_commit(&self, commit_ref: &CommitRef) -> Result<Option<DehydrationSummary>> {
         let request = GetCommitRequest {
             commit_ref: commit_ref.clone(),
         };
@@ -170,12 +167,12 @@ struct CommitRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CommitResponse {
-    commit_ref: LoamCommitRef,
+    commit_ref: CommitRef,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct VerifyCommitRequest {
-    commit_ref: LoamCommitRef,
+    commit_ref: CommitRef,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -185,7 +182,7 @@ struct VerifyCommitResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct GetCommitRequest {
-    commit_ref: LoamCommitRef,
+    commit_ref: CommitRef,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -226,8 +223,8 @@ mod tests {
     use crate::types::{ContentHash, Did, SessionId, Timestamp, VertexId};
     use std::net::SocketAddr;
 
-    fn make_loam_commit_ref() -> LoamCommitRef {
-        LoamCommitRef {
+    fn make_commit_ref() -> CommitRef {
+        CommitRef {
             spine_id: "test-spine".to_string(),
             entry_hash: [1u8; 32],
             index: 42,
@@ -273,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_commit_response_serialization() {
-        let commit_ref = make_loam_commit_ref();
+        let commit_ref = make_commit_ref();
         let response = CommitResponse {
             commit_ref: commit_ref.clone(),
         };
@@ -285,7 +282,7 @@ mod tests {
 
     #[test]
     fn test_verify_commit_request_serialization() {
-        let commit_ref = make_loam_commit_ref();
+        let commit_ref = make_commit_ref();
         let request = VerifyCommitRequest {
             commit_ref: commit_ref.clone(),
         };
@@ -313,7 +310,7 @@ mod tests {
 
     #[test]
     fn test_get_commit_request_serialization() {
-        let commit_ref = make_loam_commit_ref();
+        let commit_ref = make_commit_ref();
         let request = GetCommitRequest {
             commit_ref: commit_ref.clone(),
         };

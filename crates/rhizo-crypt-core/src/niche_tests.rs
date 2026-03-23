@@ -55,10 +55,7 @@ fn operation_dependencies_reference_valid_capabilities() {
     let deps = operation_dependencies();
     let obj = deps.as_object().expect("deps should be an object");
     for (key, val) in obj {
-        assert!(
-            CAPABILITIES.contains(&key.as_str()),
-            "dependency key {key} not in CAPABILITIES"
-        );
+        assert!(CAPABILITIES.contains(&key.as_str()), "dependency key {key} not in CAPABILITIES");
         if let Some(arr) = val.as_array() {
             for dep in arr {
                 let dep_str = dep.as_str().expect("dep should be a string");
@@ -104,10 +101,7 @@ fn cost_tier_thresholds() {
 #[test]
 fn no_gpu_beneficial_operations() {
     for (method, _, gpu) in COST_ESTIMATES {
-        assert!(
-            !gpu,
-            "{method} marked as GPU beneficial — rhizoCrypt is CPU-only infrastructure"
-        );
+        assert!(!gpu, "{method} marked as GPU beneficial — rhizoCrypt is CPU-only infrastructure");
     }
 }
 
@@ -136,10 +130,7 @@ fn dependencies_reference_capability_domains_not_primal_names() {
 fn capability_domains_cover_all_capabilities() {
     let domain_fqns: Vec<&str> = all_methods().iter().map(|m| m.fqn).collect();
     for cap in CAPABILITIES {
-        assert!(
-            domain_fqns.contains(cap),
-            "capability {cap} not covered by any CapabilityDomain"
-        );
+        assert!(domain_fqns.contains(cap), "capability {cap} not covered by any CapabilityDomain");
     }
 }
 

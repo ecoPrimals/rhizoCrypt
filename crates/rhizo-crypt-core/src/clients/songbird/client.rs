@@ -24,9 +24,9 @@
 //! │    │Songbird │◀──── Bootstrap connection (only configured addr) │
 //! │    └────┬────┘                                                  │
 //! │         │                                                       │
-//! │         ├──discover("signing")───────▶ BearDog                  │
-//! │         ├──discover("permanent-storage")──▶ LoamSpine           │
-//! │         └──discover("payload-storage")───▶ NestGate             │
+//! │         ├──discover("signing")───────────▶ any signing provider │
+//! │         ├──discover("permanent-storage")──▶ any commit provider │
+//! │         └──discover("payload-storage")───▶ any storage provider │
 //! │                                                                 │
 //! └─────────────────────────────────────────────────────────────────┘
 //! ```
