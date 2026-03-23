@@ -483,6 +483,25 @@ impl RhizoCryptError {
 /// Result type for RhizoCrypt operations.
 pub type Result<T> = std::result::Result<T, RhizoCryptError>;
 
+// ============================================================================
+// Result Extension Traits
+// ============================================================================
+
+/// Extension trait to convert any `Display`-able error into a `RhizoCryptError::Storage`.
+///
+/// Reduces repetitive `map_err(|e| RhizoCryptError::storage(format!("ctx: {e}")))` chains
+/// in storage backends (`store_redb`, `store_sled`).
+pub(crate) trait StorageResultExt<T> {
+    /// Convert error to `RhizoCryptError::Storage` with contextual message.
+    fn storage_ctx(self, ctx: &str) -> Result<T>;
+}
+
+impl<T, E: fmt::Display> StorageResultExt<T> for std::result::Result<T, E> {
+    fn storage_ctx(self, ctx: &str) -> Result<T> {
+        self.map_err(|e| RhizoCryptError::storage(format!("{ctx}: {e}")))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

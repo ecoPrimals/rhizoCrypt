@@ -292,6 +292,53 @@ fn test_deployment_status_all_variants() {
 }
 
 #[test]
+fn test_deployment_to_event_completed_no_result() {
+    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let did = Did::new("did:key:test");
+    let worker = Did::new("did:compute:test-worker");
+    let deployment = DeploymentResponse {
+        deployment_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+        status: DeploymentStatus::Completed,
+        biome_name: None,
+        created_at: None,
+        completed_at: None,
+        error: None,
+        result: None,
+    };
+    let event = client.deployment_to_event(&deployment, &did, &worker);
+    assert!(matches!(event.unwrap(), ComputeEvent::TaskCompleted { .. }));
+}
+
+#[test]
+fn test_parse_deployment_id_exact_16_hex_chars() {
+    let hex_str = "abcdef0123456789abcdef0123456789";
+    let task_id = parse_deployment_id(hex_str);
+    assert!(task_id.is_some());
+}
+
+#[test]
+fn test_parse_deployment_id_17_hex_chars_odd() {
+    let hex_str = "abcdef01234567890";
+    let task_id = parse_deployment_id(hex_str);
+    assert!(task_id.is_some());
+}
+
+#[test]
+fn test_client_debug() {
+    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let debug_str = format!("{client:?}");
+    assert!(debug_str.contains("ToadStoolHttpClient"));
+    assert!(debug_str.contains("localhost:8084"));
+}
+
+#[test]
+fn test_client_clone() {
+    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let cloned = client.clone();
+    assert_eq!(cloned.base_url, "http://localhost:8084");
+}
+
+#[test]
 fn test_toadstool_error_display() {
     let err = ToadStoolHttpError::InvalidResponse("bad json".to_string());
     assert!(err.to_string().contains("bad json"));

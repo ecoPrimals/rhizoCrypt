@@ -40,7 +40,7 @@
 //! | `genesis` | `session_id`           | Packed vertex ID set     |
 //! | `metadata`| `session_id`           | Session metadata bytes   |
 
-use crate::error::{Result, RhizoCryptError};
+use crate::error::{Result, StorageResultExt};
 use crate::store::{DagStore, StorageHealth, StorageStats};
 use crate::types::{SessionId, VertexId};
 use crate::vertex::Vertex;
@@ -84,38 +84,22 @@ impl RedbDagStore {
 
         // Create parent directory if it doesn't exist
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to create database directory: {e}"))
-            })?;
+            std::fs::create_dir_all(parent).storage_ctx("Failed to create database directory")?;
         }
 
-        let db = Database::create(path)
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to open redb database: {e}")))?;
+        let db = Database::create(path).storage_ctx("Failed to open redb database")?;
 
         // Ensure all tables exist (redb creates tables on first write, but we need them for reads)
-        let write_txn = db
-            .begin_write()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to begin write: {e}")))?;
+        let write_txn = db.begin_write().storage_ctx("Failed to begin write")?;
         {
-            let _ = write_txn.open_table(VERTICES).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open vertices table: {e}"))
-            })?;
-            let _ = write_txn.open_table(CHILDREN).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open children table: {e}"))
-            })?;
-            let _ = write_txn.open_table(FRONTIERS).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open frontiers table: {e}"))
-            })?;
-            let _ = write_txn.open_table(GENESIS).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open genesis table: {e}"))
-            })?;
-            let _ = write_txn.open_table(METADATA).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open metadata table: {e}"))
-            })?;
+            let _ = write_txn.open_table(VERTICES).storage_ctx("Failed to open vertices table")?;
+            let _ = write_txn.open_table(CHILDREN).storage_ctx("Failed to open children table")?;
+            let _ =
+                write_txn.open_table(FRONTIERS).storage_ctx("Failed to open frontiers table")?;
+            let _ = write_txn.open_table(GENESIS).storage_ctx("Failed to open genesis table")?;
+            let _ = write_txn.open_table(METADATA).storage_ctx("Failed to open metadata table")?;
         }
-        write_txn
-            .commit()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to commit: {e}")))?;
+        write_txn.commit().storage_ctx("Failed to commit")?;
 
         Ok(Self {
             db: Arc::new(db),
@@ -187,17 +171,10 @@ impl RedbDagStore {
         table: TableDefinition<&[u8], &[u8]>,
         key: &[u8],
     ) -> Result<hashbrown::HashSet<VertexId>> {
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-        let t = read_txn
-            .open_table(table)
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to open table: {e}")))?;
-        let existing = t
-            .get(key)
-            .map_err(|e| RhizoCryptError::storage(e.to_string()))?
-            .map(|g| g.value().to_vec());
+        let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
+        let t = read_txn.open_table(table).storage_ctx("Failed to open table")?;
+        let existing =
+            t.get(key).storage_ctx("Failed to read vertex set")?.map(|g| g.value().to_vec());
         Ok(existing.as_deref().map(Self::parse_vertex_set).unwrap_or_default())
     }
 
@@ -208,11 +185,9 @@ impl RedbDagStore {
         key: &[u8],
         set: &hashbrown::HashSet<VertexId>,
     ) -> Result<()> {
-        let mut t = write_txn
-            .open_table(table)
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to open table: {e}")))?;
+        let mut t = write_txn.open_table(table).storage_ctx("Failed to open table")?;
         t.insert(key, Self::serialize_vertex_set(set).as_slice())
-            .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+            .storage_ctx("Failed to write vertex set")?;
         Ok(())
     }
 }
@@ -221,23 +196,17 @@ impl DagStore for RedbDagStore {
     async fn put_vertex(&self, session_id: SessionId, mut vertex: Vertex) -> Result<()> {
         self.write_ops.fetch_add(1, Ordering::Relaxed);
 
-        let vertex_id = vertex
-            .id()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to compute vertex ID: {e}")))?;
+        let vertex_id = vertex.id().storage_ctx("Failed to compute vertex ID")?;
         let value = vertex.to_canonical_bytes()?;
 
-        let write_txn = self.db.begin_write().map_err(|e| {
-            RhizoCryptError::storage(format!("Failed to begin write transaction: {e}"))
-        })?;
+        let write_txn = self.db.begin_write().storage_ctx("Failed to begin write transaction")?;
 
         // Store vertex
         {
-            let mut t = write_txn.open_table(VERTICES).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open vertices table: {e}"))
-            })?;
+            let mut t =
+                write_txn.open_table(VERTICES).storage_ctx("Failed to open vertices table")?;
             let key = Self::vertex_key(session_id, vertex_id);
-            t.insert(key.as_slice(), &value[..])
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+            t.insert(key.as_slice(), &value[..]).storage_ctx("Failed to insert vertex")?;
         }
 
         // Update children index for each parent
@@ -264,9 +233,7 @@ impl DagStore for RedbDagStore {
         frontier.insert(vertex_id);
         Self::write_vertex_set(&write_txn, FRONTIERS, &session_key, &frontier)?;
 
-        write_txn.commit().map_err(|e| {
-            RhizoCryptError::storage(format!("Failed to commit write transaction: {e}"))
-        })?;
+        write_txn.commit().storage_ctx("Failed to commit write transaction")?;
 
         Ok(())
     }
@@ -278,18 +245,12 @@ impl DagStore for RedbDagStore {
     ) -> Result<Option<Vertex>> {
         self.read_ops.fetch_add(1, Ordering::Relaxed);
 
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-        let vertices_table = read_txn
-            .open_table(VERTICES)
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to open vertices table: {e}")))?;
+        let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
+        let vertices_table =
+            read_txn.open_table(VERTICES).storage_ctx("Failed to open vertices table")?;
 
         let key = Self::vertex_key(session_id, vertex_id);
-        let value = vertices_table
-            .get(key.as_slice())
-            .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+        let value = vertices_table.get(key.as_slice()).storage_ctx("Failed to get vertex")?;
 
         match value {
             Some(guard) => {
@@ -308,13 +269,9 @@ impl DagStore for RedbDagStore {
     ) -> Result<Vec<Option<Vertex>>> {
         self.read_ops.fetch_add(1, Ordering::Relaxed);
 
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-        let vertices_table = read_txn
-            .open_table(VERTICES)
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to open vertices table: {e}")))?;
+        let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
+        let vertices_table =
+            read_txn.open_table(VERTICES).storage_ctx("Failed to open vertices table")?;
 
         let results: Vec<Option<Vertex>> = vertex_ids
             .iter()
@@ -334,18 +291,14 @@ impl DagStore for RedbDagStore {
     async fn exists(&self, session_id: SessionId, vertex_id: VertexId) -> Result<bool> {
         self.read_ops.fetch_add(1, Ordering::Relaxed);
 
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-        let vertices_table = read_txn
-            .open_table(VERTICES)
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to open vertices table: {e}")))?;
+        let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
+        let vertices_table =
+            read_txn.open_table(VERTICES).storage_ctx("Failed to open vertices table")?;
 
         let key = Self::vertex_key(session_id, vertex_id);
         let exists = vertices_table
             .get(key.as_slice())
-            .map_err(|e| RhizoCryptError::storage(e.to_string()))?
+            .storage_ctx("Failed to check vertex existence")?
             .is_some();
 
         Ok(exists)
@@ -358,18 +311,12 @@ impl DagStore for RedbDagStore {
     ) -> Result<Vec<VertexId>> {
         self.read_ops.fetch_add(1, Ordering::Relaxed);
 
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-        let children_table = read_txn
-            .open_table(CHILDREN)
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to open children table: {e}")))?;
+        let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
+        let children_table =
+            read_txn.open_table(CHILDREN).storage_ctx("Failed to open children table")?;
 
         let key = Self::vertex_key(session_id, parent_id);
-        let value = children_table
-            .get(key.as_slice())
-            .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+        let value = children_table.get(key.as_slice()).storage_ctx("Failed to get children")?;
 
         let children =
             value.as_ref().map(|g| Self::parse_vertex_set(g.value())).unwrap_or_default();
@@ -379,18 +326,12 @@ impl DagStore for RedbDagStore {
     async fn get_genesis(&self, session_id: SessionId) -> Result<Vec<VertexId>> {
         self.read_ops.fetch_add(1, Ordering::Relaxed);
 
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-        let genesis_table = read_txn
-            .open_table(GENESIS)
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to open genesis table: {e}")))?;
+        let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
+        let genesis_table =
+            read_txn.open_table(GENESIS).storage_ctx("Failed to open genesis table")?;
 
         let key = Self::session_key(session_id);
-        let value = genesis_table
-            .get(key.as_slice())
-            .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+        let value = genesis_table.get(key.as_slice()).storage_ctx("Failed to get genesis")?;
 
         let genesis = value.as_ref().map(|g| Self::parse_vertex_set(g.value())).unwrap_or_default();
         Ok(genesis.into_iter().collect())
@@ -399,18 +340,12 @@ impl DagStore for RedbDagStore {
     async fn get_frontier(&self, session_id: SessionId) -> Result<Vec<VertexId>> {
         self.read_ops.fetch_add(1, Ordering::Relaxed);
 
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-        let frontiers_table = read_txn.open_table(FRONTIERS).map_err(|e| {
-            RhizoCryptError::storage(format!("Failed to open frontiers table: {e}"))
-        })?;
+        let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
+        let frontiers_table =
+            read_txn.open_table(FRONTIERS).storage_ctx("Failed to open frontiers table")?;
 
         let key = Self::session_key(session_id);
-        let value = frontiers_table
-            .get(key.as_slice())
-            .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+        let value = frontiers_table.get(key.as_slice()).storage_ctx("Failed to get frontier")?;
 
         let frontier =
             value.as_ref().map(|g| Self::parse_vertex_set(g.value())).unwrap_or_default();
@@ -420,18 +355,14 @@ impl DagStore for RedbDagStore {
     async fn count_vertices(&self, session_id: SessionId) -> Result<u64> {
         self.read_ops.fetch_add(1, Ordering::Relaxed);
 
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-        let vertices_table = read_txn
-            .open_table(VERTICES)
-            .map_err(|e| RhizoCryptError::storage(format!("Failed to open vertices table: {e}")))?;
+        let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
+        let vertices_table =
+            read_txn.open_table(VERTICES).storage_ctx("Failed to open vertices table")?;
 
         let (start, end) = Self::session_prefix_range(session_id);
         let range = vertices_table
             .range(start.as_slice()..end.as_slice())
-            .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+            .storage_ctx("Failed to range scan vertices")?;
 
         let count = range.count();
         Ok(u64::try_from(count).unwrap_or(u64::MAX))
@@ -445,91 +376,73 @@ impl DagStore for RedbDagStore {
 
         // Collect keys to delete (read phase) - avoid mutating while iterating
         let (vertices_keys, children_keys): (Vec<Vec<u8>>, Vec<Vec<u8>>) = {
-            let read_txn = self
-                .db
-                .begin_read()
-                .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-            let vertices_table = read_txn.open_table(VERTICES).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open vertices table: {e}"))
-            })?;
-            let children_table = read_txn.open_table(CHILDREN).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open children table: {e}"))
-            })?;
+            let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
+            let vertices_table =
+                read_txn.open_table(VERTICES).storage_ctx("Failed to open vertices table")?;
+            let children_table =
+                read_txn.open_table(CHILDREN).storage_ctx("Failed to open children table")?;
             let vertices_keys = vertices_table
                 .range(prefix_start.as_slice()..prefix_end.as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?
+                .storage_ctx("Failed to scan vertices")?
                 .map(|r| {
-                    r.map_err(|e| RhizoCryptError::storage(e.to_string()))
-                        .map(|(k, _)| k.value().to_vec())
+                    r.storage_ctx("Failed to read vertex key").map(|(k, _)| k.value().to_vec())
                 })
                 .collect::<Result<Vec<_>>>()?;
             let children_keys = children_table
                 .range(prefix_start.as_slice()..prefix_end.as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?
+                .storage_ctx("Failed to scan children")?
                 .map(|r| {
-                    r.map_err(|e| RhizoCryptError::storage(e.to_string()))
-                        .map(|(k, _)| k.value().to_vec())
+                    r.storage_ctx("Failed to read children key").map(|(k, _)| k.value().to_vec())
                 })
                 .collect::<Result<Vec<_>>>()?;
             (vertices_keys, children_keys)
         };
 
-        let write_txn = self.db.begin_write().map_err(|e| {
-            RhizoCryptError::storage(format!("Failed to begin write transaction: {e}"))
-        })?;
+        let write_txn = self.db.begin_write().storage_ctx("Failed to begin write transaction")?;
 
         {
-            let mut vertices_table = write_txn.open_table(VERTICES).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open vertices table: {e}"))
-            })?;
+            let mut vertices_table =
+                write_txn.open_table(VERTICES).storage_ctx("Failed to open vertices table")?;
             for key in vertices_keys {
-                vertices_table
-                    .remove(key.as_slice())
-                    .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+                vertices_table.remove(key.as_slice()).storage_ctx("Failed to remove vertex")?;
             }
         }
 
         {
-            let mut children_table = write_txn.open_table(CHILDREN).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open children table: {e}"))
-            })?;
+            let mut children_table =
+                write_txn.open_table(CHILDREN).storage_ctx("Failed to open children table")?;
             for key in children_keys {
                 children_table
                     .remove(key.as_slice())
-                    .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+                    .storage_ctx("Failed to remove children entry")?;
             }
         }
 
         {
-            let mut frontiers_table = write_txn.open_table(FRONTIERS).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open frontiers table: {e}"))
-            })?;
+            let mut frontiers_table =
+                write_txn.open_table(FRONTIERS).storage_ctx("Failed to open frontiers table")?;
             frontiers_table
                 .remove(session_key.as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+                .storage_ctx("Failed to remove frontiers entry")?;
         }
 
         {
-            let mut genesis_table = write_txn.open_table(GENESIS).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open genesis table: {e}"))
-            })?;
+            let mut genesis_table =
+                write_txn.open_table(GENESIS).storage_ctx("Failed to open genesis table")?;
             genesis_table
                 .remove(session_key.as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+                .storage_ctx("Failed to remove genesis entry")?;
         }
 
         {
-            let mut metadata_table = write_txn.open_table(METADATA).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open metadata table: {e}"))
-            })?;
+            let mut metadata_table =
+                write_txn.open_table(METADATA).storage_ctx("Failed to open metadata table")?;
             metadata_table
                 .remove(session_key.as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+                .storage_ctx("Failed to remove metadata entry")?;
         }
 
-        write_txn.commit().map_err(|e| {
-            RhizoCryptError::storage(format!("Failed to commit write transaction: {e}"))
-        })?;
+        write_txn.commit().storage_ctx("Failed to commit write transaction")?;
 
         Ok(())
     }
@@ -545,16 +458,12 @@ impl DagStore for RedbDagStore {
         let key = Self::session_key(session_id);
 
         let existing: Option<Vec<u8>> = {
-            let read_txn = self
-                .db
-                .begin_read()
-                .map_err(|e| RhizoCryptError::storage(format!("Failed to begin read: {e}")))?;
-            let frontiers_table = read_txn.open_table(FRONTIERS).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open frontiers table: {e}"))
-            })?;
+            let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
+            let frontiers_table =
+                read_txn.open_table(FRONTIERS).storage_ctx("Failed to open frontiers table")?;
             frontiers_table
                 .get(key.as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?
+                .storage_ctx("Failed to get frontier")?
                 .map(|g| g.value().to_vec())
         };
 
@@ -564,20 +473,15 @@ impl DagStore for RedbDagStore {
         }
         frontier.insert(new_vertex);
 
-        let write_txn = self.db.begin_write().map_err(|e| {
-            RhizoCryptError::storage(format!("Failed to begin write transaction: {e}"))
-        })?;
+        let write_txn = self.db.begin_write().storage_ctx("Failed to begin write transaction")?;
         {
-            let mut frontiers_table = write_txn.open_table(FRONTIERS).map_err(|e| {
-                RhizoCryptError::storage(format!("Failed to open frontiers table: {e}"))
-            })?;
+            let mut frontiers_table =
+                write_txn.open_table(FRONTIERS).storage_ctx("Failed to open frontiers table")?;
             frontiers_table
                 .insert(key.as_slice(), Self::serialize_vertex_set(&frontier).as_slice())
-                .map_err(|e| RhizoCryptError::storage(e.to_string()))?;
+                .storage_ctx("Failed to update frontier")?;
         }
-        write_txn.commit().map_err(|e| {
-            RhizoCryptError::storage(format!("Failed to commit write transaction: {e}"))
-        })?;
+        write_txn.commit().storage_ctx("Failed to commit write transaction")?;
 
         Ok(())
     }
@@ -641,3 +545,8 @@ mod tests_query;
 #[expect(clippy::expect_used, reason = "test code")]
 #[path = "store_redb_tests_stats.rs"]
 mod tests_stats;
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
+#[path = "store_redb_tests_error_paths.rs"]
+mod tests_error_paths;

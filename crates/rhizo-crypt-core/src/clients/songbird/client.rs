@@ -475,3 +475,86 @@ mod tests_discovery;
 #[cfg_attr(feature = "live-clients", expect(clippy::unwrap_used, reason = "test code"))]
 #[path = "tests_tarpc.rs"]
 mod tests_tarpc;
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
+mod tests_coverage {
+    use super::{SongbirdClient, SongbirdConfig};
+    use crate::clients::songbird_types::ClientState;
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_register_scaffolded_when_connected() {
+        let config = SongbirdConfig::with_address("127.0.0.1:8091");
+        let client = SongbirdClient::new(config);
+        *client.state.write().await = ClientState::Connected;
+
+        #[cfg(not(feature = "live-clients"))]
+        {
+            let result = client.register("127.0.0.1:9400").await;
+            assert!(result.is_ok(), "scaffolded register should succeed: {result:?}");
+            let reg = result.unwrap();
+            assert!(reg.success);
+            assert!(reg.service_id.is_some());
+            assert!(reg.message.contains("pending"));
+            assert_eq!(client.state().await, ClientState::Registered);
+            assert!(client.service_id().await.is_some());
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_refresh_registration_no_endpoint() {
+        let config = SongbirdConfig::with_address("127.0.0.1:8091");
+        let client = SongbirdClient::new(config);
+        *client.state.write().await = ClientState::Registered;
+        *client.service_id.write().await = Some("test-id".to_string());
+
+        let result = client.refresh_registration().await;
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("endpoint"), "expected endpoint error: {err}");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_refresh_registration_with_endpoint_scaffolded() {
+        let config = SongbirdConfig::with_address("127.0.0.1:8091");
+        let client = SongbirdClient::new(config);
+        *client.state.write().await = ClientState::Connected;
+
+        #[cfg(not(feature = "live-clients"))]
+        {
+            let reg = client.register("127.0.0.1:9400").await.unwrap();
+            assert!(reg.success);
+
+            let refresh = client.refresh_registration().await;
+            assert!(refresh.is_ok(), "scaffolded refresh should succeed: {refresh:?}");
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_disconnect_when_connected_not_registered() {
+        let config = SongbirdConfig::with_address("127.0.0.1:8091");
+        let client = SongbirdClient::new(config);
+        *client.state.write().await = ClientState::Connected;
+        *client.resolved_endpoint.write().await = Some("127.0.0.1:8091".parse().unwrap());
+
+        client.disconnect().await;
+        assert_eq!(client.state().await, ClientState::Disconnected);
+        assert!(client.endpoint().await.is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_failed_state_not_connected() {
+        let config = SongbirdConfig::with_address("127.0.0.1:8091");
+        let client = SongbirdClient::new(config);
+        *client.state.write().await = ClientState::Failed;
+        assert!(!client.is_connected().await);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_connecting_state_not_connected() {
+        let config = SongbirdConfig::with_address("127.0.0.1:8091");
+        let client = SongbirdClient::new(config);
+        *client.state.write().await = ClientState::Connecting;
+        assert!(!client.is_connected().await);
+    }
+}

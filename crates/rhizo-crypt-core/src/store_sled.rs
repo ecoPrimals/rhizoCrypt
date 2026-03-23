@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Sled persistent storage backend.
+//! **DEPRECATED**: Sled persistent storage backend.
 //!
-//! This module provides a durable storage implementation using sled,
-//! a high-performance embedded database.
+//! **Use `RedbDagStore` instead.** This backend is retained for backward
+//! compatibility only and will be removed in a future release.
 //!
-//! ## ecoBin Compliance Note
+//! ## Deprecation Rationale
 //!
-//! Sled 0.34 transitively depends on `zstd-sys` (C compression library),
-//! which does not meet the Pure Rust requirement of the ecoBin standard.
-//! This backend is behind an optional `sled` feature flag. A migration to
-//! a Pure Rust alternative (e.g., `redb`) is planned once the API stabilizes.
+//! 1. **ecoBin non-compliant** — Sled 0.34 depends on `zstd-sys` (C library).
+//! 2. **Unmaintained upstream** — No sled release since 2021; sled 1.0 is
+//!    a complete rewrite with no migration path.
+//! 3. **Superseded** — `RedbDagStore` provides the same API with ACID
+//!    transactions, MVCC, and 100% Pure Rust (ecoBin v3.0 compliant).
 //!
 //! ## Features
 //!
@@ -69,10 +70,15 @@ const TREE_FRONTIERS: &str = "frontiers";
 const TREE_GENESIS: &str = "genesis";
 const TREE_METADATA: &str = "metadata";
 
-/// Sled-backed DAG store (100% Pure Rust).
+/// Sled-backed DAG store.
 ///
-/// Provides persistent storage for vertices with tree separation
-/// for different data types.
+/// **Deprecated**: Use [`crate::RedbDagStore`] instead. Sled depends on
+/// `zstd-sys` (C), violating the ecoBin Pure Rust requirement, and has
+/// not been released since 2021.
+#[deprecated(
+    since = "0.5.0",
+    note = "Use RedbDagStore instead — sled depends on C libraries and is unmaintained"
+)]
 #[derive(Clone)]
 pub struct SledDagStore {
     /// Sled database instance.
@@ -95,6 +101,7 @@ pub struct SledDagStore {
     write_ops: Arc<AtomicU64>,
 }
 
+#[expect(deprecated, reason = "impl for deprecated SledDagStore; retained until removal")]
 impl SledDagStore {
     /// Open or create a sled store at the given path.
     ///
@@ -227,6 +234,7 @@ impl SledDagStore {
     }
 }
 
+#[expect(deprecated, reason = "impl for deprecated SledDagStore; retained until removal")]
 impl DagStore for SledDagStore {
     async fn put_vertex(&self, session_id: SessionId, mut vertex: Vertex) -> Result<()> {
         self.write_ops.fetch_add(1, Ordering::Relaxed);
@@ -539,6 +547,7 @@ impl DagStore for SledDagStore {
     }
 }
 
+#[expect(deprecated, reason = "impl for deprecated SledDagStore; retained until removal")]
 impl std::fmt::Debug for SledDagStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SledDagStore")
@@ -550,11 +559,13 @@ impl std::fmt::Debug for SledDagStore {
 }
 
 #[cfg(test)]
+#[expect(deprecated, reason = "tests for deprecated SledDagStore; retained until removal")]
 #[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "store_sled_tests.rs"]
 mod tests;
 
 #[cfg(test)]
+#[expect(deprecated, reason = "tests for deprecated SledDagStore; retained until removal")]
 #[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "store_sled_tests_advanced.rs"]
 mod tests_advanced;

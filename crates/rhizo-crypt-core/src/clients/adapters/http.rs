@@ -188,4 +188,49 @@ mod tests {
         let url = adapter.build_url("sign");
         assert_eq!(url, "http://localhost:9500/api/v1/sign");
     }
+
+    #[test]
+    fn test_http_adapter_debug() {
+        let adapter = HttpAdapter::new("http://localhost:9500").unwrap();
+        let debug_str = format!("{adapter:?}");
+        assert!(debug_str.contains("HttpAdapter"));
+        assert!(debug_str.contains("http://localhost:9500"));
+        assert!(debug_str.contains("http"));
+    }
+
+    #[test]
+    fn test_http_adapter_clone() {
+        let adapter = HttpAdapter::new("http://localhost:9500").unwrap();
+        let cloned = adapter.clone();
+        assert_eq!(cloned.endpoint(), adapter.endpoint());
+        assert_eq!(cloned.protocol(), adapter.protocol());
+    }
+
+    #[test]
+    fn test_build_url_nested_method() {
+        let adapter = HttpAdapter::new("http://localhost:9500").unwrap();
+        let url = adapter.build_url("dag/session/create");
+        assert!(url.contains("/api/v1/dag/session/create"));
+    }
+
+    #[tokio::test]
+    async fn test_is_healthy_unreachable() {
+        let adapter = HttpAdapter::new("http://127.0.0.1:1").unwrap();
+        assert!(!adapter.is_healthy().await);
+    }
+
+    #[tokio::test]
+    async fn test_call_json_unreachable() {
+        let adapter = HttpAdapter::new("http://127.0.0.1:1").unwrap();
+        let result = adapter.call_json("test", "{}").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("HTTP"));
+    }
+
+    #[tokio::test]
+    async fn test_call_oneway_json_unreachable() {
+        let adapter = HttpAdapter::new("http://127.0.0.1:1").unwrap();
+        let result = adapter.call_oneway_json("test", "{}").await;
+        assert!(result.is_err());
+    }
 }

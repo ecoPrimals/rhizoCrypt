@@ -465,4 +465,59 @@ mod tests {
         let adapter = result.unwrap();
         assert_eq!(adapter.protocol(), "tarpc");
     }
+
+    #[tokio::test]
+    async fn test_call_oneway_json_feature_gated() {
+        let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
+        let result = adapter.call_oneway_json("test_method", "{}").await;
+        #[cfg(not(feature = "live-clients"))]
+        {
+            assert!(result.is_err());
+            let err = result.unwrap_err().to_string();
+            assert!(err.contains("live-clients"), "expected feature-gate error: {err}");
+        }
+        #[cfg(feature = "live-clients")]
+        {
+            let _ = result;
+        }
+    }
+
+    #[test]
+    fn test_debug_format() {
+        let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
+        let debug_str = format!("{adapter:?}");
+        assert!(debug_str.contains("TarpcAdapter"));
+        assert!(debug_str.contains("127.0.0.1:7777"));
+    }
+
+    #[test]
+    fn test_endpoint_accessor() {
+        let adapter = TarpcAdapter::new("127.0.0.1:9876").unwrap();
+        assert_eq!(adapter.endpoint(), "127.0.0.1:9876");
+    }
+
+    #[test]
+    fn test_new_strips_tarpc_protocol() {
+        let adapter = TarpcAdapter::new("tarpc://10.0.0.1:5555").unwrap();
+        assert_eq!(adapter.endpoint(), "10.0.0.1:5555");
+        assert_eq!(adapter.addr, "10.0.0.1:5555".parse::<SocketAddr>().unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_ensure_connected_idempotent() {
+        let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
+        #[cfg(not(feature = "live-clients"))]
+        {
+            adapter.ensure_connected().await.unwrap();
+            assert!(adapter.connection.read().await.is_some());
+            adapter.ensure_connected().await.unwrap();
+            assert!(adapter.connection.read().await.is_some());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_connect_unresolvable_address() {
+        let result = TarpcAdapter::connect("this.host.does.not.exist.invalid:9999").await;
+        assert!(result.is_err());
+    }
 }

@@ -5,9 +5,9 @@
 | Metric | Value |
 |--------|-------|
 | Version | 0.13.0-dev |
-| License | AGPL-3.0-or-later |
-| Tests | 1,348 passing (`--all-features`) |
-| Coverage | 92.96% region / 94.05% line (`--fail-under-lines 90` CI gate) |
+| License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
+| Tests | 1,356 passing (`--all-features`) |
+| Coverage | 93.91% region / 94.95% line (`--fail-under-lines 90` CI gate) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
 | Unsafe | `unsafe_code = "deny"` workspace-wide, zero `unsafe` in tests (temp-env) |
@@ -22,7 +22,7 @@
 | Storage | redb (Pure Rust, default) / sled (optional, deprecated) |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps |
 | Audit | `cargo-deny` enforced (16-crate ecoBin ban list, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 129 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 125 `.rs` files |
 | Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps, domains) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `capability_registry.toml` (23 methods, 7 domains, `capabilities.list` canonical) |
@@ -143,7 +143,7 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 | Universal IPC v3 | Compliant | JSON-RPC 2.0 + tarpc, semantic method names |
 | Semantic Naming | Compliant | Native (`commit.*`) + compat (`permanent-storage.*`) with negotiation |
 | `unsafe_code = "deny"` | Compliant | Workspace-wide, `forbid` in non-test builds |
-| AGPL-3.0-or-later | Compliant | SPDX headers on all 129 source files |
+| scyBorg Triple-Copyleft | Compliant | AGPL-3.0+ (software), ORC (mechanics), CC-BY-SA 4.0 (docs) |
 
 ---
 
@@ -162,4 +162,5 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 
 ## License
 
-AGPL-3.0-or-later. See [LICENSE](LICENSE).
+scyBorg Triple-Copyleft: AGPL-3.0-or-later (software), ORC (game mechanics),
+CC-BY-SA 4.0 (creative content/documentation). See [LICENSE](LICENSE).
