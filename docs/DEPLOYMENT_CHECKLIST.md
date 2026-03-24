@@ -1,7 +1,7 @@
-# DEPLOYMENT CHECKLIST — rhizoCrypt v0.13.0-dev
+# DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.0-dev
 
-**Date**: March 23, 2026
-**Version**: 0.13.0-dev
+**Date**: March 24, 2026
+**Version**: 0.14.0-dev
 **Status**: PRODUCTION READY
 
 ---
@@ -9,13 +9,13 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,412 tests passing** (all features), 0 failures
+- [x] **1,387 tests passing** (all features), 0 failures
 - [x] **`--fail-under-lines 90` CI gate** enforced
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all files under 1000 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 128 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 125 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
@@ -27,11 +27,10 @@
 
 ### Storage Backends
 - [x] **redb** (default) — 100% Pure Rust, ACID, MVCC, ecoBin compliant
-- [x] **sled** (optional `--features sled`) — deprecated, being phased out
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,412 tests)
+- [x] **README.md** (current metrics — 1,387 tests)
 - [x] **CHANGELOG.md** (version history through session 19)
 - [x] **showcase/** (70+ comprehensive demos)
 - [x] **specs/** (9 complete + 1 experimental specification documents)
@@ -70,14 +69,14 @@ export RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500  # Optional: for registr
 
 ```bash
 # Build Docker image
-docker build -t rhizocrypt:0.13.0 .
+docker build -t rhizocrypt:0.14.0 .
 
 # Run container
 docker run -d \
   --name rhizocrypt \
   -p 9400:9400 \
   -e RHIZOCRYPT_ENV=production \
-  rhizocrypt:0.13.0
+  rhizocrypt:0.14.0
 
 # Health check via rhizocrypt status subcommand
 docker exec rhizocrypt /app/rhizocrypt status
@@ -88,7 +87,7 @@ docker exec rhizocrypt /app/rhizocrypt status
 version: '3.8'
 services:
   rhizocrypt:
-    image: rhizocrypt:0.13.0
+    image: rhizocrypt:0.14.0
     ports:
       - "9400:9400"
     environment:
@@ -122,7 +121,7 @@ spec:
     spec:
       containers:
         - name: rhizocrypt
-          image: rhizocrypt:0.13.0
+          image: rhizocrypt:0.14.0
           ports:
             - containerPort: 9400
           env:
@@ -249,4 +248,4 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 
 **Created**: December 27, 2025
 **Last Updated**: March 23, 2026
-**Version**: rhizoCrypt 0.13.0-dev
+**Version**: rhizoCrypt 0.14.0-dev

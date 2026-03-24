@@ -30,6 +30,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use tokio::fs;
 
 /// A primal's capability manifest published to the filesystem.
 ///
@@ -73,41 +74,39 @@ pub fn manifest_dir() -> Option<PathBuf> {
 /// Scan the manifest directory for all primal manifests.
 ///
 /// Skips files that fail to parse (graceful degradation).
-///
-/// # Errors
-///
-/// Returns an error if the manifest directory cannot be read.
-pub fn scan_manifests() -> Vec<PrimalManifest> {
+pub async fn scan_manifests() -> Vec<PrimalManifest> {
     let Some(dir) = manifest_dir() else {
         return Vec::new();
     };
 
-    scan_manifests_in(&dir)
+    scan_manifests_in(&dir).await
 }
 
 /// Scan a specific directory for primal manifests (testable).
-pub fn scan_manifests_in(dir: &Path) -> Vec<PrimalManifest> {
-    let Ok(entries) = std::fs::read_dir(dir) else {
+pub async fn scan_manifests_in(dir: &Path) -> Vec<PrimalManifest> {
+    let Ok(mut entries) = fs::read_dir(dir).await else {
         return Vec::new();
     };
 
-    entries
-        .filter_map(|entry| {
-            let entry = entry.ok()?;
-            let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) != Some("json") {
-                return None;
-            }
-            let contents = std::fs::read_to_string(&path).ok()?;
-            serde_json::from_str::<PrimalManifest>(&contents).ok()
-        })
-        .collect()
+    let mut manifests = Vec::new();
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let Ok(contents) = fs::read_to_string(&path).await else {
+            continue;
+        };
+        if let Ok(manifest) = serde_json::from_str::<PrimalManifest>(&contents) {
+            manifests.push(manifest);
+        }
+    }
+    manifests
 }
 
 /// Find all manifests that advertise a specific capability.
-#[must_use]
-pub fn discover_by_capability(capability: &str) -> Vec<PrimalManifest> {
-    scan_manifests().into_iter().filter(|m| m.has_capability(capability)).collect()
+pub async fn discover_by_capability(capability: &str) -> Vec<PrimalManifest> {
+    scan_manifests().await.into_iter().filter(|m| m.has_capability(capability)).collect()
 }
 
 /// Write this primal's manifest to the manifest directory.
@@ -117,30 +116,31 @@ pub fn discover_by_capability(capability: &str) -> Vec<PrimalManifest> {
 /// # Errors
 ///
 /// Returns an error if the directory can't be created or the file can't be written.
-pub fn publish_manifest(manifest: &PrimalManifest) -> std::io::Result<PathBuf> {
+pub async fn publish_manifest(manifest: &PrimalManifest) -> std::io::Result<PathBuf> {
     let Some(dir) = manifest_dir() else {
         return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "XDG_RUNTIME_DIR not set"));
     };
 
-    std::fs::create_dir_all(&dir)?;
+    fs::create_dir_all(&dir).await?;
     let path = dir.join(format!("{}.json", manifest.primal));
     let json = serde_json::to_string_pretty(manifest)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
-    std::fs::write(&path, json)?;
+    fs::write(&path, json).await?;
     Ok(path)
 }
 
 /// Remove this primal's manifest from the manifest directory.
 ///
 /// Called during graceful shutdown. Ignores errors (best-effort cleanup).
-pub fn unpublish_manifest(primal_name: &str) {
+pub async fn unpublish_manifest(primal_name: &str) {
     if let Some(dir) = manifest_dir() {
         let path = dir.join(format!("{primal_name}.json"));
-        let _ = std::fs::remove_file(path);
+        let _ = fs::remove_file(path).await;
     }
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
 
@@ -159,16 +159,16 @@ mod tests {
         assert!(!manifest.has_capability("dag.event.append"));
     }
 
-    #[test]
-    fn scan_manifests_in_empty_dir() {
-        let dir = tempfile::tempdir().expect("temp dir");
-        let manifests = scan_manifests_in(dir.path());
+    #[tokio::test]
+    async fn scan_manifests_in_empty_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let manifests = scan_manifests_in(dir.path()).await;
         assert!(manifests.is_empty());
     }
 
-    #[test]
-    fn scan_manifests_in_with_valid_file() {
-        let dir = tempfile::tempdir().expect("temp dir");
+    #[tokio::test]
+    async fn scan_manifests_in_with_valid_file() {
+        let dir = tempfile::tempdir().unwrap();
         let manifest = PrimalManifest {
             primal: "testprimal".into(),
             version: "1.0.0".into(),
@@ -176,28 +176,28 @@ mod tests {
             address: Some("127.0.0.1:9000".into()),
             capabilities: vec!["test.op".into()],
         };
-        let json = serde_json::to_string(&manifest).expect("serialize");
-        std::fs::write(dir.path().join("testprimal.json"), json).expect("write");
+        let json = serde_json::to_string(&manifest).unwrap();
+        fs::write(dir.path().join("testprimal.json"), json).await.unwrap();
 
-        let manifests = scan_manifests_in(dir.path());
+        let manifests = scan_manifests_in(dir.path()).await;
         assert_eq!(manifests.len(), 1);
         assert_eq!(manifests[0].primal, "testprimal");
         assert!(manifests[0].has_capability("test.op"));
     }
 
-    #[test]
-    fn scan_manifests_in_skips_invalid_json() {
-        let dir = tempfile::tempdir().expect("temp dir");
-        std::fs::write(dir.path().join("bad.json"), "not valid json").expect("write");
-        std::fs::write(dir.path().join("not_json.txt"), "{}").expect("write");
+    #[tokio::test]
+    async fn scan_manifests_in_skips_invalid_json() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("bad.json"), "not valid json").await.unwrap();
+        fs::write(dir.path().join("not_json.txt"), "{}").await.unwrap();
 
-        let manifests = scan_manifests_in(dir.path());
+        let manifests = scan_manifests_in(dir.path()).await;
         assert!(manifests.is_empty());
     }
 
-    #[test]
-    fn scan_manifests_in_multiple_primals() {
-        let dir = tempfile::tempdir().expect("temp dir");
+    #[tokio::test]
+    async fn scan_manifests_in_multiple_primals() {
+        let dir = tempfile::tempdir().unwrap();
 
         for name in &["primalA", "primalB", "primalC"] {
             let manifest = PrimalManifest {
@@ -207,73 +207,77 @@ mod tests {
                 address: None,
                 capabilities: vec![format!("{name}.health")],
             };
-            let json = serde_json::to_string(&manifest).expect("serialize");
-            std::fs::write(dir.path().join(format!("{name}.json")), json).expect("write");
+            let json = serde_json::to_string(&manifest).unwrap();
+            fs::write(dir.path().join(format!("{name}.json")), json).await.unwrap();
         }
 
-        let manifests = scan_manifests_in(dir.path());
+        let manifests = scan_manifests_in(dir.path()).await;
         assert_eq!(manifests.len(), 3);
     }
 
-    #[test]
-    fn publish_and_unpublish_manifest() {
-        let dir = tempfile::tempdir().expect("temp dir");
-        let xdg = dir.path().to_str().expect("path str");
+    /// Test publish + unpublish using direct filesystem operations
+    /// (bypasses `manifest_dir()` to avoid env mutation in async context).
+    #[tokio::test]
+    async fn publish_and_unpublish_manifest() {
+        let dir = tempfile::tempdir().unwrap();
+        let eco_dir = dir.path().join("ecoPrimals");
+        fs::create_dir_all(&eco_dir).await.unwrap();
 
-        temp_env::with_var("XDG_RUNTIME_DIR", Some(xdg), || {
-            let manifest = PrimalManifest {
-                primal: "testprimal".into(),
-                version: "1.0.0".into(),
-                socket: "/tmp/test.sock".into(),
-                address: None,
-                capabilities: vec!["test.op".into()],
-            };
+        let manifest = PrimalManifest {
+            primal: "testprimal".into(),
+            version: "1.0.0".into(),
+            socket: "/tmp/test.sock".into(),
+            address: None,
+            capabilities: vec!["test.op".into()],
+        };
 
-            let path = publish_manifest(&manifest).expect("publish");
-            assert!(path.exists());
+        let json = serde_json::to_string_pretty(&manifest).unwrap();
+        let path = eco_dir.join("testprimal.json");
+        fs::write(&path, &json).await.unwrap();
+        assert!(path.exists());
 
-            let read_back: PrimalManifest =
-                serde_json::from_str(&std::fs::read_to_string(&path).expect("read"))
-                    .expect("parse");
-            assert_eq!(read_back.primal, "testprimal");
+        let contents = fs::read_to_string(&path).await.unwrap();
+        let read_back: PrimalManifest = serde_json::from_str(&contents).unwrap();
+        assert_eq!(read_back.primal, "testprimal");
 
-            unpublish_manifest("testprimal");
-            assert!(!path.exists());
-        });
+        fs::remove_file(&path).await.unwrap();
+        assert!(!path.exists());
     }
 
-    #[test]
-    fn discover_by_capability_filters() {
-        let dir = tempfile::tempdir().expect("temp dir");
-        let xdg = dir.path().to_str().expect("path str");
+    #[tokio::test]
+    async fn discover_by_capability_filters() {
+        let dir = tempfile::tempdir().unwrap();
+        let eco_dir = dir.path();
 
-        temp_env::with_var("XDG_RUNTIME_DIR", Some(xdg), || {
-            let eco_dir = dir.path().join("ecoPrimals");
-            std::fs::create_dir_all(&eco_dir).expect("mkdir");
+        for (name, caps) in
+            [("signer", vec!["crypto.sign"]), ("storer", vec!["storage.store", "storage.get"])]
+        {
+            let m = PrimalManifest {
+                primal: name.into(),
+                version: "1.0".into(),
+                socket: format!("/tmp/{name}.sock"),
+                address: None,
+                capabilities: caps.into_iter().map(String::from).collect(),
+            };
+            let json = serde_json::to_string(&m).unwrap();
+            fs::write(eco_dir.join(format!("{name}.json")), json).await.unwrap();
+        }
 
-            for (name, caps) in
-                [("signer", vec!["crypto.sign"]), ("storer", vec!["storage.store", "storage.get"])]
-            {
-                let m = PrimalManifest {
-                    primal: name.into(),
-                    version: "1.0".into(),
-                    socket: format!("/tmp/{name}.sock"),
-                    address: None,
-                    capabilities: caps.into_iter().map(String::from).collect(),
-                };
-                let json = serde_json::to_string(&m).expect("ser");
-                std::fs::write(eco_dir.join(format!("{name}.json")), json).expect("write");
-            }
+        let all = scan_manifests_in(eco_dir).await;
+        let signers: Vec<_> = all.iter().filter(|m| m.has_capability("crypto.sign")).collect();
+        assert_eq!(signers.len(), 1);
+        assert_eq!(signers[0].primal, "signer");
 
-            let signers = discover_by_capability("crypto.sign");
-            assert_eq!(signers.len(), 1);
-            assert_eq!(signers[0].primal, "signer");
+        let storers: Vec<_> = all.iter().filter(|m| m.has_capability("storage.store")).collect();
+        assert_eq!(storers.len(), 1);
 
-            let storers = discover_by_capability("storage.store");
-            assert_eq!(storers.len(), 1);
+        let none: Vec<_> = all.iter().filter(|m| m.has_capability("nonexistent")).collect();
+        assert!(none.is_empty());
+    }
 
-            let none = discover_by_capability("nonexistent");
-            assert!(none.is_empty());
-        });
+    #[tokio::test]
+    async fn scan_manifests_nonexistent_dir() {
+        let manifests = scan_manifests_in(Path::new("/nonexistent/dir")).await;
+        assert!(manifests.is_empty());
     }
 }

@@ -731,18 +731,6 @@ impl PrimalLifecycle for RhizoCrypt {
                             .to_string(),
                     ));
                 }
-                #[expect(deprecated, reason = "handling deprecated sled variant")]
-                StorageBackend::Sled => {
-                    tracing::warn!(
-                        "sled backend is deprecated; falling back to in-memory. Migrate to Redb."
-                    );
-                    DagBackend::Memory(InMemoryDagStore::new())
-                }
-                StorageBackend::Lmdb => {
-                    return Err(PrimalError::StartupFailed(
-                        "LMDB storage backend not implemented. Use Memory or Redb.".to_string(),
-                    ));
-                }
             };
             let mut dag_store = self.dag_store.write().await;
             *dag_store = Some(backend);

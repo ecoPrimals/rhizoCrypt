@@ -14,22 +14,17 @@ RhizoCrypt uses a pluggable storage architecture with Pure Rust backends:
 |---------|----------|------------|-------------|
 | **In-Memory** | Short sessions, testing (default for tests) | None | Fastest |
 | **redb** | General purpose, production (default) | Full | Fast |
-| **sled** | Alternative persistent backend (optional feature) | Full | Fast |
 
-All backends implement the same `DagStore` trait interface, allowing seamless swapping.
+All backends implement the `DagStore` trait and are dispatched at runtime via the `DagBackend` enum.
 
 ### 1.1 Design Rationale: Pure Rust Backends
 
-RhizoCrypt targets **ecoBin compliance** — zero C dependencies. RocksDB and LMDB were originally planned as persistent backends but were never implemented because they require C/C++ bindings, which violate ecoBin. The implementation instead uses:
+RhizoCrypt targets **ecoBin compliance** — zero C dependencies. RocksDB and LMDB were considered in early design phases but never implemented because they require C/C++ bindings.
 
-- **redb** — 100% Pure Rust embedded key-value store (default persistent backend)
-- **sled** — Pure Rust embedded database (optional, feature-gated)
+- **redb** — 100% Pure Rust embedded key-value store (default persistent backend, ACID, MVCC)
+- **In-Memory** — Ephemeral storage for testing and short-lived sessions
 
-Both provide ACID semantics, concurrent access, and persistence without external C dependencies.
-
-### 1.2 Evolution Note
-
-RocksDB and LMDB were considered in early design phases for their maturity and performance. They were replaced with redb and sled to achieve ecoBin compliance while retaining persistent storage capabilities.
+The `DagStore` trait uses RPITIT (non-object-safe), so runtime dispatch uses the `DagBackend` enum rather than trait objects.
 
 ---
 
@@ -590,156 +585,54 @@ impl DagStore for RedbDagStore {
 
 ---
 
-## 5. sled Backend (Optional)
+## 5. Backend Selection
 
-Alternative persistent backend. **Feature-gated** — only compiled when `sled` feature is enabled. Implementation: `crates/rhizo-crypt-core/src/store_sled.rs` (`SledDagStore`).
-
-**Note:** Sled 0.34 transitively depends on `zstd-sys` (C compression library), which may not meet the Pure Rust requirement of ecoBin. Use the `redb` backend for strict ecoBin compliance.
-
-### 5.1 Features
-
-- Tree namespaces: `vertices`, `children`, `frontiers`, `genesis`, `metadata`
-- Atomic batch writes
-- Lock-free concurrent access
-
-### 5.2 Implementation Sketch
+### 5.1 Configuration
 
 ```rust
-use sled::{Batch, Db, Tree};
-
-const TREE_VERTICES: &str = "vertices";
-const TREE_CHILDREN: &str = "children";
-const TREE_FRONTIERS: &str = "frontiers";
-const TREE_GENESIS: &str = "genesis";
-const TREE_METADATA: &str = "metadata";
-
-/// Sled-backed DAG store.
-#[derive(Clone)]
-pub struct SledDagStore {
-    db: Arc<Db>,
-    vertices: Tree,
-    children: Tree,
-    frontiers: Tree,
-    genesis: Tree,
-    metadata: Tree,
-    path: Arc<PathBuf>,
-}
-
-impl SledDagStore {
-    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        let db = sled::Config::new().path(path).open()?;
-        let vertices = db.open_tree(TREE_VERTICES)?;
-        let children = db.open_tree(TREE_CHILDREN)?;
-        // ... other trees
-        Ok(Self { db, vertices, children, frontiers, genesis, metadata, path })
-    }
-}
-
-impl DagStore for SledDagStore {
-    async fn put_vertex(&self, session_id: SessionId, vertex: Vertex) -> Result<()> {
-        let mut vertices_batch = Batch::default();
-        let mut children_batch = Batch::default();
-        // ... build batches
-        self.vertices.apply_batch(vertices_batch)?;
-        self.children.apply_batch(children_batch)?;
-        Ok(())
-    }
-    // ... other trait methods
-}
-```
-
----
-
-## 6. Backend Selection
-
-### 6.1 Configuration
-
-```rust
-/// Storage backend configuration
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct StorageConfig {
-    /// Backend type
-    pub backend: StorageBackendType,
-    
-    /// Path for persistent backends
-    pub path: Option<PathBuf>,
-    
-    /// Memory limit for in-memory backend
-    pub memory_limit: Option<usize>,
-    
-    /// redb-specific options (future)
-    pub redb: Option<RedbOptions>,
-    
-    /// sled-specific options (future)
-    pub sled: Option<SledOptions>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum StorageBackendType {
+pub enum StorageBackend {
     Memory,
     Redb,
-    Sled,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RedbOptions {
-    // Future: compression, cache size, etc.
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SledOptions {
-    pub cache_capacity: Option<u64>,
-    pub flush_every_ms: Option<u64>,
 }
 ```
 
-### 6.2 Factory
+### 5.2 Runtime Dispatch
+
+`DagStore` uses RPITIT (non-object-safe), so runtime dispatch uses `DagBackend` enum:
 
 ```rust
-/// Create storage backends from configuration
-pub fn create_dag_store(config: &StorageConfig) -> Result<Box<dyn DagStore>, StorageError> {
-    match config.backend {
-        StorageBackendType::Memory => {
-            Ok(Box::new(InMemoryDagStore::new()))
-        }
-        StorageBackendType::Redb => {
-            let path = config.path.as_ref()
-                .ok_or_else(|| StorageError::Backend("Path required for redb".into()))?;
-            Ok(Box::new(RedbDagStore::open(path)?))
-        }
-        StorageBackendType::Sled => {
-            let path = config.path.as_ref()
-                .ok_or_else(|| StorageError::Backend("Path required for sled".into()))?;
-            Ok(Box::new(SledDagStore::open(path)?))
-        }
-    }
+pub enum DagBackend {
+    Memory(InMemoryDagStore),
+    Redb(RedbDagStore),
 }
 ```
 
----
-
-## 7. Performance Characteristics
-
-| Operation | Memory | redb | sled |
-|-----------|--------|------|------|
-| Put vertex | ~1µs | ~50–100µs | ~50–100µs |
-| Get vertex | ~100ns | ~10µs | ~10µs |
-| Get children | ~200ns | ~20µs | ~20µs |
-| Delete session | O(n) | O(n) | O(n) |
-| Memory usage | High | Medium | Medium |
-| Persistence | None | Full | Full |
-| Concurrent reads | Lock-free | MVCC (excellent) | Lock-free |
-| Concurrent writes | Sharded locks | Single writer | Single writer |
-| ecoBin compliant | Yes | Yes (100% Pure Rust) | Optional (zstd-sys) |
+`RhizoCrypt::start()` selects the backend based on `StorageConfig::backend`.
 
 ---
 
-## 8. References
+## 6. Performance Characteristics
+
+| Operation | Memory | redb |
+|-----------|--------|------|
+| Put vertex | ~1µs | ~50–100µs |
+| Get vertex | ~100ns | ~10µs |
+| Get children | ~200ns | ~20µs |
+| Delete session | O(n) | O(n) |
+| Memory usage | High | Medium |
+| Persistence | None | Full |
+| Concurrent reads | Lock-free | MVCC (excellent) |
+| Concurrent writes | Sharded locks | Single writer |
+| ecoBin compliant | Yes | Yes (100% Pure Rust) |
+
+---
+
+## 7. References
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — System architecture
 - [DATA_MODEL.md](./DATA_MODEL.md) — Data structures
 - [redb Documentation](https://docs.rs/redb/)
-- [sled Documentation](https://docs.rs/sled/)
 
 ---
 

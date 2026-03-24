@@ -11,7 +11,7 @@ keywords = ["dag", "rpc", "tarpc", "distributed", "ephemeral"]
 categories = ["network-programming", "asynchronous", "cryptography"]
 
 [dependencies]
-# Core library (default redb backend, sled optional)
+# Core library (default redb backend)
 rhizo-crypt-core = { path = "../rhizo-crypt-core", default-features = true }
 
 # Async

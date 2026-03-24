@@ -97,10 +97,10 @@ RhizoCrypt is the **ephemeral DAG engine** of the ecoPrimals ecosystem. It provi
 │                                │                                │
 │  ┌─────────────────────────────▼─────────────────────────────┐  │
 │  │                     Storage Layer                          │  │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐    │  │
-│  │  │  In-Memory  │  │    redb     │  │      sled       │    │  │
-│  │  │   Store     │  │   (default) │  │   (optional)    │    │  │
-│  │  └─────────────┘  └─────────────┘  └─────────────────┘    │  │
+│  │  ┌─────────────────┐  ┌─────────────────────────────┐    │  │
+│  │  │  In-Memory      │  │    redb (default, ACID)     │    │  │
+│  │  │  Store          │  │    100% Pure Rust           │    │  │
+│  │  └─────────────────┘  └─────────────────────────────┘    │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                                │                                │
 │  ┌─────────────────────────────▼─────────────────────────────┐  │
@@ -155,8 +155,7 @@ The heart of RhizoCrypt:
 #### Storage Layer
 Pluggable storage backends (Pure Rust, zero C dependencies):
 - **In-Memory**: Fast, ephemeral, for short sessions
-- **redb** (default): Embedded ACID storage, Pure Rust, no external dependencies
-- **sled** (optional): Lock-free concurrent B-tree, Pure Rust
+- **redb** (default): Embedded ACID storage, MVCC, 100% Pure Rust
 
 #### Dehydration Engine
 Commits DAG results to LoamSpine:
@@ -305,7 +304,6 @@ rhizoCrypt/
 │   │   │   ├── dehydration.rs    # DAG → LoamSpine commit protocol
 │   │   │   ├── store.rs          # DagStore trait + in-memory impl
 │   │   │   ├── store_redb.rs     # redb storage backend (default)
-│   │   │   ├── store_sled.rs     # sled storage backend (optional)
 │   │   │   ├── types.rs          # Shared types (Signature, Bytes)
 │   │   │   ├── metrics.rs        # Internal metrics tracking
 │   │   │   ├── niche.rs          # Self-knowledge (identity, capabilities)

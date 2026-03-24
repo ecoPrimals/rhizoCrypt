@@ -4,13 +4,13 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 0.13.0-dev |
+| Version | 0.14.0-dev |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,412 passing (`--all-features`) |
+| Tests | 1,387 passing (`--all-features`) |
 | Coverage | CI gate: `--fail-under-lines 90` |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
-| Unsafe | `unsafe_code = "deny"` workspace-wide, `#![forbid(unsafe_code)]` in non-test, zero `unsafe` in tests (temp-env) |
+| Unsafe | `unsafe_code = "deny"` workspace-wide, `#![forbid(unsafe_code)]` in non-test, zero `unsafe` blocks |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
 | IPC | JSON-RPC 2.0 (HTTP) + tarpc 0.37 (bincode) — dual-transport first |
 | Streaming | NDJSON pipeline coordination for `event.append_batch` |
@@ -19,10 +19,10 @@
 | Discovery | Capability-based + manifest-based (`$XDG_RUNTIME_DIR/ecoPrimals/*.json`) |
 | Chaos | `ChaosEngine` framework with 7 fault classes |
 | Transport | Platform-agnostic (Unix socket / TCP / abstract socket) |
-| Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory / sled (deprecated) |
+| Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps |
 | Audit | `cargo-deny` enforced (16-crate ecoBin ban list, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 128 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 125 `.rs` files |
 | Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `capability_registry.toml` (27 methods, 8 domains incl. `tools.*` MCP) |

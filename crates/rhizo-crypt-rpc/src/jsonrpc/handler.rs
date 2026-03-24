@@ -213,7 +213,12 @@ async fn dispatch_session_create(
         max_vertices,
         ttl_seconds,
     };
-    let id = server.clone().create_session(tarpc::context::current(), req).await?;
+    let id = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .create_session(tarpc::context::current(), req)
+    .await?;
     Ok(session_id_to_value(id))
 }
 
@@ -223,12 +228,22 @@ async fn dispatch_session_get(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let info = server.clone().get_session(tarpc::context::current(), session_id).await?;
+    let info = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .get_session(tarpc::context::current(), session_id)
+    .await?;
     to_json(&info)
 }
 
 async fn dispatch_session_list(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
-    let list = server.clone().list_sessions(tarpc::context::current()).await?;
+    let list = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .list_sessions(tarpc::context::current())
+    .await?;
     to_json(&list)
 }
 
@@ -238,7 +253,12 @@ async fn dispatch_session_discard(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    server.clone().discard_session(tarpc::context::current(), session_id).await?;
+    RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .discard_session(tarpc::context::current(), session_id)
+    .await?;
     Ok(Value::Null)
 }
 
@@ -262,7 +282,12 @@ async fn dispatch_event_append(
         metadata,
         payload_ref,
     };
-    let id = server.clone().append_event(tarpc::context::current(), req).await?;
+    let id = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .append_event(tarpc::context::current(), req)
+    .await?;
     Ok(vertex_id_to_value(id))
 }
 
@@ -295,7 +320,12 @@ async fn dispatch_event_append_batch(
             payload_ref,
         });
     }
-    let ids = server.clone().append_batch(tarpc::context::current(), requests).await?;
+    let ids = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .append_batch(tarpc::context::current(), requests)
+    .await?;
     vertex_ids_to_value(&ids)
 }
 
@@ -306,8 +336,12 @@ async fn dispatch_vertex_get(
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let vertex_id = parse_vertex_id(get_str(obj, "vertex_id")?)?;
-    let vertex =
-        server.clone().get_vertex(tarpc::context::current(), session_id, vertex_id).await?;
+    let vertex = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .get_vertex(tarpc::context::current(), session_id, vertex_id)
+    .await?;
     to_json(&vertex)
 }
 
@@ -317,7 +351,12 @@ async fn dispatch_frontier_get(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let frontier = server.clone().get_frontier(tarpc::context::current(), session_id).await?;
+    let frontier = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .get_frontier(tarpc::context::current(), session_id)
+    .await?;
     vertex_ids_to_value(&frontier)
 }
 
@@ -327,7 +366,12 @@ async fn dispatch_genesis_get(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let genesis = server.clone().get_genesis(tarpc::context::current(), session_id).await?;
+    let genesis = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .get_genesis(tarpc::context::current(), session_id)
+    .await?;
     vertex_ids_to_value(&genesis)
 }
 
@@ -351,7 +395,12 @@ async fn dispatch_vertex_query(
         end_time,
         limit,
     };
-    let vertices = server.clone().query_vertices(tarpc::context::current(), req).await?;
+    let vertices = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .query_vertices(tarpc::context::current(), req)
+    .await?;
     to_json(&vertices)
 }
 
@@ -362,8 +411,12 @@ async fn dispatch_vertex_children(
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let vertex_id = parse_vertex_id(get_str(obj, "vertex_id")?)?;
-    let children =
-        server.clone().get_children(tarpc::context::current(), session_id, vertex_id).await?;
+    let children = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .get_children(tarpc::context::current(), session_id, vertex_id)
+    .await?;
     vertex_ids_to_value(&children)
 }
 
@@ -373,7 +426,12 @@ async fn dispatch_merkle_root(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let root = server.clone().get_merkle_root(tarpc::context::current(), session_id).await?;
+    let root = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .get_merkle_root(tarpc::context::current(), session_id)
+    .await?;
     Ok(json!(hex::encode(root.0)))
 }
 
@@ -384,8 +442,12 @@ async fn dispatch_merkle_proof(
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
     let vertex_id = parse_vertex_id(get_str(obj, "vertex_id")?)?;
-    let proof =
-        server.clone().get_merkle_proof(tarpc::context::current(), session_id, vertex_id).await?;
+    let proof = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .get_merkle_proof(tarpc::context::current(), session_id, vertex_id)
+    .await?;
     to_json(&proof)
 }
 
@@ -404,7 +466,12 @@ async fn dispatch_merkle_verify(
     root_arr.copy_from_slice(&root_bytes);
     let root = MerkleRoot(root_arr);
     let proof = get_deserialized(obj, "proof")?;
-    let ok = server.clone().verify_proof(tarpc::context::current(), root, proof).await?;
+    let ok = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .verify_proof(tarpc::context::current(), root, proof)
+    .await?;
     Ok(json!(ok))
 }
 
@@ -441,7 +508,12 @@ async fn dispatch_slice_checkout(
         certificate_id,
         duration_seconds,
     };
-    let id = server.clone().checkout_slice(tarpc::context::current(), req).await?;
+    let id = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .checkout_slice(tarpc::context::current(), req)
+    .await?;
     Ok(slice_id_to_value(id))
 }
 
@@ -451,12 +523,22 @@ async fn dispatch_slice_get(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let slice_id = parse_slice_id(get_str(obj, "slice_id")?)?;
-    let slice = server.clone().get_slice(tarpc::context::current(), slice_id).await?;
+    let slice = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .get_slice(tarpc::context::current(), slice_id)
+    .await?;
     to_json(&slice)
 }
 
 async fn dispatch_slice_list(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
-    let list = server.clone().list_slices(tarpc::context::current()).await?;
+    let list = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .list_slices(tarpc::context::current())
+    .await?;
     to_json(&list)
 }
 
@@ -467,7 +549,12 @@ async fn dispatch_slice_resolve(
     let obj = get_obj(&params)?;
     let slice_id = parse_slice_id(get_str(obj, "slice_id")?)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    server.clone().resolve_slice(tarpc::context::current(), slice_id, session_id).await?;
+    RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .resolve_slice(tarpc::context::current(), slice_id, session_id)
+    .await?;
     Ok(Value::Null)
 }
 
@@ -477,7 +564,12 @@ async fn dispatch_dehydrate(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let root = server.clone().dehydrate(tarpc::context::current(), session_id).await?;
+    let root = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .dehydrate(tarpc::context::current(), session_id)
+    .await?;
     Ok(json!(hex::encode(root.0)))
 }
 
@@ -487,28 +579,52 @@ async fn dispatch_dehydrate_status(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let status =
-        server.clone().get_dehydration_status(tarpc::context::current(), session_id).await?;
+    let status = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .get_dehydration_status(tarpc::context::current(), session_id)
+    .await?;
     to_json(&status)
 }
 
 async fn dispatch_health(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
-    let status = server.clone().health(tarpc::context::current()).await?;
+    let status = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .health(tarpc::context::current())
+    .await?;
     to_json(&status)
 }
 
 async fn dispatch_readiness(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
-    let status = server.clone().health(tarpc::context::current()).await?;
+    let status = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .health(tarpc::context::current())
+    .await?;
     Ok(rhizo_crypt_core::niche::health_readiness(status.healthy))
 }
 
 async fn dispatch_metrics(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
-    let metrics = server.clone().metrics(tarpc::context::current()).await?;
+    let metrics = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .metrics(tarpc::context::current())
+    .await?;
     to_json(&metrics)
 }
 
 async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
-    let capabilities = server.clone().list_capabilities(tarpc::context::current()).await?;
+    let capabilities = RhizoCryptRpcServer {
+        primal: Arc::clone(&server.primal),
+        start_time: server.start_time,
+    }
+    .list_capabilities(tarpc::context::current())
+    .await?;
     to_json(&capabilities)
 }
 

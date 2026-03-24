@@ -355,8 +355,8 @@ fn session_to_info(session: &Session) -> SessionInfo {
 /// Implements `RhizoCryptRpc` by delegating to a `RhizoCrypt` primal instance.
 #[derive(Clone)]
 pub struct RhizoCryptRpcServer {
-    primal: Arc<rhizo_crypt_core::RhizoCrypt>,
-    start_time: std::time::Instant,
+    pub(crate) primal: Arc<rhizo_crypt_core::RhizoCrypt>,
+    pub(crate) start_time: std::time::Instant,
 }
 
 impl RhizoCryptRpcServer {

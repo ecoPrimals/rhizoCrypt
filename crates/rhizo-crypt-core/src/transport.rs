@@ -15,6 +15,63 @@ use std::path::{Path, PathBuf};
 
 use crate::constants::{DEFAULT_RPC_HOST, DEFAULT_SOCKET_DIR, SOCKET_FILE_EXTENSION};
 
+/// Platform bucket for transport selection (used to keep negotiation logic testable on any host).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PlatformKind {
+    Android,
+    Windows,
+    Unix,
+}
+
+impl PlatformKind {
+    fn current() -> Self {
+        if cfg!(target_os = "android") {
+            Self::Android
+        } else if cfg!(target_os = "windows") {
+            Self::Windows
+        } else {
+            Self::Unix
+        }
+    }
+}
+
+/// Fallback directory when `XDG_RUNTIME_DIR` is unset (Unix-like, non-Android).
+fn unix_socket_dir_fallback() -> PathBuf {
+    if cfg!(target_os = "linux") {
+        PathBuf::from(DEFAULT_SOCKET_DIR)
+    } else {
+        std::env::temp_dir().join("ecoPrimals")
+    }
+}
+
+/// Unix-like transport from an optional socket path (TCP when no path is available).
+fn unix_transport_from_socket_path(socket_path: Option<PathBuf>, port: u16) -> TransportHint {
+    socket_path.map_or_else(
+        || TransportHint::Tcp {
+            host: DEFAULT_RPC_HOST.to_string(),
+            port,
+        },
+        TransportHint::UnixSocket,
+    )
+}
+
+fn preferred_transport_with_platform(
+    primal_name: &str,
+    port: u16,
+    platform: PlatformKind,
+) -> TransportHint {
+    match platform {
+        PlatformKind::Android => TransportHint::AbstractSocket(format!("ecoPrimals.{primal_name}")),
+        PlatformKind::Windows => TransportHint::Tcp {
+            host: DEFAULT_RPC_HOST.to_string(),
+            port,
+        },
+        PlatformKind::Unix => {
+            unix_transport_from_socket_path(socket_path_for_primal(primal_name), port)
+        }
+    }
+}
+
 /// Returns the directory for path-based Unix sockets, or `None` on platforms
 /// that use non-path transports (Android abstract sockets, Windows named pipes).
 ///
@@ -35,12 +92,7 @@ pub fn socket_dir() -> Option<PathBuf> {
         return Some(path);
     }
 
-    let fallback = if cfg!(target_os = "linux") {
-        PathBuf::from(DEFAULT_SOCKET_DIR)
-    } else {
-        std::env::temp_dir().join("ecoPrimals")
-    };
-    Some(fallback)
+    Some(unix_socket_dir_fallback())
 }
 
 /// Constructs the full socket path for a primal, or `None` if path-based
@@ -79,24 +131,7 @@ pub enum TransportHint {
 /// - **Windows**: TCP with localhost.
 #[must_use]
 pub fn preferred_transport(primal_name: &str, port: u16) -> TransportHint {
-    if cfg!(target_os = "android") {
-        return TransportHint::AbstractSocket(format!("ecoPrimals.{primal_name}"));
-    }
-
-    if cfg!(target_os = "windows") {
-        return TransportHint::Tcp {
-            host: DEFAULT_RPC_HOST.to_string(),
-            port,
-        };
-    }
-
-    socket_path_for_primal(primal_name).map_or_else(
-        || TransportHint::Tcp {
-            host: DEFAULT_RPC_HOST.to_string(),
-            port,
-        },
-        TransportHint::UnixSocket,
-    )
+    preferred_transport_with_platform(primal_name, port, PlatformKind::current())
 }
 
 #[cfg(test)]
@@ -129,7 +164,7 @@ mod tests {
             } else if cfg!(target_os = "linux") {
                 assert_eq!(result, Some(PathBuf::from(DEFAULT_SOCKET_DIR)));
             } else {
-                assert_eq!(result, Some(PathBuf::from("/tmp/ecoPrimals")));
+                assert_eq!(result, Some(std::env::temp_dir().join("ecoPrimals")));
             }
         });
     }
@@ -221,7 +256,7 @@ mod tests {
                 TransportHint::UnixSocket(path) => {
                     assert!(
                         path.starts_with(Path::new(DEFAULT_SOCKET_DIR))
-                            || path.starts_with(Path::new("/tmp/ecoPrimals"))
+                            || path.starts_with(std::env::temp_dir())
                     );
                 }
                 TransportHint::Tcp {
@@ -352,5 +387,103 @@ mod tests {
         }
         assert!(socket_path_for_primal("rhizoCrypt").is_none());
         assert!(socket_path_for_primal("any").is_none());
+    }
+
+    #[test]
+    fn test_platform_kind_current() {
+        let kind = PlatformKind::current();
+        if cfg!(target_os = "android") {
+            assert_eq!(kind, PlatformKind::Android);
+        } else if cfg!(target_os = "windows") {
+            assert_eq!(kind, PlatformKind::Windows);
+        } else {
+            assert_eq!(kind, PlatformKind::Unix);
+        }
+    }
+
+    #[test]
+    fn test_preferred_transport_android_platform() {
+        let hint = preferred_transport_with_platform("rhizoCrypt", 9400, PlatformKind::Android);
+        assert_eq!(hint, TransportHint::AbstractSocket("ecoPrimals.rhizoCrypt".to_string()));
+    }
+
+    #[test]
+    fn test_preferred_transport_windows_platform() {
+        let hint = preferred_transport_with_platform("rhizoCrypt", 9400, PlatformKind::Windows);
+        assert_eq!(
+            hint,
+            TransportHint::Tcp {
+                host: DEFAULT_RPC_HOST.to_string(),
+                port: 9400,
+            }
+        );
+    }
+
+    #[test]
+    fn test_preferred_transport_unix_platform() {
+        let hint = preferred_transport_with_platform("rhizoCrypt", 9400, PlatformKind::Unix);
+        match hint {
+            TransportHint::UnixSocket(path) => {
+                assert!(path.to_string_lossy().contains("rhizoCrypt.sock"));
+            }
+            TransportHint::Tcp {
+                ..
+            } => {
+                // Acceptable fallback when socket_dir returns None
+            }
+            TransportHint::AbstractSocket(_) => panic!("Unix platform should not use abstract"),
+        }
+    }
+
+    #[test]
+    fn test_unix_transport_from_socket_path_some() {
+        let path = PathBuf::from("/tmp/ecoPrimals/test.sock");
+        let hint = unix_transport_from_socket_path(Some(path.clone()), 9400);
+        assert_eq!(hint, TransportHint::UnixSocket(path));
+    }
+
+    #[test]
+    fn test_unix_transport_from_socket_path_none_falls_back_to_tcp() {
+        let hint = unix_transport_from_socket_path(None, 8080);
+        assert_eq!(
+            hint,
+            TransportHint::Tcp {
+                host: DEFAULT_RPC_HOST.to_string(),
+                port: 8080,
+            }
+        );
+    }
+
+    #[test]
+    fn test_unix_socket_dir_fallback() {
+        let dir = unix_socket_dir_fallback();
+        if cfg!(target_os = "linux") {
+            assert_eq!(dir, PathBuf::from(DEFAULT_SOCKET_DIR));
+        } else {
+            assert_eq!(dir, std::env::temp_dir().join("ecoPrimals"));
+        }
+    }
+
+    #[test]
+    fn test_platform_kind_clone_and_copy() {
+        let kind = PlatformKind::Unix;
+        let copied = kind;
+        let cloned = kind.clone();
+        assert_eq!(kind, copied);
+        assert_eq!(kind, cloned);
+    }
+
+    #[test]
+    fn test_transport_hint_clone() {
+        let hint = TransportHint::AbstractSocket("ecoPrimals.test".to_string());
+        let cloned = hint.clone();
+        assert_eq!(hint, cloned);
+
+        let tcp = TransportHint::Tcp {
+            host: "localhost".to_string(),
+            port: 3000,
+        };
+        let tcp_cloned = tcp.clone();
+        assert_eq!(tcp, tcp_cloned);
     }
 }

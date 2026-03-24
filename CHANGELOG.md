@@ -5,6 +5,58 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-03-24 (session 20)
+
+### Changed
+
+#### Deep Debt Execution — Sled Removal, Sovereignty, Coverage, Async Manifest, Arc::clone, Docs
+
+**1. Sled Backend Removal (ecoBin Compliance)**
+- Deleted `store_sled.rs`, `store_sled_tests.rs`, `store_sled_tests_advanced.rs` (entire sled impl)
+- Removed `StorageBackend::Sled` enum variant from `config.rs`
+- Removed `sled` feature from `rhizo-crypt-core/Cargo.toml`
+- Removed `SLED_CACHE_SIZE_BYTES` and `SLED_FLUSH_INTERVAL_MS` constants
+- Updated `store.rs`, `error.rs`, `lib.rs` to remove sled references
+- Storage backends now: `DagBackend::Memory` + `DagBackend::Redb` (both 100% Pure Rust)
+
+**2. Sovereignty — Legacy Vendor Env Vars Removed**
+- Removed `BEARDOG_ADDRESS`, `NESTGATE_ADDRESS`, `LOAMSPINE_ADDRESS` fallback branches from `safe_env/capability.rs`
+- All capability resolution is now purely capability-based (`SIGNING_ENDPOINT`, `PERMANENT_STORAGE_ENDPOINT`, etc.)
+- Primal code only has self-knowledge; discovers other primals at runtime
+- Updated `loamspine_http.rs` doc comments to match
+
+**3. Async Manifest Discovery (`discovery/manifest.rs`)**
+- Converted all manifest functions (`scan_manifests`, `publish_manifest`, `unpublish_manifest`, `discover_by_capability`) from sync to async using `tokio::fs`
+- Refactored tests to use `#[tokio::test]` with `tempfile` directories, eliminating `block_on` nesting and `unsafe { std::env::set_var }` calls
+- Maintains `forbid(unsafe_code)` compliance
+
+**4. Explicit `Arc::clone` in JSON-RPC Handler**
+- Replaced all 24 `server.clone().method().await` patterns with explicit `Arc::clone(&server.primal)` construction
+- Made `primal` and `start_time` fields `pub(crate)` on `RhizoCryptRpcServer`
+
+**5. Test Coverage Push (~94.65% line coverage)**
+- Added ~20 tests to `rhizocrypt_tests.rs` covering error paths, lifecycle edge cases, GC sweep, redb backend
+- Added 8 tests to `store.rs` covering DAG traversal, batch ops, backend dispatch
+- Added 9 tests to `transport.rs` covering all `PlatformKind` branches
+
+**6. Documentation Refresh**
+- Updated README.md, CONTEXT.md, DEPLOYMENT_CHECKLIST.md, ENV_VARS.md metrics (1,387 tests, 125 .rs files)
+- Removed sled from all active specs (STORAGE_BACKENDS, ARCHITECTURE, RHIZOCRYPT_SPECIFICATION, 00_SPECIFICATIONS_INDEX)
+- Removed legacy vendor env var documentation from ENV_VARS.md
+- Updated `rhizo-crypt-core/README.md` (storage backends, modules, feature flags)
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` — 0 warnings
+- `cargo test --workspace --all-features` — **1,387 tests passing**, 0 failures
+- `cargo llvm-cov` — **94.65% line coverage** (CI gate: 90%)
+- All `.rs` files under 1000 lines (max: 867)
+- Zero unsafe, zero production unwrap/expect
+- SPDX headers on all 125 `.rs` files
+
+---
+
 ## [0.13.0-dev] - 2026-03-23 (session 19)
 
 ### Changed

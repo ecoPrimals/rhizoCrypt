@@ -4,29 +4,24 @@
 //! Capability-specific environment configuration.
 //!
 //! Provides standardized environment variable names for each capability.
+//! A primal only has self-knowledge — it discovers capabilities at runtime via
+//! the universal adapter or capability-based env vars. No vendor names appear
+//! in the resolution chain.
 //!
 //! ## Naming Convention
 //!
 //! Capability-based variables follow this pattern:
 //! - **Preferred**: `<CAPABILITY>_ENDPOINT` (e.g., `SIGNING_ENDPOINT`)
 //! - **Alternative**: `<CATEGORY>_<CAPABILITY>_ENDPOINT` (e.g., `CRYPTO_SIGNING_ENDPOINT`)
-//! - **Legacy**: `<PRIMAL>_ADDRESS` (e.g., `BEARDOG_ADDRESS`) - deprecated
 //!
 //! ## Infant Discovery
 //!
-//! In production, primals should discover capabilities at runtime via the
+//! In production, primals discover capabilities at runtime via the
 //! universal adapter (`RHIZOCRYPT_DISCOVERY_ADAPTER`). Environment variables
 //! are **hints** for development or testing, not requirements.
 //!
-//! ## Migration Path
+//! ## Usage
 //!
-//! Old (hardcoded):
-//! ```bash
-//! BEARDOG_ADDRESS=beardog.local:9500
-//! NESTGATE_ADDRESS=nestgate.local:8080
-//! ```
-//!
-//! New (capability-based):
 //! ```bash
 //! RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500  # Only this is needed!
 //! # OR for development:
@@ -42,85 +37,43 @@ pub struct CapabilityEnv;
 impl CapabilityEnv {
     /// Get the endpoint for signing capability.
     ///
-    /// Priority order:
+    /// Resolution order:
     /// 1. `CRYPTO_SIGNING_ENDPOINT` (preferred, capability-based)
     /// 2. `SIGNING_ENDPOINT` (short form, capability-based)
-    /// 3. `BEARDOG_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn signing_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("CRYPTO_SIGNING")
-            .or_else(|| SafeEnv::get_endpoint("SIGNING"))
-            .or_else(|| {
-                std::env::var("BEARDOG_ADDRESS").ok().inspect(|_| {
-                    tracing::warn!(
-                        "Using deprecated BEARDOG_ADDRESS environment variable. \
-                         Please migrate to SIGNING_ENDPOINT or CRYPTO_SIGNING_ENDPOINT \
-                         for capability-based configuration."
-                    );
-                })
-            })
+        SafeEnv::get_endpoint("CRYPTO_SIGNING").or_else(|| SafeEnv::get_endpoint("SIGNING"))
     }
 
     /// Get the endpoint for DID verification capability.
     ///
-    /// Priority order:
+    /// Resolution order:
     /// 1. `DID_VERIFICATION_ENDPOINT` (preferred, capability-based)
     /// 2. `DID_ENDPOINT` (short form, capability-based)
-    /// 3. `BEARDOG_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn did_verification_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("DID_VERIFICATION").or_else(|| SafeEnv::get_endpoint("DID")).or_else(
-            || {
-                std::env::var("BEARDOG_ADDRESS").ok().inspect(|_| {
-                    tracing::warn!(
-                        "Using deprecated BEARDOG_ADDRESS for DID verification. \
-                         Please migrate to DID_ENDPOINT for capability-based configuration."
-                    );
-                })
-            },
-        )
+        SafeEnv::get_endpoint("DID_VERIFICATION").or_else(|| SafeEnv::get_endpoint("DID"))
     }
 
     /// Get the endpoint for payload storage capability.
     ///
-    /// Priority order:
+    /// Resolution order:
     /// 1. `PAYLOAD_STORAGE_ENDPOINT` (preferred, capability-based)
     /// 2. `PAYLOAD_ENDPOINT` (short form, capability-based)
-    /// 3. `NESTGATE_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn payload_storage_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("PAYLOAD_STORAGE")
-            .or_else(|| SafeEnv::get_endpoint("PAYLOAD"))
-            .or_else(|| {
-                std::env::var("NESTGATE_ADDRESS").ok().inspect(|_| {
-                    tracing::warn!(
-                        "Using deprecated NESTGATE_ADDRESS environment variable. \
-                         Please migrate to PAYLOAD_STORAGE_ENDPOINT \
-                         for capability-based configuration."
-                    );
-                })
-            })
+        SafeEnv::get_endpoint("PAYLOAD_STORAGE").or_else(|| SafeEnv::get_endpoint("PAYLOAD"))
     }
 
     /// Get the endpoint for permanent commit capability.
     ///
-    /// Priority order:
+    /// Resolution order:
     /// 1. `STORAGE_PERMANENT_COMMIT_ENDPOINT` (preferred, capability-based)
     /// 2. `PERMANENT_STORAGE_ENDPOINT` (short form, capability-based)
-    /// 3. `LOAMSPINE_ADDRESS` (legacy, deprecated - emits warning)
     #[must_use]
     pub fn permanent_commit_endpoint() -> Option<String> {
         SafeEnv::get_endpoint("STORAGE_PERMANENT_COMMIT")
             .or_else(|| SafeEnv::get_endpoint("PERMANENT_STORAGE"))
-            .or_else(|| {
-                std::env::var("LOAMSPINE_ADDRESS").ok().inspect(|_| {
-                    tracing::warn!(
-                        "Using deprecated LOAMSPINE_ADDRESS environment variable. \
-                         Please migrate to PERMANENT_STORAGE_ENDPOINT \
-                         for capability-based configuration."
-                    );
-                })
-            })
     }
 
     /// Get the endpoint for compute orchestration capability.
@@ -250,23 +203,6 @@ mod tests {
     }
 
     #[test]
-    fn test_signing_endpoint_legacy() {
-        temp_env::with_vars(
-            [
-                ("CRYPTO_SIGNING_ENDPOINT", None::<&str>),
-                ("CRYPTO_SIGNING_ADDRESS", None),
-                ("SIGNING_ENDPOINT", None),
-                ("SIGNING_ADDRESS", None),
-                ("BEARDOG_ADDRESS", Some("beardog.example.com:9500")),
-            ],
-            || {
-                let result = CapabilityEnv::signing_endpoint();
-                assert_eq!(result, Some("beardog.example.com:9500".to_string()));
-            },
-        );
-    }
-
-    #[test]
     fn test_did_verification_endpoint_primary() {
         temp_env::with_vars([("DID_VERIFICATION_ENDPOINT", Some("did.example.com:9500"))], || {
             let result = CapabilityEnv::did_verification_endpoint();
@@ -285,23 +221,6 @@ mod tests {
             || {
                 let result = CapabilityEnv::did_verification_endpoint();
                 assert_eq!(result, Some("did-short.example.com:9500".to_string()));
-            },
-        );
-    }
-
-    #[test]
-    fn test_did_verification_endpoint_legacy() {
-        temp_env::with_vars(
-            [
-                ("DID_VERIFICATION_ENDPOINT", None::<&str>),
-                ("DID_VERIFICATION_ADDRESS", None),
-                ("DID_ENDPOINT", None),
-                ("DID_ADDRESS", None),
-                ("BEARDOG_ADDRESS", Some("beardog-did.example.com:9500")),
-            ],
-            || {
-                let result = CapabilityEnv::did_verification_endpoint();
-                assert_eq!(result, Some("beardog-did.example.com:9500".to_string()));
             },
         );
     }
@@ -333,23 +252,6 @@ mod tests {
     }
 
     #[test]
-    fn test_payload_storage_endpoint_legacy() {
-        temp_env::with_vars(
-            [
-                ("PAYLOAD_STORAGE_ENDPOINT", None::<&str>),
-                ("PAYLOAD_STORAGE_ADDRESS", None),
-                ("PAYLOAD_ENDPOINT", None),
-                ("PAYLOAD_ADDRESS", None),
-                ("NESTGATE_ADDRESS", Some("nestgate.example.com:9600")),
-            ],
-            || {
-                let result = CapabilityEnv::payload_storage_endpoint();
-                assert_eq!(result, Some("nestgate.example.com:9600".to_string()));
-            },
-        );
-    }
-
-    #[test]
     fn test_permanent_commit_endpoint_primary() {
         temp_env::with_vars(
             [("STORAGE_PERMANENT_COMMIT_ENDPOINT", Some("permanent-primary.example.com:9700"))],
@@ -371,23 +273,6 @@ mod tests {
             || {
                 let result = CapabilityEnv::permanent_commit_endpoint();
                 assert_eq!(result, Some("permanent.example.com:9700".to_string()));
-            },
-        );
-    }
-
-    #[test]
-    fn test_permanent_commit_endpoint_legacy() {
-        temp_env::with_vars(
-            [
-                ("STORAGE_PERMANENT_COMMIT_ENDPOINT", None::<&str>),
-                ("STORAGE_PERMANENT_COMMIT_ADDRESS", None),
-                ("PERMANENT_STORAGE_ENDPOINT", None),
-                ("PERMANENT_STORAGE_ADDRESS", None),
-                ("LOAMSPINE_ADDRESS", Some("loamspine.example.com:9700")),
-            ],
-            || {
-                let result = CapabilityEnv::permanent_commit_endpoint();
-                assert_eq!(result, Some("loamspine.example.com:9700".to_string()));
             },
         );
     }
@@ -509,7 +394,6 @@ mod tests {
             [
                 ("CRYPTO_SIGNING_ENDPOINT", Some("primary.example.com:9500")),
                 ("SIGNING_ENDPOINT", Some("short.example.com:9500")),
-                ("BEARDOG_ADDRESS", Some("legacy.example.com:9500")),
             ],
             || {
                 let result = CapabilityEnv::signing_endpoint();
@@ -526,7 +410,6 @@ mod tests {
                 ("CRYPTO_SIGNING_ADDRESS", None),
                 ("SIGNING_ENDPOINT", None),
                 ("SIGNING_ADDRESS", None),
-                ("BEARDOG_ADDRESS", None),
             ],
             || {
                 let result = CapabilityEnv::signing_endpoint();
@@ -558,15 +441,12 @@ mod tests {
         let unset_vars: Vec<(&str, Option<&str>)> = [
             "CRYPTO_SIGNING_ENDPOINT",
             "SIGNING_ENDPOINT",
-            "BEARDOG_ADDRESS",
             "DID_VERIFICATION_ENDPOINT",
             "DID_ENDPOINT",
             "PAYLOAD_STORAGE_ENDPOINT",
             "PAYLOAD_ENDPOINT",
-            "NESTGATE_ADDRESS",
             "STORAGE_PERMANENT_COMMIT_ENDPOINT",
             "PERMANENT_STORAGE_ENDPOINT",
-            "LOAMSPINE_ADDRESS",
             "COMPUTE_ORCHESTRATION_ENDPOINT",
             "COMPUTE_ENDPOINT",
             "PROVENANCE_QUERY_ENDPOINT",

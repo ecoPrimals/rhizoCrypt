@@ -109,7 +109,7 @@ pub struct StorageConfig {
     /// Storage backend type.
     pub backend: StorageBackend,
 
-    /// Path for persistent storage (Sled).
+    /// Path for persistent storage (redb).
     pub path: Option<String>,
 
     /// Maximum size in bytes for in-memory storage.
@@ -136,13 +136,6 @@ pub enum StorageBackend {
     /// redb storage (Pure Rust, persistent, ACID, MVCC, ecoBin compliant).
     /// Recommended for production use.
     Redb,
-
-    /// Sled storage (deprecated — depends on `zstd-sys` which violates ecoBin).
-    #[deprecated(note = "use Redb instead; sled depends on zstd-sys (C)")]
-    Sled,
-
-    /// LMDB storage (persistent, memory-mapped) - not implemented.
-    Lmdb,
 }
 
 /// Metrics configuration.
@@ -497,12 +490,9 @@ mod tests {
     }
 
     #[test]
-    #[expect(deprecated, reason = "testing deprecated Sled variant for backwards compatibility")]
     fn test_storage_backend_variants() {
         assert_eq!(StorageBackend::Memory, StorageBackend::Memory);
         assert_eq!(StorageBackend::Redb, StorageBackend::Redb);
-        assert_eq!(StorageBackend::Sled, StorageBackend::Sled);
-        assert_eq!(StorageBackend::Lmdb, StorageBackend::Lmdb);
         assert_ne!(StorageBackend::Memory, StorageBackend::Redb);
     }
 

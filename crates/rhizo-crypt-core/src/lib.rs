@@ -86,8 +86,6 @@ pub mod testing;
 // Optional storage backends
 #[cfg(feature = "redb")]
 pub mod store_redb;
-#[cfg(feature = "sled")]
-pub mod store_sled;
 
 // ============================================================================
 // Core Re-exports
@@ -157,9 +155,6 @@ pub use store::{
 
 #[cfg(feature = "redb")]
 pub use store_redb::RedbDagStore;
-#[cfg(feature = "sled")]
-#[expect(deprecated, reason = "sled backend is deprecated; re-export retained until removal")]
-pub use store_sled::SledDagStore;
 
 // Types
 pub use types::{ContentHash, Did, PayloadRef, SessionId, Signature, SliceId, Timestamp, VertexId};

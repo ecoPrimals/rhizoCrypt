@@ -110,16 +110,13 @@ impl LoamSpineHttpClient {
 
     /// Create client from environment variables.
     ///
-    /// Checks for:
-    /// 1. `PERMANENT_STORAGE_ENDPOINT` (capability-based)
-    /// 2. `LOAMSPINE_ADDRESS` (legacy)
-    ///
-    /// Returns an error if no endpoint is configured. Primals discover
-    /// endpoints at runtime - no hardcoded fallbacks.
+    /// Checks for `STORAGE_PERMANENT_COMMIT_ENDPOINT` or `PERMANENT_STORAGE_ENDPOINT`
+    /// (capability-based). Returns an error if no endpoint is configured.
+    /// Primals discover endpoints at runtime — no hardcoded fallbacks.
     ///
     /// # Errors
     ///
-    /// Returns an error if neither `PERMANENT_STORAGE_ENDPOINT` nor `LOAMSPINE_ADDRESS` is set,
+    /// Returns an error if no permanent storage endpoint env var is set,
     /// or if [`Self::new`] fails while constructing the HTTP client.
     pub fn from_env() -> Result<Self> {
         use crate::safe_env::CapabilityEnv;
@@ -127,7 +124,7 @@ impl LoamSpineHttpClient {
         let endpoint = CapabilityEnv::permanent_commit_endpoint().ok_or_else(|| {
             RhizoCryptError::integration(
                 "No permanent storage endpoint configured. \
-                 Set PERMANENT_STORAGE_ENDPOINT or LOAMSPINE_ADDRESS.",
+                 Set STORAGE_PERMANENT_COMMIT_ENDPOINT or PERMANENT_STORAGE_ENDPOINT.",
             )
         })?;
 

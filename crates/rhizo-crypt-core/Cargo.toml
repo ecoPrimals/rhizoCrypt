@@ -14,11 +14,6 @@ categories = ["data-structures", "cryptography"]
 default = ["redb"]
 # Enable test utilities (mock clients, etc.) for integration testing
 test-utils = []
-# Enable Sled persistent storage backend (uses libc for file locking).
-# sled has not released since 2021 and pulls libc — prefer redb (default).
-# Retained for backward compatibility; scheduled for removal when redb
-# covers all sled use cases.
-sled = ["dep:sled"]
 # Enable redb persistent storage backend (100% Pure Rust, default)
 redb = ["dep:redb"]
 # Enable HTTP clients (reqwest) for direct REST API calls.
@@ -47,7 +42,6 @@ hashbrown = { workspace = true }
 async-trait = { workspace = true }
 dashmap = { workspace = true }
 # Optional storage backends
-sled = { version = "0.34.7", optional = true }
 redb = { workspace = true, optional = true }
 # Optional: HTTP client for direct REST API calls (legacy path).
 # Pulls in ring (C/asm) via rustls — use Unix socket IPC instead (Tower Atomic).

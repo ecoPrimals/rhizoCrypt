@@ -1,6 +1,6 @@
 # rhizoCrypt — AI Context Block
 
-**Version**: 0.13.0-dev
+**Version**: 0.14.0-dev
 **Role**: Ephemeral DAG Engine — working memory for the ecoPrimals ecosystem
 **License**: AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 (scyBorg Triple-Copyleft)
 **Language**: Rust 2024, edition 2024, rust-version 1.87
@@ -58,16 +58,16 @@ Three workspace crates:
 | genomeBin | Dockerfile with OCI labels, healthcheck |
 | Universal IPC v3 | JSON-RPC + tarpc, semantic naming |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 128 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 125 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,412 passing (all features) |
-| Coverage | CI gate: `--fail-under-lines 90` |
+| Tests | 1,387 passing (all features) |
+| Coverage | CI gate: `--fail-under-lines 90` (~94% line coverage) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `missing_errors_doc = "warn"`) |
-| Source files | 128 `.rs`, ~36,336 lines |
+| Source files | 125 `.rs`, ~44,200 lines |
 | Max file size | 867 lines (limit: 1000) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |
@@ -75,8 +75,6 @@ Three workspace crates:
 ## Storage Backends
 
 - **redb** (default) — Pure Rust, ACID, MVCC, ecoBin compliant
-- **sled** (deprecated) — Behind `sled` feature flag, scheduled for removal.
-  Depends on `zstd-sys` (C), violating ecoBin. Use `RedbDagStore` instead.
 - **In-memory** — Testing and ephemeral workloads
 
 ## Key Files

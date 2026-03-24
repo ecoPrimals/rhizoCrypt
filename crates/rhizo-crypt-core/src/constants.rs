@@ -232,22 +232,6 @@ pub const DEFAULT_MAX_RETRIES: u8 = 3;
 pub const DEFAULT_RETRY_BACKOFF_MS: u64 = 100;
 
 // ============================================================================
-// SLED STORAGE CONSTANTS
-// ============================================================================
-
-/// Sled database cache capacity (128 MB).
-///
-/// Derivation: 128 MB is sled's recommended default for workloads with
-/// ~100K active keys. Balances read performance against memory pressure.
-pub const SLED_CACHE_SIZE_BYTES: u64 = 128 * 1024 * 1024;
-
-/// Sled flush interval in milliseconds.
-///
-/// Derivation: 1000ms provides near-real-time durability while batching
-/// writes for performance. Ephemeral sessions tolerate up to 1s loss.
-pub const SLED_FLUSH_INTERVAL_MS: u64 = 1000;
-
-// ============================================================================
 // DISCOVERY CONSTANTS
 // ============================================================================
 

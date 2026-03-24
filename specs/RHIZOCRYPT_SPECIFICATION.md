@@ -831,8 +831,7 @@ RhizoCrypt sessions are stored in a fast, ephemeral store optimized for:
 
 **Recommended backends:**
 - **In-memory** — For short sessions with high throughput
-- **redb** — Default persistent backend (100% Pure Rust, ecoBin compliant)
-- **sled** — Alternative persistent backend (optional, uses libc for file locking)
+- **redb** — Default persistent backend (100% Pure Rust, ACID, MVCC, ecoBin compliant)
 
 ```rust
 /// DAG Store trait
@@ -1167,7 +1166,6 @@ paths:
 ### Phase 2: Storage Backends — Complete
 - [x] `InMemoryDagStore` (default for ephemeral workloads)
 - [x] `RedbDagStore` — Pure Rust, ACID, MVCC, ecoBin compliant (production)
-- [x] `SledDagStore` — deprecated, scheduled for removal (violates ecoBin)
 - [x] `DagBackend` enum dispatches at startup based on config
 - [x] Content-addressed payload store (`InMemoryPayloadStore`)
 

@@ -61,7 +61,7 @@ RhizoCrypt respects human dignity by:
 |----------|---------|--------|
 | [INTEGRATION_SPECIFICATION.md](./archive/INTEGRATION_SPECIFICATION.md) | Legacy v1 integration (superseded by V2) | 📦 Archived |
 | [INTEGRATION_SPECIFICATION_V2.md](./INTEGRATION_SPECIFICATION_V2.md) | Capability-based integration (current) | ✅ Complete |
-| [STORAGE_BACKENDS.md](./STORAGE_BACKENDS.md) | redb (default), sled (optional), in-memory | ✅ Complete |
+| [STORAGE_BACKENDS.md](./STORAGE_BACKENDS.md) | redb (default), in-memory | ✅ Complete |
 
 ### Experimental Specifications
 

@@ -1,7 +1,7 @@
 # 🔐 rhizoCrypt — Environment Variables
 
-**Last Updated**: March 23, 2026  
-**Version**: 0.13.0-dev  
+**Last Updated**: March 24, 2026  
+**Version**: 0.14.0-dev  
 **Philosophy**: Capability-based, not primal-based
 
 ---
@@ -31,15 +31,15 @@ rhizoCrypt follows the **infant discovery** pattern: it starts with **zero knowl
 
 These are the **new, capability-based** environment variables. Use these for all new deployments.
 
-| Capability | Variable | Legacy Alternative | Description |
-|------------|----------|-------------------|-------------|
+| Capability | Variable | Alternative | Description |
+|------------|----------|-------------|-------------|
 | **Discovery** | `RHIZOCRYPT_DISCOVERY_ADAPTER` | `DISCOVERY_ENDPOINT`, `SONGBIRD_ADDRESS` | Service discovery endpoint (highest priority) |
-| **Signing** | `SIGNING_ENDPOINT` | `BEARDOG_ADDRESS` | Cryptographic signing service |
-| **DID Verification** | `DID_ENDPOINT` | `BEARDOG_ADDRESS` | DID resolution and verification |
-| **Payload Storage** | `PAYLOAD_STORAGE_ENDPOINT` | `NESTGATE_ADDRESS` | Content-addressed payload storage |
-| **Permanent Storage** | `PERMANENT_STORAGE_ENDPOINT` | `LOAMSPINE_ADDRESS` | Permanent commit storage |
-| **Compute** | `COMPUTE_ENDPOINT` | `TOADSTOOL_ADDRESS` | Compute orchestration |
-| **Provenance** | `PROVENANCE_ENDPOINT` | `SWEETGRASS_PUSH_ADDRESS` | Provenance tracking and queries |
+| **Signing** | `CRYPTO_SIGNING_ENDPOINT` | `SIGNING_ENDPOINT` | Cryptographic signing service |
+| **DID Verification** | `DID_VERIFICATION_ENDPOINT` | `DID_ENDPOINT` | DID resolution and verification |
+| **Payload Storage** | `PAYLOAD_STORAGE_ENDPOINT` | `PAYLOAD_ENDPOINT` | Content-addressed payload storage |
+| **Permanent Storage** | `STORAGE_PERMANENT_COMMIT_ENDPOINT` | `PERMANENT_STORAGE_ENDPOINT` | Permanent commit storage |
+| **Compute** | `COMPUTE_ORCHESTRATION_ENDPOINT` | `COMPUTE_ENDPOINT` | Compute orchestration |
+| **Provenance** | `PROVENANCE_QUERY_ENDPOINT` | `PROVENANCE_ENDPOINT` | Provenance tracking and queries |
 
 ### Capability Timeouts
 
@@ -60,25 +60,13 @@ These are the **new, capability-based** environment variables. Use these for all
 
 ---
 
-## ⚠️ Legacy Environment Variables (Deprecated)
+## Legacy Environment Variables (Removed)
 
-These variables still work for **backward compatibility** but emit deprecation warnings. **Migrate to capability-based variables above.**
+Legacy vendor-specific env vars (`BEARDOG_ADDRESS`, `NESTGATE_ADDRESS`, `LOAMSPINE_ADDRESS`) were
+removed in v0.14.0-dev. A primal only has self-knowledge and discovers capabilities at
+runtime. Use the capability-based variables above or discovery via `RHIZOCRYPT_DISCOVERY_ADAPTER`.
 
-| Legacy Variable | Replacement | Status |
-|----------------|-------------|--------|
-| `BEARDOG_ADDRESS` | `SIGNING_ENDPOINT` | ⚠️ Deprecated |
-| `BEARDOG_TIMEOUT_MS` | `SIGNING_TIMEOUT_MS` | ⚠️ Deprecated |
-| `NESTGATE_ADDRESS` | `PAYLOAD_STORAGE_ENDPOINT` | ⚠️ Deprecated |
-| `NESTGATE_TIMEOUT_MS` | `PAYLOAD_TIMEOUT_MS` | ⚠️ Deprecated |
-| `NESTGATE_MAX_PAYLOAD` | `PAYLOAD_MAX_SIZE_MB` | ⚠️ Deprecated |
-| `LOAMSPINE_ADDRESS` | `PERMANENT_STORAGE_ENDPOINT` | ⚠️ Deprecated |
-| `LOAMSPINE_TIMEOUT_MS` | `PERMANENT_STORAGE_TIMEOUT_MS` | ⚠️ Deprecated |
-| `TOADSTOOL_ADDRESS` | `COMPUTE_ENDPOINT` | ⚠️ Deprecated |
-| `TOADSTOOL_TIMEOUT_MS` | `COMPUTE_TIMEOUT_MS` | ⚠️ Deprecated |
-| `SWEETGRASS_ADDRESS` | `PROVENANCE_ENDPOINT` | ⚠️ Deprecated |
-| `SWEETGRASS_PUSH_ADDRESS` | `PROVENANCE_ENDPOINT` | ⚠️ Deprecated |
-| `SWEETGRASS_TIMEOUT_MS` | `PROVENANCE_TIMEOUT_MS` | ⚠️ Deprecated |
-| `SONGBIRD_ADDRESS` | `RHIZOCRYPT_DISCOVERY_ADAPTER` | ℹ️ Acceptable (Songbird is the universal adapter) |
+`SONGBIRD_ADDRESS` is still accepted as a discovery fallback (Songbird is the universal adapter).
 
 ---
 
@@ -140,8 +128,8 @@ services:
 
 For each capability, rhizoCrypt checks environment variables in this order:
 
-1. **Capability-based endpoint** (e.g., `SIGNING_ENDPOINT`)
-2. **Legacy primal-based endpoint** (e.g., `BEARDOG_ADDRESS`) — emits warning
+1. **Capability-based endpoint** (e.g., `CRYPTO_SIGNING_ENDPOINT`)
+2. **Short-form endpoint** (e.g., `SIGNING_ENDPOINT`)
 3. **Runtime discovery** via Songbird (if `RHIZOCRYPT_DISCOVERY_ADAPTER` or `DISCOVERY_ENDPOINT` is set)
 4. **Development fallback** (only if `RHIZOCRYPT_ENV=development`)
 
@@ -149,56 +137,31 @@ For each capability, rhizoCrypt checks environment variables in this order:
 
 ```
 Priority Order:
-1. SIGNING_ENDPOINT → ✅ Preferred
-2. CRYPTO_SIGNING_ENDPOINT → ✅ Alternative
-3. BEARDOG_ADDRESS → ⚠️ Legacy (emits warning)
-4. Discover via Songbird → ✅ Runtime discovery
-5. Fail gracefully → ❌ No signing available
+1. CRYPTO_SIGNING_ENDPOINT → ✅ Preferred
+2. SIGNING_ENDPOINT → ✅ Short form
+3. Discover via Songbird → ✅ Runtime discovery
+4. Fail gracefully → ❌ No signing available
 ```
 
 ---
 
 ## 🎓 Migration Guide
 
-### Step 1: Audit Current Configuration
+### Capability-Based Configuration
 
 ```bash
-# Find all legacy env vars in your deployment
-env | grep -E "BEARDOG|NESTGATE|LOAMSPINE|TOADSTOOL|SWEETGRASS"
-```
-
-### Step 2: Create Mapping
-
-| Old | New |
-|-----|-----|
-| `BEARDOG_ADDRESS=localhost:9500` | `SIGNING_ENDPOINT=localhost:9500` |
-| `NESTGATE_ADDRESS=localhost:9600` | `PAYLOAD_STORAGE_ENDPOINT=localhost:9600` |
-| `LOAMSPINE_ADDRESS=localhost:9700` | `PERMANENT_STORAGE_ENDPOINT=localhost:9700` |
-
-### Step 3: Update Configuration
-
-```bash
-# Before (deprecated):
-export BEARDOG_ADDRESS=localhost:9500
-export NESTGATE_ADDRESS=localhost:9600
-
-# After (capability-based):
+# Capability-based (recommended):
 export SIGNING_ENDPOINT=localhost:9500
 export PAYLOAD_STORAGE_ENDPOINT=localhost:9600
-```
+export PERMANENT_STORAGE_ENDPOINT=localhost:9700
 
-### Step 4: Verify
-
-```bash
-# Start rhizoCrypt and check logs for deprecation warnings
-cargo run 2>&1 | grep -i "deprecated"
-
-# Should see no warnings if migration is complete
+# Or just use discovery (all capabilities resolved at runtime):
+export RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500
 ```
 
 ---
 
-## 🚀 Benefits of Capability-Based Configuration
+## Capability-Based Configuration Benefits
 
 ### 1. **Primal-Agnostic**
 ```bash
@@ -237,7 +200,6 @@ SIGNING_ENDPOINT=new-signing-primal:9500
 - [ ] Configure `DISCOVERY_ENDPOINT` for runtime discovery
 - [ ] Use TLS for all capability endpoints
 - [ ] Restrict network access to capability services
-- [ ] Monitor deprecation warnings in logs
 - [ ] Rotate capability endpoints without code changes
 
 ### Secrets Management

@@ -16,9 +16,8 @@ events to permanent storage via dehydration.
 - **Slice semantics** with 6 modes (Copy, Loan, Consignment, Escrow, Waypoint, Transfer)
 - **Dehydration protocol** for committing to permanent storage
 - **Capability-based discovery** — runtime service location, zero hardcoded vendors
-- **Multiple storage backends** with trait-based extensibility
-  - redb (default, 100% Pure Rust)
-  - sled (optional, `--features sled`)
+- **Multiple storage backends** with `DagBackend` enum dispatch
+  - redb (default, 100% Pure Rust, ACID)
   - In-memory (default for ephemeral sessions)
 - **Storage health & statistics** for observability
 - **Zero unsafe code** — `#![forbid(unsafe_code)]`
@@ -66,13 +65,6 @@ let stats = store.stats(&session_id)?;    // sessions, vertices, bytes, ops
     use rhizo_crypt_core::RedbDagStore;
     let store = RedbDagStore::open("/path/to/db")?;
 }
-
-// sled (persistent, optional)
-#[cfg(feature = "sled")]
-{
-    use rhizo_crypt_core::SledDagStore;
-    let store = SledDagStore::open("/path/to/db")?;
-}
 ```
 
 ## Capability-Based Clients
@@ -105,7 +97,6 @@ if factory.has_signing_capability().await {
 | `session` | Session management and lifecycle |
 | `store` | DAG and payload storage traits + in-memory impl |
 | `store_redb` | redb storage backend (default, Pure Rust) |
-| `store_sled` | sled storage backend (optional) |
 | `merkle` | Merkle trees and inclusion proofs |
 | `slice` | Slice semantics with 6 modes |
 | `dehydration` | Commit protocol with attestations |
@@ -121,7 +112,6 @@ if factory.has_signing_capability().await {
 | Feature | Description |
 |---------|-------------|
 | `redb` | Enable redb persistent storage backend (default, Pure Rust) |
-| `sled` | Enable sled persistent storage backend (uses libc) |
 | `http-clients` | Enable HTTP clients via reqwest (pulls ring/rustls) |
 | `live-clients` | Enable live connections to sibling primals (tarpc + HTTP) |
 | `test-utils` | Enable test utilities and mock implementations |
