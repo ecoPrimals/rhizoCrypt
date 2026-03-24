@@ -12,12 +12,11 @@ use rhizo_crypt_rpc::server::RpcServer;
 use rhizocrypt_service::{
     ClientOperation, DoctorCheck, ServiceError, check_dag_engine, check_discovery_connectivity,
     check_storage_backend, exit_codes, print_status, print_version, resolve_bind_addr, run_client,
-    run_doctor, run_server,
+    run_doctor, run_server_with_ready,
 };
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::time::sleep;
 
 /// Test that service can be created with default configuration.
 #[tokio::test]
@@ -63,17 +62,13 @@ async fn test_service_startup_shutdown() {
     let primal = Arc::new(primal);
 
     let server = RpcServer::new(primal, addr);
+    let ready = server.ready_notifier();
 
-    // Start serving in background
     let handle = tokio::spawn(async move { server.serve().await });
+    ready.notified().await;
 
-    // Give service time to start
-    sleep(Duration::from_millis(100)).await;
-
-    // Shutdown by aborting (simulates Ctrl+C)
     handle.abort();
 
-    // Wait for abort
     let result = handle.await;
     assert!(result.is_err(), "Aborted task should return error");
 }
@@ -89,17 +84,12 @@ async fn test_service_graceful_shutdown() {
     let primal = Arc::new(primal);
 
     let server = RpcServer::new(primal, addr);
+    let ready = server.ready_notifier();
 
-    // Start serving in background
     let server_handle = tokio::spawn(async move { server.serve().await });
+    ready.notified().await;
 
-    // Give service time to start
-    sleep(Duration::from_millis(100)).await;
-
-    // Shutdown
     server_handle.abort();
-
-    // Verify clean shutdown
     let _ = server_handle.await;
 }
 
@@ -550,11 +540,20 @@ fn test_run_server_standalone_mode_no_discovery() {
                 .enable_all()
                 .build()
                 .unwrap();
-            let handle = rt.spawn(async {
-                let _ = run_server(Some(19709), Some("127.0.0.1".to_string())).await;
+            let ready = Arc::new(tokio::sync::Notify::new());
+            let ready_clone = Arc::clone(&ready);
+            let handle = rt.spawn(async move {
+                let _ = run_server_with_ready(
+                    Some(19709),
+                    Some("127.0.0.1".to_string()),
+                    Some(ready_clone),
+                )
+                .await;
             });
             rt.block_on(async {
-                sleep(Duration::from_secs(1)).await;
+                tokio::time::timeout(Duration::from_secs(10), ready.notified())
+                    .await
+                    .expect("server should become ready within 10s");
                 handle.abort();
                 let _ = handle.await;
             });
@@ -578,11 +577,20 @@ fn test_run_server_discovery_failure_continues_standalone() {
                 .enable_all()
                 .build()
                 .unwrap();
-            let handle = rt.spawn(async {
-                let _ = run_server(Some(19710), Some("127.0.0.1".to_string())).await;
+            let ready = Arc::new(tokio::sync::Notify::new());
+            let ready_clone = Arc::clone(&ready);
+            let handle = rt.spawn(async move {
+                let _ = run_server_with_ready(
+                    Some(19710),
+                    Some("127.0.0.1".to_string()),
+                    Some(ready_clone),
+                )
+                .await;
             });
             rt.block_on(async {
-                sleep(Duration::from_secs(2)).await;
+                tokio::time::timeout(Duration::from_secs(10), ready.notified())
+                    .await
+                    .expect("server should become ready within 10s");
                 handle.abort();
                 let _ = handle.await;
             });

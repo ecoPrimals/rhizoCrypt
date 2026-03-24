@@ -35,11 +35,11 @@ fn test_config_default() {
 #[test]
 fn test_config_with_metadata() {
     let mut config = SongbirdConfig::new();
-    config.metadata.insert("version".to_string(), "0.11.0".to_string());
+    config.metadata.insert("version".to_string(), "0.14.0".to_string());
     config.metadata.insert("role".to_string(), "dag-engine".to_string());
 
     assert_eq!(config.metadata.len(), 2);
-    assert_eq!(config.metadata.get("version"), Some(&"0.11.0".to_string()));
+    assert_eq!(config.metadata.get("version"), Some(&"0.14.0".to_string()));
 }
 
 #[test]

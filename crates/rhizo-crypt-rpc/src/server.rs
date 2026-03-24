@@ -23,6 +23,7 @@ pub struct RpcServer {
     shutdown_tx: watch::Sender<bool>,
     shutdown_rx: watch::Receiver<bool>,
     is_running: Arc<AtomicBool>,
+    ready_notify: Arc<tokio::sync::Notify>,
 }
 
 impl RpcServer {
@@ -36,6 +37,7 @@ impl RpcServer {
             shutdown_tx,
             shutdown_rx,
             is_running: Arc::new(AtomicBool::new(false)),
+            ready_notify: Arc::new(tokio::sync::Notify::new()),
         }
     }
 
@@ -53,6 +55,7 @@ impl RpcServer {
         info!("rhizoCrypt RPC server listening on {}", local_addr);
 
         self.is_running.store(true, Ordering::SeqCst);
+        self.ready_notify.notify_waiters();
         let is_running = Arc::clone(&self.is_running);
         let mut shutdown_rx = self.shutdown_rx.clone();
 
@@ -106,6 +109,28 @@ impl RpcServer {
     #[must_use]
     pub fn is_running(&self) -> bool {
         self.is_running.load(Ordering::SeqCst)
+    }
+
+    /// Wait until the server has bound its port and is accepting connections.
+    ///
+    /// Returns immediately if the server is already running.
+    pub async fn wait_ready(&self) {
+        if self.is_running() {
+            return;
+        }
+        self.ready_notify.notified().await;
+    }
+
+    /// Get a cloneable readiness notifier for use across task boundaries.
+    #[must_use]
+    pub fn ready_notifier(&self) -> Arc<tokio::sync::Notify> {
+        Arc::clone(&self.ready_notify)
+    }
+
+    /// Get a clone of the `is_running` flag for external polling.
+    #[must_use]
+    pub fn running_flag(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.is_running)
     }
 
     /// Get the server address.
@@ -209,16 +234,15 @@ mod tests {
         let primal = Arc::new(primal);
 
         let server = RpcServer::new(primal, addr);
-        let server_addr = server.addr();
-        assert_eq!(server_addr.port(), 0);
+        assert_eq!(server.addr().port(), 0);
 
-        // Start server in background and immediately shutdown
+        let ready = server.ready_notifier();
         let server_handle = tokio::spawn(async move { server.serve().await });
-        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
-        // Server should have bound (we can't easily verify the port without more setup,
-        // but serve() should not error immediately)
-        drop(server_handle);
+        ready.notified().await;
+
+        server_handle.abort();
+        let _ = server_handle.await;
     }
 
     #[tokio::test]

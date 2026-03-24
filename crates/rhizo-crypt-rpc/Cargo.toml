@@ -40,7 +40,7 @@ hex = "0.4"
 uuid = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 tower = { version = "0.5", features = ["util"] }
 tracing-subscriber.workspace = true
 temp-env.workspace = true

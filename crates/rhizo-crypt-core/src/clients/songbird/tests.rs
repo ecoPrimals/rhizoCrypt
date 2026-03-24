@@ -72,9 +72,10 @@ async fn test_heartbeat_lifecycle() {
     client.stop_heartbeat().await;
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(start_paused = true)]
 async fn test_heartbeat_stops_when_unregistered() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let mut config = SongbirdConfig::with_address("127.0.0.1:8091");
+    config.heartbeat_interval = std::time::Duration::from_millis(50);
     let client = SongbirdClient::new(config);
 
     *client.state.write().await = ClientState::Registered;
@@ -85,7 +86,10 @@ async fn test_heartbeat_stops_when_unregistered() {
 
     *client.state.write().await = ClientState::Connected;
 
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    tokio::time::advance(std::time::Duration::from_millis(100)).await;
+    tokio::task::yield_now().await;
+
+    client.stop_heartbeat().await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

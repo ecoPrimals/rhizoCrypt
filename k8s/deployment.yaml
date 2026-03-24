@@ -44,7 +44,7 @@ metadata:
   namespace: rhizocrypt
   labels:
     app: rhizocrypt
-    version: v0.13.0
+    version: v0.14.0
 spec:
   replicas: 3
   selector:
@@ -54,7 +54,7 @@ spec:
     metadata:
       labels:
         app: rhizocrypt
-        version: v0.13.0
+        version: v0.14.0
     spec:
       serviceAccountName: rhizocrypt
       securityContext:
@@ -63,7 +63,7 @@ spec:
         fsGroup: 1000
       containers:
       - name: rhizocrypt
-        image: rhizocrypt:0.13.0
+        image: rhizocrypt:0.14.0
         imagePullPolicy: IfNotPresent
         ports:
         - name: rpc

@@ -5,6 +5,7 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::time::Duration;
 
 use tracing::warn;
 
@@ -32,6 +33,10 @@ pub struct SongbirdConfig {
 
     /// Enable automatic reconnection.
     pub auto_reconnect: bool,
+
+    /// Heartbeat interval for registration refresh.
+    /// Songbird registrations expire after 60s; default is 45s.
+    pub heartbeat_interval: Duration,
 }
 
 impl Default for SongbirdConfig {
@@ -61,6 +66,7 @@ impl SongbirdConfig {
             metadata: HashMap::new(),
             timeout_ms: crate::constants::DEFAULT_CAPABILITY_TIMEOUT_MS,
             auto_reconnect: true,
+            heartbeat_interval: Duration::from_secs(45),
         }
     }
 

@@ -90,7 +90,7 @@ echo "Response:"
 cat << 'HEALTH'
 {
   "status": "healthy",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "uptime_seconds": 45,
   "sessions": {
     "active": 0,
@@ -255,7 +255,7 @@ sleep 2
 echo -e "${CYAN}💡 Production Deployment:${NC}"
 echo ""
 echo "Docker:"
-echo "  $ docker run -d -p 9400:9400 rhizocrypt:0.13.0"
+echo "  $ docker run -d -p 9400:9400 rhizocrypt:0.14.0"
 echo ""
 echo "Kubernetes:"
 echo "  $ kubectl apply -f k8s/deployment.yaml"

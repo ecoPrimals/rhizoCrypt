@@ -197,12 +197,29 @@ pub async fn run_server(
     port_override: Option<u16>,
     host_override: Option<String>,
 ) -> Result<(), ServiceError> {
-    tracing_subscriber::fmt()
+    run_server_with_ready(port_override, host_override, None).await
+}
+
+/// Run the server with an optional readiness notification.
+///
+/// When `ready` is `Some`, the notifier fires once the RPC server is bound
+/// and accepting connections. Used by integration tests to avoid sleep-based
+/// readiness polling.
+///
+/// # Errors
+///
+/// Returns [`ServiceError`] on bind, config, or runtime failures.
+pub async fn run_server_with_ready(
+    port_override: Option<u16>,
+    host_override: Option<String>,
+    ready: Option<Arc<tokio::sync::Notify>>,
+) -> Result<(), ServiceError> {
+    let _ = tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
-        .init();
+        .try_init();
 
     info!("Starting rhizoCrypt service...");
 
@@ -243,7 +260,20 @@ pub async fn run_server(
     info!("rhizoCrypt service ready");
 
     let shutdown_tx = server.shutdown_sender();
+    let is_running = server.running_flag();
     let serve_handle = tokio::spawn(async move { server.serve().await });
+
+    if let Some(notify) = ready {
+        tokio::spawn(async move {
+            loop {
+                if is_running.load(std::sync::atomic::Ordering::SeqCst) {
+                    notify.notify_one();
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        });
+    }
 
     tokio::pin!(serve_handle);
 

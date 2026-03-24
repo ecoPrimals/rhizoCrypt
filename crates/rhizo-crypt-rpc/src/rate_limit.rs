@@ -10,9 +10,10 @@ use rhizo_crypt_core::constants;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use tokio::sync::RwLock;
+use tokio::time::Instant;
 
 /// Rate limit configuration.
 #[derive(Debug, Clone)]
@@ -452,7 +453,7 @@ mod tests {
         assert!(!limiter.check(client, OperationType::Read).await);
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[tokio::test(start_paused = true)]
     async fn test_rate_limiter_reset_after_window() {
         let config = RateLimitConfig {
             read_rps: 1,
@@ -468,7 +469,7 @@ mod tests {
         assert!(limiter.check(client, OperationType::Read).await);
         assert!(!limiter.check(client, OperationType::Read).await);
 
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        tokio::time::advance(Duration::from_secs(2)).await;
 
         assert!(limiter.check(client, OperationType::Read).await);
     }

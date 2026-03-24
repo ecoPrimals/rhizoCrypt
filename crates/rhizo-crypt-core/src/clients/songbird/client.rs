@@ -274,11 +274,11 @@ impl SongbirdClient {
             heartbeat_handle: Arc::clone(&self.heartbeat_handle),
         };
 
-        // Spawn heartbeat task
+        let interval = client.config.heartbeat_interval;
         let handle = tokio::spawn(async move {
-            info!("Heartbeat task started (45s interval)");
+            info!(?interval, "Heartbeat task started");
             loop {
-                tokio::time::sleep(std::time::Duration::from_secs(45)).await;
+                tokio::time::sleep(interval).await;
 
                 // Check if still registered
                 if *client.state.read().await != ClientState::Registered {
@@ -322,15 +322,13 @@ impl SongbirdClient {
     /// - No endpoint saved
     /// - Re-registration fails
     async fn refresh_registration(&self) -> Result<()> {
-        let endpoint_guard = self.our_endpoint.read().await;
-        let endpoint = endpoint_guard.as_ref().ok_or_else(|| {
+        let endpoint = self.our_endpoint.read().await.clone().ok_or_else(|| {
             RhizoCryptError::integration("No endpoint saved - cannot refresh registration")
         })?;
 
         debug!(endpoint = %endpoint, "Refreshing Songbird registration");
 
-        // Re-register (same as initial registration)
-        let result = self.register(endpoint).await?;
+        let result = self.register(&endpoint).await?;
 
         if result.success {
             debug!("Registration refreshed successfully");

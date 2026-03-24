@@ -44,7 +44,7 @@ cat > /tmp/register.json << 'EOF'
   "address": "localhost:9400",
   "metadata": {
     "primal": "rhizoCrypt",
-    "version": "0.11.0",
+    "version": "0.14.0",
     "description": "Ephemeral DAG Engine"
   }
 }

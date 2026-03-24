@@ -5,6 +5,48 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-03-24 (session 22)
+
+### Fixed
+
+#### Production Deadlock, Test Hang Root Cause, Concurrency & Readiness Patterns
+
+**1. RwLock Deadlock in `refresh_registration()` [PRODUCTION BUG]**
+- `refresh_registration()` held a read lock on `our_endpoint`, then called `register()` which tried to write-lock the same field — classic RwLock deadlock
+- Fix: clone the endpoint value before releasing the read lock
+- This was the **root cause** of the infinite test hang (835 core tests blocked forever)
+
+**2. Rate Limiter: Testable Time Control**
+- Switched `TokenBucket` / `ClientState` from `std::time::Instant` to `tokio::time::Instant`
+- Test uses `#[tokio::test(start_paused = true)]` + `tokio::time::advance()` — eliminates 1-second real sleep
+- Added `test-util` feature to `rhizo-crypt-rpc` dev-dependencies
+
+**3. RpcServer Readiness Notification**
+- Added `ready_notify: Arc<Notify>`, `wait_ready()`, `ready_notifier()`, `running_flag()` to `RpcServer`
+- Server signals readiness after TCP bind — eliminates all sleep-based readiness polling
+- Service integration tests now await `ready.notified()` instead of `sleep(100ms)`
+
+**4. Songbird Heartbeat Interval Configurable**
+- Added `heartbeat_interval: Duration` to `SongbirdConfig` (default: 45s)
+- Tests use 50ms interval with `start_paused = true` — no real-time waits
+- Heartbeat loop uses `client.config.heartbeat_interval` instead of hardcoded 45s
+
+**5. `run_server` Readiness + Idempotent Tracing Init**
+- Added `run_server_with_ready()` accepting `Option<Arc<Notify>>` for test readiness
+- Changed `tracing_subscriber::fmt().init()` → `.try_init()` (idempotent, no double-init panic)
+- `run_server` standalone/discovery tests now use readiness signal instead of 1-2s sleeps
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` — 0 warnings
+- `cargo doc --no-deps` — clean
+- `cargo test --workspace --all-features` — **1,387 tests passing**, 0 failures, **~30s wall time**
+- `cargo test --workspace` (default features) — **1,216 tests**, ~14s wall time
+- Zero test hangs (previously infinite due to deadlock)
+
+---
+
 ## [0.14.0-dev] - 2026-03-24 (session 21)
 
 ### Changed
