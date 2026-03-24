@@ -11,7 +11,7 @@ use std::sync::Arc;
 /// Generic compute client - works with ANY provider.
 #[derive(Debug, Clone)]
 pub struct ComputeClient {
-    adapter: Arc<Box<dyn ProtocolAdapter>>,
+    adapter: Arc<dyn ProtocolAdapter>,
     endpoint: String,
     service_name: Option<String>,
 }
@@ -49,7 +49,7 @@ impl ComputeClient {
         let adapter = AdapterFactory::create(&endpoint_addr)?;
 
         Ok(Self {
-            adapter: Arc::new(adapter),
+            adapter: Arc::from(adapter),
             endpoint: endpoint_addr,
             service_name,
         })
@@ -64,7 +64,7 @@ impl ComputeClient {
         let adapter = AdapterFactory::create(endpoint)?;
 
         Ok(Self {
-            adapter: Arc::new(adapter),
+            adapter: Arc::from(adapter),
             endpoint: endpoint.to_string(),
             service_name: None,
         })

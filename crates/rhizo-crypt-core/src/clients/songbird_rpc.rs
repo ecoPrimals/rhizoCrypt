@@ -193,7 +193,7 @@ mod tests {
             capability: "dag-engine".to_string(),
             endpoint: "127.0.0.1:9400".to_string(),
             status: "healthy".to_string(),
-            metadata: Some(serde_json::json!({"version": "0.13.0"})),
+            metadata: Some(serde_json::json!({"version": "0.14.0"})),
         };
 
         let json = serde_json::to_string(&info).unwrap();
@@ -210,13 +210,13 @@ mod tests {
             service_name: "rhizoCrypt".to_string(),
             capability: "dag-engine".to_string(),
             endpoint: "127.0.0.1:9400".to_string(),
-            metadata: HashMap::from([("version".to_string(), "0.13.0".to_string())]),
+            metadata: HashMap::from([("version".to_string(), "0.14.0".to_string())]),
         };
 
         let json = serde_json::to_string(&reg).unwrap();
         let decoded: RpcServiceRegistration = serde_json::from_str(&json).unwrap();
         assert_eq!(decoded.service_name, "rhizoCrypt");
-        assert_eq!(decoded.metadata.get("version").unwrap(), "0.13.0");
+        assert_eq!(decoded.metadata.get("version").unwrap(), "0.14.0");
     }
 
     #[test]

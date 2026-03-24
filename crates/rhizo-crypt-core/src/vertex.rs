@@ -160,10 +160,10 @@ pub enum MetadataValue {
     String(String),
     /// Bytes value (zero-copy via `bytes::Bytes`).
     Bytes(Bytes),
-    /// Array value.
-    Array(Vec<Self>),
-    /// Object value.
-    Object(HashMap<String, Self>),
+    /// Array value (boxed to reduce enum size disparity).
+    Array(Box<Vec<Self>>),
+    /// Object value (boxed to reduce enum size disparity).
+    Object(Box<HashMap<String, Self>>),
 }
 
 impl From<bool> for MetadataValue {

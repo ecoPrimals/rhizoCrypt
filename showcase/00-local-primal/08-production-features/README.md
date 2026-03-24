@@ -119,7 +119,7 @@ docker run -d \
   --name rhizocrypt \
   -p 9400:9400 \
   -e RHIZOCRYPT_ENV=production \
-  rhizocrypt:0.13.0
+  rhizocrypt:0.14.0
 ```
 
 ### Kubernetes Deployment
@@ -134,7 +134,7 @@ spec:
     spec:
       containers:
       - name: rhizocrypt
-        image: rhizocrypt:0.13.0
+        image: rhizocrypt:0.14.0
         ports:
         - containerPort: 9400
         livenessProbe:

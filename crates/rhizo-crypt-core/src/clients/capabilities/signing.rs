@@ -68,7 +68,7 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub struct SigningClient {
     /// Protocol adapter (HTTP, tarpc, gRPC, etc.)
-    adapter: Arc<Box<dyn ProtocolAdapter>>,
+    adapter: Arc<dyn ProtocolAdapter>,
     /// Service endpoint
     endpoint: String,
     /// Service name (for logging only)
@@ -142,7 +142,7 @@ impl SigningClient {
         let adapter = AdapterFactory::create(&endpoint_addr)?;
 
         Ok(Self {
-            adapter: Arc::new(adapter),
+            adapter: Arc::from(adapter),
             endpoint: endpoint_addr,
             service_name,
         })
@@ -161,7 +161,7 @@ impl SigningClient {
         let adapter = AdapterFactory::create(endpoint)?;
 
         Ok(Self {
-            adapter: Arc::new(adapter),
+            adapter: Arc::from(adapter),
             endpoint: endpoint.to_string(),
             service_name: None,
         })
@@ -336,7 +336,7 @@ impl SigningClient {
     #[cfg(test)]
     pub(crate) fn with_adapter(adapter: Box<dyn ProtocolAdapter>, endpoint: &str) -> Self {
         Self {
-            adapter: Arc::new(adapter),
+            adapter: Arc::from(adapter),
             endpoint: endpoint.to_string(),
             service_name: None,
         }

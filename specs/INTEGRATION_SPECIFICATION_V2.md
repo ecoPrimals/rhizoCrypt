@@ -8,7 +8,7 @@
 
 ## 🎯 Overview
 
-RhizoCrypt v0.13.0+ uses a **capability-based integration architecture** that eliminates vendor hardcoding and enables true infant discovery.
+RhizoCrypt v0.14.0+ uses a **capability-based integration architecture** that eliminates vendor hardcoding and enables true infant discovery.
 
 ### Philosophy Evolution
 

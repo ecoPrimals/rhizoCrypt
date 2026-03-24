@@ -5,6 +5,56 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-03-24 (session 21)
+
+### Changed
+
+#### Comprehensive Audit & Deep Debt Execution — Clippy, Arc<dyn>, MetadataValue, Store Refactor, Version Alignment
+
+**1. Clippy Clean (CI Gate Fixed)**
+- `PlatformKind::current()` → `const fn` (compile-time platform resolution)
+- Eliminated `clone_on_copy` on Copy type in transport tests
+- Replaced `needless_collect` with iterator `.count()` and `!.any()` in manifest tests
+- All 3 crates now pass `cargo clippy --all-targets --all-features -- -D warnings`
+
+**2. Arc<Box<dyn>> → Arc<dyn> (Eliminate Double Indirection)**
+- Removed unnecessary `Box` heap allocation in 5 capability clients (signing, storage, provenance, compute, permanent)
+- `Arc::new(Box::new(adapter))` → `Arc::from(adapter)` — single indirection, idiomatic Rust
+
+**3. MetadataValue Enum Stack Size Reduction**
+- `Array(Vec<Self>)` → `Array(Box<Vec<Self>>)`, `Object(HashMap<...>)` → `Object(Box<HashMap<...>>)`
+- Reduces enum size disparity between null/bool variants and collection variants
+
+**4. Smart store.rs Refactor (1042 → 659 + 363 lines)**
+- Extracted 363-line test module to `store_tests.rs` using `#[path]` reference
+- Follows existing `store_redb_tests*.rs` pattern
+- Zero files over 1000 lines (max: 867)
+
+**5. Version Alignment (0.13.0-dev → 0.14.0-dev)**
+- Updated Dockerfile OCI label, specs index, capability registry, deploy graph
+- Updated showcase README, START_HERE, service README, manifest doc example
+- 8 files aligned to workspace version
+
+**6. Production panic!() Audit**
+- Verified all 42 `panic!()` calls are in `#[cfg(test)]` modules
+- Zero production panics
+
+**7. Documentation & Cleanup**
+- Updated SPDX file count (125 → 126 `.rs` files) in README.md and CONTEXT.md
+- Root docs refreshed for v0.14.0-dev session 21
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` — 0 warnings
+- `cargo test --workspace --all-features` — **1,387 tests passing**, 0 failures
+- `cargo llvm-cov` — **94.60% line coverage** (CI gate: 90%)
+- `RUSTDOCFLAGS="-D warnings" cargo doc` — 0 warnings
+- All `.rs` files under 1000 lines (max: 867)
+- Zero unsafe, zero production unwrap/expect/panic
+
+---
+
 ## [0.14.0-dev] - 2026-03-24 (session 20)
 
 ### Changed

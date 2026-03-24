@@ -385,6 +385,6 @@ ls -la ../bins/
 ---
 
 **Updated**: March 16, 2026  
-**Version**: rhizoCrypt 0.13.0-dev  
+**Version**: rhizoCrypt 0.14.0-dev  
 **Status**: Local 100% Complete, Inter-Primal 60% Complete
 

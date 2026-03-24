@@ -15,7 +15,7 @@ use std::sync::Arc;
 /// Generic provenance client - works with ANY provider.
 #[derive(Debug, Clone)]
 pub struct ProvenanceClient {
-    adapter: Arc<Box<dyn ProtocolAdapter>>,
+    adapter: Arc<dyn ProtocolAdapter>,
     endpoint: String,
     service_name: Option<String>,
 }
@@ -53,7 +53,7 @@ impl ProvenanceClient {
         let adapter = AdapterFactory::create(&endpoint_addr)?;
 
         Ok(Self {
-            adapter: Arc::new(adapter),
+            adapter: Arc::from(adapter),
             endpoint: endpoint_addr,
             service_name,
         })
@@ -68,7 +68,7 @@ impl ProvenanceClient {
         let adapter = AdapterFactory::create(endpoint)?;
 
         Ok(Self {
-            adapter: Arc::new(adapter),
+            adapter: Arc::from(adapter),
             endpoint: endpoint.to_string(),
             service_name: None,
         })
@@ -78,7 +78,7 @@ impl ProvenanceClient {
     #[cfg(test)]
     pub(crate) fn with_adapter(adapter: Box<dyn ProtocolAdapter>, endpoint: &str) -> Self {
         Self {
-            adapter: Arc::new(adapter),
+            adapter: Arc::from(adapter),
             endpoint: endpoint.to_string(),
             service_name: Some("test-service".to_string()),
         }

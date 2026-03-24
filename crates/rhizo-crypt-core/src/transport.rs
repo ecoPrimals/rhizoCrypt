@@ -24,7 +24,7 @@ enum PlatformKind {
 }
 
 impl PlatformKind {
-    fn current() -> Self {
+    const fn current() -> Self {
         if cfg!(target_os = "android") {
             Self::Android
         } else if cfg!(target_os = "windows") {
@@ -468,7 +468,7 @@ mod tests {
     fn test_platform_kind_clone_and_copy() {
         let kind = PlatformKind::Unix;
         let copied = kind;
-        let cloned = kind.clone();
+        let cloned = kind;
         assert_eq!(kind, copied);
         assert_eq!(kind, cloned);
     }

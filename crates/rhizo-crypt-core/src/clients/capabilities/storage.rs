@@ -19,7 +19,7 @@ use std::sync::Arc;
 /// payload storage capabilities from any provider.
 #[derive(Debug, Clone)]
 pub struct StorageClient {
-    adapter: Arc<Box<dyn ProtocolAdapter>>,
+    adapter: Arc<dyn ProtocolAdapter>,
     endpoint: String,
     service_name: Option<String>,
 }
@@ -70,7 +70,7 @@ impl StorageClient {
         let adapter = AdapterFactory::create(&endpoint_addr)?;
 
         Ok(Self {
-            adapter: Arc::new(adapter),
+            adapter: Arc::from(adapter),
             endpoint: endpoint_addr,
             service_name,
         })
@@ -85,7 +85,7 @@ impl StorageClient {
         let adapter = AdapterFactory::create(endpoint)?;
 
         Ok(Self {
-            adapter: Arc::new(adapter),
+            adapter: Arc::from(adapter),
             endpoint: endpoint.to_string(),
             service_name: None,
         })

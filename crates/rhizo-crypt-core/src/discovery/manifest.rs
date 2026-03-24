@@ -14,7 +14,7 @@
 //! ```json
 //! {
 //!     "primal": "rhizocrypt",
-//!     "version": "0.13.0-dev",
+//!     "version": "0.14.0-dev",
 //!     "socket": "/run/user/1000/ecoPrimals/rhizocrypt.sock",
 //!     "capabilities": ["dag.session.create", "dag.event.append", "health.check"]
 //! }
@@ -148,7 +148,7 @@ mod tests {
     fn manifest_has_capability() {
         let manifest = PrimalManifest {
             primal: "rhizocrypt".into(),
-            version: "0.13.0-dev".into(),
+            version: "0.14.0-dev".into(),
             socket: "/tmp/test.sock".into(),
             address: None,
             capabilities: vec!["dag.session.create".into(), "health.check".into()],
@@ -268,11 +268,9 @@ mod tests {
         assert_eq!(signers.len(), 1);
         assert_eq!(signers[0].primal, "signer");
 
-        let storers: Vec<_> = all.iter().filter(|m| m.has_capability("storage.store")).collect();
-        assert_eq!(storers.len(), 1);
+        assert_eq!(all.iter().filter(|m| m.has_capability("storage.store")).count(), 1);
 
-        let none: Vec<_> = all.iter().filter(|m| m.has_capability("nonexistent")).collect();
-        assert!(none.is_empty());
+        assert!(!all.iter().any(|m| m.has_capability("nonexistent")));
     }
 
     #[tokio::test]

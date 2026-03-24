@@ -2,7 +2,7 @@
 
 **Welcome to rhizoCrypt** - The ephemeral working memory for the ecoPrimals ecosystem.
 
-**Version**: 0.13.0-dev  
+**Version**: 0.14.0-dev  
 **Status**: Production Ready (1,412 tests passing, `--fail-under-lines 90` CI gate)  
 **Date**: March 23, 2026
 

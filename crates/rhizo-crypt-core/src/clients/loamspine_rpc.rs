@@ -182,7 +182,7 @@ mod tests {
     fn test_health_response_roundtrip() {
         let response = RpcHealthResponse {
             status: "ok".to_string(),
-            version: "0.13.0".to_string(),
+            version: "0.14.0".to_string(),
             spine_count: 7,
         };
 

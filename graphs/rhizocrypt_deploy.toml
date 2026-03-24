@@ -17,7 +17,7 @@
 [graph]
 name = "rhizocrypt_dag_engine"
 description = "Ephemeral DAG engine with optional provenance trio wiring"
-version = "0.13.0-dev"
+version = "0.14.0-dev"
 coordination = "Sequential"
 
 # ── Node 1: BearDog (crypto + key management) ─────────────────────

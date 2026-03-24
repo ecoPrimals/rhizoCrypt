@@ -7,7 +7,7 @@
 
 [primal]
 name = "rhizocrypt"
-version = "0.13.0-dev"
+version = "0.14.0-dev"
 domain = "dag"
 license = "AGPL-3.0-or-later"
 description = "Ephemeral content-addressed DAG engine for session-scoped working memory"
