@@ -52,7 +52,7 @@ impl DiscoveryStatus {
 pub struct DiscoveryRegistry {
     /// Known endpoints by capability.
     endpoints: RwLock<HashMap<Capability, Vec<ServiceEndpoint>>>,
-    /// Discovery source (e.g., Songbird address).
+    /// Discovery adapter address (bootstrap endpoint for capability queries).
     discovery_source: RwLock<Option<SocketAddr>>,
     /// Local primal name (self-knowledge only).
     local_primal: Cow<'static, str>,
@@ -69,14 +69,14 @@ impl DiscoveryRegistry {
         }
     }
 
-    /// Set the discovery source (e.g., Songbird endpoint).
+    /// Set the discovery adapter address.
     ///
-    /// This is the only "configured" address - everything else is discovered.
+    /// This is the only "configured" address — everything else is discovered.
     pub async fn set_discovery_source(&self, addr: SocketAddr) {
         *self.discovery_source.write().await = Some(addr);
     }
 
-    /// Clear the configured discovery source (e.g., when Songbird is no longer used).
+    /// Clear the configured discovery adapter (standalone mode).
     pub async fn clear_discovery_source(&self) {
         *self.discovery_source.write().await = None;
     }
@@ -93,8 +93,8 @@ impl DiscoveryRegistry {
     ///
     /// Strategy:
     /// 1. Check local cache for healthy endpoints
-    /// 2. If cache miss and a discovery source (Songbird) is configured,
-    ///    attempt a live `discovery.resolve` JSON-RPC query via Unix socket
+    /// 2. If cache miss and a discovery adapter is configured,
+    ///    attempt a live `discovery.resolve` JSON-RPC query
     /// 3. Cache any discovered endpoints for future lookups
     /// 4. Return `Unavailable` when no endpoints can be found
     pub async fn discover(&self, capability: &Capability) -> DiscoveryStatus {
@@ -116,7 +116,7 @@ impl DiscoveryRegistry {
         };
         drop(source);
 
-        // Query Songbird for the capability
+        // Query discovery adapter for the capability
         match self.query_discovery_source(source_addr, capability).await {
             Ok(endpoints) if !endpoints.is_empty() => {
                 // Cache the discovered endpoints
@@ -142,9 +142,9 @@ impl DiscoveryRegistry {
         }
     }
 
-    /// Query the discovery source (Songbird) for endpoints providing a capability.
+    /// Query the discovery adapter for endpoints providing a capability.
     ///
-    /// Uses a lightweight TCP JSON-RPC call to the Songbird discovery endpoint.
+    /// Sends a lightweight TCP JSON-RPC `discovery.resolve` call.
     async fn query_discovery_source(
         &self,
         source_addr: SocketAddr,
@@ -308,7 +308,7 @@ fn parse_capability(name: &str) -> Option<Capability> {
 /// Deserialize capabilities from dual formats: flat string array or nested objects.
 ///
 /// Absorbed from groundSpring/neuralSpring/airSpring/wetSpring dual-format pattern.
-/// Songbird may return capabilities as either:
+/// Discovery adapters may return capabilities as either:
 /// - Flat: `["Signing", "did_verification"]`
 /// - Nested: `[{"name": "Signing", "version": "1.0"}, ...]`
 ///

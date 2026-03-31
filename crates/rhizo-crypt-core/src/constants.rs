@@ -326,13 +326,20 @@ pub const DEFAULT_COMPRESSION_THRESHOLD: usize = 1024;
 // UNIX SOCKET CONSTANTS (Tower Atomic IPC)
 // ============================================================================
 
+/// Subdirectory name for biomeOS socket discovery.
+///
+/// All ecoBin primals place sockets under `$XDG_RUNTIME_DIR/{BIOMEOS_SOCKET_SUBDIR}/`.
+/// This matches the ecosystem standard from `IPC_COMPLIANCE_MATRIX.md` and
+/// `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
+pub const BIOMEOS_SOCKET_SUBDIR: &str = "biomeos";
+
 /// Default directory for primal Unix sockets (Linux default).
 ///
 /// This is the Linux-specific default. For platform-agnostic behavior, use
 /// [`crate::transport::socket_dir()`] which performs runtime platform detection per ecoBin v2.0.
 ///
 /// Each primal creates a socket at `{SOCKET_DIR}/{primal_name}.sock`.
-pub const DEFAULT_SOCKET_DIR: &str = "/run/ecoPrimals";
+pub const DEFAULT_SOCKET_DIR: &str = "/run/biomeos";
 
 /// File extension for Unix domain sockets.
 pub const SOCKET_FILE_EXTENSION: &str = ".sock";
@@ -415,7 +422,7 @@ mod tests {
 
     #[test]
     fn test_socket_constants_preserved() {
-        assert_eq!(DEFAULT_SOCKET_DIR, "/run/ecoPrimals");
+        assert_eq!(DEFAULT_SOCKET_DIR, "/run/biomeos");
         assert_eq!(SOCKET_FILE_EXTENSION, ".sock");
     }
 }

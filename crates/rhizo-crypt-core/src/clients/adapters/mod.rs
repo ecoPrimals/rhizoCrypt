@@ -138,8 +138,8 @@ impl AdapterFactory {
     /// # Arguments
     ///
     /// * `endpoint` - Service endpoint:
-    ///   - `unix:///run/ecoPrimals/beardog.sock` — Unix socket IPC
-    ///   - `/run/ecoPrimals/beardog.sock` — bare path → Unix socket
+    ///   - `unix:///run/biomeos/beardog.sock` — Unix socket IPC
+    ///   - `/run/biomeos/beardog.sock` — bare path → Unix socket
     ///   - `tarpc://10.0.1.6:9600` — tarpc binary protocol
     ///   - `http://10.0.1.5:9500` — HTTP/REST (requires `http-clients` feature)
     ///
@@ -295,14 +295,14 @@ mod tests {
 
     #[test]
     fn test_factory_unix_with_protocol() {
-        let adapter = AdapterFactory::create("unix:///run/ecoPrimals/beardog.sock").unwrap();
+        let adapter = AdapterFactory::create("unix:///run/biomeos/beardog.sock").unwrap();
         assert_eq!(adapter.protocol(), "unix");
-        assert_eq!(adapter.endpoint(), "/run/ecoPrimals/beardog.sock");
+        assert_eq!(adapter.endpoint(), "/run/biomeos/beardog.sock");
     }
 
     #[test]
     fn test_factory_unix_bare_path() {
-        let adapter = AdapterFactory::create("/run/ecoPrimals/beardog.sock").unwrap();
+        let adapter = AdapterFactory::create("/run/biomeos/beardog.sock").unwrap();
         assert_eq!(adapter.protocol(), "unix");
     }
 

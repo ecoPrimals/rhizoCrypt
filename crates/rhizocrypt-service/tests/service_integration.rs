@@ -546,6 +546,7 @@ fn test_run_server_standalone_mode_no_discovery() {
                 let _ = run_server_with_ready(
                     Some(19709),
                     Some("127.0.0.1".to_string()),
+                    None,
                     Some(ready_clone),
                 )
                 .await;
@@ -583,6 +584,7 @@ fn test_run_server_discovery_failure_continues_standalone() {
                 let _ = run_server_with_ready(
                     Some(19710),
                     Some("127.0.0.1".to_string()),
+                    None,
                     Some(ready_clone),
                 )
                 .await;
@@ -711,4 +713,114 @@ fn test_client_operation_variants() {
     let _ = ClientOperation::ListSessions;
     let _ = ClientOperation::Metrics;
     // Clap Subcommand ensures these are valid
+}
+
+// --- UDS transport integration tests ---
+
+#[cfg(unix)]
+mod uds_integration {
+    use super::*;
+    use rhizo_crypt_rpc::jsonrpc::uds::UdsJsonRpcServer;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::net::UnixStream;
+
+    /// socat-style validation: raw newline JSON-RPC over UDS.
+    #[tokio::test]
+    async fn test_uds_socat_style_health_liveness() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let sock = dir.path().join("socat-test.sock");
+
+        let config = RhizoCryptConfig::default();
+        let mut primal = RhizoCrypt::new(config);
+        primal.start().await.expect("primal should start");
+        let primal = Arc::new(primal);
+
+        let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
+        let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+
+        let handle = tokio::spawn(async move { uds.serve(shutdown_rx).await });
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let stream = UnixStream::connect(&sock).await.expect("connect");
+        let (reader, mut writer) = stream.into_split();
+
+        let req = "{\"jsonrpc\":\"2.0\",\"method\":\"health.liveness\",\"params\":{},\"id\":1}\n";
+        writer.write_all(req.as_bytes()).await.unwrap();
+        writer.shutdown().await.unwrap();
+
+        let mut lines = BufReader::new(reader).lines();
+        let line = lines.next_line().await.unwrap().expect("response");
+        let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+        assert_eq!(resp["jsonrpc"], "2.0");
+        assert!(resp.get("result").is_some() || resp.get("error").is_some());
+
+        let _ = shutdown_tx.send(true);
+        let _ = handle.await;
+    }
+
+    /// Server with --unix creates socket file and cleans up on shutdown.
+    #[tokio::test]
+    async fn test_uds_server_lifecycle() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let sock = dir.path().join("lifecycle.sock");
+
+        let config = RhizoCryptConfig::default();
+        let mut primal = RhizoCrypt::new(config);
+        primal.start().await.expect("primal should start");
+        let primal = Arc::new(primal);
+
+        let uds = UdsJsonRpcServer::new(primal, sock.clone());
+        let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+
+        assert!(!sock.exists(), "socket should not exist before serve");
+
+        let handle = tokio::spawn(async move { uds.serve(shutdown_rx).await });
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        assert!(sock.exists(), "socket should exist after serve starts");
+
+        let _ = shutdown_tx.send(true);
+        let _ = handle.await;
+
+        assert!(!sock.exists(), "socket should be cleaned up after shutdown");
+    }
+
+    /// Run server with UDS enabled (empty path = default).
+    #[test]
+    fn test_run_server_with_uds() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let sock = dir.path().join("run-server-uds.sock");
+
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let ready = Arc::new(tokio::sync::Notify::new());
+        let ready_clone = Arc::clone(&ready);
+        let sock_str = sock.to_string_lossy().to_string();
+
+        let handle = rt.spawn(async move {
+            let _ = run_server_with_ready(
+                Some(19711),
+                Some("127.0.0.1".to_string()),
+                Some(sock_str),
+                Some(ready_clone),
+            )
+            .await;
+        });
+
+        rt.block_on(async {
+            tokio::time::timeout(Duration::from_secs(10), ready.notified())
+                .await
+                .expect("server should become ready within 10s");
+
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            assert!(sock.exists(), "UDS socket should be created");
+
+            handle.abort();
+            let _ = handle.await;
+        });
+    }
 }

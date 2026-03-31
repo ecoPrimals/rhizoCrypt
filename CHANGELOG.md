@@ -5,6 +5,50 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-03-31 (session 23)
+
+### Added
+
+#### RC-01 Fix: UDS Transport + Dual-Mode TCP + Deep Debt Evolution
+
+**1. Unix Domain Socket (UDS) JSON-RPC Server [CRITICAL — unblocks provenance trio]**
+- New `--unix [PATH]` CLI flag with default `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock`
+- `UdsJsonRpcServer` in `jsonrpc/uds.rs` with stale socket cleanup and graceful shutdown
+- Newline-delimited JSON-RPC 2.0 wire format over UDS (same as `socat`, biomeOS pipeline)
+- Gated by `#[cfg(unix)]` for platform safety
+
+**2. Dual-Mode TCP: HTTP POST + Raw Newline Auto-Detection**
+- Single TCP port now auto-detects HTTP POST vs raw newline JSON-RPC per connection
+- First-byte peek: `{`/`[` → newline handler, otherwise → Axum HTTP router via `hyper-util`
+- Generic `handle_newline_connection<S>` works over any `AsyncRead + AsyncWrite` stream
+
+**3. `ecoPrimals` → `biomeos` Socket Path Migration**
+- `safe_env::get_socket_path()` now uses `constants::BIOMEOS_SOCKET_SUBDIR` (`biomeos`)
+- `discovery::manifest::manifest_dir()` now resolves to `$XDG_RUNTIME_DIR/biomeos/`
+- All docs, tests, and adapter examples updated from `ecoPrimals` to `biomeos`
+
+**4. Deep Debt Evolution**
+- `OrExit` trait evolved from `std::process::exit(1)` to `Result` propagation
+- `handle_tcp_connection` return type: `Box<dyn Error>` → `std::io::Result<()>`
+- `SongbirdClient` import moved to function scope; docs use "discovery adapter"
+- `niche.rs`, `vertex.rs`, `types.rs` docs: primal names → capability-agnostic
+- `discovery/registry.rs` comments: "Songbird" → "discovery adapter"
+- `rhizocrypt.rs`: extracted `purge_session_artifacts()` helper (deduplicated cleanup)
+- `integration/mod.rs`: extracted provider traits to `integration/traits.rs` (200+ lines)
+- `deny.toml`: removed resolved RUSTSEC-2024-0384, RUSTSEC-2025-0057
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` — 0 warnings
+- `cargo test --workspace --all-features` — **1,402 tests passing**, 0 failures
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok
+- All `.rs` files under 1000 lines
+- Zero unsafe, zero production unwrap/expect
+- SPDX headers on all 129 `.rs` files
+
+---
+
 ## [0.14.0-dev] - 2026-03-24 (session 22)
 
 ### Fixed
@@ -1239,6 +1283,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.14.0-dev** (2026-03-31 s23): RC-01 fix — UDS transport + dual-mode TCP + `biomeos` path migration + deep debt evolution, 1,402 tests
 - **0.13.0-dev** (2026-03-23 s19): MCP tools, DagBackend enum, GC sweeper, RedbDagStore wiring, 5 proptests, normalize_method, health alignment, debris cleanup, 1,412 tests
 - **0.13.0-dev** (2026-03-17 s18): Sovereignty — provenance-trio-types eliminated, wire types inlined, 14-crate ecoBin deny, 6 file extractions, cross-compile CI, RUSTSEC-2026-0049 fix
 - **0.13.0-dev** (2026-03-17 s17): Deep debt — health probes, 4-format capabilities, ValidationSink, JSON-RPC fuzz

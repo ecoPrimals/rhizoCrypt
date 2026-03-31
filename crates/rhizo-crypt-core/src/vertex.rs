@@ -26,7 +26,7 @@ pub struct Vertex {
     /// Timestamp of vertex creation.
     pub timestamp: Timestamp,
 
-    /// The agent that created this vertex (BearDog DID).
+    /// The agent that created this vertex (Decentralized Identifier).
     pub agent: Option<Did>,
 
     /// Optional cryptographic signature from agent.

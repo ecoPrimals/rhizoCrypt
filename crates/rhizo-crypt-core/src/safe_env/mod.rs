@@ -240,7 +240,7 @@ impl SafeEnv {
     /// Get the socket path for a primal by name.
     ///
     /// Looks up `{PRIMAL}_SOCKET` env var and falls back to the XDG
-    /// runtime directory convention: `$XDG_RUNTIME_DIR/ecoPrimals/{name}.sock`.
+    /// runtime directory convention: `$XDG_RUNTIME_DIR/biomeos/{name}.sock`.
     #[must_use]
     pub fn get_socket_path(primal_name: &str) -> Option<std::path::PathBuf> {
         let env_key = Self::socket_env_var(primal_name);
@@ -250,7 +250,9 @@ impl SafeEnv {
 
         // XDG fallback
         std::env::var("XDG_RUNTIME_DIR").ok().map(|xdg| {
-            std::path::PathBuf::from(xdg).join("ecoPrimals").join(format!("{primal_name}.sock"))
+            std::path::PathBuf::from(xdg)
+                .join(crate::constants::BIOMEOS_SOCKET_SUBDIR)
+                .join(format!("{primal_name}.sock"))
         })
     }
 }
@@ -652,13 +654,10 @@ mod tests {
 
     #[test]
     fn test_get_socket_path_from_env() {
-        temp_env::with_vars(
-            [("RHIZOCRYPT_SOCKET", Some("/run/ecoPrimals/rhizoCrypt.sock"))],
-            || {
-                let path = SafeEnv::get_socket_path("rhizoCrypt");
-                assert_eq!(path, Some(std::path::PathBuf::from("/run/ecoPrimals/rhizoCrypt.sock")));
-            },
-        );
+        temp_env::with_vars([("RHIZOCRYPT_SOCKET", Some("/run/biomeos/rhizoCrypt.sock"))], || {
+            let path = SafeEnv::get_socket_path("rhizoCrypt");
+            assert_eq!(path, Some(std::path::PathBuf::from("/run/biomeos/rhizoCrypt.sock")));
+        });
     }
 
     #[test]
@@ -669,7 +668,7 @@ mod tests {
                 let path = SafeEnv::get_socket_path("rhizoCrypt");
                 assert_eq!(
                     path,
-                    Some(std::path::PathBuf::from("/run/user/1000/ecoPrimals/rhizoCrypt.sock"))
+                    Some(std::path::PathBuf::from("/run/user/1000/biomeos/rhizoCrypt.sock"))
                 );
             },
         );

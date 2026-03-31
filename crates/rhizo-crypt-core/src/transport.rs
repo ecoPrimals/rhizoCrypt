@@ -13,7 +13,9 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::constants::{DEFAULT_RPC_HOST, DEFAULT_SOCKET_DIR, SOCKET_FILE_EXTENSION};
+use crate::constants::{
+    BIOMEOS_SOCKET_SUBDIR, DEFAULT_RPC_HOST, DEFAULT_SOCKET_DIR, SOCKET_FILE_EXTENSION,
+};
 
 /// Platform bucket for transport selection (used to keep negotiation logic testable on any host).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -40,7 +42,7 @@ fn unix_socket_dir_fallback() -> PathBuf {
     if cfg!(target_os = "linux") {
         PathBuf::from(DEFAULT_SOCKET_DIR)
     } else {
-        std::env::temp_dir().join("ecoPrimals")
+        std::env::temp_dir().join(BIOMEOS_SOCKET_SUBDIR)
     }
 }
 
@@ -61,7 +63,9 @@ fn preferred_transport_with_platform(
     platform: PlatformKind,
 ) -> TransportHint {
     match platform {
-        PlatformKind::Android => TransportHint::AbstractSocket(format!("ecoPrimals.{primal_name}")),
+        PlatformKind::Android => {
+            TransportHint::AbstractSocket(format!("{BIOMEOS_SOCKET_SUBDIR}.{primal_name}"))
+        }
         PlatformKind::Windows => TransportHint::Tcp {
             host: DEFAULT_RPC_HOST.to_string(),
             port,
@@ -77,10 +81,10 @@ fn preferred_transport_with_platform(
 ///
 /// Platform behavior:
 /// - **Linux/macOS/BSD**: Checks `XDG_RUNTIME_DIR` first; falls back to
-///   `/run/ecoPrimals` on Linux, `/tmp/ecoPrimals` elsewhere.
+///   `/run/biomeos` on Linux, `/tmp/biomeos` elsewhere.
 /// - **Android**: Returns `None` (use abstract sockets).
 /// - **Windows**: Returns `None` (use named pipes or TCP).
-/// - **General fallback**: `/tmp/ecoPrimals`.
+/// - **General fallback**: `/tmp/biomeos`.
 #[must_use]
 pub fn socket_dir() -> Option<PathBuf> {
     if cfg!(target_os = "android") || cfg!(target_os = "windows") {
@@ -88,7 +92,7 @@ pub fn socket_dir() -> Option<PathBuf> {
     }
 
     if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-        let path = Path::new(&runtime_dir).join("ecoPrimals");
+        let path = Path::new(&runtime_dir).join(BIOMEOS_SOCKET_SUBDIR);
         return Some(path);
     }
 
@@ -150,7 +154,7 @@ mod tests {
                 assert!(result.is_none(), "Android/Windows should return None");
             } else {
                 let dir = result.expect("Unix-like should return Some");
-                assert_eq!(dir, runtime_path.join("ecoPrimals"));
+                assert_eq!(dir, runtime_path.join("biomeos"));
             }
         });
     }
@@ -164,7 +168,7 @@ mod tests {
             } else if cfg!(target_os = "linux") {
                 assert_eq!(result, Some(PathBuf::from(DEFAULT_SOCKET_DIR)));
             } else {
-                assert_eq!(result, Some(std::env::temp_dir().join("ecoPrimals")));
+                assert_eq!(result, Some(std::env::temp_dir().join("biomeos")));
             }
         });
     }
@@ -205,7 +209,7 @@ mod tests {
         let hint = preferred_transport("rhizoCrypt", 9400);
         assert!(matches!(hint, TransportHint::AbstractSocket(_)));
         if let TransportHint::AbstractSocket(name) = hint {
-            assert_eq!(name, "ecoPrimals.rhizoCrypt");
+            assert_eq!(name, "biomeos.rhizoCrypt");
         }
     }
 
@@ -283,8 +287,8 @@ mod tests {
         };
         assert_eq!(tcp1, tcp2);
 
-        let abstract1 = TransportHint::AbstractSocket("ecoPrimals.test".to_string());
-        let abstract2 = TransportHint::AbstractSocket("ecoPrimals.test".to_string());
+        let abstract1 = TransportHint::AbstractSocket("biomeos.test".to_string());
+        let abstract2 = TransportHint::AbstractSocket("biomeos.test".to_string());
         assert_eq!(abstract1, abstract2);
     }
 
@@ -296,7 +300,7 @@ mod tests {
         temp_env::with_vars([("XDG_RUNTIME_DIR", Some(""))], || {
             let result = socket_dir();
             let dir = result.expect("Empty XDG_RUNTIME_DIR still yields Some on Unix");
-            assert_eq!(dir, PathBuf::from("ecoPrimals"));
+            assert_eq!(dir, PathBuf::from("biomeos"));
         });
     }
 
@@ -322,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_transport_hint_debug_format() {
-        let unix = TransportHint::UnixSocket(PathBuf::from("/run/ecoPrimals/rhizoCrypt.sock"));
+        let unix = TransportHint::UnixSocket(PathBuf::from("/run/biomeos/rhizoCrypt.sock"));
         let debug_str = format!("{unix:?}");
         assert!(debug_str.contains("UnixSocket"));
         assert!(debug_str.contains("rhizoCrypt.sock"));
@@ -336,16 +340,16 @@ mod tests {
         assert!(debug_str.contains("127.0.0.1"));
         assert!(debug_str.contains("9400"));
 
-        let abstract_sock = TransportHint::AbstractSocket("ecoPrimals.test".to_string());
+        let abstract_sock = TransportHint::AbstractSocket("biomeos.test".to_string());
         let debug_str = format!("{abstract_sock:?}");
         assert!(debug_str.contains("AbstractSocket"));
-        assert!(debug_str.contains("ecoPrimals.test"));
+        assert!(debug_str.contains("biomeos.test"));
     }
 
     #[test]
     fn test_transport_hint_unix_socket_equality() {
-        let p1 = PathBuf::from("/run/ecoPrimals/a.sock");
-        let p2 = PathBuf::from("/run/ecoPrimals/a.sock");
+        let p1 = PathBuf::from("/run/biomeos/a.sock");
+        let p2 = PathBuf::from("/run/biomeos/a.sock");
         let u1 = TransportHint::UnixSocket(p1);
         let u2 = TransportHint::UnixSocket(p2);
         assert_eq!(u1, u2);
@@ -357,7 +361,7 @@ mod tests {
             let hint = preferred_transport("", 9400);
             assert!(matches!(hint, TransportHint::AbstractSocket(_)));
             if let TransportHint::AbstractSocket(name) = hint {
-                assert_eq!(name, "ecoPrimals.");
+                assert_eq!(name, "biomeos.");
             }
             return;
         }
@@ -404,7 +408,7 @@ mod tests {
     #[test]
     fn test_preferred_transport_android_platform() {
         let hint = preferred_transport_with_platform("rhizoCrypt", 9400, PlatformKind::Android);
-        assert_eq!(hint, TransportHint::AbstractSocket("ecoPrimals.rhizoCrypt".to_string()));
+        assert_eq!(hint, TransportHint::AbstractSocket("biomeos.rhizoCrypt".to_string()));
     }
 
     #[test]
@@ -437,7 +441,7 @@ mod tests {
 
     #[test]
     fn test_unix_transport_from_socket_path_some() {
-        let path = PathBuf::from("/tmp/ecoPrimals/test.sock");
+        let path = PathBuf::from("/tmp/biomeos/test.sock");
         let hint = unix_transport_from_socket_path(Some(path.clone()), 9400);
         assert_eq!(hint, TransportHint::UnixSocket(path));
     }
@@ -460,7 +464,7 @@ mod tests {
         if cfg!(target_os = "linux") {
             assert_eq!(dir, PathBuf::from(DEFAULT_SOCKET_DIR));
         } else {
-            assert_eq!(dir, std::env::temp_dir().join("ecoPrimals"));
+            assert_eq!(dir, std::env::temp_dir().join("biomeos"));
         }
     }
 
@@ -475,7 +479,7 @@ mod tests {
 
     #[test]
     fn test_transport_hint_clone() {
-        let hint = TransportHint::AbstractSocket("ecoPrimals.test".to_string());
+        let hint = TransportHint::AbstractSocket("biomeos.test".to_string());
         let cloned = hint.clone();
         assert_eq!(hint, cloned);
 

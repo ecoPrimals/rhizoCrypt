@@ -198,7 +198,7 @@ impl fmt::Display for PayloadRef {
     }
 }
 
-/// BearDog Decentralized Identifier (DID).
+/// Decentralized Identifier (DID).
 ///
 /// Internally backed by `Arc<str>` for O(1) cloning — DIDs are shared across
 /// sessions, slices, dehydration summaries, and RPC boundaries.

@@ -23,7 +23,7 @@ results to permanent storage via capability discovery.
 ## Ecosystem Position
 
 rhizoCrypt is one primal in the ecoPrimals ecosystem. It knows only itself
-and discovers sibling capabilities at runtime via Songbird or direct endpoints:
+and discovers sibling capabilities at runtime via a discovery adapter or direct endpoints:
 
 | Capability | What rhizoCrypt Needs | Discovered At Runtime |
 |------------|----------------------|----------------------|
@@ -45,8 +45,9 @@ Three workspace crates:
 
 ## IPC
 
-- **JSON-RPC 2.0** over HTTP — required, ecosystem IPC standard
+- **JSON-RPC 2.0** — dual-mode TCP (auto-detects HTTP POST vs newline-delimited) + UDS
 - **tarpc 0.37** with bincode — optional, high-performance typed RPC
+- **Unix domain socket** at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` (`--unix` flag)
 - Method names follow `domain.verb` semantic naming (`dag.session.create`, `health.check`)
 
 ## Compliance
@@ -58,16 +59,16 @@ Three workspace crates:
 | genomeBin | Dockerfile with OCI labels, healthcheck |
 | Universal IPC v3 | JSON-RPC + tarpc, semantic naming |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 126 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 129 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,387 passing (all features) |
+| Tests | 1,402 passing (all features) |
 | Coverage | CI gate: `--fail-under-lines 90` (~94% line coverage) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `missing_errors_doc = "warn"`) |
-| Source files | 126 `.rs`, ~44,200 lines |
+| Source files | 129 `.rs`, ~45,000 lines |
 | Max file size | 867 lines (limit: 1000) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |

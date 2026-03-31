@@ -31,7 +31,6 @@ pub mod exit_codes {
 pub use rhizo_crypt_rpc;
 
 use clap::Subcommand;
-use rhizo_crypt_core::clients::songbird::{SongbirdClient, SongbirdConfig};
 use rhizo_crypt_core::constants;
 use rhizo_crypt_core::primal::PrimalLifecycle;
 use rhizo_crypt_core::safe_env::SafeEnv;
@@ -39,6 +38,7 @@ use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig};
 use rhizo_crypt_rpc::jsonrpc::JsonRpcServer;
 use rhizo_crypt_rpc::server::RpcServer;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::{error, info, warn};
@@ -186,7 +186,12 @@ async fn shutdown_signal() {
     }
 }
 
-/// Start the RPC server (tarpc + JSON-RPC) with optional discovery registration.
+/// Start the RPC server (tarpc + JSON-RPC + optional UDS) with optional discovery registration.
+///
+/// `unix_socket`:
+/// - `None` — no UDS listener
+/// - `Some("")` — UDS at the default ecosystem path (`$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock`)
+/// - `Some(path)` — UDS at the given custom path
 ///
 /// # Errors
 ///
@@ -196,8 +201,9 @@ async fn shutdown_signal() {
 pub async fn run_server(
     port_override: Option<u16>,
     host_override: Option<String>,
+    unix_socket: Option<String>,
 ) -> Result<(), ServiceError> {
-    run_server_with_ready(port_override, host_override, None).await
+    run_server_with_ready(port_override, host_override, unix_socket, None).await
 }
 
 /// Run the server with an optional readiness notification.
@@ -212,6 +218,7 @@ pub async fn run_server(
 pub async fn run_server_with_ready(
     port_override: Option<u16>,
     host_override: Option<String>,
+    unix_socket: Option<String>,
     ready: Option<Arc<tokio::sync::Notify>>,
 ) -> Result<(), ServiceError> {
     let _ = tracing_subscriber::fmt()
@@ -239,13 +246,16 @@ pub async fn run_server_with_ready(
     let host = addr.ip();
     let jsonrpc_port = SafeEnv::get_jsonrpc_port(port);
     let jsonrpc_addr: SocketAddr = format!("{host}:{jsonrpc_port}").parse()?;
-    let jsonrpc_server = JsonRpcServer::new(primal, jsonrpc_addr);
+    let jsonrpc_server = JsonRpcServer::new(Arc::clone(&primal), jsonrpc_addr);
     tokio::spawn(async move {
         if let Err(e) = jsonrpc_server.serve().await {
             error!(error = %e, "JSON-RPC server error");
         }
     });
-    info!(address = %jsonrpc_addr, "JSON-RPC server started");
+    info!(address = %jsonrpc_addr, "JSON-RPC server started (dual-mode: HTTP + newline)");
+
+    #[cfg(unix)]
+    let uds_shutdown_tx = start_uds_listener(unix_socket.as_ref(), &primal);
 
     if let Some(discovery_addr) = SafeEnv::get_discovery_address() {
         info!(discovery = %discovery_addr, "Registering with discovery service");
@@ -297,6 +307,10 @@ pub async fn run_server_with_ready(
         () = shutdown_signal() => {
             info!("Received shutdown signal, stopping gracefully");
             let _ = shutdown_tx.send(true);
+            #[cfg(unix)]
+            {
+                let _ = uds_shutdown_tx.send(true);
+            }
             if let Ok(Err(e)) = serve_handle.await {
                 error!(error = %e, "rhizoCrypt service error during shutdown");
                 return Err(ServiceError::Rpc(e));
@@ -307,7 +321,47 @@ pub async fn run_server_with_ready(
     }
 }
 
-/// Register this primal instance with a Songbird discovery service.
+/// Resolve UDS path from the CLI value.
+///
+/// Empty string → ecosystem default (`$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock`).
+/// Non-empty → use as-is.
+#[cfg(unix)]
+fn resolve_uds_path(raw: &str) -> PathBuf {
+    if raw.is_empty() {
+        rhizo_crypt_rpc::jsonrpc::uds::default_socket_path()
+    } else {
+        PathBuf::from(raw)
+    }
+}
+
+/// Optionally start the UDS JSON-RPC listener, returning the shutdown sender.
+#[cfg(unix)]
+fn start_uds_listener(
+    unix_socket: Option<&String>,
+    primal: &Arc<RhizoCrypt>,
+) -> tokio::sync::watch::Sender<bool> {
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    if let Some(raw_path) = unix_socket {
+        let socket_path = resolve_uds_path(raw_path);
+        info!(path = %socket_path.display(), "Starting UDS JSON-RPC listener");
+        let uds_server =
+            rhizo_crypt_rpc::jsonrpc::uds::UdsJsonRpcServer::new(Arc::clone(primal), socket_path);
+        tokio::spawn(async move {
+            if let Err(e) = uds_server.serve(shutdown_rx).await {
+                error!(error = %e, "UDS JSON-RPC server error");
+            }
+        });
+    }
+    shutdown_tx
+}
+
+/// Register this primal with the configured discovery adapter.
+///
+/// The discovery adapter is the one bootstrap address a primal needs.
+/// All other primals are discovered at runtime via capability queries.
+/// Currently the ecosystem uses Songbird as the canonical discovery
+/// adapter, but this function is agnostic — any compatible endpoint
+/// accepting `register` + `heartbeat` JSON-RPC methods will work.
 ///
 /// # Errors
 ///
@@ -316,6 +370,8 @@ pub async fn register_with_discovery(
     discovery_addr: String,
     our_addr: SocketAddr,
 ) -> Result<(), ServiceError> {
+    use rhizo_crypt_core::clients::songbird::{SongbirdClient, SongbirdConfig};
+
     let mut config = SongbirdConfig::new();
     config.address = std::borrow::Cow::Owned(discovery_addr);
     let client = SongbirdClient::new(config);

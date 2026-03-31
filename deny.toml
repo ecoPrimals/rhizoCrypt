@@ -9,11 +9,10 @@ all-features = true
 [advisories]
 yanked = "deny"
 ignore = [
-    # Transitive dependencies from tarpc 0.37; tracked for upstream resolution
-    { id = "RUSTSEC-2024-0384", reason = "instant is a transitive dep from tarpc" },
-    { id = "RUSTSEC-2025-0057", reason = "fxhash is a transitive dep from tarpc" },
-    { id = "RUSTSEC-2025-0141", reason = "bincode v1 is a transitive dep from tarpc" },
-    { id = "RUSTSEC-2026-0007", reason = "opentelemetry_sdk is a transitive dep from tarpc" },
+    # Transitive dependencies from tarpc 0.37; tracked for upstream resolution.
+    # RUSTSEC-2024-0384 (instant) and RUSTSEC-2025-0057 (fxhash) resolved upstream.
+    { id = "RUSTSEC-2025-0141", reason = "bincode v1 is transitive via tarpc → tokio-serde; awaiting bincode v2 migration" },
+    { id = "RUSTSEC-2026-0007", reason = "opentelemetry_sdk is transitive via tarpc → tracing-opentelemetry" },
 ]
 
 [licenses]
@@ -69,7 +68,8 @@ deny = [
 # ring is tolerated only via the optional http-clients feature (reqwest → rustls → ring).
 # Default builds (ecoBin-compliant) have zero C application dependencies.
 # Evolution: migrate to rustls-rustcrypto when it reaches stable, then ban ring too.
-# Evolution: tarpc transitive deps (instant, fxhash, bincode v1) tracked upstream.
+# Evolution: tarpc transitive deps (bincode v1, opentelemetry_sdk) tracked upstream.
+#   instant + fxhash resolved as of tarpc 0.37 dependency updates.
 skip = []
 
 [sources]

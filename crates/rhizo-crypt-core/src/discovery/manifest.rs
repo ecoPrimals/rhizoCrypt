@@ -4,7 +4,7 @@
 //! Manifest-based capability discovery.
 //!
 //! Absorbed from toadStool S156 and barraCuda v0.3.5 manifest discovery pattern.
-//! Scans `$XDG_RUNTIME_DIR/ecoPrimals/*.json` for primal capability manifests,
+//! Scans `$XDG_RUNTIME_DIR/biomeos/*.json` for primal capability manifests,
 //! providing a file-system-based discovery fallback when Songbird is unavailable.
 //!
 //! ## Manifest Format
@@ -15,14 +15,14 @@
 //! {
 //!     "primal": "rhizocrypt",
 //!     "version": "0.14.0-dev",
-//!     "socket": "/run/user/1000/ecoPrimals/rhizocrypt.sock",
+//!     "socket": "/run/user/1000/biomeos/rhizocrypt.sock",
 //!     "capabilities": ["dag.session.create", "dag.event.append", "health.check"]
 //! }
 //! ```
 //!
 //! ## Discovery Flow
 //!
-//! 1. Resolve `$XDG_RUNTIME_DIR/ecoPrimals/`
+//! 1. Resolve `$XDG_RUNTIME_DIR/biomeos/`
 //! 2. List all `*.json` files
 //! 3. Parse each as a [`PrimalManifest`]
 //! 4. Filter by requested capability
@@ -34,7 +34,7 @@ use tokio::fs;
 
 /// A primal's capability manifest published to the filesystem.
 ///
-/// Each primal writes this to `$XDG_RUNTIME_DIR/ecoPrimals/{primal}.json`
+/// Each primal writes this to `$XDG_RUNTIME_DIR/biomeos/{primal}.json`
 /// so that sibling primals can discover capabilities without a live
 /// discovery service.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,12 +63,14 @@ impl PrimalManifest {
     }
 }
 
-/// Resolve the ecoPrimals manifest directory.
+/// Resolve the biomeOS manifest directory.
 ///
-/// Returns `$XDG_RUNTIME_DIR/ecoPrimals/` if the env var is set, otherwise `None`.
+/// Returns `$XDG_RUNTIME_DIR/biomeos/` if the env var is set, otherwise `None`.
 #[must_use]
 pub fn manifest_dir() -> Option<PathBuf> {
-    std::env::var("XDG_RUNTIME_DIR").ok().map(|xdg| PathBuf::from(xdg).join("ecoPrimals"))
+    std::env::var("XDG_RUNTIME_DIR")
+        .ok()
+        .map(|xdg| PathBuf::from(xdg).join(crate::constants::BIOMEOS_SOCKET_SUBDIR))
 }
 
 /// Scan the manifest directory for all primal manifests.
@@ -220,7 +222,7 @@ mod tests {
     #[tokio::test]
     async fn publish_and_unpublish_manifest() {
         let dir = tempfile::tempdir().unwrap();
-        let eco_dir = dir.path().join("ecoPrimals");
+        let eco_dir = dir.path().join("biomeos");
         fs::create_dir_all(&eco_dir).await.unwrap();
 
         let manifest = PrimalManifest {

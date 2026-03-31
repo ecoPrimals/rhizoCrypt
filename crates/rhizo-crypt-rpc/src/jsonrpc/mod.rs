@@ -7,15 +7,20 @@
 //! with semantic method naming: `{domain}.{operation}[.{variant}]`.
 
 mod handler;
+pub mod newline;
 mod types;
+
+#[cfg(unix)]
+pub mod uds;
 
 use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::post};
 use rhizo_crypt_core::{RhizoCrypt, constants::JSON_RPC_PATH};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tower::Service;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 use types::{JsonRpcRequest, codes, error_response, success};
 
 /// Serialize a JSON-RPC response value, logging any serialization failure.
@@ -51,20 +56,37 @@ impl JsonRpcServer {
         }
     }
 
-    /// Start the JSON-RPC server.
+    /// Start the dual-mode JSON-RPC server.
     ///
-    /// Binds to the configured address and serves POST requests at the RPC path.
+    /// Accepts TCP connections and auto-detects the wire framing by peeking
+    /// at the first byte:
+    /// - `{` or `[` → raw newline-delimited JSON-RPC (ecosystem IPC standard)
+    /// - Anything else → HTTP (Axum router, for `curl`/browser clients)
+    ///
+    /// This follows the BearDog protocol-detection pattern and resolves the
+    /// IPC compliance matrix **X** (non-conformant) rating for wire framing.
     ///
     /// # Errors
     ///
-    /// Returns `std::io::Error` if binding or serving fails.
+    /// Returns `std::io::Error` if binding fails.
     pub async fn serve(self) -> Result<(), std::io::Error> {
         let listener = tokio::net::TcpListener::bind(self.addr).await?;
         let local_addr = listener.local_addr()?;
-        info!(address = %local_addr, "JSON-RPC server listening");
+        info!(address = %local_addr, "JSON-RPC server listening (dual-mode: HTTP + newline)");
 
-        let app = Self::router(self.primal);
-        axum::serve(listener, app).await.map_err(std::io::Error::other)
+        let app = Self::router(Arc::clone(&self.primal));
+
+        loop {
+            let (stream, peer) = listener.accept().await?;
+            let primal = Arc::clone(&self.primal);
+            let app = app.clone();
+
+            tokio::spawn(async move {
+                if let Err(e) = handle_tcp_connection(stream, peer, primal, app).await {
+                    debug!(peer = %peer, error = %e, "TCP connection ended");
+                }
+            });
+        }
     }
 
     /// Build the axum router for embedding in larger applications.
@@ -85,6 +107,40 @@ impl JsonRpcServer {
             .layer(cors)
             .with_state(state)
     }
+}
+
+/// Route a TCP connection based on first-byte protocol detection.
+///
+/// Peeks the first byte without consuming it:
+/// - `{` or `[` → newline-delimited JSON-RPC (raw IPC)
+/// - Anything else → HTTP (serve through Axum)
+async fn handle_tcp_connection(
+    stream: tokio::net::TcpStream,
+    peer: SocketAddr,
+    primal: Arc<RhizoCrypt>,
+    app: Router,
+) -> std::io::Result<()> {
+    let mut peek = [0u8; 1];
+    let n = stream.peek(&mut peek).await?;
+
+    if n > 0 && (peek[0] == b'{' || peek[0] == b'[') {
+        debug!(peer = %peer, "detected newline JSON-RPC");
+        newline::handle_newline_connection(stream, primal).await?;
+    } else {
+        debug!(peer = %peer, "detected HTTP");
+        let io = hyper_util::rt::TokioIo::new(stream);
+        let service =
+            hyper::service::service_fn(move |req: hyper::Request<hyper::body::Incoming>| {
+                let app = app.clone();
+                async move { app.into_service().call(req).await }
+            });
+        hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new())
+            .serve_connection(io, service)
+            .await
+            .map_err(|e| std::io::Error::other(format!("hyper error: {e}")))?;
+    }
+
+    Ok(())
 }
 
 /// Handle JSON-RPC request body (single or batch).
@@ -543,5 +599,71 @@ mod tests {
         let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert!(json.get("error").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_dual_mode_raw_newline_client() {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+        let primal = create_test_primal().await;
+        let server = JsonRpcServer::new(primal, "127.0.0.1:0".parse().unwrap());
+        let listener = tokio::net::TcpListener::bind(server.addr).await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        drop(listener);
+
+        let server = JsonRpcServer::new(server.primal, addr);
+        tokio::spawn(async move { server.serve().await });
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let req = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":1}\n";
+        AsyncWriteExt::write_all(&mut stream, req).await.unwrap();
+        AsyncWriteExt::shutdown(&mut stream).await.unwrap();
+
+        let mut lines = BufReader::new(stream).lines();
+        let line = lines.next_line().await.unwrap().expect("response");
+        let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+        assert_eq!(resp["jsonrpc"], "2.0");
+        assert!(resp["result"].is_object(), "expected result, got: {resp}");
+    }
+
+    #[tokio::test]
+    async fn test_dual_mode_http_client() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let primal = create_test_primal().await;
+        let server = JsonRpcServer::new(primal, "127.0.0.1:0".parse().unwrap());
+        let listener = tokio::net::TcpListener::bind(server.addr).await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        drop(listener);
+
+        let server = JsonRpcServer::new(server.primal, addr);
+        tokio::spawn(async move { server.serve().await });
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+
+        let body = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
+        let http_req = format!(
+            "POST /rpc HTTP/1.1\r\nHost: {addr}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len(),
+        );
+        AsyncWriteExt::write_all(&mut stream, http_req.as_bytes()).await.unwrap();
+
+        let mut buf = Vec::new();
+        AsyncReadExt::read_to_end(&mut stream, &mut buf).await.unwrap();
+        let response = String::from_utf8_lossy(&buf);
+
+        assert!(
+            response.starts_with("HTTP/1.1 200"),
+            "expected 200, got: {}",
+            response.lines().next().unwrap_or("")
+        );
+
+        let body_start = response.find("\r\n\r\n").expect("HTTP body separator") + 4;
+        let body_str = &response[body_start..];
+        let json: serde_json::Value = serde_json::from_str(body_str.trim()).unwrap();
+        assert_eq!(json["jsonrpc"], "2.0");
+        assert!(json["result"].is_object(), "expected result, got: {json}");
     }
 }

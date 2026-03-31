@@ -308,8 +308,8 @@ mod tests {
 
     #[test]
     fn test_from_endpoint_bare_path() {
-        let adapter = UnixSocketAdapter::from_endpoint("/run/ecoPrimals/beardog.sock").unwrap();
-        assert_eq!(adapter.socket_path, PathBuf::from("/run/ecoPrimals/beardog.sock"));
+        let adapter = UnixSocketAdapter::from_endpoint("/run/biomeos/beardog.sock").unwrap();
+        assert_eq!(adapter.socket_path, PathBuf::from("/run/biomeos/beardog.sock"));
     }
 
     #[test]

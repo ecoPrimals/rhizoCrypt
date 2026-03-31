@@ -339,44 +339,40 @@ pub fn extract_rpc_error(response: &serde_json::Value) -> Option<(i64, String)> 
     Some((code, message))
 }
 
-/// Extension trait for `Result<T, E>` that exits the process cleanly on error.
+/// Extension trait for `Result<T, E>` that converts to [`RhizoCryptError`].
 ///
-/// Absorbed from wetSpring V123 `OrExit` pattern. Validation binaries
-/// (e.g., `rhizocrypt validate`) should never panic — they should print
-/// a structured error message and exit with a non-zero status code.
+/// Provides ergonomic error context wrapping for configuration and startup
+/// code. Prefer this over `unwrap()` / `expect()` — propagate errors to
+/// `main()` which handles exit codes via [`rhizocrypt_service::ServiceError`].
 ///
 /// # Usage
 ///
-/// ```no_run
-/// use rhizo_crypt_core::error::OrExit;
+/// ```
+/// use rhizo_crypt_core::error::{OrExit, RhizoCryptError};
 ///
-/// let config = std::fs::read_to_string("config.toml")
-///     .or_exit("Failed to read configuration file");
+/// fn load() -> Result<String, RhizoCryptError> {
+///     let cfg = std::env::var("MY_VAR").or_exit("read MY_VAR")?;
+///     Ok(cfg)
+/// }
 /// ```
 pub trait OrExit<T> {
-    /// Unwrap the value or print the context message + error and exit with code 1.
-    fn or_exit(self, context: &str) -> T;
+    /// Wrap the error with context and convert to [`RhizoCryptError`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RhizoCryptError::Config`] wrapping the original error message.
+    fn or_exit(self, context: &str) -> std::result::Result<T, RhizoCryptError>;
 }
 
 impl<T, E: fmt::Display> OrExit<T> for std::result::Result<T, E> {
-    fn or_exit(self, context: &str) -> T {
-        match self {
-            Ok(val) => val,
-            Err(e) => {
-                eprintln!("fatal: {context}: {e}");
-                std::process::exit(1);
-            }
-        }
+    fn or_exit(self, context: &str) -> std::result::Result<T, RhizoCryptError> {
+        self.map_err(|e| RhizoCryptError::config(format!("{context}: {e}")))
     }
 }
 
 impl<T> OrExit<T> for Option<T> {
-    fn or_exit(self, context: &str) -> T {
-        if let Some(val) = self {
-            return val;
-        }
-        eprintln!("fatal: {context}");
-        std::process::exit(1);
+    fn or_exit(self, context: &str) -> std::result::Result<T, RhizoCryptError> {
+        self.ok_or_else(|| RhizoCryptError::config(context.to_string()))
     }
 }
 

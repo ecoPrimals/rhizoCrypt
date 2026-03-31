@@ -186,16 +186,21 @@ impl RhizoCrypt {
             return Err(RhizoCryptError::session_not_found(session_id));
         }
 
-        // Clean up DAG store
         let dag_store = self.dag_store().await?;
         dag_store.delete_session(session_id).await?;
+        self.purge_session_artifacts(session_id);
 
-        // Clean up slices, dehydration status, and vertex index
+        Ok(())
+    }
+
+    /// Remove all secondary state associated with a session.
+    ///
+    /// Cleans up slices, dehydration status, and the vertex→session index.
+    /// Idempotent — safe to call even if some artifacts are already gone.
+    fn purge_session_artifacts(&self, session_id: SessionId) {
         self.slices.retain(|_, v| v.session_id != session_id);
         self.dehydration_status.remove(&session_id);
         self.vertex_session_index.retain(|_, sid| *sid != session_id);
-
-        Ok(())
     }
 
     /// Get session count (lock-free).
@@ -650,10 +655,7 @@ impl RhizoCrypt {
             if let Some((_, mut session)) = self.sessions.remove(&session_id) {
                 session.discard(crate::session::DiscardReason::Timeout);
             }
-            self.slices.retain(|_, v| v.session_id != session_id);
-            self.dehydration_status.remove(&session_id);
-            self.vertex_session_index.retain(|_, sid| *sid != session_id);
-
+            self.purge_session_artifacts(session_id);
             if let Ok(dag_store) = self.dag_store().await {
                 dag_store.delete_session(session_id).await.ok();
             }

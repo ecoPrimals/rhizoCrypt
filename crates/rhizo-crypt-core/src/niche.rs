@@ -124,23 +124,19 @@ pub const SEMANTIC_MAPPINGS: &[(&str, &str)] = &[
 
 /// Consumed capabilities — what rhizoCrypt calls on other primals.
 ///
-/// rhizoCrypt discovers these at runtime via Songbird; it never hardcodes
-/// which primal provides them. The Pathway Learner uses this list to
-/// ensure required capabilities are available before routing to rhizoCrypt.
+/// rhizoCrypt discovers these at runtime via the discovery adapter; it
+/// never hardcodes which primal provides them. The Pathway Learner uses
+/// this list to ensure required capabilities are available before routing
+/// to rhizoCrypt.
 pub const CONSUMED_CAPABILITIES: &[&str] = &[
-    // Signing (BearDog or any signing provider)
     "crypto.sign",
     "crypto.verify",
-    // Permanent storage (any commit provider)
     "commit.session",
     "commit.entry",
-    // Payload storage (NestGate or any content-addressed store)
     "storage.store",
     "storage.get",
-    // Attribution (sweetGrass or any provenance provider)
     "provenance.create_braid",
     "provenance.lineage",
-    // Discovery (Songbird)
     "discovery.register",
     "discovery.query",
 ];
@@ -160,7 +156,7 @@ pub const DEPENDENCIES: &[(&str, bool, &str)] = &[
     ("provenance", false, "attribution braids (graceful fallback to unattributed)"),
 ];
 
-/// Cost estimates for biomeOS Pathway Learner scheduling.
+/// Cost estimates for pathway learner scheduling.
 ///
 /// Each entry: `(capability, estimated_ms, gpu_beneficial)`.
 /// Times are representative for typical workloads. The Pathway Learner

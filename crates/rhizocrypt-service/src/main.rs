@@ -8,7 +8,9 @@
 //! ## Usage
 //!
 //! ```bash
-//! rhizocrypt server                    # Start the RPC service
+//! rhizocrypt server                    # Start with TCP + UDS (default socket)
+//! rhizocrypt server --unix             # Explicit UDS at default path
+//! rhizocrypt server --unix /tmp/rc.sock  # Explicit custom UDS path
 //! rhizocrypt server --port 9400        # Custom port
 //! rhizocrypt status                    # Check service health
 //! rhizocrypt doctor                    # Health diagnostics (UniBin standard)
@@ -66,6 +68,13 @@ enum Commands {
         /// Host address to bind to (overrides `RHIZOCRYPT_HOST` env var).
         #[arg(long)]
         host: Option<String>,
+
+        /// Enable Unix domain socket listener at PATH.
+        ///
+        /// Defaults to `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` when
+        /// supplied without a value. Omit to disable UDS (TCP-only).
+        #[arg(long, value_name = "PATH", num_args = 0..=1, default_missing_value = "")]
+        unix: Option<String>,
     },
 
     /// Show service status and version information.
@@ -101,7 +110,8 @@ async fn main() {
         Commands::Server {
             port,
             host,
-        } => rhizocrypt_service::run_server(port, host).await,
+            unix,
+        } => rhizocrypt_service::run_server(port, host, unix).await,
         Commands::Status => {
             rhizocrypt_service::print_status();
             Ok(())

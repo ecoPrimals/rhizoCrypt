@@ -35,15 +35,18 @@ tracing.workspace = true
 
 # HTTP (JSON-RPC server)
 axum.workspace = true
+tower = { version = "0.5", features = ["util"] }
 tower-http.workspace = true
+hyper = { workspace = true }
+hyper-util = { version = "0.1", features = ["tokio"] }
 hex = "0.4"
 uuid = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
-tower = { version = "0.5", features = ["util"] }
 tracing-subscriber.workspace = true
 temp-env.workspace = true
+tempfile = "3"
 proptest = "1.5"
 
 [lints]
