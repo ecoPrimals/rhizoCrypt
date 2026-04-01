@@ -1,6 +1,6 @@
 # DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.0-dev
 
-**Date**: March 24, 2026
+**Date**: April 1, 2026
 **Version**: 0.14.0-dev
 **Status**: PRODUCTION READY
 
@@ -9,7 +9,7 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,402 tests passing** (all features), 0 failures
+- [x] **1,423 tests passing** (all features), 0 failures
 - [x] **`--fail-under-lines 90` CI gate** enforced
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
@@ -19,7 +19,7 @@
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
-- [x] **Lock-free concurrency** (DashMap, atomics)
+- [x] **Lock-free concurrency** (DashMap, atomics, lock-free CircuitBreaker)
 - [x] **Dehydration protocol** (complete 7-step workflow)
 - [x] **UniBin binary** (`rhizocrypt server`, `doctor`, `status`, `version`)
 - [x] **JSON-RPC 2.0 + tarpc** — dual-transport, semantic method names
@@ -30,8 +30,8 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,402 tests)
-- [x] **CHANGELOG.md** (version history through session 23)
+- [x] **README.md** (current metrics — 1,423 tests)
+- [x] **CHANGELOG.md** (version history through session 24)
 - [x] **showcase/** (70+ comprehensive demos)
 - [x] **specs/** (9 complete + 1 experimental specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
@@ -247,5 +247,5 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: March 24, 2026
+**Last Updated**: April 1, 2026
 **Version**: rhizoCrypt 0.14.0-dev

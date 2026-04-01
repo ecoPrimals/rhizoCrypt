@@ -511,3 +511,155 @@ async fn test_extra_fields_ignored() {
     let result = handle_request(primal.clone(), req).await.unwrap();
     assert!(uuid::Uuid::parse_str(result.as_str().unwrap()).is_ok());
 }
+
+// ============================================================================
+// Health endpoint aliases
+// ============================================================================
+
+#[tokio::test]
+async fn test_health_alias_status() {
+    let primal = create_test_primal().await;
+    let req = make_request("status", None);
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(result.get("healthy").is_some());
+}
+
+#[tokio::test]
+async fn test_health_alias_check() {
+    let primal = create_test_primal().await;
+    let req = make_request("check", None);
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(result.get("healthy").is_some());
+}
+
+#[tokio::test]
+async fn test_health_liveness_alias_ping() {
+    let primal = create_test_primal().await;
+    let req = make_request("ping", None);
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(result.get("status").is_some() || result.get("alive").is_some() || result.is_object());
+}
+
+#[tokio::test]
+async fn test_health_liveness_alias_health() {
+    let primal = create_test_primal().await;
+    let req = make_request("health", None);
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(result.is_object());
+}
+
+#[tokio::test]
+async fn test_health_readiness() {
+    let primal = create_test_primal().await;
+    let req = make_request("health.readiness", None);
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(result.is_object());
+}
+
+// ============================================================================
+// MCP tools.list / tools.call
+// ============================================================================
+
+#[tokio::test]
+async fn test_mcp_tools_list() {
+    let primal = create_test_primal().await;
+    let req = make_request("tools.list", None);
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(result.is_object() || result.is_array());
+}
+
+#[tokio::test]
+async fn test_mcp_tools_list_alias() {
+    let primal = create_test_primal().await;
+    let req = make_request("mcp.tools.list", None);
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(result.is_object() || result.is_array());
+}
+
+#[tokio::test]
+async fn test_mcp_tools_call_session_create() {
+    let primal = create_test_primal().await;
+    let req = make_request(
+        "tools.call",
+        Some(json!({
+            "name": "dag.session.create",
+            "arguments": { "session_type": "General" }
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(uuid::Uuid::parse_str(result.as_str().unwrap()).is_ok());
+}
+
+#[tokio::test]
+async fn test_mcp_tools_call_health() {
+    let primal = create_test_primal().await;
+    let req = make_request(
+        "tools.call",
+        Some(json!({
+            "name": "health.check"
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(result.get("healthy").is_some());
+}
+
+#[tokio::test]
+async fn test_mcp_tools_call_capabilities() {
+    let primal = create_test_primal().await;
+    let req = make_request(
+        "tools.call",
+        Some(json!({
+            "name": "capabilities.list"
+        })),
+    );
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(result.is_array());
+}
+
+#[tokio::test]
+async fn test_mcp_tools_call_unknown_tool() {
+    let primal = create_test_primal().await;
+    let req = make_request(
+        "tools.call",
+        Some(json!({
+            "name": "nonexistent.tool"
+        })),
+    );
+    let err = handle_request(primal.clone(), req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::MethodNotFound(_)));
+}
+
+#[tokio::test]
+async fn test_mcp_tools_call_missing_arguments() {
+    let primal = create_test_primal().await;
+    let req = make_request("tools.call", Some(json!({"name": "status"})));
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    assert!(result.get("healthy").is_some());
+}
+
+// ============================================================================
+// Capability aliases
+// ============================================================================
+
+#[tokio::test]
+async fn test_capability_list_aliases() {
+    let primal = create_test_primal().await;
+    for method in &["capabilities.list", "capability.list", "primal.capabilities"] {
+        let req = make_request(method, None);
+        let result = handle_request(primal.clone(), req).await.unwrap();
+        assert!(result.is_array(), "capabilities.list alias '{method}' should return array");
+    }
+}
+
+// ============================================================================
+// HandlerError::Rpc propagation
+// ============================================================================
+
+#[tokio::test]
+async fn test_handler_rpc_error_session_not_found() {
+    let primal = create_test_primal().await;
+    let fake_id = "00000000-0000-0000-0000-000000000099";
+    let req = make_request("dag.session.get", Some(json!({"session_id": fake_id})));
+    let err = handle_request(primal.clone(), req).await.unwrap_err();
+    assert!(matches!(err, HandlerError::Rpc(_)));
+}

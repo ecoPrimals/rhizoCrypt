@@ -737,9 +737,11 @@ mod uds_integration {
 
         let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
         let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+        let ready = Arc::new(tokio::sync::Notify::new());
+        let ready_rx = Arc::clone(&ready);
 
-        let handle = tokio::spawn(async move { uds.serve(shutdown_rx).await });
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        let handle = tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
+        ready.notified().await;
 
         let stream = UnixStream::connect(&sock).await.expect("connect");
         let (reader, mut writer) = stream.into_split();
@@ -771,11 +773,13 @@ mod uds_integration {
 
         let uds = UdsJsonRpcServer::new(primal, sock.clone());
         let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+        let ready = Arc::new(tokio::sync::Notify::new());
+        let ready_rx = Arc::clone(&ready);
 
         assert!(!sock.exists(), "socket should not exist before serve");
 
-        let handle = tokio::spawn(async move { uds.serve(shutdown_rx).await });
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        let handle = tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
+        ready.notified().await;
 
         assert!(sock.exists(), "socket should exist after serve starts");
 
@@ -816,7 +820,6 @@ mod uds_integration {
                 .await
                 .expect("server should become ready within 10s");
 
-            tokio::time::sleep(Duration::from_millis(100)).await;
             assert!(sock.exists(), "UDS socket should be created");
 
             handle.abort();

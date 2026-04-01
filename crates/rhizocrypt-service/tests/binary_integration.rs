@@ -9,9 +9,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use rhizocrypt_service::exit_codes;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::Duration;
-use tokio::time::sleep;
 
 fn service_binary_path() -> String {
     env!("CARGO_BIN_EXE_rhizocrypt").to_string()
@@ -21,6 +20,37 @@ fn server_command(binary_path: &str) -> Command {
     let mut cmd = Command::new(binary_path);
     cmd.arg("server");
     cmd
+}
+
+/// Probe a TCP port until it accepts connections or the timeout expires.
+/// Returns `Ok(())` on successful connect, `Err` on timeout.
+async fn wait_for_tcp_ready(port: u16, timeout: Duration) -> Result<(), &'static str> {
+    let addr = format!("127.0.0.1:{port}");
+    tokio::time::timeout(timeout, async {
+        loop {
+            if tokio::net::TcpStream::connect(&addr).await.is_ok() {
+                return;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .map_err(|_| "server did not become ready within timeout")
+}
+
+/// Poll a child process for exit within a timeout, yielding between checks.
+async fn wait_for_exit(child: &mut Child, timeout: Duration) -> Option<ExitStatus> {
+    tokio::time::timeout(timeout, async {
+        loop {
+            match child.try_wait() {
+                Ok(Some(status)) => return Some(status),
+                Ok(None) => tokio::task::yield_now().await,
+                Err(_) => return None,
+            }
+        }
+    })
+    .await
+    .unwrap_or(None)
 }
 
 #[tokio::test]
@@ -113,7 +143,7 @@ async fn test_service_starts_with_defaults() {
         .spawn()
         .expect("Failed to start service");
 
-    sleep(Duration::from_millis(500)).await;
+    wait_for_tcp_ready(19400, Duration::from_secs(5)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => panic!("Service exited unexpectedly with status: {status}"),
@@ -137,18 +167,9 @@ async fn test_service_handles_invalid_port() {
         .spawn()
         .expect("Failed to start service");
 
-    let result = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            match child.try_wait() {
-                Ok(Some(status)) => return Some(status),
-                Ok(None) => sleep(Duration::from_millis(100)).await,
-                Err(_) => return None,
-            }
-        }
-    })
-    .await;
+    let result = wait_for_exit(&mut child, Duration::from_secs(5));
 
-    if let Ok(Some(status)) = result {
+    if let Some(status) = result.await {
         assert!(!status.success(), "Service should fail with invalid port");
     } else {
         let _ = child.kill();
@@ -169,7 +190,7 @@ async fn test_service_custom_configuration() {
         .spawn()
         .expect("Failed to start service");
 
-    sleep(Duration::from_millis(500)).await;
+    wait_for_tcp_ready(19410, Duration::from_secs(5)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => panic!("Service exited unexpectedly: {status}"),
@@ -193,7 +214,7 @@ async fn test_service_cli_port_override() {
         .spawn()
         .expect("Failed to start service");
 
-    sleep(Duration::from_millis(500)).await;
+    wait_for_tcp_ready(19420, Duration::from_secs(5)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => panic!("Service exited unexpectedly: {status}"),
@@ -221,7 +242,7 @@ async fn test_service_without_discovery() {
         .spawn()
         .expect("Failed to start service");
 
-    sleep(Duration::from_millis(500)).await;
+    wait_for_tcp_ready(19430, Duration::from_secs(5)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => panic!("Service should run without discovery, exited: {status}"),
@@ -245,7 +266,7 @@ async fn test_service_graceful_shutdown_sigterm() {
         .spawn()
         .expect("Failed to start service");
 
-    sleep(Duration::from_millis(500)).await;
+    wait_for_tcp_ready(19440, Duration::from_secs(5)).await.unwrap();
 
     #[cfg(unix)]
     {
@@ -262,18 +283,8 @@ async fn test_service_graceful_shutdown_sigterm() {
         let _ = child.kill();
     }
 
-    let wait_result = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            match child.try_wait() {
-                Ok(Some(_)) => return Ok(()),
-                Ok(None) => sleep(Duration::from_millis(100)).await,
-                Err(e) => return Err(e),
-            }
-        }
-    })
-    .await;
-
-    assert!(wait_result.is_ok(), "Service should shutdown gracefully within 5 seconds");
+    let status = wait_for_exit(&mut child, Duration::from_secs(5)).await;
+    assert!(status.is_some(), "Service should shutdown gracefully within 5 seconds");
 }
 
 #[tokio::test]
@@ -289,7 +300,7 @@ async fn test_service_port_already_in_use() {
         .spawn()
         .expect("Failed to start first service");
 
-    sleep(Duration::from_millis(500)).await;
+    wait_for_tcp_ready(19450, Duration::from_secs(5)).await.unwrap();
 
     let mut child2 = server_command(&binary_path)
         .env("RHIZOCRYPT_PORT", test_port)
@@ -299,18 +310,9 @@ async fn test_service_port_already_in_use() {
         .spawn()
         .expect("Failed to start second service");
 
-    let result = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            match child2.try_wait() {
-                Ok(Some(status)) => return Some(status),
-                Ok(None) => sleep(Duration::from_millis(100)).await,
-                Err(_) => return None,
-            }
-        }
-    })
-    .await;
+    let result = wait_for_exit(&mut child2, Duration::from_secs(5)).await;
 
-    if let Ok(Some(status)) = result {
+    if let Some(status) = result {
         assert!(!status.success(), "Second service should fail when port is in use");
     } else {
         let _ = child2.kill();
@@ -335,7 +337,7 @@ async fn test_service_environment_variable_parsing() {
         .spawn()
         .expect("Failed to start service");
 
-    sleep(Duration::from_millis(500)).await;
+    wait_for_tcp_ready(19460, Duration::from_secs(5)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => panic!("Service failed to parse env vars: {status}"),
@@ -375,7 +377,9 @@ async fn test_service_multiple_instances_different_ports() {
         .spawn()
         .expect("Failed to start service 3");
 
-    sleep(Duration::from_secs(1)).await;
+    wait_for_tcp_ready(19470, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(19480, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(19490, Duration::from_secs(5)).await.unwrap();
 
     assert!(child1.try_wait().unwrap().is_none(), "Service 1 should be running");
     assert!(child2.try_wait().unwrap().is_none(), "Service 2 should be running");
@@ -405,7 +409,7 @@ async fn test_service_signal_handling() {
         .spawn()
         .expect("Failed to start service");
 
-    sleep(Duration::from_millis(500)).await;
+    wait_for_tcp_ready(19500, Duration::from_secs(5)).await.unwrap();
 
     let raw_pid = i32::try_from(child.id()).expect("pid fits in i32");
     let pid = Pid::from_raw(raw_pid);
@@ -413,17 +417,8 @@ async fn test_service_signal_handling() {
     let result = kill(pid, Signal::SIGTERM);
     assert!(result.is_ok(), "Should be able to send SIGTERM");
 
-    let shutdown_result = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            if let Ok(Some(_)) = child.try_wait() {
-                return true;
-            }
-            sleep(Duration::from_millis(100)).await;
-        }
-    })
-    .await;
-
-    assert!(shutdown_result.is_ok(), "Service should shutdown gracefully on SIGTERM");
+    let status = wait_for_exit(&mut child, Duration::from_secs(5)).await;
+    assert!(status.is_some(), "Service should shutdown gracefully on SIGTERM");
 }
 
 #[tokio::test]
@@ -439,7 +434,7 @@ async fn test_service_with_discovery_fallback() {
         .spawn()
         .expect("Failed to start service");
 
-    sleep(Duration::from_secs(1)).await;
+    wait_for_tcp_ready(19510, Duration::from_secs(10)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => {

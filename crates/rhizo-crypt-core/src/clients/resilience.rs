@@ -20,9 +20,8 @@
 //! application errors are returned immediately.
 
 use crate::error::IpcErrorPhase;
-use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
-use tokio::sync::Mutex;
 
 /// Circuit breaker state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,18 +34,20 @@ pub enum BreakerState {
     HalfOpen,
 }
 
-/// Transport-agnostic circuit breaker for IPC clients.
+/// Lock-free, transport-agnostic circuit breaker for IPC clients.
 ///
-/// Tracks consecutive transport failures and opens the circuit when
-/// the threshold is reached. After the cooldown window, a single probe
-/// request is allowed through to test recovery.
+/// All state is stored in atomics — no `Mutex`, no `await` in the hot path.
+/// `last_failure_nanos` stores the `Instant` as nanoseconds elapsed from a
+/// process-local epoch (captured once at construction). Zero means "no failure
+/// recorded yet".
 #[derive(Debug)]
 pub struct CircuitBreaker {
     failure_threshold: u8,
     cooldown: Duration,
     consecutive_failures: AtomicU8,
-    last_failure: Mutex<Option<Instant>>,
+    last_failure_nanos: AtomicU64,
     total_trips: AtomicU32,
+    epoch: Instant,
 }
 
 impl CircuitBreaker {
@@ -60,8 +61,9 @@ impl CircuitBreaker {
             failure_threshold: failure_threshold.max(1),
             cooldown,
             consecutive_failures: AtomicU8::new(0),
-            last_failure: Mutex::new(None),
+            last_failure_nanos: AtomicU64::new(0),
             total_trips: AtomicU32::new(0),
+            epoch: Instant::now(),
         }
     }
 
@@ -71,40 +73,50 @@ impl CircuitBreaker {
         Self::new(5, Duration::from_secs(30))
     }
 
-    /// Current breaker state.
-    pub async fn state(&self) -> BreakerState {
-        let failures = self.consecutive_failures.load(Ordering::Relaxed);
+    /// Current breaker state (lock-free, no await).
+    #[must_use]
+    pub fn state(&self) -> BreakerState {
+        let failures = self.consecutive_failures.load(Ordering::Acquire);
         if failures < self.failure_threshold {
             return BreakerState::Closed;
         }
 
-        let guard = self.last_failure.lock().await;
-        match *guard {
-            Some(last) if last.elapsed() >= self.cooldown => BreakerState::HalfOpen,
-            _ => BreakerState::Open,
+        let last_nanos = self.last_failure_nanos.load(Ordering::Acquire);
+        if last_nanos == 0 {
+            return BreakerState::Open;
+        }
+
+        let last = self.epoch + Duration::from_nanos(last_nanos);
+        if last.elapsed() >= self.cooldown {
+            BreakerState::HalfOpen
+        } else {
+            BreakerState::Open
         }
     }
 
-    /// Check whether a request should be allowed through.
-    pub async fn allow_request(&self) -> bool {
-        !matches!(self.state().await, BreakerState::Open)
+    /// Check whether a request should be allowed through (lock-free).
+    #[must_use]
+    pub fn allow_request(&self) -> bool {
+        !matches!(self.state(), BreakerState::Open)
     }
 
     /// Record a successful call — resets consecutive failure count.
     pub fn record_success(&self) {
-        self.consecutive_failures.store(0, Ordering::Relaxed);
+        self.consecutive_failures.store(0, Ordering::Release);
     }
 
     /// Record a transport failure. Only retriable phases trip the breaker.
-    pub async fn record_failure(&self, phase: &IpcErrorPhase) {
+    pub fn record_failure(&self, phase: &IpcErrorPhase) {
         if !phase.is_retriable() {
             return;
         }
-        let prev = self.consecutive_failures.fetch_add(1, Ordering::Relaxed);
+        let prev = self.consecutive_failures.fetch_add(1, Ordering::AcqRel);
         if prev + 1 >= self.failure_threshold {
             self.total_trips.fetch_add(1, Ordering::Relaxed);
         }
-        *self.last_failure.lock().await = Some(Instant::now());
+        let nanos = self.epoch.elapsed().as_nanos();
+        let nanos_u64 = u64::try_from(nanos).unwrap_or(u64::MAX);
+        self.last_failure_nanos.store(nanos_u64, Ordering::Release);
     }
 
     /// Total number of times the breaker has tripped since creation.
@@ -190,57 +202,54 @@ impl Default for RetryPolicy {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn breaker_starts_closed() {
+    #[test]
+    fn breaker_starts_closed() {
         let cb = CircuitBreaker::new(3, Duration::from_secs(1));
-        assert_eq!(cb.state().await, BreakerState::Closed);
-        assert!(cb.allow_request().await);
+        assert_eq!(cb.state(), BreakerState::Closed);
+        assert!(cb.allow_request());
     }
 
-    #[tokio::test]
-    async fn breaker_opens_after_threshold() {
+    #[test]
+    fn breaker_opens_after_threshold() {
         let cb = CircuitBreaker::new(2, Duration::from_secs(60));
 
-        cb.record_failure(&IpcErrorPhase::Connect).await;
-        assert_eq!(cb.state().await, BreakerState::Closed);
+        cb.record_failure(&IpcErrorPhase::Connect);
+        assert_eq!(cb.state(), BreakerState::Closed);
 
-        cb.record_failure(&IpcErrorPhase::Connect).await;
-        assert_eq!(cb.state().await, BreakerState::Open);
-        assert!(!cb.allow_request().await);
+        cb.record_failure(&IpcErrorPhase::Connect);
+        assert_eq!(cb.state(), BreakerState::Open);
+        assert!(!cb.allow_request());
         assert_eq!(cb.total_trips(), 1);
     }
 
-    #[tokio::test]
-    async fn breaker_resets_on_success() {
+    #[test]
+    fn breaker_resets_on_success() {
         let cb = CircuitBreaker::new(2, Duration::from_secs(60));
 
-        cb.record_failure(&IpcErrorPhase::Connect).await;
+        cb.record_failure(&IpcErrorPhase::Connect);
         cb.record_success();
         assert_eq!(cb.consecutive_failures(), 0);
-        assert_eq!(cb.state().await, BreakerState::Closed);
+        assert_eq!(cb.state(), BreakerState::Closed);
     }
 
-    #[tokio::test]
-    async fn breaker_ignores_application_errors() {
+    #[test]
+    fn breaker_ignores_application_errors() {
         let cb = CircuitBreaker::new(2, Duration::from_secs(60));
 
-        cb.record_failure(&IpcErrorPhase::JsonRpcError(-32601)).await;
-        cb.record_failure(&IpcErrorPhase::NoResult).await;
-        cb.record_failure(&IpcErrorPhase::InvalidJson).await;
+        cb.record_failure(&IpcErrorPhase::JsonRpcError(-32601));
+        cb.record_failure(&IpcErrorPhase::NoResult);
+        cb.record_failure(&IpcErrorPhase::InvalidJson);
         assert_eq!(cb.consecutive_failures(), 0);
-        assert_eq!(cb.state().await, BreakerState::Closed);
+        assert_eq!(cb.state(), BreakerState::Closed);
     }
 
-    #[tokio::test]
-    async fn breaker_transitions_to_half_open() {
-        let cb = CircuitBreaker::new(1, Duration::from_millis(10));
+    #[test]
+    fn breaker_transitions_to_half_open() {
+        let cb = CircuitBreaker::new(1, Duration::ZERO);
 
-        cb.record_failure(&IpcErrorPhase::Connect).await;
-        assert_eq!(cb.state().await, BreakerState::Open);
-
-        tokio::time::sleep(Duration::from_millis(20)).await;
-        assert_eq!(cb.state().await, BreakerState::HalfOpen);
-        assert!(cb.allow_request().await);
+        cb.record_failure(&IpcErrorPhase::Connect);
+        assert_eq!(cb.state(), BreakerState::HalfOpen);
+        assert!(cb.allow_request());
     }
 
     #[test]

@@ -48,11 +48,39 @@ impl UdsJsonRpcServer {
     ///
     /// Returns `std::io::Error` if directory creation, socket removal, or
     /// binding fails.
-    pub async fn serve(&self, mut shutdown: watch::Receiver<bool>) -> Result<(), std::io::Error> {
+    pub async fn serve(&self, shutdown: watch::Receiver<bool>) -> Result<(), std::io::Error> {
+        self.serve_inner(shutdown, None).await
+    }
+
+    /// Start serving and signal `ready` once the listener is bound.
+    ///
+    /// Identical to [`serve`](Self::serve) but notifies the provided
+    /// [`tokio::sync::Notify`] after the socket is ready to accept connections.
+    ///
+    /// # Errors
+    ///
+    /// Returns `std::io::Error` if binding fails.
+    pub async fn serve_with_ready(
+        &self,
+        shutdown: watch::Receiver<bool>,
+        ready: Arc<tokio::sync::Notify>,
+    ) -> Result<(), std::io::Error> {
+        self.serve_inner(shutdown, Some(ready)).await
+    }
+
+    async fn serve_inner(
+        &self,
+        mut shutdown: watch::Receiver<bool>,
+        ready: Option<Arc<tokio::sync::Notify>>,
+    ) -> Result<(), std::io::Error> {
         self.prepare_socket_path()?;
 
         let listener = UnixListener::bind(&self.socket_path)?;
         info!(path = %self.socket_path.display(), "JSON-RPC 2.0 UDS listening");
+
+        if let Some(notify) = ready {
+            notify.notify_one();
+        }
 
         loop {
             tokio::select! {
@@ -150,9 +178,12 @@ mod tests {
 
         let server = UdsJsonRpcServer::new(primal, sock.clone());
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
+        let ready = Arc::new(tokio::sync::Notify::new());
+        let ready_rx = Arc::clone(&ready);
 
-        let handle = tokio::spawn(async move { server.serve(shutdown_rx).await });
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let handle =
+            tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+        ready.notified().await;
 
         let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
         let (reader, mut writer) = stream.into_split();
@@ -181,9 +212,12 @@ mod tests {
         let primal = test_primal().await;
         let server = UdsJsonRpcServer::new(primal, sock.clone());
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
+        let ready = Arc::new(tokio::sync::Notify::new());
+        let ready_rx = Arc::clone(&ready);
 
-        let handle = tokio::spawn(async move { server.serve(shutdown_rx).await });
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let handle =
+            tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+        ready.notified().await;
 
         assert!(sock.exists(), "socket should exist (re-bound)");
 

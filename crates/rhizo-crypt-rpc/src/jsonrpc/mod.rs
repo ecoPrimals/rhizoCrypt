@@ -15,6 +15,7 @@ pub mod uds;
 
 use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::post};
 use rhizo_crypt_core::{RhizoCrypt, constants::JSON_RPC_PATH};
+use std::borrow::Cow;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tower::Service;
@@ -70,9 +71,36 @@ impl JsonRpcServer {
     ///
     /// Returns `std::io::Error` if binding fails.
     pub async fn serve(self) -> Result<(), std::io::Error> {
+        self.serve_inner(None).await
+    }
+
+    /// Start the server and signal `ready` once the listener is bound.
+    ///
+    /// Identical to [`serve`](Self::serve) but notifies the provided
+    /// [`tokio::sync::Notify`] after the TCP listener is ready to accept
+    /// connections. Use this in tests to avoid sleep-based synchronization.
+    ///
+    /// # Errors
+    ///
+    /// Returns `std::io::Error` if binding fails.
+    pub async fn serve_with_ready(
+        self,
+        ready: Arc<tokio::sync::Notify>,
+    ) -> Result<(), std::io::Error> {
+        self.serve_inner(Some(ready)).await
+    }
+
+    async fn serve_inner(
+        self,
+        ready: Option<Arc<tokio::sync::Notify>>,
+    ) -> Result<(), std::io::Error> {
         let listener = tokio::net::TcpListener::bind(self.addr).await?;
         let local_addr = listener.local_addr()?;
         info!(address = %local_addr, "JSON-RPC server listening (dual-mode: HTTP + newline)");
+
+        if let Some(notify) = ready {
+            notify.notify_one();
+        }
 
         let app = Self::router(Arc::clone(&self.primal));
 
@@ -236,12 +264,14 @@ async fn process_single_request(
         Ok(result) => serialize_response(&success(id, result)),
         Err(e) => {
             let detail = serde_json::json!(e.to_string());
-            let (code, message) = match e {
+            let (code, message): (i32, Cow<'_, str>) = match e {
                 handler::HandlerError::InvalidParams(msg) => (codes::INVALID_PARAMS, msg),
                 handler::HandlerError::MethodNotFound(m) => {
-                    (codes::METHOD_NOT_FOUND, format!("Method not found: {m}"))
+                    (codes::METHOD_NOT_FOUND, format!("Method not found: {m}").into())
                 }
-                handler::HandlerError::Rpc(rpc_err) => (codes::INTERNAL_ERROR, rpc_err.to_string()),
+                handler::HandlerError::Rpc(rpc_err) => {
+                    (codes::INTERNAL_ERROR, rpc_err.to_string().into())
+                }
             };
             serialize_response(&error_response(Some(id), code, &message, Some(detail)))
         }
@@ -606,14 +636,15 @@ mod tests {
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
         let primal = create_test_primal().await;
-        let server = JsonRpcServer::new(primal, "127.0.0.1:0".parse().unwrap());
-        let listener = tokio::net::TcpListener::bind(server.addr).await.unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         drop(listener);
 
-        let server = JsonRpcServer::new(server.primal, addr);
-        tokio::spawn(async move { server.serve().await });
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let server = JsonRpcServer::new(primal, addr);
+        let ready = Arc::new(tokio::sync::Notify::new());
+        let ready_rx = Arc::clone(&ready);
+        tokio::spawn(async move { server.serve_with_ready(ready_rx).await });
+        ready.notified().await;
 
         let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
         let req = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":1}\n";
@@ -632,14 +663,15 @@ mod tests {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
         let primal = create_test_primal().await;
-        let server = JsonRpcServer::new(primal, "127.0.0.1:0".parse().unwrap());
-        let listener = tokio::net::TcpListener::bind(server.addr).await.unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         drop(listener);
 
-        let server = JsonRpcServer::new(server.primal, addr);
-        tokio::spawn(async move { server.serve().await });
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let server = JsonRpcServer::new(primal, addr);
+        let ready = Arc::new(tokio::sync::Notify::new());
+        let ready_rx = Arc::clone(&ready);
+        tokio::spawn(async move { server.serve_with_ready(ready_rx).await });
+        ready.notified().await;
 
         let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
 

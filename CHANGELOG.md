@@ -5,6 +5,54 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-01 (session 24)
+
+### Changed
+
+#### Deep Debt: Lock-Free Concurrency, Zero-Sleep Testing, Allocation Elimination
+
+**1. Lock-Free CircuitBreaker**
+- Replaced `tokio::sync::Mutex<Option<Instant>>` with `AtomicU64` (nanos since epoch)
+- `state()`, `allow_request()`, `record_failure()` now fully synchronous — zero async overhead
+- Uses `Ordering::Acquire/Release` for correctness without locks
+
+**2. Zero-Sleep Testing (all non-chaos tests)**
+- `JsonRpcServer` + `UdsJsonRpcServer`: added `serve_with_ready(Arc<Notify>)` — deterministic readiness
+- Binary integration tests: `wait_for_tcp_ready()` + `wait_for_exit()` replace all `sleep` calls
+- Discovery tests: removed 22x serialization lock (`DISCOVERY_MOCK_TCP_LOCK`) — instances already isolated
+- Circuit breaker tests: converted to plain `#[test]` with `Duration::ZERO` — no tokio needed
+
+**3. Hot-Path Allocation Elimination**
+- `HandlerError::InvalidParams` + `MethodNotFound`: `String` → `Cow<'static, str>` (zero alloc for static messages)
+- `list_capabilities`: `OnceLock` cache — computed once, cloned by reference
+
+**4. Dehydration Pipeline Evolution**
+- Payload bytes: queries `InMemoryPayloadStore::total_bytes()` with vertex-count fallback
+- Agent summaries: walks DAG for real `AgentJoin`/`AgentLeave` events (roles, counts, timestamps)
+- Attestation collection: discovers `SigningClient` at runtime, requests real cryptographic attestations
+- Deleted orphan `dehydration_ops.rs`
+
+**5. Test Coverage (+21 tests)**
+- Handler: health aliases, MCP tools.list/tools.call, capability aliases, RPC error propagation
+- Discovery manifest: env resolution, publish/unpublish roundtrip, scan, discover-by-capability
+
+**6. Doc & CI Fixes**
+- Fixed broken `[rhizocrypt_service::ServiceError]` intra-doc link (`cargo doc -D warnings` clean)
+- Archived 6 stale Dec 2025 session docs from root to `archive/dec-27-2025-session-docs/`
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` — 0 warnings
+- `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps` — clean
+- `cargo test --workspace --all-features` — **1,423 tests passing**, 0 failures
+- All `.rs` files under 1000 lines
+- Zero unsafe, zero production unwrap/expect
+- Zero sleeps in non-chaos tests
+- SPDX headers on all 129 `.rs` files
+
+---
+
 ## [0.14.0-dev] - 2026-03-31 (session 23)
 
 ### Added
@@ -1283,6 +1331,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.14.0-dev** (2026-04-01 s24): Lock-free CircuitBreaker, zero-sleep testing, Cow errors, OnceLock cache, dehydration evolution, +21 tests → 1,423
 - **0.14.0-dev** (2026-03-31 s23): RC-01 fix — UDS transport + dual-mode TCP + `biomeos` path migration + deep debt evolution, 1,402 tests
 - **0.13.0-dev** (2026-03-23 s19): MCP tools, DagBackend enum, GC sweeper, RedbDagStore wiring, 5 proptests, normalize_method, health alignment, debris cleanup, 1,412 tests
 - **0.13.0-dev** (2026-03-17 s18): Sovereignty — provenance-trio-types eliminated, wire types inlined, 14-crate ecoBin deny, 6 file extractions, cross-compile CI, RUSTSEC-2026-0049 fix

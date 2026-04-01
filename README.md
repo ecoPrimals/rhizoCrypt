@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.14.0-dev |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,402 passing (`--all-features`) |
+| Tests | 1,423 passing (`--all-features`) |
 | Coverage | CI gate: `--fail-under-lines 90` |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -14,7 +14,7 @@
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
 | IPC | JSON-RPC 2.0 (HTTP + newline) + tarpc 0.37 (bincode) — dual-transport first |
 | Streaming | NDJSON pipeline coordination for `event.append_batch` |
-| Resilience | CircuitBreaker + RetryPolicy for IPC clients |
+| Resilience | Lock-free CircuitBreaker (atomics) + RetryPolicy for IPC clients |
 | Error Model | Structured `IpcErrorPhase` + `DispatchOutcome` (protocol vs application) |
 | Discovery | Capability-based + manifest-based (`$XDG_RUNTIME_DIR/biomeos/{primal}.json`) |
 | Chaos | `ChaosEngine` framework with 7 fault classes |

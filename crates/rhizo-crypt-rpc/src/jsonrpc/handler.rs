@@ -14,6 +14,7 @@ use crate::service::{
 use rhizo_crypt_core::{MerkleRoot, SessionId, SliceId, SliceMode, VertexId};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
+use std::borrow::Cow;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::debug;
@@ -23,11 +24,11 @@ use tracing::debug;
 pub enum HandlerError {
     /// Invalid parameters.
     #[error("invalid params: {0}")]
-    InvalidParams(String),
+    InvalidParams(Cow<'static, str>),
 
     /// Method not found.
     #[error("method not found: {0}")]
-    MethodNotFound(String),
+    MethodNotFound(Cow<'static, str>),
 
     /// RPC error from service.
     #[error("rpc error: {0}")]
@@ -75,14 +76,12 @@ pub async fn handle_request(
         }
         "tools.list" | "mcp.tools.list" => Ok(rhizo_crypt_core::niche::mcp_tools()),
         "tools.call" | "mcp.tools.call" => dispatch_tools_call(&server, params).await,
-        _ => Err(HandlerError::MethodNotFound(request.method)),
+        _ => Err(HandlerError::MethodNotFound(request.method.into())),
     }
 }
 
 fn get_obj(params: &Value) -> Result<&serde_json::Map<String, Value>, HandlerError> {
-    params
-        .as_object()
-        .ok_or_else(|| HandlerError::InvalidParams("params must be an object".to_string()))
+    params.as_object().ok_or(HandlerError::InvalidParams(Cow::Borrowed("params must be an object")))
 }
 
 fn get_str<'a>(
@@ -91,7 +90,7 @@ fn get_str<'a>(
 ) -> Result<&'a str, HandlerError> {
     obj.get(key)
         .and_then(Value::as_str)
-        .ok_or_else(|| HandlerError::InvalidParams(format!("missing or invalid '{key}'")))
+        .ok_or_else(|| HandlerError::InvalidParams(format!("missing or invalid '{key}'").into()))
 }
 
 fn get_opt_str<'a>(obj: &'a serde_json::Map<String, Value>, key: &str) -> Option<&'a str> {
@@ -118,20 +117,20 @@ fn get_deserialized<T: DeserializeOwned>(
     key: &str,
 ) -> Result<T, HandlerError> {
     let v = obj.get(key).unwrap_or(&Value::Null);
-    from_value_ref(v).map_err(|e| HandlerError::InvalidParams(format!("{key}: {e}")))
+    from_value_ref(v).map_err(|e| HandlerError::InvalidParams(format!("{key}: {e}").into()))
 }
 
 fn parse_session_id(s: &str) -> Result<SessionId, HandlerError> {
     uuid::Uuid::parse_str(s)
         .map(SessionId::new)
-        .map_err(|e| HandlerError::InvalidParams(format!("invalid session_id: {e}")))
+        .map_err(|e| HandlerError::InvalidParams(format!("invalid session_id: {e}").into()))
 }
 
 fn parse_vertex_id(s: &str) -> Result<VertexId, HandlerError> {
     let bytes = hex::decode(s)
-        .map_err(|e| HandlerError::InvalidParams(format!("invalid vertex_id hex: {e}")))?;
+        .map_err(|e| HandlerError::InvalidParams(format!("invalid vertex_id hex: {e}").into()))?;
     if bytes.len() != 32 {
-        return Err(HandlerError::InvalidParams("vertex_id must be 32 bytes hex".to_string()));
+        return Err(HandlerError::InvalidParams(Cow::Borrowed("vertex_id must be 32 bytes hex")));
     }
     let mut arr = [0u8; 32];
     arr.copy_from_slice(&bytes);
@@ -141,7 +140,7 @@ fn parse_vertex_id(s: &str) -> Result<VertexId, HandlerError> {
 fn parse_slice_id(s: &str) -> Result<SliceId, HandlerError> {
     uuid::Uuid::parse_str(s)
         .map(SliceId::new)
-        .map_err(|e| HandlerError::InvalidParams(format!("invalid slice_id: {e}")))
+        .map_err(|e| HandlerError::InvalidParams(format!("invalid slice_id: {e}").into()))
 }
 
 fn parse_did(s: &str) -> rhizo_crypt_core::Did {
@@ -176,7 +175,7 @@ fn parse_metadata_array(obj: &serde_json::Map<String, Value>) -> Vec<(String, St
 }
 
 fn to_json<T: serde::Serialize>(val: &T) -> Result<Value, HandlerError> {
-    serde_json::to_value(val).map_err(|e| HandlerError::InvalidParams(e.to_string()))
+    serde_json::to_value(val).map_err(|e| HandlerError::InvalidParams(e.to_string().into()))
 }
 
 fn vertex_id_to_value(id: VertexId) -> Value {
@@ -299,12 +298,12 @@ async fn dispatch_event_append_batch(
     let requests_arr = obj
         .get("requests")
         .and_then(Value::as_array)
-        .ok_or_else(|| HandlerError::InvalidParams("missing 'requests' array".to_string()))?;
+        .ok_or(HandlerError::InvalidParams(Cow::Borrowed("missing 'requests' array")))?;
     let mut requests = Vec::with_capacity(requests_arr.len());
     for r in requests_arr {
-        let r_obj = r.as_object().ok_or_else(|| {
-            HandlerError::InvalidParams("each request must be an object".to_string())
-        })?;
+        let r_obj = r
+            .as_object()
+            .ok_or(HandlerError::InvalidParams(Cow::Borrowed("each request must be an object")))?;
         let session_id = parse_session_id(get_str(r_obj, "session_id")?)?;
         let event_type = get_deserialized(r_obj, "event_type")?;
         let agent = get_opt_str(r_obj, "agent").map(parse_did);
@@ -457,10 +456,10 @@ async fn dispatch_merkle_verify(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let root_hex = get_str(obj, "root")?;
-    let root_bytes =
-        hex::decode(root_hex).map_err(|e| HandlerError::InvalidParams(format!("root: {e}")))?;
+    let root_bytes = hex::decode(root_hex)
+        .map_err(|e| HandlerError::InvalidParams(format!("root: {e}").into()))?;
     if root_bytes.len() != 32 {
-        return Err(HandlerError::InvalidParams("root must be 32 bytes hex".to_string()));
+        return Err(HandlerError::InvalidParams(Cow::Borrowed("root must be 32 bytes hex")));
     }
     let mut root_arr = [0u8; 32];
     root_arr.copy_from_slice(&root_bytes);
@@ -485,7 +484,7 @@ async fn dispatch_slice_checkout(
     let entry_index = obj
         .get("entry_index")
         .and_then(Value::as_u64)
-        .ok_or_else(|| HandlerError::InvalidParams("missing entry_index".to_string()))?;
+        .ok_or(HandlerError::InvalidParams(Cow::Borrowed("missing entry_index")))?;
     let mode = get_opt_deserialized(obj, "mode").unwrap_or(SliceMode::Copy {
         allow_recopy: false,
     });
@@ -651,7 +650,7 @@ async fn dispatch_tools_call(
         "dag.dehydration.trigger" => dispatch_dehydrate(server, arguments).await,
         "health.check" | "status" => dispatch_health(server).await,
         "capabilities.list" => dispatch_capability_list(server).await,
-        _ => Err(HandlerError::MethodNotFound(format!("tool not found: {tool_name}"))),
+        _ => Err(HandlerError::MethodNotFound(format!("tool not found: {tool_name}").into())),
     }
 }
 

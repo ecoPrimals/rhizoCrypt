@@ -343,7 +343,7 @@ pub fn extract_rpc_error(response: &serde_json::Value) -> Option<(i64, String)> 
 ///
 /// Provides ergonomic error context wrapping for configuration and startup
 /// code. Prefer this over `unwrap()` / `expect()` — propagate errors to
-/// `main()` which handles exit codes via [`rhizocrypt_service::ServiceError`].
+/// `main()` which handles exit codes via `rhizocrypt_service::ServiceError`.
 ///
 /// # Usage
 ///

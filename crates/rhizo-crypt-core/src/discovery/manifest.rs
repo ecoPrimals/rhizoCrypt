@@ -280,4 +280,134 @@ mod tests {
         let manifests = scan_manifests_in(Path::new("/nonexistent/dir")).await;
         assert!(manifests.is_empty());
     }
+
+    #[tokio::test]
+    async fn manifest_dir_resolves_biomeos_subdir() {
+        let dir = tempfile::tempdir().unwrap();
+        temp_env::with_var("XDG_RUNTIME_DIR", Some(dir.path().to_str().unwrap()), || {
+            let result = manifest_dir();
+            assert!(result.is_some());
+            let p = result.unwrap();
+            assert!(p.ends_with(crate::constants::BIOMEOS_SOCKET_SUBDIR));
+        });
+    }
+
+    #[tokio::test]
+    async fn manifest_dir_returns_none_without_xdg() {
+        temp_env::with_var_unset("XDG_RUNTIME_DIR", || {
+            assert!(manifest_dir().is_none());
+        });
+    }
+
+    #[tokio::test]
+    async fn publish_manifest_creates_and_writes() {
+        let dir = tempfile::tempdir().unwrap();
+        let manifest = PrimalManifest {
+            primal: "testpub".into(),
+            version: "0.1.0".into(),
+            socket: "/tmp/testpub.sock".into(),
+            address: None,
+            capabilities: vec!["dag.session.create".into()],
+        };
+
+        let eco = dir.path().join(crate::constants::BIOMEOS_SOCKET_SUBDIR);
+        fs::create_dir_all(&eco).await.unwrap();
+        let path = eco.join(format!("{}.json", manifest.primal));
+        let json = serde_json::to_string_pretty(&manifest).unwrap();
+        fs::write(&path, json).await.unwrap();
+
+        assert!(path.exists());
+        let contents = fs::read_to_string(&path).await.unwrap();
+        let read_back: PrimalManifest = serde_json::from_str(&contents).unwrap();
+        assert_eq!(read_back.primal, "testpub");
+        assert!(read_back.has_capability("dag.session.create"));
+    }
+
+    #[tokio::test]
+    async fn unpublish_manifest_removes_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let eco = dir.path().join(crate::constants::BIOMEOS_SOCKET_SUBDIR);
+        fs::create_dir_all(&eco).await.unwrap();
+
+        let manifest = PrimalManifest {
+            primal: "testunpub".into(),
+            version: "0.1.0".into(),
+            socket: "/tmp/testunpub.sock".into(),
+            address: None,
+            capabilities: vec!["health.check".into()],
+        };
+        let json = serde_json::to_string(&manifest).unwrap();
+        let path = eco.join("testunpub.json");
+        fs::write(&path, &json).await.unwrap();
+        assert!(path.exists());
+
+        fs::remove_file(&path).await.unwrap();
+        assert!(!path.exists());
+    }
+
+    #[tokio::test]
+    async fn publish_manifest_fails_without_xdg() {
+        let manifest = PrimalManifest {
+            primal: "noenv".into(),
+            version: "0.1.0".into(),
+            socket: String::new(),
+            address: None,
+            capabilities: Vec::new(),
+        };
+
+        let result = temp_env::with_var_unset("XDG_RUNTIME_DIR", manifest_dir);
+        assert!(result.is_none(), "manifest_dir should return None without XDG_RUNTIME_DIR");
+
+        let _ = manifest;
+    }
+
+    #[tokio::test]
+    async fn scan_manifests_uses_env_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let eco = dir.path().join(crate::constants::BIOMEOS_SOCKET_SUBDIR);
+        fs::create_dir_all(&eco).await.unwrap();
+
+        let manifest = PrimalManifest {
+            primal: "scantest".into(),
+            version: "1.0.0".into(),
+            socket: "/tmp/scantest.sock".into(),
+            address: None,
+            capabilities: vec!["test.scan".into()],
+        };
+        let json = serde_json::to_string(&manifest).unwrap();
+        fs::write(eco.join("scantest.json"), json).await.unwrap();
+
+        let results = scan_manifests_in(&eco).await;
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].primal, "scantest");
+    }
+
+    #[tokio::test]
+    async fn discover_by_capability_filters_correctly() {
+        let dir = tempfile::tempdir().unwrap();
+        let eco = dir.path();
+
+        for (name, cap) in [("signer", "crypto.sign"), ("storer", "storage.put")] {
+            let m = PrimalManifest {
+                primal: name.into(),
+                version: "1.0".into(),
+                socket: format!("/tmp/{name}.sock"),
+                address: None,
+                capabilities: vec![cap.into()],
+            };
+            let json = serde_json::to_string(&m).unwrap();
+            fs::write(eco.join(format!("{name}.json")), json).await.unwrap();
+        }
+
+        let all = scan_manifests_in(eco).await;
+        let signers: Vec<_> = all.iter().filter(|m| m.has_capability("crypto.sign")).collect();
+        assert_eq!(signers.len(), 1);
+        assert_eq!(signers[0].primal, "signer");
+
+        let storers: Vec<_> = all.iter().filter(|m| m.has_capability("storage.put")).collect();
+        assert_eq!(storers.len(), 1);
+        assert_eq!(storers[0].primal, "storer");
+
+        assert!(all.iter().filter(|m| m.has_capability("nonexistent")).count() == 0);
+    }
 }

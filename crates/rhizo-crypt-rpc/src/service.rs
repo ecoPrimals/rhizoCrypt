@@ -210,6 +210,16 @@ pub fn build_capability_descriptors() -> Vec<CapabilityDescriptor> {
         .collect()
 }
 
+/// Cached capability descriptors — computed once, returned by reference.
+///
+/// The descriptor list is derived from compile-time constants in `niche.rs`
+/// and never changes during the process lifetime. `OnceLock` avoids
+/// rebuilding `String` metadata on every `capabilities.list` call.
+fn cached_capability_descriptors() -> &'static Vec<CapabilityDescriptor> {
+    static CACHE: std::sync::OnceLock<Vec<CapabilityDescriptor>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(build_capability_descriptors)
+}
+
 // ============================================================================
 // tarpc Service Trait
 // ============================================================================
@@ -667,7 +677,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         self,
         _: tarpc::context::Context,
     ) -> Result<Vec<CapabilityDescriptor>, RpcError> {
-        Ok(build_capability_descriptors())
+        Ok(cached_capability_descriptors().clone())
     }
 }
 
