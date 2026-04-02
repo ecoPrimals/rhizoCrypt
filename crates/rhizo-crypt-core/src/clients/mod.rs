@@ -36,7 +36,7 @@
 //! Primals start with zero knowledge and discover services at runtime:
 //!
 //! 1. **Birth**: Zero knowledge, only self-awareness
-//! 2. **Find Universal Adapter**: DISCOVERY_ADAPTER_ADDRESS env var
+//! 2. **Find Universal Adapter**: `DISCOVERY_ADAPTER_ADDRESS` env var
 //! 3. **Query Capabilities**: "Who provides crypto:signing?"
 //! 4. **Connect On-Demand**: Create clients as needed
 //!

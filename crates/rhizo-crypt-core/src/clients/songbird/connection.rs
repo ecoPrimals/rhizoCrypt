@@ -21,7 +21,7 @@ impl SongbirdClient {
     /// # Errors
     ///
     /// Returns `RhizoCryptError::Integration` if:
-    /// - No address is configured (SONGBIRD_ADDRESS not set)
+    /// - No address is configured (`SONGBIRD_ADDRESS` not set)
     /// - The configured address is invalid
     /// - Connection times out
     /// - TCP connection fails

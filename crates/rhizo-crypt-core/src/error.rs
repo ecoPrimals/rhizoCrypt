@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! RhizoCrypt error types.
+//! `RhizoCrypt` error types.
 //!
 //! This module defines all error types used throughout the DAG engine.
 
@@ -9,7 +9,7 @@ use crate::types::{SessionId, VertexId};
 use std::fmt;
 use thiserror::Error;
 
-/// Main error type for RhizoCrypt operations.
+/// Main error type for `RhizoCrypt` operations.
 #[derive(Debug, Error)]
 pub enum RhizoCryptError {
     // === Configuration Errors ===
@@ -169,11 +169,11 @@ pub enum RhizoCryptError {
     // === Integration Errors ===
     /// Capability provider error (signing, storage, commit, etc.).
     ///
-    /// Capability-based: rhizoCrypt only knows about capabilities it discovers
+    /// Capability-based: `rhizoCrypt` only knows about capabilities it discovers
     /// at runtime, never specific primal names.
     #[error("capability provider error ({capability}): {message}")]
     CapabilityProvider {
-        /// The capability that failed (e.g., "signing", "permanent_storage").
+        /// The capability that failed (e.g., `signing`, `permanent_storage`).
         capability: String,
         /// Error detail.
         message: String,
@@ -262,8 +262,8 @@ impl IpcErrorPhase {
 
     /// Returns `true` when automatic retry is reasonable.
     ///
-    /// Retriable: Connect (transient socket), Write (broken pipe), Read (timeout).
-    /// Not retriable: InvalidJson, NoResult, HttpStatus, JsonRpcError (application-level).
+    /// Retriable: `Connect` (transient socket), `Write` (broken pipe), `Read` (timeout).
+    /// Not retriable: `InvalidJson`, `NoResult`, `HttpStatus`, `JsonRpcError` (application-level).
     #[must_use]
     pub const fn is_retriable(&self) -> bool {
         matches!(self, Self::Connect | Self::Write | Self::Read)
@@ -476,7 +476,7 @@ impl RhizoCryptError {
     }
 }
 
-/// Result type for RhizoCrypt operations.
+/// Result type for `RhizoCrypt` operations.
 pub type Result<T> = std::result::Result<T, RhizoCryptError>;
 
 // ============================================================================

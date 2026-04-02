@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! BearDog HTTP API types and client.
+//! `BearDog` HTTP API types and client.
 //!
 //! This module contains the HTTP request/response types for connecting
-//! to the BearDog signing service via its REST API.
+//! to the `BearDog` signing service via its REST API.
 //!
 //! ## Feature Gate
 //!
 //! This module is only compiled when the `live-clients` feature is enabled.
-//! Without the feature, the BearDog client operates in scaffolded mode.
+//! Without the feature, the `BearDog` client operates in scaffolded mode.
 
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +20,7 @@ const DEFAULT_KEY_TYPE: &str = "ed25519";
 // HTTP Request/Response Types (mirrors BearDog's API)
 // ============================================================================
 
-/// Sign request for BearDog HTTP API.
+/// Sign request for `BearDog` HTTP API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpSignRequest {
     /// Data to sign (base64 encoded).
@@ -34,7 +34,7 @@ fn default_key_type() -> String {
     DEFAULT_KEY_TYPE.to_string()
 }
 
-/// Sign response from BearDog HTTP API.
+/// Sign response from `BearDog` HTTP API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpSignResponse {
     /// Base64-encoded signature.
@@ -48,7 +48,7 @@ const fn default_true() -> bool {
     true
 }
 
-/// Verify request for BearDog HTTP API.
+/// Verify request for `BearDog` HTTP API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpVerifyRequest {
     /// Data that was signed (base64 encoded).
@@ -57,7 +57,7 @@ pub struct HttpVerifyRequest {
     pub signature: String,
 }
 
-/// Verify response from BearDog HTTP API.
+/// Verify response from `BearDog` HTTP API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpVerifyResponse {
     /// Whether the signature is valid.
@@ -71,7 +71,7 @@ pub struct HttpResolveDidRequest {
     pub did: String,
 }
 
-/// DID document from BearDog.
+/// DID document from `BearDog`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpDidDocument {
     /// DID identifier.
@@ -91,7 +91,7 @@ pub struct HttpDidDocument {
 pub struct HttpVerificationMethod {
     /// Method ID.
     pub id: String,
-    /// Method type (e.g., Ed25519VerificationKey2020).
+    /// Method type (e.g., `Ed25519VerificationKey2020`).
     #[serde(rename = "type")]
     pub method_type: String,
     /// Controller DID.
@@ -115,7 +115,7 @@ pub struct HttpHealthResponse {
 // HTTP Client
 // ============================================================================
 
-/// HTTP client for BearDog API.
+/// HTTP client for `BearDog` API.
 #[derive(Clone)]
 pub struct BearDogHttpClient {
     client: reqwest::Client,
@@ -123,11 +123,11 @@ pub struct BearDogHttpClient {
 }
 
 impl BearDogHttpClient {
-    /// Create a new HTTP client for BearDog.
+    /// Create a new HTTP client for `BearDog`.
     ///
     /// # Arguments
     ///
-    /// * `base_url` - Base URL of the BearDog service (e.g., "http://127.0.0.1:8080")
+    /// * `base_url` - Base URL of the `BearDog` service (e.g., <http://127.0.0.1:8080>)
     /// * `timeout_ms` - Request timeout in milliseconds
     ///
     /// # Errors
@@ -145,7 +145,7 @@ impl BearDogHttpClient {
         })
     }
 
-    /// Sign data using BearDog.
+    /// Sign data using `BearDog`.
     ///
     /// Returns the signature as `bytes::Bytes` for zero-copy downstream use.
     ///
@@ -185,7 +185,7 @@ impl BearDogHttpClient {
             .map_err(|_| BearDogHttpError::InvalidSignature)
     }
 
-    /// Verify a signature using BearDog.
+    /// Verify a signature using `BearDog`.
     ///
     /// # Errors
     ///
@@ -216,7 +216,7 @@ impl BearDogHttpClient {
         Ok(verify_response.valid)
     }
 
-    /// Check BearDog health.
+    /// Check `BearDog` health.
     ///
     /// # Errors
     ///
@@ -237,7 +237,7 @@ impl BearDogHttpClient {
     }
 }
 
-/// Errors from BearDog HTTP client.
+/// Errors from `BearDog` HTTP client.
 #[derive(Debug)]
 pub enum BearDogHttpError {
     /// HTTP request failed.

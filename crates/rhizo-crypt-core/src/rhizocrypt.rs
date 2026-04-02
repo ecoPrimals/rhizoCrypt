@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! RhizoCrypt main implementation.
+//! `RhizoCrypt` main implementation.
 //!
 //! The core DAG engine with lock-free concurrency for maximum performance.
 
@@ -26,16 +26,16 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
 
-/// The RhizoCrypt primal - Core DAG Engine.
+/// The `RhizoCrypt` primal - Core DAG Engine.
 ///
-/// Uses lock-free concurrent data structures (DashMap) for maximum concurrency.
+/// Uses lock-free concurrent data structures (`DashMap`) for maximum concurrency.
 /// Multiple operations on different sessions can proceed in parallel without blocking.
 ///
 /// ## Architecture
 ///
-/// - **Lock-free session storage**: DashMap for concurrent access
-/// - **Lock-free slice storage**: DashMap for concurrent operations  
-/// - **Lock-free dehydration tracking**: DashMap for status updates
+/// - **Lock-free session storage**: `DashMap` for concurrent access
+/// - **Lock-free slice storage**: `DashMap` for concurrent operations  
+/// - **Lock-free dehydration tracking**: `DashMap` for status updates
 /// - **Atomic metrics**: Lock-free counters for performance tracking
 ///
 /// ## Performance
@@ -64,7 +64,7 @@ pub struct RhizoCrypt {
 }
 
 impl RhizoCrypt {
-    /// Create a new RhizoCrypt instance.
+    /// Create a new `RhizoCrypt` instance.
     #[must_use]
     pub fn new(config: RhizoCryptConfig) -> Self {
         use crate::types_ecosystem::provenance::{ProvenanceNotifier, ProvenanceProviderConfig};
@@ -168,6 +168,7 @@ impl RhizoCrypt {
     }
 
     /// List all sessions (lock-free iterator).
+    #[must_use]
     pub fn list_sessions(&self) -> Vec<Session> {
         self.sessions.iter().map(|entry| entry.value().clone()).collect()
     }
@@ -204,11 +205,13 @@ impl RhizoCrypt {
     }
 
     /// Get session count (lock-free).
+    #[must_use]
     pub fn session_count(&self) -> usize {
         self.sessions.len()
     }
 
     /// Get total vertex count across all sessions (lock-free).
+    #[must_use]
     pub fn total_vertex_count(&self) -> u64 {
         self.sessions.iter().map(|entry| entry.value().vertex_count).sum()
     }
@@ -399,6 +402,7 @@ impl RhizoCrypt {
     }
 
     /// List all active slices (lock-free iterator).
+    #[must_use]
     pub fn list_slices(&self) -> Vec<Slice> {
         self.slices
             .iter()
@@ -424,17 +428,19 @@ impl RhizoCrypt {
             .get_mut(&slice_id)
             .ok_or_else(|| RhizoCryptError::SliceNotFound(slice_id.to_string()))?;
 
-        let slice = slice_entry.value_mut();
+        {
+            let slice = slice_entry.value_mut();
 
-        if slice.is_resolved() {
-            return Err(RhizoCryptError::SliceAlreadyResolved(slice_id.to_string()));
+            if slice.is_resolved() {
+                return Err(RhizoCryptError::SliceAlreadyResolved(slice_id.to_string()));
+            }
+
+            slice.state = slice::SliceState::Resolved {
+                outcome,
+                resolved_at: Timestamp::now(),
+            };
         }
-
-        slice.state = slice::SliceState::Resolved {
-            outcome,
-            resolved_at: Timestamp::now(),
-        };
-
+        drop(slice_entry);
         Ok(())
     }
 
@@ -448,7 +454,7 @@ impl RhizoCrypt {
     /// 1. Computes the Merkle root of the DAG
     /// 2. Generates a dehydration summary
     /// 3. Collects attestations from participants (if required)
-    /// 4. Commits to permanent storage via PermanentStorageProvider
+    /// 4. Commits to permanent storage via `PermanentStorageProvider`
     ///
     /// # Errors
     ///
@@ -570,10 +576,10 @@ impl RhizoCrypt {
         let all_vertices =
             self.query_vertices(session_id, None, None, None).await.unwrap_or_default();
 
-        let mut agent_info: hashbrown::HashMap<
+        let mut agent_info: std::collections::HashMap<
             Did,
             (Option<Timestamp>, Option<Timestamp>, u64, AgentRole),
-        > = hashbrown::HashMap::new();
+        > = std::collections::HashMap::new();
 
         for vertex in &all_vertices {
             if let Some(ref agent) = vertex.agent {
@@ -740,6 +746,7 @@ impl RhizoCrypt {
     }
 
     /// Get dehydration status for a session (lock-free).
+    #[must_use]
     pub fn get_dehydration_status(&self, session_id: SessionId) -> dehydration::DehydrationStatus {
         self.dehydration_status
             .get(&session_id)
@@ -792,6 +799,7 @@ impl RhizoCrypt {
     ///
     /// Returns a `JoinHandle` that can be used to cancel the sweeper on
     /// shutdown. The interval is taken from `config.gc_interval`.
+    #[must_use]
     pub fn spawn_gc_sweeper(self: &Arc<Self>) -> tokio::task::JoinHandle<()> {
         let primal = Arc::clone(self);
         let interval = primal.config.gc_interval;

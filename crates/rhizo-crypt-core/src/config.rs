@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! RhizoCrypt configuration.
+//! `RhizoCrypt` configuration.
 //!
-//! This module defines the configuration structure for the RhizoCrypt primal.
+//! This module defines the configuration structure for the `RhizoCrypt` primal.
 //!
 //! ## Design Philosophy
 //!
@@ -18,7 +18,7 @@ use std::borrow::Cow;
 use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 
-/// Configuration for RhizoCrypt.
+/// Configuration for `RhizoCrypt`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RhizoCryptConfig {
     /// Primal name.
@@ -231,7 +231,7 @@ impl Default for SliceConfig {
 ///
 /// ## Capability-based Discovery
 ///
-/// Rather than hardcoding addresses, RhizoCrypt can discover its RPC endpoint
+/// Rather than hardcoding addresses, `RhizoCrypt` can discover its RPC endpoint
 /// from the environment or use sensible defaults that work for local development.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RpcConfig {

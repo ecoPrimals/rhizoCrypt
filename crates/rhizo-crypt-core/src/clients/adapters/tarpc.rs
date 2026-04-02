@@ -3,8 +3,8 @@
 
 //! tarpc adapter for capability clients
 //!
-//! This adapter allows capability-based clients (SigningProvider, StorageProvider, etc.)
-//! to communicate with rhizoCrypt or other primals using the tarpc protocol.
+//! This adapter allows capability-based clients (`SigningProvider`, `StorageProvider`, etc.)
+//! to communicate with `rhizoCrypt` or other primals using the tarpc protocol.
 
 use crate::clients::adapters::ProtocolAdapter;
 use crate::constants::CONNECTION_TIMEOUT;
@@ -26,7 +26,7 @@ use tokio::time::timeout;
 
 /// Standard JSON-RPC tarpc trait for ecoPrimals interop.
 ///
-/// Any primal that implements this trait can interoperate with the TarpcAdapter.
+/// Any primal that implements this trait can interoperate with the `TarpcAdapter`.
 /// The adapter calls `call(method, params)` with JSON-serialized arguments and
 /// receives a JSON-serialized response.
 #[cfg(feature = "live-clients")]
@@ -53,7 +53,7 @@ pub trait EcoPrimalJsonRpc {
 #[cfg(feature = "live-clients")]
 #[derive(Debug)]
 struct TarpcConnection {
-    /// Spawned tarpc client for EcoPrimalJsonRpc.
+    /// Spawned tarpc client for `EcoPrimalJsonRpc`.
     client: EcoPrimalJsonRpcClient,
 }
 
@@ -111,6 +111,7 @@ pub struct TarpcAdapter {
     endpoint: String,
     addr: SocketAddr,
     /// Connection state (lazy-initialized, cached).
+    #[cfg_attr(not(feature = "live-clients"), allow(dead_code))]
     connection: Arc<RwLock<Option<TarpcConnection>>>,
     /// Timeout for RPC calls.
     pub timeout_duration: Duration,
@@ -121,7 +122,7 @@ impl TarpcAdapter {
     ///
     /// # Arguments
     ///
-    /// * `endpoint` - Service endpoint (e.g., "tarpc://localhost:7777" or "localhost:7777")
+    /// * `endpoint` - Service endpoint (e.g., <tarpc://localhost:7777> or `localhost:7777`)
     ///
     /// # Errors
     ///
@@ -163,7 +164,7 @@ impl TarpcAdapter {
     ///
     /// # Arguments
     ///
-    /// * `addr` - Service address (can be SocketAddr or implements ToSocketAddrs)
+    /// * `addr` - Service address (can be `SocketAddr` or implements `ToSocketAddrs`)
     ///
     /// # Errors
     ///
@@ -204,39 +205,55 @@ impl TarpcAdapter {
     ///
     /// This is called internally by call methods, but can be called explicitly
     /// to fail-fast on connection errors.
+    #[cfg_attr(not(feature = "live-clients"), allow(dead_code))]
     async fn ensure_connected(&self) -> Result<()> {
-        let mut conn = self.connection.write().await;
+        {
+            let conn = self.connection.read().await;
+            if conn.is_some() {
+                return Ok(());
+            }
+        }
 
-        if conn.is_none() {
-            #[cfg(feature = "live-clients")]
-            {
-                tracing::debug!(endpoint = %self.addr, "Establishing tarpc connection");
+        #[cfg(feature = "live-clients")]
+        {
+            let conn = self.connection.write().await;
+            if conn.is_some() {
+                return Ok(());
+            }
+            drop(conn);
 
-                let transport = tarpc::serde_transport::tcp::connect(
-                    self.addr,
-                    tarpc::tokio_serde::formats::Bincode::default,
-                )
-                .await
-                .map_err(|e| {
-                    RhizoCryptError::integration(format!(
-                        "Failed to connect to tarpc service at {}: {e}",
-                        self.addr
-                    ))
-                })?;
+            tracing::debug!(endpoint = %self.addr, "Establishing tarpc connection");
 
-                let client =
-                    EcoPrimalJsonRpcClient::new(tarpc::client::Config::default(), transport)
-                        .spawn();
+            let transport = tarpc::serde_transport::tcp::connect(
+                self.addr,
+                tarpc::tokio_serde::formats::Bincode::default,
+            )
+            .await
+            .map_err(|e| {
+                RhizoCryptError::integration(format!(
+                    "Failed to connect to tarpc service at {}: {e}",
+                    self.addr
+                ))
+            })?;
 
+            let client =
+                EcoPrimalJsonRpcClient::new(tarpc::client::Config::default(), transport).spawn();
+
+            let mut conn = self.connection.write().await;
+            if conn.is_none() {
                 *conn = Some(TarpcConnection {
                     client,
                 });
-
-                tracing::info!(endpoint = %self.addr, "tarpc connection established");
             }
+            drop(conn);
 
-            #[cfg(not(feature = "live-clients"))]
-            {
+            tracing::info!(endpoint = %self.addr, "tarpc connection established");
+        }
+
+        #[cfg(not(feature = "live-clients"))]
+        {
+            let mut conn = self.connection.write().await;
+            if conn.is_none() {
                 tracing::debug!(endpoint = %self.addr, "tarpc stub connection (live-clients disabled)");
                 *conn = Some(TarpcConnection {
                     _stub: (),
@@ -250,7 +267,7 @@ impl TarpcAdapter {
 
 #[async_trait]
 impl ProtocolAdapter for TarpcAdapter {
-    fn protocol(&self) -> &str {
+    fn protocol(&self) -> &'static str {
         "tarpc"
     }
 
@@ -278,13 +295,19 @@ impl ProtocolAdapter for TarpcAdapter {
 
             let method_owned = method.to_string();
             let args_owned = args_json.to_owned();
-            let conn = self.connection.read().await;
-            let tarpc_conn = conn
-                .as_ref()
-                .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?;
+            let client = {
+                let conn = self.connection.read().await;
+                let client = conn
+                    .as_ref()
+                    .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?
+                    .client
+                    .clone();
+                drop(conn);
+                client
+            };
 
             let call_future =
-                tarpc_conn.client.call(tarpc::context::current(), method_owned.clone(), args_owned);
+                client.call(tarpc::context::current(), method_owned.clone(), args_owned);
 
             let result = timeout(self.timeout_duration, call_future).await.map_err(|_| {
                 RhizoCryptError::integration(format!(
@@ -325,12 +348,16 @@ impl ProtocolAdapter for TarpcAdapter {
 
             let method_owned = method.to_string();
             let args_owned = args_json.to_owned();
-            let conn = self.connection.read().await;
-            let tarpc_conn = conn
-                .as_ref()
-                .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?;
-
-            let client = tarpc_conn.client.clone();
+            let client = {
+                let conn = self.connection.read().await;
+                let client = conn
+                    .as_ref()
+                    .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?
+                    .client
+                    .clone();
+                drop(conn);
+                client
+            };
             tokio::spawn(async move {
                 let _ = client.call(tarpc::context::current(), method_owned, args_owned).await;
             });
@@ -340,6 +367,16 @@ impl ProtocolAdapter for TarpcAdapter {
     }
 
     async fn is_healthy(&self) -> bool {
+        #[cfg(not(feature = "live-clients"))]
+        {
+            tracing::debug!(
+                endpoint = %self.addr,
+                "tarpc adapter unhealthy: live-clients feature disabled"
+            );
+            return false;
+        }
+
+        #[cfg(feature = "live-clients")]
         match self.ensure_connected().await {
             Ok(()) => {
                 tracing::debug!(endpoint = %self.addr, "tarpc adapter connection healthy");
@@ -420,7 +457,10 @@ mod tests {
         let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
         #[cfg(not(feature = "live-clients"))]
         {
-            assert!(adapter.is_healthy().await);
+            assert!(
+                !adapter.is_healthy().await,
+                "stub adapter should report unhealthy when live-clients is disabled"
+            );
         }
         #[cfg(feature = "live-clients")]
         {

@@ -27,7 +27,7 @@ use crate::vertex::Vertex;
 ///
 /// Request **capabilities**, not **vendors**:
 /// - ✅ "I need crypto:signing capability"
-/// - ❌ "I need BearDog"
+/// - ❌ "I need `BearDog`"
 ///
 /// ## Discovery
 ///
@@ -100,7 +100,7 @@ pub trait SigningProvider: Send + Sync {
 ///
 /// Request **capabilities**, not **vendors**:
 /// - ✅ "I need permanent commit capability"
-/// - ❌ "I need LoamSpine"
+/// - ❌ "I need `LoamSpine`"
 ///
 /// ## Discovery
 ///
@@ -168,7 +168,7 @@ pub trait PermanentStorageProvider: Send + Sync {
 ///
 /// Request **capabilities**, not **vendors**:
 /// - ✅ "I need payload storage capability"
-/// - ❌ "I need NestGate"
+/// - ❌ "I need `NestGate`"
 ///
 /// ## Discovery
 ///

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! NestGate HTTP API types and client.
+//! `NestGate` HTTP API types and client.
 //!
 //! This module contains the HTTP request/response types for connecting
-//! to the NestGate storage service via its REST API.
+//! to the `NestGate` storage service via its REST API.
 //!
 //! ## Feature Gate
 //!
 //! This module is only compiled when the `live-clients` feature is enabled.
-//! Without the feature, the NestGate client operates in scaffolded mode.
+//! Without the feature, the `NestGate` client operates in scaffolded mode.
 
 use serde::{Deserialize, Serialize};
 
@@ -98,7 +98,7 @@ pub struct HttpHealthResponse {
 // HTTP Client
 // ============================================================================
 
-/// HTTP client for NestGate API.
+/// HTTP client for `NestGate` API.
 #[derive(Clone)]
 pub struct NestGateHttpClient {
     client: reqwest::Client,
@@ -106,11 +106,11 @@ pub struct NestGateHttpClient {
 }
 
 impl NestGateHttpClient {
-    /// Create a new HTTP client for NestGate.
+    /// Create a new HTTP client for `NestGate`.
     ///
     /// # Arguments
     ///
-    /// * `base_url` - Base URL of the NestGate service (e.g., "http://127.0.0.1:9200")
+    /// * `base_url` - Base URL of the `NestGate` service (e.g., <http://127.0.0.1:9200>)
     /// * `timeout_ms` - Request timeout in milliseconds
     ///
     /// # Errors
@@ -128,7 +128,7 @@ impl NestGateHttpClient {
         })
     }
 
-    /// Store a blob in NestGate.
+    /// Store a blob in `NestGate`.
     ///
     /// Returns the content-addressed reference (blake3 hash).
     ///
@@ -170,7 +170,7 @@ impl NestGateHttpClient {
         Ok(store_response.reference)
     }
 
-    /// Retrieve a blob from NestGate by reference.
+    /// Retrieve a blob from `NestGate` by reference.
     ///
     /// Returns the blob as `bytes::Bytes` for zero-copy downstream use.
     ///
@@ -259,7 +259,7 @@ impl NestGateHttpClient {
         response.json().await.map_err(NestGateHttpError::Parse)
     }
 
-    /// Check NestGate health.
+    /// Check `NestGate` health.
     ///
     /// # Errors
     ///
@@ -280,7 +280,7 @@ impl NestGateHttpClient {
     }
 }
 
-/// Errors from NestGate HTTP client.
+/// Errors from `NestGate` HTTP client.
 #[derive(Debug)]
 pub enum NestGateHttpError {
     /// HTTP request failed.

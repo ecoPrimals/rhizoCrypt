@@ -24,7 +24,7 @@ impl HttpAdapter {
     ///
     /// # Arguments
     ///
-    /// * `base_url` - Base URL of the service (e.g., "http://localhost:9500")
+    /// * `base_url` - Base URL of the service (e.g., <http://localhost:9500>)
     ///
     /// # Errors
     ///

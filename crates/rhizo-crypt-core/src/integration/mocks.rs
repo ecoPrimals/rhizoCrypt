@@ -463,15 +463,17 @@ impl MockProtocolAdapter {
             crate::error::RhizoCryptError::integration(format!("Mock serialization failed: {e}"))
         })?;
 
-        let mut responses = self.responses.write().await;
-        responses.insert(method.to_string(), json);
+        {
+            let mut responses = self.responses.write().await;
+            responses.insert(method.to_string(), json);
+        }
         Ok(())
     }
 }
 
 #[async_trait::async_trait]
 impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
-    fn protocol(&self) -> &str {
+    fn protocol(&self) -> &'static str {
         "mock"
     }
 
@@ -483,9 +485,11 @@ impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
         }
 
         // Check for pre-configured response
-        let responses = self.responses.read().await;
-        if let Some(response) = responses.get(method) {
-            return Ok(response.clone());
+        if let Some(response) = {
+            let responses = self.responses.read().await;
+            responses.get(method).cloned()
+        } {
+            return Ok(response);
         }
 
         // Return default responses based on method
@@ -515,7 +519,7 @@ impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
         self.permissive
     }
 
-    fn endpoint(&self) -> &str {
+    fn endpoint(&self) -> &'static str {
         "mock://test"
     }
 }

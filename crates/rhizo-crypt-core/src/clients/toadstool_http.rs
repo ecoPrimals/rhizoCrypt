@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! ToadStool HTTP Client - Live Integration
+//! `ToadStool` HTTP Client - Live Integration
 //!
-//! Provides HTTP client for the ToadStool BYOB server API.
+//! Provides HTTP client for the `ToadStool` BYOB server API.
 //! This module is only enabled with the `live-clients` feature.
 //!
-//! Without the feature, the ToadStool client operates in scaffolded mode.
+//! Without the feature, the `ToadStool` client operates in scaffolded mode.
 //!
-//! ## ToadStool BYOB API
+//! ## BYOB API
 //!
 //! - `GET /health` — Service health check
 //! - `GET /byob/health` — BYOB API health check
@@ -26,14 +26,14 @@ use crate::error::{Result, RhizoCryptError};
 use crate::types::{Did, PayloadRef, Timestamp};
 use crate::types_ecosystem::compute::{ComputeEvent, TaskId};
 
-/// HTTP client for ToadStool BYOB API.
+/// HTTP client for `ToadStool` BYOB API.
 #[derive(Clone, Debug)]
 pub struct ToadStoolHttpClient {
     client: reqwest::Client,
     base_url: String,
 }
 
-/// Error from ToadStool HTTP operations.
+/// Error from `ToadStool` HTTP operations.
 #[derive(Debug, thiserror::Error)]
 pub enum ToadStoolHttpError {
     /// HTTP request failed.
@@ -54,7 +54,7 @@ pub enum ToadStoolHttpError {
     },
 }
 
-/// Health status from ToadStool API.
+/// Health status from `ToadStool` API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthStatus {
     /// Service status ("healthy" or other).
@@ -134,11 +134,11 @@ pub struct StopDeploymentResponse {
 }
 
 impl ToadStoolHttpClient {
-    /// Create a new HTTP client for ToadStool BYOB server.
+    /// Create a new HTTP client for `ToadStool` BYOB server.
     ///
     /// # Arguments
     ///
-    /// * `base_url` - Base URL of the ToadStool BYOB server (e.g., `http://127.0.0.1:8084`)
+    /// * `base_url` - Base URL of the `ToadStool` BYOB server (e.g., <http://127.0.0.1:8084>)
     ///
     /// # Errors
     ///
@@ -155,7 +155,7 @@ impl ToadStoolHttpClient {
         })
     }
 
-    /// Check general health of ToadStool service.
+    /// Check general health of `ToadStool` service.
     ///
     /// # Errors
     ///
@@ -361,7 +361,7 @@ impl ToadStoolHttpClient {
     }
 }
 
-/// Parse deployment ID string to TaskId.
+/// Parse deployment ID string to `TaskId`.
 fn parse_deployment_id(id: &str) -> Option<TaskId> {
     // Try to parse as UUID first
     if let Ok(uuid) = uuid::Uuid::parse_str(id) {
@@ -386,9 +386,9 @@ fn parse_deployment_id(id: &str) -> Option<TaskId> {
     None
 }
 
-/// Create a ToadStool HTTP client from configuration.
+/// Create a `ToadStool` HTTP client from configuration.
 ///
-/// This is the preferred way to create a live ToadStool client.
+/// This is the preferred way to create a live `ToadStool` client.
 ///
 /// # Errors
 ///
@@ -412,6 +412,7 @@ pub async fn create_http_client(endpoint: std::net::SocketAddr) -> Result<ToadSt
 ///
 /// The `worker` DID should be resolved from capability-based discovery at
 /// runtime, identifying the compute provider that owns these deployments.
+#[must_use]
 pub fn poll_events_from_deployments(
     http_client: &ToadStoolHttpClient,
     deployments: &[DeploymentResponse],

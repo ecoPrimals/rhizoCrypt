@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Core type definitions for RhizoCrypt.
+//! Core type definitions for `RhizoCrypt`.
 //!
 //! This module defines the fundamental types used throughout the DAG engine.
 

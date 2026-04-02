@@ -3,7 +3,7 @@
 
 //! Dehydration protocol for committing DAG sessions to permanent storage.
 //!
-//! Dehydration is the process of committing a RhizoCrypt DAG session to
+//! Dehydration is the process of committing a `RhizoCrypt` DAG session to
 //! a capability-discovered permanent storage provider. The name reflects the
 //! biological metaphor: the ephemeral, water-rich rhizome layer dries and
 //! compresses into the permanent fossil record.

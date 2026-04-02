@@ -5,6 +5,48 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-02 (session 25)
+
+### Changed
+
+#### Comprehensive Audit: Dependency Hygiene, Pedantic Clippy, Concurrency, Portability
+
+**1. Workspace Dependency Hygiene**
+- `tower` 0.4 → 0.5 in workspace; `rhizo-crypt-rpc` now uses `tower.workspace = true` (eliminates version split per `WORKSPACE_DEPENDENCY_STANDARD`)
+- Removed direct `hashbrown` dependency — migrated all `hashbrown::{HashMap, HashSet}` to `std::collections` across 8 files; hashbrown 0.14 remains only as transitive dep via `dashmap`
+
+**2. Maximally Pedantic Clippy**
+- Fixed 78 clippy pedantic/nursery lints: 58 `doc_markdown`, 10 `significant_drop_tightening`, 7 `must_use_candidate`, 2 `unnecessary_literal_bound`, 1 bare URL
+- Removed workspace lint allows for `doc_markdown`, `significant_drop_tightening`, `must_use_candidate`, `unnecessary_literal_bound` — these are now **permanently enforced**
+- Zero warnings in both `--all-features` and `--release` builds
+
+**3. Concurrency: Lock Scope Tightening**
+- Refactored 10 `significant_drop_tightening` sites across `tarpc.rs`, `unix_socket.rs`, `songbird/client.rs`, `mocks.rs`, `rhizocrypt.rs`, `store.rs` — lock guards now scoped to minimum lifetime
+- Real concurrency improvement: `RwLock` guards no longer held across `.await` points in IPC client paths
+
+**4. Tarpc Adapter Semantic Fix**
+- `is_healthy()` now returns `false` when `live-clients` feature is disabled (previously returned `true` on stub, misleading monitoring)
+- Dead code warnings eliminated with `#[cfg_attr(not(feature = "live-clients"), allow(dead_code))]`
+
+**5. Portability**
+- Removed hardcoded `/path/to/home/` target-dir from `.cargo/config.toml` — developers use `CARGO_TARGET_DIR` env var
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-features` — 0 warnings (maximally pedantic, `doc_markdown` enforced)
+- `cargo clippy --release --workspace` — 0 warnings
+- `cargo doc --no-deps` — clean
+- `cargo test --workspace --all-features` — **1,423 tests passing**, 0 failures
+- `cargo llvm-cov` — **94.34%** lines, **93.41%** functions, **94.81%** branches
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok
+- PIE binary verified: 5.4 MB stripped release
+- All `.rs` files under 1000 lines (max: 928)
+- Zero unsafe, zero production unwrap/expect
+- SPDX headers on all 129 `.rs` files
+
+---
+
 ## [0.14.0-dev] - 2026-04-01 (session 24)
 
 ### Changed

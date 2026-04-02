@@ -34,7 +34,7 @@ impl ClientProvider {
     /// Check if signing capabilities are available.
     ///
     /// This checks for services that provide cryptographic signing,
-    /// regardless of which service implements it (could be BearDog, YubiKey, CloudKMS, etc.).
+    /// regardless of which service implements it (could be `BearDog`, `YubiKey`, `CloudKMS`, etc.).
     pub async fn has_signing(&self) -> bool {
         self.registry.is_available(&Capability::Signing).await
     }
@@ -49,7 +49,7 @@ impl ClientProvider {
     /// Check if permanent storage capabilities are available.
     ///
     /// This checks for services that provide permanent, immutable storage,
-    /// regardless of which service implements it (could be LoamSpine, Arweave, IPFS, etc.).
+    /// regardless of which service implements it (could be `LoamSpine`, `Arweave`, `IPFS`, etc.).
     pub async fn has_permanent_storage(&self) -> bool {
         self.registry.is_available(&Capability::PermanentCommit).await
     }
@@ -65,7 +65,7 @@ impl ClientProvider {
     /// Check if compute orchestration capabilities are available.
     ///
     /// This checks for services that can orchestrate compute tasks,
-    /// regardless of which service implements it (could be ToadStool, Kubernetes, Nomad, etc.).
+    /// regardless of which service implements it (could be `ToadStool`, `Kubernetes`, `Nomad`, etc.).
     pub async fn has_compute(&self) -> bool {
         self.registry.is_available(&Capability::ComputeOrchestration).await
     }
@@ -73,7 +73,7 @@ impl ClientProvider {
     /// Check if provenance query capabilities are available.
     ///
     /// This checks for services that can answer provenance queries,
-    /// regardless of which service implements it (could be SweetGrass, custom ledger, etc.).
+    /// regardless of which service implements it (could be `SweetGrass`, custom ledger, etc.).
     pub async fn has_provenance(&self) -> bool {
         self.registry.is_available(&Capability::ProvenanceQuery).await
     }

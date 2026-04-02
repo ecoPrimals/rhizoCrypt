@@ -8,8 +8,8 @@
 use crate::error::Result;
 use crate::types::{SessionId, VertexId};
 use crate::vertex::Vertex;
-use hashbrown::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
@@ -176,8 +176,11 @@ impl InMemoryDagStore {
     /// This function currently doesn't return errors but may in future
     /// storage backend implementations.
     pub async fn get_all_vertices(&self, session_id: SessionId) -> Result<Vec<Vertex>> {
-        let sessions = self.sessions.read().await;
-        let Some(session) = sessions.get(&session_id) else {
+        let session = {
+            let sessions = self.sessions.read().await;
+            sessions.get(&session_id).cloned()
+        };
+        let Some(session) = session else {
             return Ok(Vec::new());
         };
 
@@ -218,27 +221,32 @@ impl DagStore for InMemoryDagStore {
         // Compute vertex ID if not already computed
         let vertex_id = vertex.id()?;
 
-        let mut sessions = self.sessions.write().await;
-        let session = sessions.entry(session_id).or_default();
+        {
+            let mut sessions = self.sessions.write().await;
+            {
+                let session = sessions.entry(session_id).or_default();
 
-        // Update children index
-        for parent_id in &vertex.parents {
-            session.children.entry(*parent_id).or_default().insert(vertex_id);
+                // Update children index
+                for parent_id in &vertex.parents {
+                    session.children.entry(*parent_id).or_default().insert(vertex_id);
+                }
+
+                // Update genesis/frontier
+                if vertex.is_genesis() {
+                    session.genesis.insert(vertex_id);
+                }
+
+                // Remove parents from frontier, add this vertex
+                for parent_id in &vertex.parents {
+                    session.frontier.remove(parent_id);
+                }
+                session.frontier.insert(vertex_id);
+
+                // Store vertex
+                session.vertices.insert(vertex_id, vertex);
+            }
+            drop(sessions);
         }
-
-        // Update genesis/frontier
-        if vertex.is_genesis() {
-            session.genesis.insert(vertex_id);
-        }
-
-        // Remove parents from frontier, add this vertex
-        for parent_id in &vertex.parents {
-            session.frontier.remove(parent_id);
-        }
-        session.frontier.insert(vertex_id);
-
-        // Store vertex
-        session.vertices.insert(vertex_id, vertex);
 
         Ok(())
     }
@@ -325,12 +333,14 @@ impl DagStore for InMemoryDagStore {
         consumed_parents: &[VertexId],
     ) -> Result<()> {
         self.write_ops.fetch_add(1, Ordering::Relaxed);
-        let mut sessions = self.sessions.write().await;
-        if let Some(session) = sessions.get_mut(&session_id) {
-            for parent in consumed_parents {
-                session.frontier.remove(parent);
+        {
+            let mut sessions = self.sessions.write().await;
+            if let Some(session) = sessions.get_mut(&session_id) {
+                for parent in consumed_parents {
+                    session.frontier.remove(parent);
+                }
+                session.frontier.insert(new_vertex);
             }
-            session.frontier.insert(new_vertex);
         }
         Ok(())
     }
@@ -340,10 +350,16 @@ impl DagStore for InMemoryDagStore {
     }
 
     async fn stats(&self) -> StorageStats {
-        let sessions = self.sessions.read().await;
-        let session_count = u64::try_from(sessions.len()).unwrap_or(u64::MAX);
-        let vertex_count: u64 =
-            sessions.values().map(|s| u64::try_from(s.vertices.len()).unwrap_or(u64::MAX)).sum();
+        let (session_count, vertex_count) = {
+            let sessions = self.sessions.read().await;
+            let session_count = u64::try_from(sessions.len()).unwrap_or(u64::MAX);
+            let vertex_count: u64 = sessions
+                .values()
+                .map(|s| u64::try_from(s.vertices.len()).unwrap_or(u64::MAX))
+                .sum();
+            drop(sessions);
+            (session_count, vertex_count)
+        };
 
         let bytes_estimate = vertex_count * crate::constants::ESTIMATED_BYTES_PER_VERTEX;
 

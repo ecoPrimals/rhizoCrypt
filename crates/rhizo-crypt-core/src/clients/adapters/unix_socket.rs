@@ -221,7 +221,7 @@ impl fmt::Debug for UnixSocketAdapter {
 
 #[async_trait]
 impl ProtocolAdapter for UnixSocketAdapter {
-    fn protocol(&self) -> &str {
+    fn protocol(&self) -> &'static str {
         "unix"
     }
 

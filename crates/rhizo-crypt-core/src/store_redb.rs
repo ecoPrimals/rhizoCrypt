@@ -136,9 +136,9 @@ impl RedbDagStore {
     }
 
     /// Parse a vertex ID set from stored bytes.
-    fn parse_vertex_set(data: &[u8]) -> hashbrown::HashSet<VertexId> {
+    fn parse_vertex_set(data: &[u8]) -> std::collections::HashSet<VertexId> {
         if data.is_empty() {
-            return hashbrown::HashSet::new();
+            return std::collections::HashSet::new();
         }
 
         data.chunks_exact(crate::constants::VERTEX_ID_BYTES)
@@ -151,7 +151,7 @@ impl RedbDagStore {
     }
 
     /// Serialize a vertex ID set to bytes.
-    fn serialize_vertex_set(set: &hashbrown::HashSet<VertexId>) -> Vec<u8> {
+    fn serialize_vertex_set(set: &std::collections::HashSet<VertexId>) -> Vec<u8> {
         let mut data = Vec::with_capacity(set.len() * crate::constants::VERTEX_ID_BYTES);
         for id in set {
             data.extend_from_slice(id.as_bytes());
@@ -170,7 +170,7 @@ impl RedbDagStore {
         &self,
         table: TableDefinition<&[u8], &[u8]>,
         key: &[u8],
-    ) -> Result<hashbrown::HashSet<VertexId>> {
+    ) -> Result<std::collections::HashSet<VertexId>> {
         let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
         let t = read_txn.open_table(table).storage_ctx("Failed to open table")?;
         let existing =
@@ -183,7 +183,7 @@ impl RedbDagStore {
         write_txn: &redb::WriteTransaction,
         table: TableDefinition<&[u8], &[u8]>,
         key: &[u8],
-        set: &hashbrown::HashSet<VertexId>,
+        set: &std::collections::HashSet<VertexId>,
     ) -> Result<()> {
         let mut t = write_txn.open_table(table).storage_ctx("Failed to open table")?;
         t.insert(key, Self::serialize_vertex_set(set).as_slice())
@@ -208,7 +208,7 @@ impl RedbDagStore {
         }
 
         let mut result = Vec::new();
-        let mut visited = hashbrown::HashSet::new();
+        let mut visited = std::collections::HashSet::new();
         let mut queue: std::collections::VecDeque<VertexId> = genesis_ids.into_iter().collect();
 
         while let Some(vertex_id) = queue.pop_front() {

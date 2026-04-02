@@ -64,7 +64,7 @@ impl JsonRpcServer {
     /// - `{` or `[` → raw newline-delimited JSON-RPC (ecosystem IPC standard)
     /// - Anything else → HTTP (Axum router, for `curl`/browser clients)
     ///
-    /// This follows the BearDog protocol-detection pattern and resolves the
+    /// This follows the `BearDog` protocol-detection pattern and resolves the
     /// IPC compliance matrix **X** (non-conformant) rating for wire framing.
     ///
     /// # Errors

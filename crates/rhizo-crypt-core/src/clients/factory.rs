@@ -226,17 +226,26 @@ impl CapabilityClientFactory {
     /// Forces all clients to be re-discovered on next request.
     /// Useful for testing or when registry state changes.
     pub async fn clear_cache(&self) {
-        let mut signing = self.cache.signing.write().await;
-        let mut storage = self.cache.storage.write().await;
-        let mut permanent = self.cache.permanent.write().await;
-        let mut compute = self.cache.compute.write().await;
-        let mut provenance = self.cache.provenance.write().await;
-
-        *signing = None;
-        *storage = None;
-        *permanent = None;
-        *compute = None;
-        *provenance = None;
+        {
+            let mut signing = self.cache.signing.write().await;
+            *signing = None;
+        }
+        {
+            let mut storage = self.cache.storage.write().await;
+            *storage = None;
+        }
+        {
+            let mut permanent = self.cache.permanent.write().await;
+            *permanent = None;
+        }
+        {
+            let mut compute = self.cache.compute.write().await;
+            *compute = None;
+        }
+        {
+            let mut provenance = self.cache.provenance.write().await;
+            *provenance = None;
+        }
     }
 }
 

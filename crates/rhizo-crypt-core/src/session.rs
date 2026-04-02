@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Session management for RhizoCrypt.
+//! Session management for `RhizoCrypt`.
 //!
 //! A session is a scoped DAG with a defined lifecycle.
 
 use crate::types::{Did, SessionId, SliceId, Timestamp, VertexId};
-use hashbrown::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
-/// A RhizoCrypt session (scoped DAG with lifecycle).
+/// A `RhizoCrypt` session (scoped DAG with lifecycle).
 #[derive(Clone, Debug)]
 pub struct Session {
     /// Unique session identifier.

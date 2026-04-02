@@ -66,10 +66,11 @@ Three workspace crates:
 | Metric | Value |
 |--------|-------|
 | Tests | 1,423 passing (all features) |
-| Coverage | CI gate: `--fail-under-lines 90` (~94% line coverage) |
-| Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `missing_errors_doc = "warn"`) |
-| Source files | 129 `.rs`, ~45,000 lines |
-| Max file size | 867 lines (limit: 1000) |
+| Coverage | 94.34% lines, 93.41% functions, 94.81% branches (CI gate: 90%) |
+| Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
+| Source files | 129 `.rs`, ~45,500 lines |
+| Max file size | 928 lines (limit: 1000) |
+| Binary size | 5.4 MB (release, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |
 

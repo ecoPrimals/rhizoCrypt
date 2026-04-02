@@ -89,9 +89,9 @@ pub struct QueryRequest {
 /// Slice checkout request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CheckoutSliceRequest {
-    /// Spine ID from LoamSpine commit.
+    /// Spine ID from `LoamSpine` commit.
     pub spine_id: String,
-    /// Entry hash from LoamSpine commit (hex-encoded, 32 bytes).
+    /// Entry hash from `LoamSpine` commit (hex-encoded, 32 bytes).
     pub entry_hash: String,
     /// Entry index in the spine.
     pub entry_index: u64,

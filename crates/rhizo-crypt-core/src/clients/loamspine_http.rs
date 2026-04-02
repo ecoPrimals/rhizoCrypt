@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! LoamSpine HTTP JSON-RPC client implementation.
+//! `LoamSpine` HTTP JSON-RPC client implementation.
 //!
-//! This module provides a complete HTTP client for LoamSpine permanent storage,
+//! This module provides a complete HTTP client for `LoamSpine` permanent storage,
 //! using JSON-RPC 2.0 over HTTP with method negotiation.
 //!
 //! ## Architecture
@@ -13,7 +13,7 @@
 //! - Falls back gracefully when permanent storage unavailable
 //! - **Method negotiation**: tries native method names (`commit.session`, `commit.verify`)
 //!   first, falling back to compatibility names (`permanent-storage.commitSession`) for
-//!   older LoamSpine versions. Negotiation result is cached per client instance.
+//!   older `LoamSpine` versions. Negotiation result is cached per client instance.
 
 use crate::dehydration::DehydrationSummary;
 use crate::error::{Result, RhizoCryptError};
@@ -31,7 +31,7 @@ use std::time::Duration;
 /// The client tries native names first, falling back to compat names when the
 /// server responds with "method not found" (JSON-RPC error -32601).
 mod methods {
-    /// Native method names (LoamSpine v0.8.0+).
+    /// Native method names (`LoamSpine` v0.8.0+).
     pub mod native {
         pub const HEALTH_CHECK: &str = "system.health";
         pub const COMMIT_SESSION: &str = "commit.session";
@@ -41,7 +41,7 @@ mod methods {
         pub const RESOLVE_SLICE: &str = "slice.resolve";
     }
 
-    /// Compatibility method names (LoamSpine <v0.8.0).
+    /// Compatibility method names (for `LoamSpine` releases before v0.8.0).
     pub mod compat {
         pub const HEALTH_CHECK: &str = "permanent-storage.healthCheck";
         pub const COMMIT_SESSION: &str = "permanent-storage.commitSession";
@@ -55,14 +55,14 @@ mod methods {
 /// JSON-RPC error code for "method not found" per JSON-RPC 2.0 spec.
 const METHOD_NOT_FOUND_CODE: i32 = -32601;
 
-/// HTTP client for LoamSpine permanent storage.
+/// HTTP client for `LoamSpine` permanent storage.
 ///
 /// Implements `PermanentStorageProvider` trait using JSON-RPC 2.0 over HTTP.
-/// Supports method negotiation: tries native method names first (LoamSpine v0.8.0+),
+/// Supports method negotiation: tries native method names first (`LoamSpine` v0.8.0+),
 /// falling back to compatibility names for older versions.
 #[derive(Debug, Clone)]
 pub struct LoamSpineHttpClient {
-    /// Base URL for LoamSpine JSON-RPC endpoint.
+    /// Base URL for `LoamSpine` JSON-RPC endpoint.
     base_url: String,
     /// HTTP client with timeout.
     client: reqwest::Client,
@@ -74,7 +74,7 @@ pub struct LoamSpineHttpClient {
 }
 
 impl LoamSpineHttpClient {
-    /// Create a new LoamSpine HTTP client.
+    /// Create a new `LoamSpine` HTTP client.
     ///
     /// # Arguments
     ///

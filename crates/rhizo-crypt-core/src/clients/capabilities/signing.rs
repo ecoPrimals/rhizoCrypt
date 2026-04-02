@@ -4,13 +4,13 @@
 //! Generic signing client - works with ANY signing provider.
 //!
 //! This client provides cryptographic signing capabilities without knowing
-//! or caring about who provides the service (BearDog, YubiKey, CloudKMS, etc.).
+//! or caring about who provides the service (`BearDog`, `YubiKey`, `CloudKMS`, etc.).
 //!
 //! ## Philosophy
 //!
 //! Request capabilities, not vendors:
 //! - "I need crypto:signing" ✅
-//! - "I need BearDog" ❌
+//! - "I need `BearDog`" ❌
 //!
 //! ## Usage
 //!
@@ -54,7 +54,7 @@ use std::sync::Arc;
 /// Generic signing client - works with ANY provider.
 ///
 /// This client is vendor-agnostic. It works with any service that provides
-/// signing capabilities: BearDog, YubiKey, CloudKMS, HSM, etc.
+/// signing capabilities: `BearDog`, `YubiKey`, `CloudKMS`, HSM, etc.
 ///
 /// ## Discovery
 ///

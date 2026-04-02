@@ -3,17 +3,17 @@
 
 //! Vertex data structure and builder.
 //!
-//! A vertex is a single event in the RhizoCrypt DAG. Each vertex is
+//! A vertex is a single event in the `RhizoCrypt` DAG. Each vertex is
 //! content-addressed by its Blake3 hash and linked to parent vertices.
 
 use bytes::Bytes;
 
 use crate::event::EventType;
 use crate::types::{Did, PayloadRef, Signature, Timestamp, VertexId};
-use hashbrown::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-/// A single event in the RhizoCrypt DAG.
+/// A single event in the `RhizoCrypt` DAG.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Vertex {
     /// Content-addressed identifier (computed from content).

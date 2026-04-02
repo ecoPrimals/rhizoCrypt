@@ -152,7 +152,7 @@ pub const DEFAULT_MAX_PAYLOAD_SIZE: usize = 100 * 1024 * 1024;
 /// Default maximum vertices per session.
 ///
 /// Derivation: 100K vertices at ~256 B/vertex = ~25 MB working memory.
-/// Covers long-running spring experiment sessions. DashMap remains
+/// Covers long-running spring experiment sessions. `DashMap` remains
 /// performant at this scale. Validated: session 3 property tests.
 pub const DEFAULT_MAX_VERTICES_PER_SESSION: usize = 100_000;
 
@@ -302,7 +302,7 @@ pub const HTTP_RESPONSE_BUFFER_CAPACITY: usize = 4096;
 
 /// Operations at or below this latency (ms) are classified as "low" cost.
 ///
-/// Derivation: DashMap lookup + BLAKE3 hash = ~0.5ms. 2ms covers single
+/// Derivation: `DashMap` lookup + BLAKE3 hash = ~0.5ms. 2ms covers single
 /// in-memory operations with overhead. biomeOS Pathway Learner uses this
 /// to identify parallelizable low-cost ops. Validated: session 4 benchmarks.
 pub const COST_TIER_LOW_THRESHOLD_MS: u32 = 2;

@@ -263,7 +263,7 @@ impl DiscoveryRegistry {
 
 /// Parse a capability name string into a `Capability` variant.
 ///
-/// Accepts PascalCase, snake_case, and colon-delimited (`domain:operation`)
+/// Accepts `PascalCase`, `snake_case`, and colon-delimited (`domain:operation`)
 /// formats. This handles the three naming conventions seen across the
 /// ecoPrimals ecosystem (groundSpring, neuralSpring, airSpring, wetSpring).
 fn parse_capability(name: &str) -> Option<Capability> {
@@ -322,6 +322,7 @@ fn parse_capability(name: &str) -> Option<Capability> {
 ///
 /// Absorbed from airSpring v0.8.7 4-format parser. Any unknown shape is
 /// silently skipped (graceful degradation).
+#[must_use]
 pub fn extract_capabilities(value: &serde_json::Value) -> Vec<String> {
     match value {
         serde_json::Value::Array(arr) => extract_from_array(arr),

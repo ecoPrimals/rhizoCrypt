@@ -31,7 +31,7 @@ rhizoCrypt follows the **infant discovery** pattern: it starts with **zero knowl
 ### Unix Domain Socket (UDS)
 
 rhizoCrypt supports a Unix domain socket listener for local IPC, following the
-ecosystem standard from `IPC_COMPLIANCE_MATRIX.md`:
+ecosystem standard from the wateringHole `IPC_COMPLIANCE_MATRIX.md`:
 
 ```bash
 # Default path (ecosystem standard)
@@ -100,7 +100,7 @@ export RHIZOCRYPT_ENV=development
 export DISCOVERY_ENDPOINT=localhost:8091
 
 # rhizoCrypt will discover other capabilities through Songbird
-cargo run
+cargo run -p rhizocrypt-service -- server
 ```
 
 ### Production (Kubernetes)

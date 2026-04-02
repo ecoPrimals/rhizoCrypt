@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! LoamSpine tarpc RPC types and client.
+//! `LoamSpine` tarpc RPC types and client.
 //!
 //! This module contains the tarpc service definition and related types
-//! for connecting to the LoamSpine permanent storage service.
+//! for connecting to the `LoamSpine` permanent storage service.
 //!
 //! ## Feature Gate
 //!
 //! This module is only compiled when the `live-clients` feature is enabled.
-//! Without the feature, the LoamSpine client operates in scaffolded mode.
+//! Without the feature, the `LoamSpine` client operates in scaffolded mode.
 
 use serde::{Deserialize, Serialize};
 
@@ -17,9 +17,9 @@ use serde::{Deserialize, Serialize};
 // tarpc Service Definition (mirrors LoamSpine's RPC interface)
 // ============================================================================
 
-/// tarpc service trait for LoamSpine commit operations.
+/// tarpc service trait for `LoamSpine` commit operations.
 ///
-/// This trait provides the subset of LoamSpine RPC used by rhizoCrypt
+/// This trait provides the subset of `LoamSpine` RPC used by `rhizoCrypt`
 /// for dehydration (session commit) operations.
 #[tarpc::service]
 pub trait LoamSpineRpc {

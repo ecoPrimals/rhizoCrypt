@@ -763,7 +763,7 @@ fn test_parse_vertex_set_single_vertex() {
 
 #[test]
 fn test_serialize_then_parse_roundtrips() {
-    let ids: hashbrown::HashSet<VertexId> = (0..5u8)
+    let ids: std::collections::HashSet<VertexId> = (0..5u8)
         .map(|i| {
             let mut buf = [i; 32];
             buf[0] = i;

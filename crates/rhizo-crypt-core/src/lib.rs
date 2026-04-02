@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! # RhizoCrypt
+//! # Core DAG engine
 //!
 //! Core DAG Engine - Ephemeral Working Memory
 //!
 //! ## Overview
 //!
-//! RhizoCrypt is the ephemeral DAG engine of the ecoPrimals ecosystem. It provides
+//! `RhizoCrypt` is the ephemeral DAG engine of the ecoPrimals ecosystem. It provides
 //! git-like functionality for capturing, linking, and eventually committing events
 //! to permanent storage via capability-discovered providers.
 //!
@@ -175,7 +175,7 @@ pub use vertex::{MetadataValue, Vertex, VertexBuilder};
 ///
 /// Request **capabilities**, not **vendors**:
 /// - ✅ "I need crypto:signing capability"
-/// - ❌ "I need BearDog"
+/// - ❌ "I need `BearDog`"
 ///
 /// ## Example
 ///

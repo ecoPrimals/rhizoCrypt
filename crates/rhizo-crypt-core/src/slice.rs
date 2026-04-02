@@ -4,14 +4,14 @@
 //! Slice semantics for permanent storage state checkout.
 //!
 //! A slice is a reference to permanent storage state that is temporarily "lifted" into
-//! a RhizoCrypt DAG for asynchronous operations. The slice carries information
+//! a `RhizoCrypt` DAG for asynchronous operations. The slice carries information
 //! about how it should resolve back to permanence.
 
 use crate::types::{ContentHash, Did, SessionId, SliceId, Timestamp, VertexId};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-/// A slice of permanent storage state checked out into RhizoCrypt.
+/// A slice of permanent storage state checked out into `RhizoCrypt`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Slice {
     /// Unique slice identifier.

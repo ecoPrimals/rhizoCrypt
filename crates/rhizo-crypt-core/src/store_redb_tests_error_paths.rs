@@ -68,14 +68,14 @@ fn test_parse_vertex_set_partial_chunk_ignored() {
 
 #[test]
 fn test_serialize_vertex_set_empty() {
-    let set = hashbrown::HashSet::new();
+    let set = std::collections::HashSet::new();
     let data = RedbDagStore::serialize_vertex_set(&set);
     assert!(data.is_empty());
 }
 
 #[test]
 fn test_serialize_deserialize_round_trip() {
-    let mut set = hashbrown::HashSet::new();
+    let mut set = std::collections::HashSet::new();
     set.insert(VertexId::new([1u8; 32]));
     set.insert(VertexId::new([2u8; 32]));
     set.insert(VertexId::new([3u8; 32]));

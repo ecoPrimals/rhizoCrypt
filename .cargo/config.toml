@@ -1,9 +1,8 @@
-# Local build override — this file may contain machine-specific paths.
+# Local build configuration.
 #
-# If your global target-dir is on a noexec mount (common with NFS/FUSE/encrypted
-# volumes), override target-dir to a writable exec-capable path.
-# Developers: adjust or remove the target-dir line to match your environment.
-# The CI workflow uses CARGO_TARGET_DIR env var instead.
+# target-dir is intentionally NOT set here — use the CARGO_TARGET_DIR env var
+# if your global target-dir is on a noexec mount (common with NFS/FUSE/encrypted
+# volumes). CI uses CARGO_TARGET_DIR; developers can set it in .cargo/config.local.toml
+# or their shell profile.
 [build]
-target-dir = "/path/to/.cargo-build/rhizoCrypt/target"
 jobs = 16

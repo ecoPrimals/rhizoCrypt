@@ -162,17 +162,22 @@ impl SongbirdClient {
         // Build registration request
         #[cfg(feature = "live-clients")]
         let result = {
-            let client_guard = self.tarpc_client.read().await;
-            let client = client_guard
-                .as_ref()
-                .ok_or_else(|| RhizoCryptError::integration("No tarpc client available"))?;
-
             let registration = RpcServiceRegistration {
                 service_id: format!("rhizocrypt-{}", uuid::Uuid::now_v7()),
                 service_name: self.config.service_name.to_string(),
                 capability: "dag-engine".to_string(),
                 endpoint: our_endpoint.to_string(),
                 metadata: self.config.metadata.clone(),
+            };
+
+            let client = {
+                let client_guard = self.tarpc_client.read().await;
+                let client = client_guard
+                    .as_ref()
+                    .ok_or_else(|| RhizoCryptError::integration("No tarpc client available"))?
+                    .clone();
+                drop(client_guard);
+                client
             };
 
             let rpc_result = client
@@ -360,10 +365,15 @@ impl SongbirdClient {
 
         #[cfg(feature = "live-clients")]
         {
-            let client_guard = self.tarpc_client.read().await;
-            let client = client_guard
-                .as_ref()
-                .ok_or_else(|| RhizoCryptError::integration("No tarpc client available"))?;
+            let client = {
+                let client_guard = self.tarpc_client.read().await;
+                let client = client_guard
+                    .as_ref()
+                    .ok_or_else(|| RhizoCryptError::integration("No tarpc client available"))?
+                    .clone();
+                drop(client_guard);
+                client
+            };
 
             let health = client
                 .health(tarpc::context::current())

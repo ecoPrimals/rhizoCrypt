@@ -92,8 +92,8 @@ Experience rhizoCrypt's world-class performance - sub-microsecond operations and
 
 ### 3. **In-Memory DAG**
 - No disk I/O for hot path
-- Arc<RwLock<T>> for concurrency
-- Efficient data structures (hashbrown)
+- Lock-free `DashMap` for concurrent session/vertex access
+- `std::collections` for local data structures
 
 ### 4. **Zero-Copy Where Possible**
 - `Bytes` for payload handling
