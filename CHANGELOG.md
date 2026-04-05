@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dead code warnings eliminated with `#[cfg_attr(not(feature = "live-clients"), allow(dead_code))]`
 
 **5. Portability**
-- Removed hardcoded `/path/to/home/` target-dir from `.cargo/config.toml` — developers use `CARGO_TARGET_DIR` env var
+- Removed hardcoded `/path/to/.cargo-build/` target-dir from `.cargo/config.toml` — developers use `CARGO_TARGET_DIR` env var
 
 ### Quality Gates
 
