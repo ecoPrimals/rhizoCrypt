@@ -63,7 +63,7 @@ pub struct ChaosConfig {
     pub iterations_per_scenario: u32,
     /// Injected latency range for Latency faults.
     pub latency_range: (Duration, Duration),
-    /// Concurrent task count for ConcurrencyStorm.
+    /// Concurrent task count for `ConcurrencyStorm`.
     pub concurrency_level: u32,
 }
 

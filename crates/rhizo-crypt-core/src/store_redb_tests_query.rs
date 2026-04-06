@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 //
-//! Query format and serialization tests for RedbDagStore.
-//! Tests parse_vertex_set behavior, raw table format, and vertex serialization edge cases.
+//! Query format and serialization tests for `RedbDagStore`.
+//! Tests `parse_vertex_set` behavior, raw table format, and vertex serialization edge cases.
 
 use super::*;
 use crate::event::EventType;

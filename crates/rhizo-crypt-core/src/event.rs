@@ -436,7 +436,7 @@ pub enum ResolutionType {
 mod tests {
     use super::*;
 
-    /// Collect all EventType variants for exhaustive testing.
+    /// Collect all `EventType` variants for exhaustive testing.
     fn all_event_types() -> Vec<EventType> {
         vec![
             EventType::SessionStart,

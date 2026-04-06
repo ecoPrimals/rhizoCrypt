@@ -317,13 +317,13 @@ fn test_doctor_discovery_comprehensive_reachable() {
     });
 }
 
-/// Test check_dag_engine passes.
+/// Test `check_dag_engine` passes.
 #[tokio::test]
 async fn test_doctor_check_dag_engine() {
     assert!(check_dag_engine().await);
 }
 
-/// Test check_storage_backend returns valid result.
+/// Test `check_storage_backend` returns valid result.
 #[tokio::test]
 async fn test_doctor_check_storage_backend() {
     let (ok, name) = check_storage_backend();
@@ -331,7 +331,7 @@ async fn test_doctor_check_storage_backend() {
     assert!(!name.is_empty(), "storage name should be non-empty");
 }
 
-/// Test DoctorCheck enum variants.
+/// Test `DoctorCheck` enum variants.
 #[tokio::test]
 async fn test_doctor_check_variants() {
     assert_eq!(DoctorCheck::Pass, DoctorCheck::Pass);
@@ -342,7 +342,7 @@ async fn test_doctor_check_variants() {
     assert_ne!(DoctorCheck::Warn, DoctorCheck::Fail);
 }
 
-/// Test check_discovery_connectivity succeeds with reachable address.
+/// Test `check_discovery_connectivity` succeeds with reachable address.
 #[tokio::test]
 async fn test_doctor_discovery_connectivity_success() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -352,7 +352,7 @@ async fn test_doctor_discovery_connectivity_success() {
     assert!(result.is_ok(), "connectivity to local listener should succeed");
 }
 
-/// Test check_discovery_connectivity strips http:// prefix.
+/// Test `check_discovery_connectivity` strips `http://` prefix.
 #[tokio::test]
 async fn test_doctor_discovery_connectivity_http_prefix() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -362,7 +362,7 @@ async fn test_doctor_discovery_connectivity_http_prefix() {
     assert!(result.is_ok(), "http:// prefix should be stripped");
 }
 
-/// Test check_discovery_connectivity strips https:// prefix.
+/// Test `check_discovery_connectivity` strips `https://` prefix.
 #[tokio::test]
 async fn test_doctor_discovery_connectivity_https_prefix() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -372,7 +372,7 @@ async fn test_doctor_discovery_connectivity_https_prefix() {
     assert!(result.is_ok(), "https:// prefix should be stripped");
 }
 
-/// Test check_discovery_connectivity handles trailing slash.
+/// Test `check_discovery_connectivity` handles trailing slash.
 #[tokio::test]
 async fn test_doctor_discovery_connectivity_trailing_slash() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -382,14 +382,14 @@ async fn test_doctor_discovery_connectivity_trailing_slash() {
     assert!(result.is_ok(), "trailing slash should be trimmed");
 }
 
-/// Test check_discovery_connectivity fails on invalid address.
+/// Test `check_discovery_connectivity` fails on invalid address.
 #[tokio::test]
 async fn test_doctor_discovery_connectivity_invalid_address() {
     let result = check_discovery_connectivity("invalid-host-12345:99999").await;
     assert!(result.is_err(), "invalid address should fail");
 }
 
-/// Test check_discovery_connectivity fails on invalid parse.
+/// Test `check_discovery_connectivity` fails on invalid parse.
 #[tokio::test]
 async fn test_doctor_discovery_connectivity_parse_error() {
     let result = check_discovery_connectivity("not-a-valid-address").await;
@@ -398,7 +398,7 @@ async fn test_doctor_discovery_connectivity_parse_error() {
 
 // --- ServiceError and exit codes ---
 
-/// Test ServiceError::Storage display and exit code.
+/// Test `ServiceError::Storage` display and exit code.
 #[test]
 fn test_service_error_storage_display_and_exit_code() {
     let err = ServiceError::Storage("backend unavailable".to_string());
@@ -408,7 +408,7 @@ fn test_service_error_storage_display_and_exit_code() {
     assert_eq!(err.exit_code(), exit_codes::CONFIG_ERROR);
 }
 
-/// Test ServiceError exit code mapping for all variants.
+/// Test `ServiceError` exit code mapping for all variants.
 #[test]
 fn test_service_error_exit_codes_all_variants() {
     assert_eq!(ServiceError::Config("x".to_string()).exit_code(), exit_codes::CONFIG_ERROR);
@@ -424,7 +424,7 @@ fn test_service_error_exit_codes_all_variants() {
 
 // --- run_client ---
 
-/// Test run_client with invalid address returns AddrParse error.
+/// Test `run_client` with invalid address returns `AddrParse` error.
 #[tokio::test]
 async fn test_run_client_invalid_address() {
     let result = run_client("not-a-valid-address", ClientOperation::Health).await;
@@ -432,7 +432,7 @@ async fn test_run_client_invalid_address() {
     assert!(matches!(&result.unwrap_err(), ServiceError::AddrParse(_)));
 }
 
-/// Test run_client connection failure returns Config error.
+/// Test `run_client` connection failure returns Config error.
 #[tokio::test]
 async fn test_run_client_connection_failure() {
     // Port 1 is typically not listening
@@ -443,7 +443,7 @@ async fn test_run_client_connection_failure() {
     assert!(err.to_string().contains("Failed to connect"));
 }
 
-/// Test run_client Health against running server.
+/// Test `run_client` Health against running server.
 #[tokio::test]
 async fn test_run_client_health() {
     let addr: SocketAddr = "127.0.0.1:19625".parse().unwrap();
@@ -467,7 +467,7 @@ async fn test_run_client_health() {
     panic!("run_client Health should succeed against running server");
 }
 
-/// Test run_client ListSessions against running server.
+/// Test `run_client` `ListSessions` against running server.
 #[tokio::test]
 async fn test_run_client_list_sessions() {
     let addr: SocketAddr = "127.0.0.1:19626".parse().unwrap();
@@ -491,7 +491,7 @@ async fn test_run_client_list_sessions() {
     panic!("run_client ListSessions should succeed against running server");
 }
 
-/// Test run_client Metrics against running server.
+/// Test `run_client` Metrics against running server.
 #[tokio::test]
 async fn test_run_client_metrics() {
     let addr: SocketAddr = "127.0.0.1:19627".parse().unwrap();
@@ -517,7 +517,7 @@ async fn test_run_client_metrics() {
 
 // --- run_server and resolve_bind_addr ---
 
-/// Test resolve_bind_addr with invalid host returns AddrParse error.
+/// Test `resolve_bind_addr` with invalid host returns `AddrParse` error.
 #[test]
 fn test_resolve_bind_addr_invalid_host() {
     let result = resolve_bind_addr(Some(9999), Some("not-an-ip".to_string()));
@@ -525,7 +525,7 @@ fn test_resolve_bind_addr_invalid_host() {
     assert!(matches!(&result.unwrap_err(), ServiceError::AddrParse(_)));
 }
 
-/// Test run_server starts in standalone mode when no discovery configured.
+/// Test `run_server` starts in standalone mode when no discovery configured.
 #[test]
 fn test_run_server_standalone_mode_no_discovery() {
     temp_env::with_vars(
@@ -562,7 +562,7 @@ fn test_run_server_standalone_mode_no_discovery() {
     );
 }
 
-/// Test run_server continues when discovery registration fails (standalone fallback).
+/// Test `run_server` continues when discovery registration fails (standalone fallback).
 #[test]
 fn test_run_server_discovery_failure_continues_standalone() {
     temp_env::with_vars(
@@ -600,7 +600,7 @@ fn test_run_server_discovery_failure_continues_standalone() {
     );
 }
 
-/// Test resolve_bind_addr with RHIZOCRYPT_RPC_PORT env.
+/// Test `resolve_bind_addr` with `RHIZOCRYPT_RPC_PORT` env.
 #[test]
 fn test_resolve_bind_addr_rpc_port_env() {
     temp_env::with_vars(
@@ -618,7 +618,7 @@ fn test_resolve_bind_addr_rpc_port_env() {
     );
 }
 
-/// Test resolve_bind_addr with RHIZOCRYPT_PORT (legacy) env.
+/// Test `resolve_bind_addr` with `RHIZOCRYPT_PORT` (legacy) env.
 #[test]
 fn test_resolve_bind_addr_port_legacy_env() {
     temp_env::with_vars(
@@ -636,7 +636,7 @@ fn test_resolve_bind_addr_port_legacy_env() {
     );
 }
 
-/// Test resolve_bind_addr with RHIZOCRYPT_RPC_HOST env.
+/// Test `resolve_bind_addr` with `RHIZOCRYPT_RPC_HOST` env.
 #[test]
 fn test_resolve_bind_addr_rpc_host_env() {
     temp_env::with_vars(
@@ -654,7 +654,7 @@ fn test_resolve_bind_addr_rpc_host_env() {
     );
 }
 
-/// Test resolve_bind_addr with RHIZOCRYPT_HOST (legacy) env.
+/// Test `resolve_bind_addr` with `RHIZOCRYPT_HOST` (legacy) env.
 #[test]
 fn test_resolve_bind_addr_host_legacy_env() {
     temp_env::with_vars(
@@ -672,7 +672,7 @@ fn test_resolve_bind_addr_host_legacy_env() {
     );
 }
 
-/// Test resolve_bind_addr with development env uses default port.
+/// Test `resolve_bind_addr` with development env uses default port.
 #[test]
 fn test_resolve_bind_addr_development_env() {
     temp_env::with_vars(
@@ -692,13 +692,13 @@ fn test_resolve_bind_addr_development_env() {
 
 // --- print_version and print_status ---
 
-/// Test print_version runs without panic.
+/// Test `print_version` runs without panic.
 #[test]
 fn test_print_version_no_panic() {
     print_version();
 }
 
-/// Test print_status runs without panic.
+/// Test `print_status` runs without panic.
 #[test]
 fn test_print_status_no_panic() {
     print_status();
@@ -706,7 +706,7 @@ fn test_print_status_no_panic() {
 
 // --- ClientOperation variants ---
 
-/// Test ClientOperation derives and variants exist.
+/// Test `ClientOperation` derives and variants exist.
 #[test]
 fn test_client_operation_variants() {
     let _ = ClientOperation::Health;

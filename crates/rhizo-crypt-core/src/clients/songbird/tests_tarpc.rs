@@ -5,7 +5,7 @@
 //!
 //! These tests require the `live-clients` feature and use a mock tarpc
 //! server for integration coverage. Songbird uses tarpc (TCP + bincode),
-//! not HTTP, so WireMock cannot be used here.
+//! not HTTP, so `WireMock` cannot be used here.
 
 #[cfg(feature = "live-clients")]
 use super::{SongbirdClient, SongbirdConfig};
