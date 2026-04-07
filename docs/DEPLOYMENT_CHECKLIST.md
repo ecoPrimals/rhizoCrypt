@@ -31,7 +31,7 @@
 
 ### Documentation
 - [x] **README.md** (current metrics — 1,423 tests)
-- [x] **CHANGELOG.md** (version history through session 24)
+- [x] **CHANGELOG.md** (version history through session 26)
 - [x] **showcase/** (70+ comprehensive demos)
 - [x] **specs/** (9 complete + 1 experimental specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
@@ -65,10 +65,13 @@ export RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500  # Optional: for registr
 
 ---
 
-### Option 2: Docker Container
+### Option 2: Docker Container (musl-static + Alpine)
+
+The Dockerfile produces a musl-static binary in a multi-stage build (ecoBin compliant).
+Runtime image is Alpine 3.20 with a non-root user (UID 1000).
 
 ```bash
-# Build Docker image
+# Build Docker image (multi-stage musl-static)
 docker build -t rhizocrypt:0.14.0 .
 
 # Run container
@@ -247,5 +250,5 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: April 1, 2026
+**Last Updated**: April 7, 2026
 **Version**: rhizoCrypt 0.14.0-dev

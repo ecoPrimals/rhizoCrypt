@@ -56,7 +56,7 @@ Three workspace crates:
 |----------|--------|
 | UniBin | Single binary, clap subcommands |
 | ecoBin v3.0 | Zero application C deps, cross-compile (musl, RISC-V) |
-| genomeBin | Dockerfile with OCI labels, healthcheck |
+| genomeBin | Multi-stage Dockerfile (musl-static + Alpine), OCI labels, healthcheck |
 | Universal IPC v3 | JSON-RPC + tarpc, semantic naming |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
 | AGPL-3.0-or-later | SPDX headers on all 129 `.rs` files |
@@ -70,7 +70,7 @@ Three workspace crates:
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
 | Source files | 129 `.rs`, ~45,500 lines |
 | Max file size | 928 lines (limit: 1000) |
-| Binary size | 5.4 MB (release, stripped, PIE) |
+| Binary size | 5.4 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |
 

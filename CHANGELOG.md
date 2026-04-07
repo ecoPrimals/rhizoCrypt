@@ -5,6 +5,45 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-07 (session 26)
+
+### Changed
+
+#### Musl-Static Deployment, Dockerfile Evolution, Doc Cleanup
+
+**1. Musl-Static Binary (ecoBin Deployment Compliant)**
+- Built `x86_64-unknown-linux-musl` release binary — fully static, stripped
+- BLAKE3 checksum computed and harvested to `plasmidBin/checksums.toml`
+- `plasmidBin/manifest.toml` updated: `stripped = true`, `static = true`
+- `wateringHole/genomeBin/manifest.toml` updated: `0.14.0-dev`, `pie_verified = true`
+- Resolves Provenance Trio deployment debt (glibc → musl-static)
+
+**2. Dockerfile Multi-Stage Musl Evolution**
+- Builder: `rust:1.87-slim` + `musl-tools` + `x86_64-unknown-linux-musl` target
+- Runtime: `alpine:3.20` with dedicated non-root user (UID 1000)
+- Binary at `/app/rhizocrypt`, healthcheck via `status` subcommand
+- OCI labels, SPDX license identifier
+
+**3. Documentation Refresh**
+- Updated `crates/rhizocrypt-service/README.md` Docker example (was `rust:1.85` + `debian:bookworm-slim`)
+- Updated `docs/DEPLOYMENT_CHECKLIST.md` session reference and musl-static deployment note
+- Updated `wateringHole/ECOSYSTEM_COMPLIANCE_MATRIX.md`: rhizoCrypt musl DEBT → PASS
+- Cleaned stale glibc references in wateringHole handoffs
+- Created new wateringHole handoff for session 26
+
+### Quality Gates
+
+- `cargo fmt` — clean
+- `cargo clippy --workspace --all-features` — 0 warnings (maximally pedantic)
+- `cargo test --workspace --all-features` — **1,423 tests passing**, 0 failures
+- `cargo llvm-cov` — **94.34%** lines (CI gate: 90%)
+- Dockerfile builds musl-static binary, Alpine runtime, non-root user
+- All `.rs` files under 1000 lines (max: 928)
+- Zero unsafe, zero production unwrap/expect
+- SPDX headers on all 129 `.rs` files
+
+---
+
 ## [0.14.0-dev] - 2026-04-02 (session 25)
 
 ### Changed
@@ -1373,6 +1412,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.14.0-dev** (2026-04-07 s26): Musl-static binary, Dockerfile multi-stage Alpine, plasmidBin harvest, wateringHole compliance matrix updated, doc cleanup
+- **0.14.0-dev** (2026-04-02 s25): Comprehensive audit — tower 0.5, hashbrown→std, 78 clippy fixes, lock tightening, tarpc semantic fix, portability
 - **0.14.0-dev** (2026-04-01 s24): Lock-free CircuitBreaker, zero-sleep testing, Cow errors, OnceLock cache, dehydration evolution, +21 tests → 1,423
 - **0.14.0-dev** (2026-03-31 s23): RC-01 fix — UDS transport + dual-mode TCP + `biomeos` path migration + deep debt evolution, 1,402 tests
 - **0.13.0-dev** (2026-03-23 s19): MCP tools, DagBackend enum, GC sweeper, RedbDagStore wiring, 5 proptests, normalize_method, health alignment, debris cleanup, 1,412 tests

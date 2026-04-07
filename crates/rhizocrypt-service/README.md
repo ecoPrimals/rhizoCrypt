@@ -247,15 +247,25 @@ RUST_LOG=rhizocrypt_service=trace rhizocrypt server
 ## 🐳 Docker Deployment
 
 ```dockerfile
-FROM rust:1.85-slim AS builder
-WORKDIR /app
-COPY . .
-RUN cargo build --release -p rhizocrypt-service
+# Multi-stage musl-static build (ecoBin compliant)
+FROM rust:1.87-slim AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends musl-tools \
+    && rm -rf /var/lib/apt/lists/*
+RUN rustup target add x86_64-unknown-linux-musl
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY .cargo/ ./.cargo/
+COPY crates/ ./crates/
+RUN cargo build --release --target x86_64-unknown-linux-musl -p rhizocrypt-service \
+    && strip /build/target/x86_64-unknown-linux-musl/release/rhizocrypt
 
-FROM debian:bookworm-slim
-COPY --from=builder /app/target/release/rhizocrypt /usr/local/bin/
+FROM alpine:3.20
+RUN adduser -D -u 1000 rhizocrypt
+WORKDIR /app
+COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/rhizocrypt /app/rhizocrypt
+USER rhizocrypt
 EXPOSE 9400
-CMD ["rhizocrypt", "server"]
+CMD ["./rhizocrypt", "server"]
 ```
 
 Build and run:
