@@ -89,9 +89,9 @@ pub struct QueryRequest {
 /// Slice checkout request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CheckoutSliceRequest {
-    /// Spine ID from `LoamSpine` commit.
+    /// Spine ID from permanent storage commit.
     pub spine_id: String,
-    /// Entry hash from `LoamSpine` commit (hex-encoded, 32 bytes).
+    /// Entry hash from permanent storage commit (hex-encoded, 32 bytes).
     pub entry_hash: String,
     /// Entry index in the spine.
     pub entry_index: u64,
@@ -146,8 +146,8 @@ pub struct ServiceMetrics {
 /// Capability descriptor per Spring-as-Niche deployment standard.
 ///
 /// Describes a capability this primal exposes for runtime discovery.
-/// Enhanced with `cost` and `deps` per method to support biomeOS Pathway
-/// Learner scheduling (aligned with loamSpine and sweetGrass).
+/// Enhanced with `cost` and `deps` per method to support orchestrator
+/// scheduling (aligned with ecosystem Pathway Learner pattern).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapabilityDescriptor {
     /// Capability domain (e.g. "dag", "health").
@@ -302,7 +302,7 @@ pub trait RhizoCryptRpc {
     // Slice Operations
     // ========================================================================
 
-    /// Checkout a slice from `LoamSpine`.
+    /// Checkout a slice from permanent storage.
     async fn checkout_slice(request: CheckoutSliceRequest) -> Result<SliceId, RpcError>;
 
     /// Get slice info.
@@ -311,14 +311,14 @@ pub trait RhizoCryptRpc {
     /// List active slices.
     async fn list_slices() -> Result<Vec<rhizo_crypt_core::Slice>, RpcError>;
 
-    /// Resolve a slice (commit back to `LoamSpine`).
+    /// Resolve a slice (commit back to permanent storage).
     async fn resolve_slice(slice_id: SliceId, session_id: SessionId) -> Result<(), RpcError>;
 
     // ========================================================================
     // Dehydration Operations
     // ========================================================================
 
-    /// Trigger dehydration of a session to `LoamSpine`.
+    /// Trigger dehydration of a session to permanent storage.
     async fn dehydrate(session_id: SessionId) -> Result<MerkleRoot, RpcError>;
 
     /// Get dehydration status.

@@ -629,8 +629,8 @@ async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Value,
 
 /// MCP `tools.call` dispatcher — routes tool invocations to JSON-RPC methods.
 ///
-/// Absorbed from sweetGrass v0.7.24 / airSpring v0.10 MCP pattern. Enables
-/// Squirrel AI coordination by translating `tools.call { name, arguments }`
+/// Absorbed from ecosystem MCP pattern. Enables
+/// AI agent coordination by translating `tools.call { name, arguments }`
 /// into the corresponding `dag.*` / `health.*` method dispatch.
 async fn dispatch_tools_call(
     server: &RhizoCryptRpcServer,

@@ -248,7 +248,7 @@ impl RpcClient {
     // Slice Operations
     // ========================================================================
 
-    /// Checkout a slice from `LoamSpine`.
+    /// Checkout a slice from permanent storage.
     ///
     /// # Errors
     ///
@@ -284,7 +284,7 @@ impl RpcClient {
             .map_err(|e| RpcError::Transport(e.to_string()))?
     }
 
-    /// Resolve a slice (commit back to `LoamSpine`).
+    /// Resolve a slice (commit back to permanent storage).
     ///
     /// # Errors
     ///
@@ -300,7 +300,7 @@ impl RpcClient {
     // Dehydration Operations
     // ========================================================================
 
-    /// Trigger dehydration of a session to `LoamSpine`.
+    /// Trigger dehydration of a session to permanent storage.
     ///
     /// # Errors
     ///

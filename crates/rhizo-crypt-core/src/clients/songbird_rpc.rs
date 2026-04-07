@@ -126,7 +126,7 @@ impl SongbirdRpc for MockSongbirdServer {
     async fn discover(self, _: tarpc::context::Context, capability: String) -> Vec<RpcServiceInfo> {
         if capability == "signing" {
             vec![RpcServiceInfo {
-                id: "mock-beardog-1".to_string(),
+                id: "mock-signing-1".to_string(),
                 capability: "signing".to_string(),
                 endpoint: "127.0.0.1:9500".to_string(),
                 status: "healthy".to_string(),
@@ -280,7 +280,7 @@ mod tests {
         let server = MockSongbirdServer;
         let services = server.discover(tarpc::context::current(), "signing".to_string()).await;
         assert_eq!(services.len(), 1);
-        assert_eq!(services[0].id, "mock-beardog-1");
+        assert_eq!(services[0].id, "mock-signing-1");
         assert_eq!(services[0].capability, "signing");
         assert_eq!(services[0].endpoint, "127.0.0.1:9500");
         assert_eq!(services[0].status, "healthy");

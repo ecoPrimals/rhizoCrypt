@@ -7,7 +7,7 @@
 //! (`$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock`) and serves newline-delimited
 //! JSON-RPC connections using the shared handler from [`super::newline`].
 //!
-//! Follows the sweetGrass / bearDog UDS pattern:
+//! Follows the ecosystem UDS pattern:
 //! - Create parent directories if missing
 //! - Remove stale socket before binding
 //! - Accept loop with graceful shutdown

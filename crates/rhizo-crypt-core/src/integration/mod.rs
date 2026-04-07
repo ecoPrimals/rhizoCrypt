@@ -30,10 +30,6 @@
 //! # });
 //! ```
 //!
-//! ### ⚠️ LEGACY: Primal-Specific Traits (Deprecated)
-//!
-//! These traits are vendor-specific and create lock-in. Use capability clients instead.
-//!
 //! ## Design Philosophy
 //!
 //! - **Capabilities over vendors** — Request what you need, not who provides it
@@ -434,7 +430,7 @@ mod tests {
         // Register services
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "bearDog",
+                "signing-provider-a",
                 "127.0.0.1:9000".parse().unwrap(),
                 vec![Capability::Signing, Capability::DidVerification],
             ))
@@ -442,7 +438,7 @@ mod tests {
 
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "loamSpine",
+                "commit-provider-a",
                 "127.0.0.1:9001".parse().unwrap(),
                 vec![Capability::PermanentCommit],
             ))
@@ -450,7 +446,7 @@ mod tests {
 
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "nestGate",
+                "storage-provider-a",
                 "127.0.0.1:9002".parse().unwrap(),
                 vec![Capability::PayloadStorage],
             ))
@@ -485,7 +481,7 @@ mod tests {
         // Register services
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "bearDog",
+                "signing-provider-b",
                 "127.0.0.1:9000".parse().unwrap(),
                 vec![Capability::Signing],
             ))
@@ -493,7 +489,7 @@ mod tests {
 
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "loamSpine",
+                "commit-provider-b",
                 "127.0.0.1:9001".parse().unwrap(),
                 vec![Capability::PermanentCommit],
             ))
@@ -501,7 +497,7 @@ mod tests {
 
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "nestGate",
+                "storage-provider-b",
                 "127.0.0.1:9002".parse().unwrap(),
                 vec![Capability::PayloadStorage],
             ))

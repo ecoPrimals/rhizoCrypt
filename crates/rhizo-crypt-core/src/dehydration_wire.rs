@@ -97,8 +97,8 @@ pub struct WireAgentRef {
 /// empty when the witness needs no payload).
 ///
 /// When the witness is cryptographic (`kind: "signature"`), verification
-/// is delegated to `BearDog` (`crypto.verify`) or an external verifier
-/// discovered by capability. The trio never decodes or validates evidence.
+/// is delegated to a `crypto.verify` provider discovered by capability.
+/// The trio never decodes or validates evidence.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WireWitnessRef {
     /// Agent or system that produced this witness.
@@ -123,7 +123,7 @@ pub struct WireWitnessRef {
     #[serde(default = "default_encoding")]
     pub encoding: String,
     /// Cryptographic algorithm (when `kind` = `"signature"`).
-    /// Passed to `BearDog` `crypto.verify` or an external verifier.
+    /// Passed to the `crypto.verify` provider for verification dispatch.
     /// `None` for non-crypto witnesses.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub algorithm: Option<String>,

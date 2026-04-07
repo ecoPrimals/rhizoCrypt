@@ -280,8 +280,8 @@ mod tests {
         assert_eq!(ipv6.endpoint(), "http://[::1]:9800");
 
         // Domain
-        let domain = ComputeClient::with_endpoint("http://toadstool.example.com:9800").unwrap();
-        assert_eq!(domain.endpoint(), "http://toadstool.example.com:9800");
+        let domain = ComputeClient::with_endpoint("http://compute.example.com:9800").unwrap();
+        assert_eq!(domain.endpoint(), "http://compute.example.com:9800");
     }
 
     #[tokio::test]

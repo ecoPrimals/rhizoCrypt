@@ -22,7 +22,7 @@
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps |
 | Audit | `cargo-deny` enforced (16-crate ecoBin ban list, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 129 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 130 `.rs` files |
 | Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `capability_registry.toml` (27 methods, 8 domains incl. `tools.*` MCP) |
