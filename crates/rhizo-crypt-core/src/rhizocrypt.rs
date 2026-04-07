@@ -680,7 +680,7 @@ impl RhizoCrypt {
                             summary_hash,
                         },
                         signature: sig.into_bytes(),
-                        attested_at: Timestamp::now(),
+                        witnessed_at: Timestamp::now(),
                         verified: true,
                     });
                     self.dehydration_status.insert(

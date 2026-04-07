@@ -9,22 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-#### Musl-Static Deployment, Dockerfile Evolution, Doc Cleanup
+#### Musl-Static Deployment, Dehydrate Alias Fix, Witness Vocabulary, Doc Cleanup
 
-**1. Musl-Static Binary (ecoBin Deployment Compliant)**
+**1. `dag.dehydrate` Alias (BLOCKING FIX)**
+- Added `"dag.dehydrate"` as alias for `"dag.dehydration.trigger"` in JSON-RPC handler dispatch
+- Also added in MCP `tools.call` dispatch for AI agent coordination
+- Springs calling `capability.call("dag", "dehydrate")` via biomeOS prefix matching now reach the correct handler instead of 404
+- New test: `test_dehydrate_alias_routes_to_trigger` verifies identical behavior
+
+**2. Internal Vocabulary: `attested_at` → `witnessed_at`**
+- Renamed `Attestation.attested_at` to `Attestation.witnessed_at` across 6 files
+- Aligns internal naming with evolved `WireWitnessRef` vocabulary (`witnessed_at` on the wire)
+- No downstream break — the wire serialization already mapped to `witnessed_at`
+
+**3. Musl-Static Binary (ecoBin Deployment Compliant)**
 - Built `x86_64-unknown-linux-musl` release binary — fully static, stripped
 - BLAKE3 checksum computed and harvested to `plasmidBin/checksums.toml`
 - `plasmidBin/manifest.toml` updated: `stripped = true`, `static = true`
 - `wateringHole/genomeBin/manifest.toml` updated: `0.14.0-dev`, `pie_verified = true`
 - Resolves Provenance Trio deployment debt (glibc → musl-static)
 
-**2. Dockerfile Multi-Stage Musl Evolution**
+**4. Dockerfile Multi-Stage Musl Evolution**
 - Builder: `rust:1.87-slim` + `musl-tools` + `x86_64-unknown-linux-musl` target
 - Runtime: `alpine:3.20` with dedicated non-root user (UID 1000)
 - Binary at `/app/rhizocrypt`, healthcheck via `status` subcommand
 - OCI labels, SPDX license identifier
 
-**3. Documentation Refresh**
+**5. Documentation Refresh**
 - Updated `crates/rhizocrypt-service/README.md` Docker example (was `rust:1.85` + `debian:bookworm-slim`)
 - Updated `docs/DEPLOYMENT_CHECKLIST.md` session reference and musl-static deployment note
 - Updated `wateringHole/ECOSYSTEM_COMPLIANCE_MATRIX.md`: rhizoCrypt musl DEBT → PASS
@@ -35,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `cargo fmt` — clean
 - `cargo clippy --workspace --all-features` — 0 warnings (maximally pedantic)
-- `cargo test --workspace --all-features` — **1,423 tests passing**, 0 failures
+- `cargo test --workspace --all-features` — **1,424 tests passing**, 0 failures
 - `cargo llvm-cov` — **94.34%** lines (CI gate: 90%)
 - Dockerfile builds musl-static binary, Alpine runtime, non-root user
 - All `.rs` files under 1000 lines (max: 928)
@@ -1412,7 +1423,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
-- **0.14.0-dev** (2026-04-07 s26): Musl-static binary, Dockerfile multi-stage Alpine, plasmidBin harvest, wateringHole compliance matrix updated, doc cleanup
+- **0.14.0-dev** (2026-04-07 s26): `dag.dehydrate` alias fix (blocking), `attested_at`→`witnessed_at` vocabulary, musl-static binary, Dockerfile Alpine, doc cleanup
 - **0.14.0-dev** (2026-04-02 s25): Comprehensive audit — tower 0.5, hashbrown→std, 78 clippy fixes, lock tightening, tarpc semantic fix, portability
 - **0.14.0-dev** (2026-04-01 s24): Lock-free CircuitBreaker, zero-sleep testing, Cow errors, OnceLock cache, dehydration evolution, +21 tests → 1,423
 - **0.14.0-dev** (2026-03-31 s23): RC-01 fix — UDS transport + dual-mode TCP + `biomeos` path migration + deep debt evolution, 1,402 tests

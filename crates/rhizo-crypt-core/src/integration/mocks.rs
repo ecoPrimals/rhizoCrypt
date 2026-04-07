@@ -106,7 +106,7 @@ impl SigningProvider for MockSigningProvider {
                 summary_hash: summary.compute_hash(),
             },
             signature: bytes::Bytes::from_static(&[0xDE, 0xAD, 0xBE, 0xEF]),
-            attested_at: Timestamp::now(),
+            witnessed_at: Timestamp::now(),
             verified: self.signatures_valid,
         })
     }

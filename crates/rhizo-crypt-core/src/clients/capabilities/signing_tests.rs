@@ -168,7 +168,7 @@ fn test_attest_response_serialization() {
             summary_hash: ContentHash::from([1u8; 32]),
         },
         signature: bytes::Bytes::from_static(&[1, 2, 3, 4]),
-        attested_at: crate::types::Timestamp::now(),
+        witnessed_at: crate::types::Timestamp::now(),
         verified: true,
     };
     let response = AttestResponse {
@@ -495,7 +495,7 @@ async fn test_request_attestation_via_mock() {
             summary_hash: ContentHash::from([0xABu8; 32]),
         },
         signature: bytes::Bytes::from_static(&[7, 8, 9]),
-        attested_at: crate::types::Timestamp::now(),
+        witnessed_at: crate::types::Timestamp::now(),
         verified: true,
     };
 

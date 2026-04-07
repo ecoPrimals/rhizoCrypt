@@ -123,8 +123,8 @@ pub struct Attestation {
     /// Signature over the statement (zero-copy via `Bytes`).
     pub signature: bytes::Bytes,
 
-    /// When the attestation was made.
-    pub attested_at: Timestamp,
+    /// When the witness event occurred.
+    pub witnessed_at: Timestamp,
 
     /// Whether the signature has been verified.
     pub verified: bool,
@@ -309,7 +309,7 @@ impl From<&DehydrationSummary> for crate::dehydration_wire::DehydrationWireSumma
                     agent: a.attester.to_string(),
                     kind: "signature".to_string(),
                     evidence: hex::encode(&a.signature),
-                    witnessed_at: a.attested_at.as_nanos(),
+                    witnessed_at: a.witnessed_at.as_nanos(),
                     encoding: "hex".to_string(),
                     algorithm: Some("ed25519".to_string()),
                     tier: Some("local".to_string()),
@@ -523,7 +523,7 @@ mod tests {
                         summary_hash: [0u8; 32],
                     },
                     signature: bytes::Bytes::from_static(b"sig-bytes"),
-                    attested_at: Timestamp::now(),
+                    witnessed_at: Timestamp::now(),
                     verified: true,
                 })
                 .build();
@@ -552,7 +552,7 @@ mod tests {
                 summary_hash: [0u8; 32],
             },
             signature: bytes::Bytes::new(),
-            attested_at: Timestamp::now(),
+            witnessed_at: Timestamp::now(),
             verified: true,
         };
 

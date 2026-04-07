@@ -497,6 +497,23 @@ async fn test_dehydrate_status_handler() {
 }
 
 #[tokio::test]
+async fn test_dehydrate_alias_routes_to_trigger() {
+    let primal = create_test_primal().await;
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let session_id = result.as_str().unwrap();
+
+    let req_canonical =
+        make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
+    let result_canonical = handle_request(primal.clone(), req_canonical).await.unwrap();
+
+    let req_alias = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
+    let result_alias = handle_request(primal.clone(), req_alias).await.unwrap();
+
+    assert_eq!(result_canonical, result_alias, "dag.dehydrate alias should route identically");
+}
+
+#[tokio::test]
 async fn test_extra_fields_ignored() {
     let primal = create_test_primal().await;
     let req = make_request(
