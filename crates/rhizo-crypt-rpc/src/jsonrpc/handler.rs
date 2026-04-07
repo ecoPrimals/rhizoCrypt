@@ -71,6 +71,7 @@ pub async fn handle_request(
         "health.liveness" | "ping" | "health" => Ok(rhizo_crypt_core::niche::health_liveness()),
         "health.readiness" => dispatch_readiness(&server).await,
         "health.metrics" => dispatch_metrics(&server).await,
+        "identity.get" => Ok(rhizo_crypt_core::niche::identity_get()),
         "capabilities.list" | "capability.list" | "primal.capabilities" => {
             dispatch_capability_list(&server).await
         }
@@ -618,13 +619,29 @@ async fn dispatch_metrics(server: &RhizoCryptRpcServer) -> Result<Value, Handler
 }
 
 async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
-    let capabilities = RhizoCryptRpcServer {
+    let descriptors = RhizoCryptRpcServer {
         primal: Arc::clone(&server.primal),
         start_time: server.start_time,
     }
     .list_capabilities(tarpc::context::current())
     .await?;
-    to_json(&capabilities)
+
+    let provided_capabilities: Vec<Value> = descriptors
+        .iter()
+        .map(|d| {
+            json!({
+                "type": d.domain,
+                "methods": d.methods.iter().map(|m| &m.name).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+
+    Ok(json!({
+        "provided_capabilities": provided_capabilities,
+        "primal": rhizo_crypt_core::niche::PRIMAL_ID,
+        "version": rhizo_crypt_core::niche::PRIMAL_VERSION,
+        "descriptors": to_json(&descriptors)?,
+    }))
 }
 
 /// MCP `tools.call` dispatcher — routes tool invocations to JSON-RPC methods.

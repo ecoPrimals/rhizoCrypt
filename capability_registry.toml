@@ -134,8 +134,13 @@ method = "health.metrics"
 domain = "health"
 description = "Operational metrics (sessions, vertices, latency, errors)"
 
+[capabilities.identity_get]
+method = "identity.get"
+domain = "identity"
+description = "Primal identity for biomeOS discovery (name, version, domain)"
+
 [capabilities.capabilities_list]
 method = "capabilities.list"
 aliases = ["capability.list", "primal.capabilities"]
 domain = "capability"
-description = "List all capabilities this primal provides"
+description = "List all capabilities this primal provides (biomeOS Format E)"

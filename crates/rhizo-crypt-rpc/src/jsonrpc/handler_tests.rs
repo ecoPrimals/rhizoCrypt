@@ -467,14 +467,25 @@ async fn test_capability_list() {
 
     let req = make_request("capability.list", None);
     let result = handle_request(primal.clone(), req).await.unwrap();
-    let capabilities = result.as_array().unwrap();
-    assert!(capabilities.len() >= 3, "should have dag, health, and capability domains");
+    let obj = result.as_object().unwrap();
 
+    assert!(obj.contains_key("provided_capabilities"), "Format E: provided_capabilities");
+    assert!(obj.contains_key("descriptors"), "detailed descriptors");
+    assert!(obj.contains_key("primal"), "primal identity");
+    assert!(obj.contains_key("version"), "primal version");
+
+    let provided = obj["provided_capabilities"].as_array().unwrap();
+    let types: Vec<&str> =
+        provided.iter().filter_map(|c| c.get("type").and_then(Value::as_str)).collect();
+    assert!(types.contains(&"dag"), "should contain dag domain");
+    assert!(types.contains(&"health"), "should contain health domain");
+    assert!(types.contains(&"capabilities"), "should contain capabilities domain");
+
+    let descriptors = obj["descriptors"].as_array().unwrap();
+    assert!(descriptors.len() >= 3);
     let domains: Vec<&str> =
-        capabilities.iter().filter_map(|c| c.get("domain").and_then(Value::as_str)).collect();
-    assert!(domains.contains(&"dag"), "should contain dag domain");
-    assert!(domains.contains(&"health"), "should contain health domain");
-    assert!(domains.contains(&"capabilities"), "should contain capabilities domain");
+        descriptors.iter().filter_map(|c| c.get("domain").and_then(Value::as_str)).collect();
+    assert!(domains.contains(&"dag"));
 }
 
 // ============================================================================
@@ -630,7 +641,8 @@ async fn test_mcp_tools_call_capabilities() {
         })),
     );
     let result = handle_request(primal.clone(), req).await.unwrap();
-    assert!(result.is_array());
+    assert!(result.is_object(), "Format E wrapper is an object");
+    assert!(result.get("provided_capabilities").is_some());
 }
 
 #[tokio::test]
@@ -664,8 +676,23 @@ async fn test_capability_list_aliases() {
     for method in &["capabilities.list", "capability.list", "primal.capabilities"] {
         let req = make_request(method, None);
         let result = handle_request(primal.clone(), req).await.unwrap();
-        assert!(result.is_array(), "capabilities.list alias '{method}' should return array");
+        assert!(
+            result.get("provided_capabilities").is_some(),
+            "capabilities.list alias '{method}' should return Format E wrapper"
+        );
     }
+}
+
+#[tokio::test]
+async fn test_identity_get() {
+    let primal = create_test_primal().await;
+    let req = make_request("identity.get", None);
+    let result = handle_request(primal.clone(), req).await.unwrap();
+    let obj = result.as_object().unwrap();
+    assert_eq!(obj["primal"].as_str().unwrap(), "rhizocrypt");
+    assert!(obj.contains_key("version"));
+    assert_eq!(obj["domain"].as_str().unwrap(), "dag");
+    assert!(obj.contains_key("description"));
 }
 
 // ============================================================================

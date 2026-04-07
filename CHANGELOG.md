@@ -41,10 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Evolved test mock IDs from primal names to capability-neutral across 4 test files
 - Extracted `beardog_http.rs` inline tests (330 lines) to `beardog_http_tests.rs` via `#[path]` pattern
 
-**6. Documentation Refresh**
+**6. GAP-MATRIX-05: Live IPC Validation**
+- Implemented `identity.get` method — returns primal name, version, domain, description, license
+- Changed `capabilities.list` wire format from plain array to biomeOS Format E (`provided_capabilities` wrapper with type + methods flat arrays), preserving detailed `descriptors` array
+- Live-validated on release binary: `identity.get`, `health.liveness`, `health.check`, `health.readiness`, `capabilities.list` all respond correctly on TCP newline (9401) and UDS (`rhizocrypt.sock`)
+- biomeOS can now discover all 28 rhizoCrypt capabilities via Format E parsing
+- New test: `test_identity_get`
+
+**7. Documentation Refresh**
 - Updated `crates/rhizocrypt-service/README.md` Docker example (was `rust:1.85` + `debian:bookworm-slim`)
 - Updated `docs/DEPLOYMENT_CHECKLIST.md`, `docs/ENV_VARS.md`, `showcase/` metrics and dates
-- Updated `wateringHole/ECOSYSTEM_COMPLIANCE_MATRIX.md`: rhizoCrypt musl DEBT → PASS
+- Updated `wateringHole/ECOSYSTEM_COMPLIANCE_MATRIX.md`: rhizoCrypt musl DEBT → PASS, Tier 10 health/identity/capabilities all PASS, grade D → A
 - Cleaned stale glibc references, test counts, and primal-specific hostnames in wateringHole handoffs
 - Created new wateringHole handoff for session 26
 
@@ -52,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `cargo fmt` — clean
 - `cargo clippy --workspace --all-features` — 0 warnings (maximally pedantic)
-- `cargo test --workspace --all-features` — **1,424 tests passing**, 0 failures
+- `cargo test --workspace --all-features` — **1,425 tests passing**, 0 failures
 - `cargo llvm-cov` — **94.34%** lines (CI gate: 90%)
 - Dockerfile builds musl-static binary, Alpine runtime, non-root user
 - All `.rs` files under 1000 lines (max: 928)

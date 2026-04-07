@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.14.0-dev |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,424 passing (`--all-features`) |
+| Tests | 1,425 passing (`--all-features`) |
 | Coverage | 94.34% lines, 93.41% functions (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -25,7 +25,7 @@
 | SPDX | `AGPL-3.0-or-later` header on all 130 `.rs` files |
 | Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
-| Registry | `capability_registry.toml` (27 methods, 8 domains incl. `tools.*` MCP) |
+| Registry | `capability_registry.toml` (28 methods, 6 domains incl. `tools.*` MCP, `identity.get`) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
 | Cross-compile | CI: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
 
@@ -89,7 +89,7 @@ fallback) for forward/backward compatibility.
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc 0.37 service (24 ops), JSON-RPC 2.0 handler (27 methods incl. `tools.list`, `tools.call`), NDJSON streaming, rate limiting, metrics |
+| `rhizo-crypt-rpc` | tarpc 0.37 service (24 ops), JSON-RPC 2.0 handler (28 methods incl. `identity.get`, `tools.list`, `tools.call`), NDJSON streaming, rate limiting, metrics |
 | `rhizocrypt-service` | UniBin binary and library (`server`, `client`, `status`, `version`, `doctor`) |
 
 ---

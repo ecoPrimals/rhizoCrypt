@@ -79,6 +79,8 @@ pub const CAPABILITIES: &[&str] = &[
     "health.readiness",
     "health.metrics",
     "capabilities.list",
+    // Identity
+    "identity.get",
     // MCP tool exposure (Squirrel AI coordination)
     "tools.list",
     "tools.call",
@@ -117,6 +119,7 @@ pub const SEMANTIC_MAPPINGS: &[(&str, &str)] = &[
     ("capabilities", "capabilities.list"),
     ("capability.list", "capabilities.list"),
     ("primal.capabilities", "capabilities.list"),
+    ("identity", "identity.get"),
     ("tools", "tools.list"),
     ("mcp.tools.list", "tools.list"),
     ("mcp.tools.call", "tools.call"),
@@ -195,6 +198,7 @@ pub const COST_ESTIMATES: &[(&str, u32, bool)] = &[
     ("health.readiness", 1, false),
     ("health.metrics", 1, false),
     ("capabilities.list", 1, false),
+    ("identity.get", 1, false),
     ("tools.list", 1, false),
     ("tools.call", 5, false),
 ];
@@ -375,6 +379,15 @@ pub const CAPABILITY_DOMAINS: &[CapabilityDomain] = &[
         }],
     },
     CapabilityDomain {
+        prefix: "identity",
+        description: "Primal identity for biomeOS discovery",
+        methods: &[CapabilityMethod {
+            name: "get",
+            fqn: "identity.get",
+            external: false,
+        }],
+    },
+    CapabilityDomain {
         prefix: "tools",
         description: "MCP tool exposure for AI coordination",
         methods: &[
@@ -449,6 +462,7 @@ pub fn operation_dependencies() -> serde_json::Value {
         "health.check": [],
         "health.metrics": [],
         "capabilities.list": [],
+        "identity.get": [],
     })
 }
 
@@ -501,6 +515,24 @@ pub fn capability_list() -> serde_json::Value {
         "domains": domains,
         "locality": { "local": local_count, "external": external_count },
         "methods": methods,
+    })
+}
+
+/// Identity probe for biomeOS primal discovery.
+///
+/// Returns primal name, version, domain, and description per the
+/// `PRIMAL_IPC_PROTOCOL` v3.1 `identity.get` standard. biomeOS calls
+/// this during capability discovery to learn who the primal is.
+#[must_use]
+pub fn identity_get() -> serde_json::Value {
+    serde_json::json!({
+        "primal": PRIMAL_ID,
+        "version": PRIMAL_VERSION,
+        "domain": DOMAIN,
+        "description": PRIMAL_DESCRIPTION,
+        "license": LICENSE,
+        "transport": TRANSPORT,
+        "protocol": PROTOCOL,
     })
 }
 
