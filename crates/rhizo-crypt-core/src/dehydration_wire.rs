@@ -52,9 +52,9 @@ pub struct DehydrationWireSummary {
     /// Per-agent participation detail.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub agent_summaries: Vec<WireAgentRef>,
-    /// Cryptographic attestations.
+    /// Session witnesses (signatures, hash observations, checkpoints, markers).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub attestations: Vec<WireAttestationRef>,
+    pub witnesses: Vec<WireWitnessRef>,
     /// Operations performed during the session.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub operations: Vec<WireOperationRef>,
@@ -88,16 +88,63 @@ pub struct WireAgentRef {
     pub role: String,
 }
 
-/// Cryptographic attestation reference on the wire.
+/// Witness reference on the wire — an agent's record that something occurred.
+///
+/// The trio is agnostic to what a witness contains. A witness may be a
+/// cryptographic signature, a hash observation, a game-state checkpoint,
+/// a conversation marker, or a bare timestamp. The `kind` field
+/// discriminates; the `evidence` field carries the payload (opaque string,
+/// empty when the witness needs no payload).
+///
+/// When the witness is cryptographic (`kind: "signature"`), verification
+/// is delegated to `BearDog` (`crypto.verify`) or an external verifier
+/// discovered by capability. The trio never decodes or validates evidence.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct WireAttestationRef {
-    /// Attesting agent DID.
+pub struct WireWitnessRef {
+    /// Agent or system that produced this witness.
     pub agent: String,
-    /// Hex-encoded signature.
-    pub signature: String,
-    /// When the attestation was created (nanoseconds since epoch).
+    /// What this witness represents.
+    /// `"signature"` = cryptographic signature,
+    /// `"hash"` = hash observation, `"checkpoint"` = state snapshot,
+    /// `"marker"` = boundary/event marker, `"timestamp"` = bare time witness.
+    #[serde(default = "default_witness_kind")]
+    pub kind: String,
+    /// Evidence payload (opaque). For signatures this is the encoded
+    /// signature bytes; for non-crypto witnesses this may be empty or
+    /// carry a hash, checkpoint token, or other payload.
     #[serde(default)]
-    pub attested_at: u64,
+    pub evidence: String,
+    /// When the witness was created (nanoseconds since epoch).
+    #[serde(default)]
+    pub witnessed_at: u64,
+    /// How the evidence payload is encoded. Only meaningful when `evidence`
+    /// is non-empty. Values: `"hex"`, `"base64"`, `"base64url"`, `"multibase"`,
+    /// `"utf8"` (plain text), `"none"` (no encoding / empty payload).
+    #[serde(default = "default_encoding")]
+    pub encoding: String,
+    /// Cryptographic algorithm (when `kind` = `"signature"`).
+    /// Passed to `BearDog` `crypto.verify` or an external verifier.
+    /// `None` for non-crypto witnesses.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub algorithm: Option<String>,
+    /// Provenance tier.
+    /// `"local"` = same gate, `"gateway"` = remote gate,
+    /// `"anchor"` = public chain, `"external"` = third-party,
+    /// `"open"` = unsigned / no cryptographic backing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tier: Option<String>,
+    /// Freeform context for the witness.
+    /// `"game:tick:42"`, `"conversation:thread:abc"`, `"experiment:run:7"`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
+}
+
+fn default_witness_kind() -> String {
+    "signature".to_string()
+}
+
+fn default_encoding() -> String {
+    "hex".to_string()
 }
 
 /// A high-level operation recorded during a session (wire format).
@@ -158,10 +205,15 @@ mod tests {
                 event_count: 42,
                 role: "author".to_string(),
             }],
-            attestations: vec![WireAttestationRef {
+            witnesses: vec![WireWitnessRef {
                 agent: "did:key:z6MkAlice".to_string(),
-                signature: "base64sig==".to_string(),
-                attested_at: 2_000_000,
+                kind: "signature".to_string(),
+                evidence: "deadbeef01234567".to_string(),
+                witnessed_at: 2_000_000,
+                encoding: "hex".to_string(),
+                algorithm: Some("ed25519".to_string()),
+                tier: Some("local".to_string()),
+                context: None,
             }],
             operations: vec![WireOperationRef {
                 op_type: "create".to_string(),
@@ -179,7 +231,7 @@ mod tests {
             serde_json::from_str(&json).expect("deserialize roundtrip");
         assert_eq!(parsed.vertex_count, 100);
         assert_eq!(parsed.agent_summaries.len(), 1);
-        assert_eq!(parsed.attestations.len(), 1);
+        assert_eq!(parsed.witnesses.len(), 1);
         assert_eq!(parsed.operations.len(), 1);
     }
 

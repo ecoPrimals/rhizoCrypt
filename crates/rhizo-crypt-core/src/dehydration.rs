@@ -302,13 +302,18 @@ impl From<&DehydrationSummary> for crate::dehydration_wire::DehydrationWireSumma
                     role: a.role.clone(),
                 })
                 .collect(),
-            attestations: s
+            witnesses: s
                 .attestations
                 .iter()
-                .map(|a| crate::dehydration_wire::WireAttestationRef {
+                .map(|a| crate::dehydration_wire::WireWitnessRef {
                     agent: a.attester.to_string(),
-                    signature: hex::encode(&a.signature),
-                    attested_at: a.attested_at.as_nanos(),
+                    kind: "signature".to_string(),
+                    evidence: hex::encode(&a.signature),
+                    witnessed_at: a.attested_at.as_nanos(),
+                    encoding: "hex".to_string(),
+                    algorithm: Some("ed25519".to_string()),
+                    tier: Some("local".to_string()),
+                    context: None,
                 })
                 .collect(),
             operations: Vec::new(),
@@ -530,8 +535,8 @@ mod tests {
         assert_eq!(wire.agents.len(), 1);
         assert_eq!(wire.agent_summaries.len(), 1);
         assert_eq!(wire.agent_summaries[0].event_count, 10);
-        assert_eq!(wire.attestations.len(), 1);
-        assert!(!wire.attestations[0].signature.is_empty());
+        assert_eq!(wire.witnesses.len(), 1);
+        assert!(!wire.witnesses[0].evidence.is_empty());
     }
 
     #[test]
