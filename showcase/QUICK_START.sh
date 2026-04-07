@@ -126,10 +126,9 @@ rustc rhizo_quick_start.rs \
     --extern rhizo_crypt_core="$PROJECT_ROOT/target/release/librhizo_crypt_core.rlib" \
     --edition 2024 \
     -o /tmp/rhizo_quick_start 2>/dev/null || {
-    echo -e "${YELLOW}⚠️  Quick compile failed, running full build...${NC}"
+    echo -e "${YELLOW}⚠️  Quick compile failed, showing simulation...${NC}"
     cd "$PROJECT_ROOT"
-    cargo run --release --example quick_demo 2>/dev/null || {
-        # Fallback: just show what would happen
+    {
         print_info "Demo simulation (binary not available):"
         cat << 'DEMO'
 Creating rhizoCrypt instance...

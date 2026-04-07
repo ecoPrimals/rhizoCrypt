@@ -32,37 +32,6 @@ This showcase demonstrates that rhizoCrypt is **production-ready**:
 
 ---
 
-### 2. Health Monitoring (`demo-health-monitoring.sh`)
-**What it shows**:
-- Health check endpoint
-- Metrics exposure (sessions, vertices, operations)
-- Status reporting (ready, degraded, unhealthy)
-- Integration with monitoring tools
-
-**Run**: `./demo-health-monitoring.sh`
-
----
-
-### 3. Error Recovery (`demo-error-recovery.sh`)
-**What it shows**:
-- Handling storage failures gracefully
-- Automatic retry with backoff
-- Circuit breaker pattern
-- Degraded mode operation
-
-**Run**: `./demo-error-recovery.sh`
-
----
-
-### 4. Graceful Shutdown (`demo-graceful-shutdown.sh`)
-**What it shows**:
-- SIGTERM handling
-- In-flight operations completion
-- Session state preservation
-- Clean resource cleanup
-
-**Run**: `./demo-graceful-shutdown.sh`
-
 ---
 
 ## 🎓 Production Checklist
@@ -104,9 +73,6 @@ This showcase demonstrates that rhizoCrypt is **production-ready**:
 Run demos individually:
 ```bash
 ./demo-service-mode.sh          # 5 min
-./demo-health-monitoring.sh     # 3 min
-./demo-error-recovery.sh        # 4 min
-./demo-graceful-shutdown.sh     # 3 min
 ```
 
 ---

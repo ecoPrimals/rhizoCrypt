@@ -40,41 +40,30 @@ Experience rhizoCrypt's world-class performance - sub-microsecond operations and
 
 ---
 
-### Demo 2: Run Criterion Benchmarks
+### Demo 2: Latency Measurement
 ```bash
-./demo-benchmarks.sh
+./demo-latency.sh
 ```
 
-**What it does**:
-- Runs comprehensive criterion benchmarks
-- Generates HTML reports
-- Compares performance over time
-- Opens results in browser
-
----
-
-### Demo 3: Zero-Copy Operations
+### Demo 3: Memory Profiling
 ```bash
-./demo-zero-copy.sh
+./demo-memory.sh
 ```
 
-**What it does**:
-- Demonstrates Bytes usage for payloads
-- Shows Arc usage for shared ownership
-- Proves no unnecessary cloning
-- Measures memory efficiency
-
----
-
-### Demo 4: View Benchmark Results
+### Demo 4: Scaling Behavior
 ```bash
-./view-results.sh
+./demo-scale.sh
 ```
 
-**What it does**:
-- Opens latest benchmark HTML report
-- Shows performance graphs
-- Displays statistical analysis
+### Demo 5: Lock-Free Concurrency
+```bash
+./demo-lock-free-concurrent.sh
+```
+
+### Demo 6: Large DAG Scaling
+```bash
+./demo-large-dag-scaling.sh
+```
 
 ---
 
