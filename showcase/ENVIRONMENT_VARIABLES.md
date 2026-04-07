@@ -13,7 +13,7 @@ source "$(dirname "$0")/../../showcase-env.sh"
 
 # Or set before running:
 export RHIZOCRYPT_PORT=9400
-export SONGBIRD_TOWER=https://localhost:7500
+export RHIZOCRYPT_DISCOVERY_ADAPTER=https://localhost:7500
 ./demo-script.sh
 ```
 
@@ -34,7 +34,7 @@ export SONGBIRD_TOWER=https://localhost:7500
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `RHIZOCRYPT_DISCOVERY_ADAPTER` | _(none)_ | Bootstrap service endpoint |
-| `SONGBIRD_TOWER` | `https://localhost:7500` | Songbird tower address |
+| `SONGBIRD_TOWER` | `https://localhost:7500` | Songbird tower address (showcase scripts only — production uses `RHIZOCRYPT_DISCOVERY_ADAPTER`) |
 
 ### Capability Endpoints (Optional)
 

@@ -35,11 +35,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Binary at `/app/rhizocrypt`, healthcheck via `status` subcommand
 - OCI labels, SPDX license identifier
 
-**5. Documentation Refresh**
+**5. Sovereignty Cleanup**
+- Evolved 14 doc comments from primal-specific names to capability-neutral language across 6 files
+- Removed misleading "LEGACY: Primal-Specific Traits" section from `integration/mod.rs`
+- Evolved test mock IDs from primal names to capability-neutral across 4 test files
+- Extracted `beardog_http.rs` inline tests (330 lines) to `beardog_http_tests.rs` via `#[path]` pattern
+
+**6. Documentation Refresh**
 - Updated `crates/rhizocrypt-service/README.md` Docker example (was `rust:1.85` + `debian:bookworm-slim`)
-- Updated `docs/DEPLOYMENT_CHECKLIST.md` session reference and musl-static deployment note
+- Updated `docs/DEPLOYMENT_CHECKLIST.md`, `docs/ENV_VARS.md`, `showcase/` metrics and dates
 - Updated `wateringHole/ECOSYSTEM_COMPLIANCE_MATRIX.md`: rhizoCrypt musl DEBT → PASS
-- Cleaned stale glibc references in wateringHole handoffs
+- Cleaned stale glibc references, test counts, and primal-specific hostnames in wateringHole handoffs
 - Created new wateringHole handoff for session 26
 
 ### Quality Gates
@@ -51,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dockerfile builds musl-static binary, Alpine runtime, non-root user
 - All `.rs` files under 1000 lines (max: 928)
 - Zero unsafe, zero production unwrap/expect
-- SPDX headers on all 129 `.rs` files
+- SPDX headers on all 130 `.rs` files
 
 ---
 

@@ -1,6 +1,6 @@
 # 🔐 rhizoCrypt — Environment Variables
 
-**Last Updated**: March 31, 2026  
+**Last Updated**: April 7, 2026  
 **Version**: 0.14.0-dev  
 **Philosophy**: Capability-based, not primal-based
 
@@ -192,7 +192,7 @@ SIGNING_ENDPOINT=any-signing-service:9500
 ### 2. **Flexible Deployment**
 ```bash
 # Swap implementations without code changes
-SIGNING_ENDPOINT=beardog:9500      # Use BearDog
+SIGNING_ENDPOINT=signer:9500       # Use signing provider
 SIGNING_ENDPOINT=hsm-service:9500  # Use HSM service
 SIGNING_ENDPOINT=kms-proxy:9500    # Use cloud KMS
 ```
