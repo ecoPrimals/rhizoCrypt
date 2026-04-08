@@ -619,6 +619,8 @@ async fn dispatch_metrics(server: &RhizoCryptRpcServer) -> Result<Value, Handler
 }
 
 async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
+    use rhizo_crypt_core::niche;
+
     let descriptors = RhizoCryptRpcServer {
         primal: Arc::clone(&server.primal),
         start_time: server.start_time,
@@ -636,10 +638,23 @@ async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Value,
         })
         .collect();
 
+    let cost_estimates: serde_json::Map<String, Value> = niche::COST_ESTIMATES
+        .iter()
+        .map(|&(method, ms, _)| {
+            (method.to_string(), json!({ "cpu": niche::cost_tier(ms), "latency_ms": ms }))
+        })
+        .collect();
+
     Ok(json!({
+        "primal": niche::PRIMAL_ID,
+        "version": niche::PRIMAL_VERSION,
+        "methods": niche::CAPABILITIES,
         "provided_capabilities": provided_capabilities,
-        "primal": rhizo_crypt_core::niche::PRIMAL_ID,
-        "version": rhizo_crypt_core::niche::PRIMAL_VERSION,
+        "consumed_capabilities": niche::CONSUMED_CAPABILITIES,
+        "cost_estimates": cost_estimates,
+        "operation_dependencies": niche::operation_dependencies(),
+        "protocol": niche::PROTOCOL,
+        "transport": [niche::TRANSPORT, "uds", "tcp"],
         "descriptors": to_json(&descriptors)?,
     }))
 }

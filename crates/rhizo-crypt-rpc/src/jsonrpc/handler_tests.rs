@@ -469,23 +469,34 @@ async fn test_capability_list() {
     let result = handle_request(primal.clone(), req).await.unwrap();
     let obj = result.as_object().unwrap();
 
-    assert!(obj.contains_key("provided_capabilities"), "Format E: provided_capabilities");
-    assert!(obj.contains_key("descriptors"), "detailed descriptors");
-    assert!(obj.contains_key("primal"), "primal identity");
-    assert!(obj.contains_key("version"), "primal version");
+    assert_eq!(obj["primal"].as_str().unwrap(), "rhizocrypt", "L2: primal");
+    assert!(obj.contains_key("version"), "L2: version");
+
+    let methods = obj["methods"].as_array().unwrap();
+    assert!(methods.len() >= 20, "L2: flat methods array");
+    let method_strs: Vec<&str> = methods.iter().filter_map(Value::as_str).collect();
+    assert!(method_strs.contains(&"dag.session.create"), "L2: dag method present");
+    assert!(method_strs.contains(&"health.liveness"), "L2: health method present");
+    assert!(method_strs.contains(&"identity.get"), "L2: identity method present");
+    assert!(method_strs.contains(&"capabilities.list"), "L2: meta method present");
 
     let provided = obj["provided_capabilities"].as_array().unwrap();
     let types: Vec<&str> =
         provided.iter().filter_map(|c| c.get("type").and_then(Value::as_str)).collect();
-    assert!(types.contains(&"dag"), "should contain dag domain");
-    assert!(types.contains(&"health"), "should contain health domain");
-    assert!(types.contains(&"capabilities"), "should contain capabilities domain");
+    assert!(types.contains(&"dag"), "L3: provided_capabilities dag group");
 
-    let descriptors = obj["descriptors"].as_array().unwrap();
-    assert!(descriptors.len() >= 3);
-    let domains: Vec<&str> =
-        descriptors.iter().filter_map(|c| c.get("domain").and_then(Value::as_str)).collect();
-    assert!(domains.contains(&"dag"));
+    let consumed = obj["consumed_capabilities"].as_array().unwrap();
+    assert!(!consumed.is_empty(), "L3: consumed_capabilities");
+    let consumed_strs: Vec<&str> = consumed.iter().filter_map(Value::as_str).collect();
+    assert!(consumed_strs.contains(&"crypto.sign"), "L3: consumes crypto.sign");
+
+    let costs = obj["cost_estimates"].as_object().unwrap();
+    assert!(costs.contains_key("dag.dehydration.trigger"), "L3: cost_estimates");
+
+    let deps = obj["operation_dependencies"].as_object().unwrap();
+    assert!(deps.contains_key("dag.event.append"), "L3: operation_dependencies");
+
+    assert!(obj.contains_key("descriptors"), "detailed descriptors preserved");
 }
 
 // ============================================================================
