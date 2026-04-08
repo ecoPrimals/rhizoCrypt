@@ -153,22 +153,33 @@ pub fn is_biomeos_insecure() -> bool {
 
 /// BTSP Phase 1 environment guard.
 ///
+/// BTSP configuration error.
+///
+/// Returned when the environment violates BTSP Phase 1 invariants.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum BtspConfigError {
+    /// `FAMILY_ID` (production) and `BIOMEOS_INSECURE` (development) are mutually exclusive.
+    #[error(
+        "BTSP conflict: FAMILY_ID is set (production mode) but BIOMEOS_INSECURE=1 \
+         (development mode). These are mutually exclusive. \
+         Unset BIOMEOS_INSECURE for production, or unset FAMILY_ID for development."
+    )]
+    FamilyInsecureConflict,
+}
+
 /// Validates that `FAMILY_ID` and `BIOMEOS_INSECURE` are not both set.
 /// Per the BTSP protocol standard, this configuration is an error — the
 /// primal MUST refuse to start.
 ///
 /// # Errors
 ///
-/// Returns a human-readable error message when the conflict is detected.
-pub fn btsp_env_guard(primal_env_prefix: &str) -> Result<(), String> {
+/// Returns [`BtspConfigError::FamilyInsecureConflict`] when the conflict is detected.
+pub fn btsp_env_guard(primal_env_prefix: &str) -> Result<(), BtspConfigError> {
     let family = read_family_id(primal_env_prefix);
     let insecure = is_biomeos_insecure();
 
     if family.is_some() && insecure {
-        return Err("BTSP conflict: FAMILY_ID is set (production mode) but BIOMEOS_INSECURE=1 \
-             (development mode). These are mutually exclusive. \
-             Unset BIOMEOS_INSECURE for production, or unset FAMILY_ID for development."
-            .to_string());
+        return Err(BtspConfigError::FamilyInsecureConflict);
     }
 
     Ok(())
@@ -667,8 +678,8 @@ mod tests {
             [("FAMILY_ID", Some("acme-prod")), ("BIOMEOS_INSECURE", Some("1"))],
             || {
                 let result = btsp_env_guard("RHIZOCRYPT");
-                assert!(result.is_err());
-                assert!(result.unwrap_err().contains("BTSP conflict"));
+                assert_eq!(result, Err(BtspConfigError::FamilyInsecureConflict));
+                assert!(result.unwrap_err().to_string().contains("BTSP conflict"));
             },
         );
     }

@@ -25,7 +25,7 @@
 //!
 //! - `RHIZOCRYPT_PORT` - RPC server port (default: OS-assigned in dev, 9400 production)
 //! - `RHIZOCRYPT_HOST` - Bind address (default: 0.0.0.0)
-//! - `DISCOVERY_ENDPOINT` or `SONGBIRD_ADDRESS` - Discovery service for registration
+//! - `RHIZOCRYPT_DISCOVERY_ADAPTER` or `DISCOVERY_ENDPOINT` - Discovery adapter for registration
 //! - `RHIZOCRYPT_ENV` - Environment mode (development/production)
 
 #![forbid(unsafe_code)]

@@ -215,36 +215,29 @@ pub enum RhizoCryptError {
 /// Absorbed from healthSpring V28 `SendError` pattern. Each variant identifies
 /// the exact point of failure in the Unix socket IPC lifecycle, enabling
 /// targeted retry strategies and structured observability.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum IpcErrorPhase {
     /// Socket connection failed (primal unreachable or socket missing).
+    #[error("connect")]
     Connect,
     /// Request write to socket failed (broken pipe, timeout).
+    #[error("write")]
     Write,
     /// Response read from socket failed (timeout, truncated).
+    #[error("read")]
     Read,
     /// Response is not valid JSON.
+    #[error("invalid_json")]
     InvalidJson,
     /// HTTP response status was not 2xx.
+    #[error("http_{0}")]
     HttpStatus(u16),
     /// Response lacks a `result` field (JSON-RPC protocol violation).
+    #[error("no_result")]
     NoResult,
     /// JSON-RPC error object returned by the remote primal.
+    #[error("jsonrpc_{0}")]
     JsonRpcError(i64),
-}
-
-impl fmt::Display for IpcErrorPhase {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Connect => write!(f, "connect"),
-            Self::Write => write!(f, "write"),
-            Self::Read => write!(f, "read"),
-            Self::InvalidJson => write!(f, "invalid_json"),
-            Self::HttpStatus(code) => write!(f, "http_{code}"),
-            Self::NoResult => write!(f, "no_result"),
-            Self::JsonRpcError(code) => write!(f, "jsonrpc_{code}"),
-        }
-    }
 }
 
 impl IpcErrorPhase {

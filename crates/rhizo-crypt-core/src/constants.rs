@@ -6,8 +6,8 @@
 //! **SINGLE SOURCE OF TRUTH FOR ALL STATIC CONSTANTS** ✅
 //!
 //! This module consolidates all static constants from across rhizoCrypt.
-//! Following the pattern established by Songbird, all magic numbers
-//! are centralized here with clear semantic names.
+//! All magic numbers are centralized here with clear semantic names,
+//! following the ecoPrimals constants-as-single-source-of-truth pattern.
 //!
 //! ## Philosophy
 //!
@@ -114,8 +114,8 @@ pub const HEALTH_CHECK_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Discovery adapter connection timeout.
 ///
-/// Derivation: Songbird socket resolution + capability probe. 10s
-/// covers 4-tier fallback discovery (env → XDG → /run → /tmp).
+/// Derivation: discovery adapter socket resolution + capability probe.
+/// 10s covers 4-tier fallback (env → XDG → /run → /tmp).
 pub const DISCOVERY_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Default capability client timeout (milliseconds).

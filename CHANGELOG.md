@@ -5,6 +5,19 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-08 (session 30)
+
+### Changed
+
+#### Deep Debt Cleanup: Idiomatic Rust & Sovereignty Evolution
+
+- **`IpcErrorPhase`**: Manual `Display` impl → `#[derive(thiserror::Error)]` with `#[error("...")]` attributes
+- **`BtspConfigError`**: New typed error enum replaces `Result<(), String>` for `btsp_env_guard` — proper error variant `FamilyInsecureConflict`
+- **Discovery coupling**: Service code now imports `DiscoveryClient`/`DiscoveryConfig` (capability-neutral type aliases) instead of `SongbirdClient`/`SongbirdConfig`
+- **Doc comment sovereignty**: Removed primal-name references from generic contexts (constants, RPC lib, service docs); provenance comments and anti-pattern examples preserved
+- **`safe_env/mod.rs`** smart refactor: Extracted 427-line test module to `safe_env/tests.rs` (mod.rs: 687 → 260 lines); test strings evolved to capability-neutral IDs
+- **Ecosystem file count**: 136 `.rs` files (was 135)
+
 ## [0.14.0-dev] - 2026-04-08 (session 29)
 
 ### Changed

@@ -59,7 +59,7 @@ Three workspace crates:
 | genomeBin | Multi-stage Dockerfile (musl-static + Alpine), OCI labels, healthcheck |
 | Universal IPC v3 | JSON-RPC + tarpc, semantic naming |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 135 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 136 `.rs` files |
 
 ## Metrics
 
@@ -68,7 +68,7 @@ Three workspace crates:
 | Tests | 1,441 passing (all features) |
 | Coverage | 94.34% lines, 93.41% functions, 94.81% branches (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
-| Source files | 135 `.rs`, ~46,200 lines |
+| Source files | 136 `.rs`, ~46,200 lines |
 | Max file size | 928 lines (limit: 1000) |
 | Binary size | 5.4 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |

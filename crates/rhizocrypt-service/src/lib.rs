@@ -230,7 +230,8 @@ pub async fn run_server_with_ready(
 
     info!("Starting rhizoCrypt service...");
 
-    rhizo_crypt_core::transport::btsp_env_guard("RHIZOCRYPT").map_err(ServiceError::Config)?;
+    rhizo_crypt_core::transport::btsp_env_guard("RHIZOCRYPT")
+        .map_err(|e| ServiceError::Config(e.to_string()))?;
 
     if rhizo_crypt_core::transport::is_biomeos_insecure() {
         warn!("BIOMEOS_INSECURE=1 — running in development mode (no BTSP handshake)");
@@ -369,8 +370,7 @@ fn start_uds_listener(
 ///
 /// The discovery adapter is the one bootstrap address a primal needs.
 /// All other primals are discovered at runtime via capability queries.
-/// Currently the ecosystem uses Songbird as the canonical discovery
-/// adapter, but this function is agnostic — any compatible endpoint
+/// This function is adapter-agnostic — any compatible endpoint
 /// accepting `register` + `heartbeat` JSON-RPC methods will work.
 ///
 /// # Errors
@@ -380,11 +380,11 @@ pub async fn register_with_discovery(
     discovery_addr: String,
     our_addr: SocketAddr,
 ) -> Result<(), ServiceError> {
-    use rhizo_crypt_core::clients::songbird::{SongbirdClient, SongbirdConfig};
+    use rhizo_crypt_core::clients::songbird::{DiscoveryClient, DiscoveryConfig};
 
-    let mut config = SongbirdConfig::new();
+    let mut config = DiscoveryConfig::new();
     config.address = std::borrow::Cow::Owned(discovery_addr);
-    let client = SongbirdClient::new(config);
+    let client = DiscoveryClient::new(config);
 
     let our_endpoint = format!("http://{our_addr}");
     client.register(&our_endpoint).await.map_err(|e| ServiceError::Discovery(e.to_string()))?;

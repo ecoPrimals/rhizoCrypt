@@ -11,3 +11,13 @@ mod discovery;
 // Re-export main types (same public API)
 pub use client::SongbirdClient;
 pub use config::SongbirdConfig;
+
+/// Capability-neutral alias for the ecosystem discovery adapter.
+///
+/// Service code should import `DiscoveryClient` so it never depends on a
+/// specific primal name. The underlying client sends generic `register` +
+/// `heartbeat` JSON-RPC calls.
+pub type DiscoveryClient = SongbirdClient;
+
+/// Capability-neutral alias for [`SongbirdConfig`].
+pub type DiscoveryConfig = SongbirdConfig;

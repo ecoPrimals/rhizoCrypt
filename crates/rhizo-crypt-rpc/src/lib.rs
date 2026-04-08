@@ -14,7 +14,7 @@
 //! - **Pure Rust**: No `.proto` files, no code generation
 //! - **Compile-time safety**: Trait-based RPC, all types checked at compile time
 //! - **`tarpc`**: High-performance async RPC built on Rust's type system
-//! - **Ecosystem alignment**: Matches `songBird`'s RPC patterns
+//! - **Ecosystem alignment**: Follows ecoPrimals tarpc RPC conventions
 //!
 //! ## Usage
 //!
