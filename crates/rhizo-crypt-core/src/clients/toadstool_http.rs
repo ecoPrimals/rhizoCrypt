@@ -18,7 +18,7 @@
 //! - `POST /byob/deployments/:id/stop` — Stop deployment
 //! - `GET /byob/deployments/:id/usage` — Get resource usage
 
-use crate::constants::{CONNECTION_TIMEOUT, HEALTH_CHECK_TIMEOUT};
+use crate::constants::CONNECTION_TIMEOUT;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
@@ -26,19 +26,19 @@ use crate::error::{Result, RhizoCryptError};
 use crate::types::{Did, PayloadRef, Timestamp};
 use crate::types_ecosystem::compute::{ComputeEvent, TaskId};
 
-/// HTTP client for `ToadStool` BYOB API.
+/// HTTP client for `ToadStool` BYOB API (pure Rust — hyper/tower stack).
 #[derive(Clone, Debug)]
 pub struct ToadStoolHttpClient {
-    client: reqwest::Client,
+    client: crate::clients::adapters::http::EcoHttpClient,
     base_url: String,
 }
 
 /// Error from `ToadStool` HTTP operations.
 #[derive(Debug, thiserror::Error)]
 pub enum ToadStoolHttpError {
-    /// HTTP request failed.
-    #[error("HTTP request failed: {0}")]
-    Request(#[from] reqwest::Error),
+    /// HTTP transport error.
+    #[error("HTTP transport: {0}")]
+    Transport(String),
 
     /// Invalid response format.
     #[error("Invalid response: {0}")]
@@ -144,11 +144,7 @@ impl ToadStoolHttpClient {
     ///
     /// Returns error if client creation fails.
     pub fn new(base_url: impl Into<String>) -> std::result::Result<Self, ToadStoolHttpError> {
-        let client = reqwest::Client::builder()
-            .timeout(CONNECTION_TIMEOUT)
-            .connect_timeout(HEALTH_CHECK_TIMEOUT)
-            .build()?;
-
+        let client = crate::clients::adapters::http::EcoHttpClient::new(CONNECTION_TIMEOUT);
         Ok(Self {
             client,
             base_url: base_url.into(),
@@ -163,21 +159,9 @@ impl ToadStoolHttpClient {
     pub async fn health(&self) -> std::result::Result<HealthStatus, ToadStoolHttpError> {
         let url = format!("{}/health", self.base_url);
         debug!(%url, "Checking ToadStool service health");
-
-        let response = self.client.get(&url).send().await?;
-
-        if response.status().is_success() {
-            let health: HealthStatus = response.json().await?;
-            info!(status = %health.status, "ToadStool health check passed");
-            Ok(health)
-        } else {
-            let status = response.status().as_u16();
-            let message = response.text().await.unwrap_or_default();
-            Err(ToadStoolHttpError::Server {
-                status,
-                message,
-            })
-        }
+        let health: HealthStatus = self.get_json(&url).await?;
+        info!(status = %health.status, "ToadStool health check passed");
+        Ok(health)
     }
 
     /// Check BYOB API health.
@@ -188,21 +172,9 @@ impl ToadStoolHttpClient {
     pub async fn byob_health(&self) -> std::result::Result<ByobHealthResponse, ToadStoolHttpError> {
         let url = format!("{}/byob/health", self.base_url);
         debug!(%url, "Checking ToadStool BYOB API health");
-
-        let response = self.client.get(&url).send().await?;
-
-        if response.status().is_success() {
-            let health: ByobHealthResponse = response.json().await?;
-            info!(status = %health.status, "BYOB API health check passed");
-            Ok(health)
-        } else {
-            let status = response.status().as_u16();
-            let message = response.text().await.unwrap_or_default();
-            Err(ToadStoolHttpError::Server {
-                status,
-                message,
-            })
-        }
+        let health: ByobHealthResponse = self.get_json(&url).await?;
+        info!(status = %health.status, "BYOB API health check passed");
+        Ok(health)
     }
 
     /// List all deployments.
@@ -215,19 +187,7 @@ impl ToadStoolHttpClient {
     ) -> std::result::Result<Vec<DeploymentResponse>, ToadStoolHttpError> {
         let url = format!("{}/byob/deployments", self.base_url);
         debug!(%url, "Listing BYOB deployments");
-
-        let response = self.client.get(&url).send().await?;
-
-        if response.status().is_success() {
-            Ok(response.json().await?)
-        } else {
-            let status = response.status().as_u16();
-            let message = response.text().await.unwrap_or_default();
-            Err(ToadStoolHttpError::Server {
-                status,
-                message,
-            })
-        }
+        self.get_json(&url).await
     }
 
     /// Get deployment status.
@@ -241,19 +201,7 @@ impl ToadStoolHttpClient {
     ) -> std::result::Result<DeploymentResponse, ToadStoolHttpError> {
         let url = format!("{}/byob/deployments/{}", self.base_url, deployment_id);
         debug!(%url, "Getting deployment status");
-
-        let response = self.client.get(&url).send().await?;
-
-        if response.status().is_success() {
-            Ok(response.json().await?)
-        } else {
-            let status = response.status().as_u16();
-            let message = response.text().await.unwrap_or_default();
-            Err(ToadStoolHttpError::Server {
-                status,
-                message,
-            })
-        }
+        self.get_json(&url).await
     }
 
     /// Stop a deployment.
@@ -267,20 +215,9 @@ impl ToadStoolHttpClient {
     ) -> std::result::Result<StopDeploymentResponse, ToadStoolHttpError> {
         let url = format!("{}/byob/deployments/{}/stop", self.base_url, deployment_id);
         debug!(%url, "Stopping deployment");
-
-        let response = self.client.post(&url).send().await?;
-
-        if response.status().is_success() {
-            info!(%deployment_id, "Deployment stopped");
-            Ok(response.json().await?)
-        } else {
-            let status = response.status().as_u16();
-            let message = response.text().await.unwrap_or_default();
-            Err(ToadStoolHttpError::Server {
-                status,
-                message,
-            })
-        }
+        let resp: StopDeploymentResponse = self.post_empty_json(&url).await?;
+        info!(%deployment_id, "Deployment stopped");
+        Ok(resp)
     }
 
     /// Get resource usage for a deployment.
@@ -294,19 +231,42 @@ impl ToadStoolHttpClient {
     ) -> std::result::Result<ResourceUsage, ToadStoolHttpError> {
         let url = format!("{}/byob/deployments/{}/usage", self.base_url, deployment_id);
         debug!(%url, "Getting resource usage");
+        self.get_json(&url).await
+    }
 
-        let response = self.client.get(&url).send().await?;
-
-        if response.status().is_success() {
-            Ok(response.json().await?)
-        } else {
-            let status = response.status().as_u16();
-            let message = response.text().await.unwrap_or_default();
-            Err(ToadStoolHttpError::Server {
+    /// GET a URL and deserialize JSON.
+    async fn get_json<T: for<'de> serde::Deserialize<'de>>(
+        &self,
+        url: &str,
+    ) -> std::result::Result<T, ToadStoolHttpError> {
+        let (status, text) =
+            self.client.get(url).await.map_err(|e| ToadStoolHttpError::Transport(e.to_string()))?;
+        if !(200..300).contains(&status) {
+            return Err(ToadStoolHttpError::Server {
                 status,
-                message,
-            })
+                message: text,
+            });
         }
+        serde_json::from_str(&text).map_err(|e| ToadStoolHttpError::InvalidResponse(e.to_string()))
+    }
+
+    /// POST empty body to URL and deserialize JSON response.
+    async fn post_empty_json<T: for<'de> serde::Deserialize<'de>>(
+        &self,
+        url: &str,
+    ) -> std::result::Result<T, ToadStoolHttpError> {
+        let (status, text) = self
+            .client
+            .post_json(url, "{}")
+            .await
+            .map_err(|e| ToadStoolHttpError::Transport(e.to_string()))?;
+        if !(200..300).contains(&status) {
+            return Err(ToadStoolHttpError::Server {
+                status,
+                message: text,
+            });
+        }
+        serde_json::from_str(&text).map_err(|e| ToadStoolHttpError::InvalidResponse(e.to_string()))
     }
 
     /// Convert deployment response to compute event.

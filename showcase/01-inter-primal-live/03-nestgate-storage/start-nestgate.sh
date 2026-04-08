@@ -124,10 +124,10 @@ while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
         echo ""
         
         success "You can now run the demos:"
-        echo "  ./demo-real-storage.sh          - Store payloads"
-        echo "  ./demo-real-retrieval.sh        - Retrieve by hash"
-        echo "  ./demo-real-content-addressed.sh - Content addressing"
-        echo "  ./demo-real-deduplication.sh    - Storage efficiency"
+        echo "  ./demo-real-storage.sh          - Store payloads (live)"
+        echo "  ./demo-store-retrieve.sh        - Store and retrieve by hash"
+        echo "  ./demo-content-addressed.sh     - Content addressing"
+        echo "  ./demo-payload-storage.sh       - Payload storage patterns"
         echo ""
         
         info "To stop NestGate:"

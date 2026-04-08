@@ -48,7 +48,7 @@ pub mod capabilities;
 pub mod factory;
 pub mod resilience;
 
-// Legacy primal-specific HTTP/RPC clients (reqwest-based, feature-gated).
+// Primal-specific HTTP/RPC clients (hyper-based, feature-gated).
 // These are concrete adapters for named primals' REST/RPC APIs.
 // Prefer capability-based clients (above) for new code — they discover
 // providers at runtime and work with ANY service implementing the capability.

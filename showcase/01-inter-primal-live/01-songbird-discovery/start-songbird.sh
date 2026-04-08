@@ -45,7 +45,7 @@ SONGBIRD_BIN="${SONGBIRD_BIN:-$BINS_DIR/songbird-cli}"
 if [ ! -f "$SONGBIRD_BIN" ]; then
     error "Songbird binary not found at: $SONGBIRD_BIN"
     echo ""
-    info "Expected location: ../../../bins/songbird-rendezvous"
+    info "Expected location: $SONGBIRD_BIN"
     info "Please ensure Phase 1 binaries are built and copied to bins/"
     echo ""
     exit 1

@@ -16,13 +16,12 @@ default = ["redb"]
 test-utils = []
 # Enable redb persistent storage backend (100% Pure Rust, default)
 redb = ["dep:redb"]
-# Enable HTTP clients (reqwest) for direct REST API calls.
-# NOT needed for Tower Atomic pattern (Unix socket IPC).
-# Pulls in ring (C/asm) via rustls — disable for pure Rust builds.
-http-clients = ["dep:reqwest"]
+# Enable HTTP clients (hyper/tower) for direct REST API calls.
+# Pure Rust — no ring, no C deps.
+http-clients = ["dep:hyper", "dep:hyper-util", "dep:http-body-util"]
 # Enable live client connections to sibling primals
 # - tarpc for Songbird, LoamSpine
-# - HTTP (reqwest) for legacy REST clients
+# - HTTP (hyper) for REST clients
 live-clients = ["dep:tarpc", "dep:futures-util", "dep:bincode", "dep:base64", "http-clients"]
 
 [lints]
@@ -42,9 +41,10 @@ async-trait = { workspace = true }
 dashmap = { workspace = true }
 # Optional storage backends
 redb = { workspace = true, optional = true }
-# Optional: HTTP client for direct REST API calls (legacy path).
-# Pulls in ring (C/asm) via rustls — use Unix socket IPC instead (Tower Atomic).
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"], optional = true }
+# Optional: HTTP client (pure Rust hyper/tower stack)
+hyper = { workspace = true, optional = true }
+hyper-util = { workspace = true, optional = true }
+http-body-util = { workspace = true, optional = true }
 # Optional live client connections
 tarpc = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }

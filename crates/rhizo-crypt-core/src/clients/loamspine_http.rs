@@ -64,8 +64,8 @@ const METHOD_NOT_FOUND_CODE: i32 = -32601;
 pub struct LoamSpineHttpClient {
     /// Base URL for `LoamSpine` JSON-RPC endpoint.
     base_url: String,
-    /// HTTP client with timeout.
-    client: reqwest::Client,
+    /// HTTP client with timeout (pure Rust — hyper/tower stack).
+    client: crate::clients::adapters::http::EcoHttpClient,
     /// Request ID counter for JSON-RPC.
     request_id: std::sync::Arc<AtomicU64>,
     /// Whether the server supports native method names.
@@ -93,10 +93,7 @@ impl LoamSpineHttpClient {
             format!("{endpoint}{}", crate::constants::JSON_RPC_PATH)
         };
 
-        let client =
-            reqwest::Client::builder().timeout(Duration::from_secs(30)).build().map_err(|e| {
-                RhizoCryptError::integration(format!("Failed to create HTTP client: {e}"))
-            })?;
+        let client = crate::clients::adapters::http::EcoHttpClient::new(Duration::from_secs(30));
 
         Ok(Self {
             base_url,
@@ -212,22 +209,25 @@ impl LoamSpineHttpClient {
             "Calling permanent storage JSON-RPC"
         );
 
-        let response =
-            self.client.post(&self.base_url).json(&request).send().await.map_err(|e| {
-                NegotiableError::Other(RhizoCryptError::integration(format!(
-                    "HTTP request failed: {e}"
-                )))
-            })?;
+        let body = serde_json::to_string(&request).map_err(|e| {
+            NegotiableError::Other(RhizoCryptError::integration(format!(
+                "Failed to serialize request: {e}"
+            )))
+        })?;
 
-        if !response.status().is_success() {
+        let (status, text) = self.client.post_json(&self.base_url, &body).await.map_err(|e| {
+            NegotiableError::Other(RhizoCryptError::integration(format!(
+                "HTTP request failed: {e}"
+            )))
+        })?;
+
+        if !(200..300).contains(&status) {
             return Err(NegotiableError::Other(RhizoCryptError::integration(format!(
-                "Permanent storage returned HTTP {}: {}",
-                response.status(),
-                response.text().await.unwrap_or_default()
+                "Permanent storage returned HTTP {status}: {text}"
             ))));
         }
 
-        let json_response: JsonRpcResponse<R> = response.json().await.map_err(|e| {
+        let json_response: JsonRpcResponse<R> = serde_json::from_str(&text).map_err(|e| {
             NegotiableError::Other(RhizoCryptError::integration(format!(
                 "Failed to parse response: {e}"
             )))

@@ -44,11 +44,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Pure Rust RPC (tarpc) - compile-time type safety, no protobuf
 tarpc = { version = "0.37", features = ["full"] }
 
-# HTTP (axum for REST endpoints)
+# HTTP (axum for REST endpoints, hyper-util for outbound clients)
 axum = "0.7"
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.5", features = ["trace", "cors"] }
 hyper = { version = "1.0", features = ["full"] }
+hyper-util = { version = "0.1", features = ["tokio", "client-legacy", "http1"] }
 http-body-util = "0.1"
 
 # Concurrency

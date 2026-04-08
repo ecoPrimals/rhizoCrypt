@@ -20,12 +20,12 @@
 | Chaos | `ChaosEngine` framework with 7 fault classes |
 | Transport | Platform-agnostic (Unix socket / TCP / abstract socket) |
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
-| Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps |
-| Audit | `cargo-deny` enforced (16-crate ecoBin ban list, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 130 `.rs` files |
+| Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
+| Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
+| SPDX | `AGPL-3.0-or-later` header on all 135 `.rs` files |
 | Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
-| Registry | `capability_registry.toml` (28 methods, 6 domains incl. `tools.*` MCP, `identity.get`) |
+| Registry | `capability_registry.toml` (28 methods, 5 domains incl. `tools.*` MCP, `identity.get`) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
 | Cross-compile | CI: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
 

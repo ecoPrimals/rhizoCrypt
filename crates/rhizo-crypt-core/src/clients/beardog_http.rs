@@ -115,30 +115,24 @@ pub struct HttpHealthResponse {
 // HTTP Client
 // ============================================================================
 
-/// HTTP client for `BearDog` API.
+/// HTTP client for `BearDog` API (pure Rust — hyper/tower stack).
 #[derive(Clone)]
 pub struct BearDogHttpClient {
-    client: reqwest::Client,
+    client: crate::clients::adapters::http::EcoHttpClient,
     base_url: String,
 }
 
 impl BearDogHttpClient {
     /// Create a new HTTP client for `BearDog`.
     ///
-    /// # Arguments
-    ///
-    /// * `base_url` - Base URL of the `BearDog` service (e.g., <http://127.0.0.1:8080>)
-    /// * `timeout_ms` - Request timeout in milliseconds
-    ///
     /// # Errors
     ///
-    /// Returns an error if the HTTP client cannot be built.
-    pub fn new(base_url: impl Into<String>, timeout_ms: u64) -> Result<Self, reqwest::Error> {
+    /// Returns an error if the base URL is invalid.
+    pub fn new(base_url: impl Into<String>, timeout_ms: u64) -> Result<Self, BearDogHttpError> {
         let base_url = base_url.into();
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_millis(timeout_ms))
-            .build()?;
-
+        let client = crate::clients::adapters::http::EcoHttpClient::new(
+            std::time::Duration::from_millis(timeout_ms),
+        );
         Ok(Self {
             client,
             base_url,
@@ -160,20 +154,22 @@ impl BearDogHttpClient {
             key_type: DEFAULT_KEY_TYPE.to_string(),
         };
 
-        let response = self
-            .client
-            .post(format!("{}/ai/sign", self.base_url))
-            .json(&request)
-            .send()
-            .await
-            .map_err(BearDogHttpError::Request)?;
+        let body = serde_json::to_string(&request).map_err(|e| {
+            BearDogHttpError::Transport(format!("Failed to serialize request: {e}"))
+        })?;
 
-        if !response.status().is_success() {
-            return Err(BearDogHttpError::Status(response.status().as_u16()));
+        let (status, text) = self
+            .client
+            .post_json(&format!("{}/ai/sign", self.base_url), &body)
+            .await
+            .map_err(|e| BearDogHttpError::Transport(e.to_string()))?;
+
+        if !(200..300).contains(&status) {
+            return Err(BearDogHttpError::Status(status));
         }
 
         let sign_response: HttpSignResponse =
-            response.json().await.map_err(BearDogHttpError::Parse)?;
+            serde_json::from_str(&text).map_err(|e| BearDogHttpError::Parse(e.to_string()))?;
 
         if !sign_response.success {
             return Err(BearDogHttpError::SigningFailed);
@@ -198,20 +194,22 @@ impl BearDogHttpClient {
             signature: STANDARD.encode(signature),
         };
 
-        let response = self
-            .client
-            .post(format!("{}/ai/verify", self.base_url))
-            .json(&request)
-            .send()
-            .await
-            .map_err(BearDogHttpError::Request)?;
+        let body = serde_json::to_string(&request).map_err(|e| {
+            BearDogHttpError::Transport(format!("Failed to serialize request: {e}"))
+        })?;
 
-        if !response.status().is_success() {
-            return Err(BearDogHttpError::Status(response.status().as_u16()));
+        let (status, text) = self
+            .client
+            .post_json(&format!("{}/ai/verify", self.base_url), &body)
+            .await
+            .map_err(|e| BearDogHttpError::Transport(e.to_string()))?;
+
+        if !(200..300).contains(&status) {
+            return Err(BearDogHttpError::Status(status));
         }
 
         let verify_response: HttpVerifyResponse =
-            response.json().await.map_err(BearDogHttpError::Parse)?;
+            serde_json::from_str(&text).map_err(|e| BearDogHttpError::Parse(e.to_string()))?;
 
         Ok(verify_response.valid)
     }
@@ -222,33 +220,32 @@ impl BearDogHttpClient {
     ///
     /// Returns error if the health check fails.
     pub async fn health(&self) -> Result<HttpHealthResponse, BearDogHttpError> {
-        let response = self
+        let (status, text) = self
             .client
-            .get(format!("{}/ai/health", self.base_url))
-            .send()
+            .get(&format!("{}/ai/health", self.base_url))
             .await
-            .map_err(BearDogHttpError::Request)?;
+            .map_err(|e| BearDogHttpError::Transport(e.to_string()))?;
 
-        if !response.status().is_success() {
-            return Err(BearDogHttpError::Status(response.status().as_u16()));
+        if !(200..300).contains(&status) {
+            return Err(BearDogHttpError::Status(status));
         }
 
-        response.json().await.map_err(BearDogHttpError::Parse)
+        serde_json::from_str(&text).map_err(|e| BearDogHttpError::Parse(e.to_string()))
     }
 }
 
 /// Errors from `BearDog` HTTP client.
 #[derive(Debug, thiserror::Error)]
 pub enum BearDogHttpError {
-    /// HTTP request failed.
-    #[error("HTTP request failed: {0}")]
-    Request(#[source] reqwest::Error),
+    /// HTTP transport error.
+    #[error("HTTP transport: {0}")]
+    Transport(String),
     /// Non-success HTTP status.
     #[error("HTTP status {0}")]
     Status(u16),
     /// Failed to parse response.
     #[error("Failed to parse response: {0}")]
-    Parse(#[source] reqwest::Error),
+    Parse(String),
     /// Signing operation failed.
     #[error("Signing operation failed")]
     SigningFailed,

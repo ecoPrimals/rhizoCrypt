@@ -5,6 +5,36 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-08 (session 28)
+
+### Changed
+
+#### reqwest Elimination — ecoBin Full Compliance
+
+- **Banned dependency removed**: Replaced `reqwest` (pulls ring/C deps) with pure Rust `hyper-util` + `http-body-util` client stack across all 5 HTTP client modules
+- **New `EcoHttpClient`**: Lightweight HTTP client wrapper in `clients/adapters/http.rs` built on `hyper_util::client::legacy::Client` — provides `post_json()`, `get()`, `validate_url()` with timeout support
+- **BearDog HTTP client**: Migrated from `reqwest::Client` to `EcoHttpClient` — signing, verification, health endpoints
+- **NestGate HTTP client**: Migrated — blob store/retrieve/exists/metadata/health endpoints; HEAD→GET for `exists()` (hyper HTTP/1.1 client)
+- **ToadStool HTTP client**: Migrated — BYOB deploy/health/deployments/usage endpoints; added internal `get_json()`/`post_empty_json()` helpers
+- **LoamSpine HTTP client**: Migrated — JSON-RPC 2.0 over HTTP with method negotiation preserved
+- **HttpAdapter (generic)**: Migrated — capability-based REST adapter
+- **Error types**: `BearDogHttpError`, `NestGateHttpError`, `ToadStoolHttpError` error variants updated from `reqwest::Error` sources to `String` transport errors
+- **deny.toml**: Added `reqwest` and `ring` to banned crate list (18 total); removed ring tolerance comments
+- **Cargo.toml**: `http-clients` feature now activates `hyper`, `hyper-util`, `http-body-util` instead of `reqwest`
+- **hyper-util**: Added to workspace dependencies (`0.1`, features: tokio, client-legacy, http1)
+
+#### Documentation Refresh
+
+- **README.md**: Updated `.rs` file count (130 → 135), domain count, ecoBin dep note, audit crate count
+- **CONTEXT.md**: Updated method count (27 → 28), file count, ecoBin compliance note, registry line
+- **DEPLOYMENT_CHECKLIST.md**: Updated session reference (26 → 28), file count, last-updated date
+- **crate README**: Updated `http-clients` feature description (reqwest → hyper/tower)
+
+**8. Metrics**
+- 1,425 tests passing, 0 clippy warnings, 0 fmt issues
+- Zero reqwest in dependency tree — fully ecoBin compliant HTTP clients
+- 135 `.rs` files, ~46,200 lines
+
 ## [0.14.0-dev] - 2026-04-08 (session 27)
 
 ### Changed

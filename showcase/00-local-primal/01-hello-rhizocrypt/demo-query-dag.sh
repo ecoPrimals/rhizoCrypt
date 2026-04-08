@@ -182,7 +182,7 @@ echo "  3. Frontier vertices are DAG tips (no children)"
 echo "  4. Children queries find dependent vertices"
 echo ""
 info "Level 1 Complete! Ready for Level 2?"
-echo "  cd ../../../02-dag-engine"
+echo "  cd ../02-dag-engine"
 echo "  cat README.md"
 echo ""
 

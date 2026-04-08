@@ -112,7 +112,7 @@ if factory.has_signing_capability().await {
 | Feature | Description |
 |---------|-------------|
 | `redb` | Enable redb persistent storage backend (default, Pure Rust) |
-| `http-clients` | Enable HTTP clients via reqwest (pulls ring/rustls) |
+| `http-clients` | Enable HTTP clients via hyper/tower (pure Rust, no reqwest) |
 | `live-clients` | Enable live connections to sibling primals (tarpc + HTTP) |
 | `test-utils` | Enable test utilities and mock implementations |
 

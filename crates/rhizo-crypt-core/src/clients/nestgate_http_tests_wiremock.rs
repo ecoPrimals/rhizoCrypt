@@ -232,7 +232,7 @@ async fn wiremock_exists_true() {
     let mock_server = MockServer::start().await;
     let base_url = mock_server.uri();
 
-    Mock::given(method("HEAD"))
+    Mock::given(method("GET"))
         .and(path("/api/v1/blobs/exists-ref"))
         .respond_with(ResponseTemplate::new(200))
         .mount(&mock_server)
@@ -252,7 +252,7 @@ async fn wiremock_exists_false() {
     let mock_server = MockServer::start().await;
     let base_url = mock_server.uri();
 
-    Mock::given(method("HEAD"))
+    Mock::given(method("GET"))
         .and(path("/api/v1/blobs/missing-ref"))
         .respond_with(ResponseTemplate::new(404))
         .mount(&mock_server)

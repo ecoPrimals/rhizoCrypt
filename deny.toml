@@ -42,10 +42,8 @@ multiple-versions = "warn"
 wildcards = "warn"
 highlight = "all"
 
-# ecoBin compliance: these C-backed crates are banned from default features.
-# They may appear when `http-clients` or `live-clients` opt-in features are
-# enabled (reqwest → rustls → ring).  Once rustls-rustcrypto reaches stable,
-# we will migrate to a fully pure-Rust TLS stack.
+# ecoBin compliance: these C-backed crates are banned.
+# reqwest removed in session 27 — all HTTP clients use hyper/tower (pure Rust).
 deny = [
     # ecoBin v3.0 full C-sys ban list (14 canonical + ecosystem extras)
     { crate = "openssl-sys", wrappers = [] },
@@ -53,20 +51,20 @@ deny = [
     { crate = "native-tls", wrappers = [] },
     { crate = "aws-lc-sys", wrappers = [] },
     { crate = "cmake", wrappers = [] },
-    { crate = "cc", wrappers = ["ring", "blake3"] },
+    { crate = "cc", wrappers = ["blake3"] },
     { crate = "bindgen", wrappers = [] },
     { crate = "bzip2-sys", wrappers = [] },
     { crate = "curl-sys", wrappers = [] },
     { crate = "libz-sys", wrappers = [] },
-    { crate = "pkg-config", wrappers = ["ring"] },
+    { crate = "pkg-config", wrappers = [] },
     { crate = "vcpkg", wrappers = [] },
     { crate = "zstd-sys", wrappers = [] },
     { crate = "lz4-sys", wrappers = [] },
     { crate = "libsqlite3-sys", wrappers = [] },
     { crate = "cryptoki-sys", wrappers = [] },
+    { crate = "ring", wrappers = [] },
+    { crate = "reqwest", wrappers = [] },
 ]
-# ring is tolerated only via the optional http-clients feature (reqwest → rustls → ring).
-# Default builds (ecoBin-compliant) have zero C application dependencies.
 # Evolution: migrate to rustls-rustcrypto when it reaches stable, then ban ring too.
 # Evolution: tarpc transitive deps (bincode v1, opentelemetry_sdk) tracked upstream.
 #   instant + fxhash resolved as of tarpc 0.37 dependency updates.

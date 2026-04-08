@@ -40,7 +40,7 @@ Three workspace crates:
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | DAG engine, sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc service (24 ops), JSON-RPC 2.0 handler (27 methods incl. MCP), NDJSON streaming, rate limiting |
+| `rhizo-crypt-rpc` | tarpc service (24 ops), JSON-RPC 2.0 handler (28 methods incl. MCP), NDJSON streaming, rate limiting |
 | `rhizocrypt-service` | UniBin binary (`server`, `client`, `status`, `version`, `doctor`) |
 
 ## IPC
@@ -55,11 +55,11 @@ Three workspace crates:
 | Standard | Status |
 |----------|--------|
 | UniBin | Single binary, clap subcommands |
-| ecoBin v3.0 | Zero application C deps, cross-compile (musl, RISC-V) |
+| ecoBin v3.0 | Zero application C deps, zero reqwest, cross-compile (musl, RISC-V) |
 | genomeBin | Multi-stage Dockerfile (musl-static + Alpine), OCI labels, healthcheck |
 | Universal IPC v3 | JSON-RPC + tarpc, semantic naming |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 130 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 135 `.rs` files |
 
 ## Metrics
 
@@ -68,7 +68,7 @@ Three workspace crates:
 | Tests | 1,425 passing (all features) |
 | Coverage | 94.34% lines, 93.41% functions, 94.81% branches (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
-| Source files | 130 `.rs`, ~45,500 lines |
+| Source files | 135 `.rs`, ~46,200 lines |
 | Max file size | 928 lines (limit: 1000) |
 | Binary size | 5.4 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
@@ -82,7 +82,7 @@ Three workspace crates:
 ## Key Files
 
 - `Cargo.toml` — Workspace config, lint policy, dependency pins
-- `capability_registry.toml` — Capability method registry (27 methods, 8 domains)
+- `capability_registry.toml` — Capability method registry (24 declared, 28 total via handler; 5 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
 - `specs/` — 10 specification documents
 - `showcase/` — 70+ progressive demos

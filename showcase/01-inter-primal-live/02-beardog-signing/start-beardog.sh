@@ -45,7 +45,7 @@ BEARDOG_BIN="$BINS_DIR/beardog"
 if [ ! -f "$BEARDOG_BIN" ]; then
     error "BearDog binary not found at: $BEARDOG_BIN"
     echo ""
-    info "Expected location: ../../../bins/beardog"
+    info "Expected location: $BEARDOG_BIN"
     info "Please ensure Phase 1 binaries are built and copied to bins/"
     echo ""
     exit 1

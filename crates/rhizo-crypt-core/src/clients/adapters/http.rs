@@ -1,22 +1,141 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! HTTP/REST protocol adapter.
+//! HTTP/REST protocol adapter (pure Rust — hyper/tower stack).
 //!
 //! Provides a generic HTTP adapter for calling REST APIs from capability clients.
+//! Uses `hyper-util` for outbound connections (ecoBin compliant, no reqwest/ring).
 
 use super::ProtocolAdapter;
 use crate::error::{Result, RhizoCryptError};
 use async_trait::async_trait;
 use std::fmt;
 
+pub use eco_http::EcoHttpClient;
+
+/// Lightweight HTTP client built on hyper-util (pure Rust, no reqwest).
+///
+/// Used by all outbound HTTP adapters and primal-specific clients.
+pub mod eco_http {
+    use bytes::Bytes;
+    use http_body_util::{BodyExt, Full};
+    use hyper::Uri;
+    use hyper_util::client::legacy::Client;
+    use hyper_util::rt::TokioExecutor;
+    use std::time::Duration;
+
+    /// Pure-Rust HTTP client for ecosystem IPC.
+    #[derive(Clone)]
+    pub struct EcoHttpClient {
+        client: Client<hyper_util::client::legacy::connect::HttpConnector, Full<Bytes>>,
+        timeout: Duration,
+    }
+
+    impl EcoHttpClient {
+        /// Create a client with the given timeout.
+        #[must_use]
+        pub fn new(timeout: Duration) -> Self {
+            let client = Client::builder(TokioExecutor::new()).build_http();
+            Self {
+                client,
+                timeout,
+            }
+        }
+
+        /// POST JSON to a URL, returning `(status_code, body_text)`.
+        ///
+        /// # Errors
+        ///
+        /// Returns error on connection failure or body read failure.
+        pub async fn post_json(&self, url: &str, body: &str) -> Result<(u16, String)> {
+            let uri: Uri = url.parse().map_err(|e| err(format!("Invalid URL: {e}")))?;
+
+            let req = hyper::Request::builder()
+                .method(hyper::Method::POST)
+                .uri(uri)
+                .header("Content-Type", "application/json")
+                .body(Full::new(Bytes::from(body.to_owned())))
+                .map_err(|e| err(format!("Failed to build request: {e}")))?;
+
+            let response = tokio::time::timeout(self.timeout, self.client.request(req))
+                .await
+                .map_err(|_| err("HTTP request timed out".to_string()))?
+                .map_err(|e| err(format!("HTTP request failed: {e}")))?;
+
+            let status = response.status().as_u16();
+            let body_bytes = response
+                .into_body()
+                .collect()
+                .await
+                .map_err(|e| err(format!("Failed to read response: {e}")))?
+                .to_bytes();
+            let text = String::from_utf8_lossy(&body_bytes).into_owned();
+
+            Ok((status, text))
+        }
+
+        /// GET a URL, returning `(status_code, body_text)`.
+        ///
+        /// # Errors
+        ///
+        /// Returns error on connection failure.
+        pub async fn get(&self, url: &str) -> Result<(u16, String)> {
+            let uri: Uri = url.parse().map_err(|e| err(format!("Invalid URL: {e}")))?;
+
+            let req = hyper::Request::builder()
+                .method(hyper::Method::GET)
+                .uri(uri)
+                .body(Full::new(Bytes::new()))
+                .map_err(|e| err(format!("Failed to build request: {e}")))?;
+
+            let response = tokio::time::timeout(self.timeout, self.client.request(req))
+                .await
+                .map_err(|_| err("HTTP request timed out".to_string()))?
+                .map_err(|e| err(format!("HTTP request failed: {e}")))?;
+
+            let status = response.status().as_u16();
+            let body_bytes = response
+                .into_body()
+                .collect()
+                .await
+                .map_err(|e| err(format!("Failed to read response: {e}")))?
+                .to_bytes();
+            let text = String::from_utf8_lossy(&body_bytes).into_owned();
+
+            Ok((status, text))
+        }
+
+        /// Validate a URL string.
+        ///
+        /// # Errors
+        ///
+        /// Returns error if the URL is invalid.
+        pub fn validate_url(url: &str) -> Result<String> {
+            let _: Uri = url.parse().map_err(|e| err(format!("Invalid URL: {e}")))?;
+            Ok(url.trim_end_matches('/').to_string())
+        }
+    }
+
+    impl std::fmt::Debug for EcoHttpClient {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("EcoHttpClient").field("timeout", &self.timeout).finish_non_exhaustive()
+        }
+    }
+
+    type Result<T> = std::result::Result<T, crate::error::RhizoCryptError>;
+
+    fn err(msg: String) -> crate::error::RhizoCryptError {
+        crate::error::RhizoCryptError::integration(msg)
+    }
+}
+
 /// HTTP protocol adapter.
 ///
-/// Communicates with services via HTTP/REST APIs.
+/// Communicates with services via HTTP/REST APIs using hyper (pure Rust).
 #[derive(Clone)]
 pub struct HttpAdapter {
     base_url: String,
-    client: reqwest::Client,
+    client: EcoHttpClient,
 }
 
 impl HttpAdapter {
@@ -30,20 +149,10 @@ impl HttpAdapter {
     ///
     /// Returns error if base URL is invalid.
     pub fn new(base_url: &str) -> Result<Self> {
-        // Validate URL
-        let parsed = base_url
-            .parse::<reqwest::Url>()
-            .map_err(|e| RhizoCryptError::integration(format!("Invalid URL: {e}")))?;
-
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .map_err(|e| {
-                RhizoCryptError::integration(format!("Failed to create HTTP client: {e}"))
-            })?;
-
+        let base_url = EcoHttpClient::validate_url(base_url)?;
+        let client = EcoHttpClient::new(std::time::Duration::from_secs(30));
         Ok(Self {
-            base_url: parsed.to_string().trim_end_matches('/').to_string(),
+            base_url,
             client,
         })
     }
@@ -72,56 +181,27 @@ impl ProtocolAdapter for HttpAdapter {
     async fn call_json(&self, method: &str, args_json: &str) -> Result<String> {
         let url = self.build_url(method);
 
-        tracing::debug!(
-            url = %url,
-            method = method,
-            "HTTP adapter calling method"
-        );
+        tracing::debug!(url = %url, method = method, "HTTP adapter calling method");
 
-        let response = self
-            .client
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .body(args_json.to_owned())
-            .send()
-            .await
-            .map_err(|e| RhizoCryptError::integration(format!("HTTP request failed: {e}")))?;
+        let (status, body) = self.client.post_json(&url, args_json).await?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_else(|_| "<no body>".to_string());
+        if !(200..300).contains(&status) {
             return Err(RhizoCryptError::integration(format!(
                 "HTTP request failed with status {status}: {body}"
             )));
         }
 
-        response
-            .text()
-            .await
-            .map_err(|e| RhizoCryptError::integration(format!("Failed to read response: {e}")))
+        Ok(body)
     }
 
     async fn call_oneway_json(&self, method: &str, args_json: &str) -> Result<()> {
         let url = self.build_url(method);
 
-        tracing::debug!(
-            url = %url,
-            method = method,
-            "HTTP adapter calling method (oneway)"
-        );
+        tracing::debug!(url = %url, method = method, "HTTP adapter calling method (oneway)");
 
-        let response = self
-            .client
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .body(args_json.to_owned())
-            .send()
-            .await
-            .map_err(|e| RhizoCryptError::integration(format!("HTTP request failed: {e}")))?;
+        let (status, _) = self.client.post_json(&url, args_json).await?;
 
-        // Check status but don't wait for response body
-        if !response.status().is_success() {
-            let status = response.status();
+        if !(200..300).contains(&status) {
             return Err(RhizoCryptError::integration(format!(
                 "HTTP request failed with status {status}"
             )));
@@ -131,24 +211,14 @@ impl ProtocolAdapter for HttpAdapter {
     }
 
     async fn is_healthy(&self) -> bool {
-        // Try to connect to /health endpoint
         let health_url = format!("{}/health", self.base_url);
-
-        self.client
-            .get(&health_url)
-            .send()
-            .await
-            .is_ok_and(|response| response.status().is_success())
+        self.client.get(&health_url).await.is_ok_and(|(status, _)| (200..300).contains(&status))
     }
 
     fn endpoint(&self) -> &str {
         &self.base_url
     }
 }
-
-// ============================================================================
-// Tests
-// ============================================================================
 
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test code")]
@@ -165,7 +235,7 @@ mod tests {
     #[test]
     fn test_http_adapter_https() {
         let adapter = HttpAdapter::new("https://api.example.com").unwrap();
-        assert_eq!(adapter.protocol(), "http"); // Still "http" protocol type
+        assert_eq!(adapter.protocol(), "http");
         assert_eq!(adapter.endpoint(), "https://api.example.com");
     }
 

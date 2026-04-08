@@ -139,7 +139,7 @@ else
         error "Gap Discovered: Message format mismatch"
         echo ""
         info "This is expected during first integration!"
-        info "Documenting gap in ../GAPS_DISCOVERED.md"
+        info "This gap is documented in the wateringHole handoff"
         echo ""
         info "Expected format from RENDEZVOUS_PROTOCOL_SPEC.md"
         info "Actual requirements may differ in implementation"

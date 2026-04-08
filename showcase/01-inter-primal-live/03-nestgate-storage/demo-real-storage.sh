@@ -159,7 +159,7 @@ echo "  • Storage API: ⚠️  Format may vary"
 echo "  • Content addressing: ✅ Demonstrated"
 echo "  • rhizoCrypt client: ✅ StorageClient available (capability-based)"
 echo ""
-echo -e "${YELLOW}▶ Next demo:${NC} ./demo-real-retrieval.sh"
+echo -e "${YELLOW}▶ Next demo:${NC} ./demo-store-retrieve.sh"
 echo ""
 
 # Cleanup
