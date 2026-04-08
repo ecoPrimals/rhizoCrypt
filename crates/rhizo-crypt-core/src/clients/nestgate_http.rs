@@ -281,42 +281,26 @@ impl NestGateHttpClient {
 }
 
 /// Errors from `NestGate` HTTP client.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum NestGateHttpError {
     /// HTTP request failed.
-    Request(reqwest::Error),
+    #[error("HTTP request failed: {0}")]
+    Request(#[source] reqwest::Error),
     /// Non-success HTTP status.
+    #[error("HTTP status {0}")]
     Status(u16),
     /// Failed to parse response.
-    Parse(reqwest::Error),
+    #[error("Failed to parse response: {0}")]
+    Parse(#[source] reqwest::Error),
     /// Store operation failed.
+    #[error("Store operation failed")]
     StoreFailed,
     /// Blob not found.
+    #[error("Blob not found")]
     NotFound,
     /// Invalid data format.
+    #[error("Invalid data format")]
     InvalidData,
-}
-
-impl std::fmt::Display for NestGateHttpError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Request(e) => write!(f, "HTTP request failed: {e}"),
-            Self::Status(code) => write!(f, "HTTP status {code}"),
-            Self::Parse(e) => write!(f, "Failed to parse response: {e}"),
-            Self::StoreFailed => write!(f, "Store operation failed"),
-            Self::NotFound => write!(f, "Blob not found"),
-            Self::InvalidData => write!(f, "Invalid data format"),
-        }
-    }
-}
-
-impl std::error::Error for NestGateHttpError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Request(e) | Self::Parse(e) => Some(e),
-            _ => None,
-        }
-    }
 }
 
 #[cfg(test)]

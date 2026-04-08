@@ -149,12 +149,17 @@ pub fn cleanup_socket_at(path: &Path) {
 ///
 /// Uses `rhizo_crypt_core::transport::socket_path_for_primal` which
 /// respects `$XDG_RUNTIME_DIR/biomeos/` per the ecosystem standard.
-/// Falls back to the primal name `"rhizocrypt"` (lowercase, matching
-/// the IPC compliance matrix).
+/// Falls back to `{temp_dir}/biomeos/rhizocrypt.sock` on platforms where
+/// path-based sockets are unavailable (Android, Windows).
 #[must_use]
 pub fn default_socket_path() -> PathBuf {
-    rhizo_crypt_core::transport::socket_path_for_primal("rhizocrypt")
-        .unwrap_or_else(|| PathBuf::from("/tmp/biomeos/rhizocrypt.sock"))
+    use rhizo_crypt_core::constants::{BIOMEOS_SOCKET_SUBDIR, SOCKET_FILE_EXTENSION};
+
+    rhizo_crypt_core::transport::socket_path_for_primal("rhizocrypt").unwrap_or_else(|| {
+        std::env::temp_dir()
+            .join(BIOMEOS_SOCKET_SUBDIR)
+            .join(format!("rhizocrypt{SOCKET_FILE_EXTENSION}"))
+    })
 }
 
 #[cfg(test)]

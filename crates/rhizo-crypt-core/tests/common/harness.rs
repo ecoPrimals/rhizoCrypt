@@ -97,12 +97,6 @@ impl TestHarness {
     }
 }
 
-impl Drop for TestHarness {
-    fn drop(&mut self) {
-        // Cleanup is handled by the primal's Drop implementation
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

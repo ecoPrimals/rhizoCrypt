@@ -238,39 +238,23 @@ impl BearDogHttpClient {
 }
 
 /// Errors from `BearDog` HTTP client.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum BearDogHttpError {
     /// HTTP request failed.
-    Request(reqwest::Error),
+    #[error("HTTP request failed: {0}")]
+    Request(#[source] reqwest::Error),
     /// Non-success HTTP status.
+    #[error("HTTP status {0}")]
     Status(u16),
     /// Failed to parse response.
-    Parse(reqwest::Error),
+    #[error("Failed to parse response: {0}")]
+    Parse(#[source] reqwest::Error),
     /// Signing operation failed.
+    #[error("Signing operation failed")]
     SigningFailed,
     /// Invalid signature format.
+    #[error("Invalid signature format")]
     InvalidSignature,
-}
-
-impl std::fmt::Display for BearDogHttpError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Request(e) => write!(f, "HTTP request failed: {e}"),
-            Self::Status(code) => write!(f, "HTTP status {code}"),
-            Self::Parse(e) => write!(f, "Failed to parse response: {e}"),
-            Self::SigningFailed => write!(f, "Signing operation failed"),
-            Self::InvalidSignature => write!(f, "Invalid signature format"),
-        }
-    }
-}
-
-impl std::error::Error for BearDogHttpError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Request(e) | Self::Parse(e) => Some(e),
-            _ => None,
-        }
-    }
 }
 
 #[cfg(test)]

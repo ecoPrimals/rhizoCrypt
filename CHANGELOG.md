@@ -5,6 +5,45 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-08 (session 27)
+
+### Changed
+
+#### Capability Wire Standard L3, Deep Debt Cleanup, Smart Refactoring
+
+**1. Capability Wire Standard — Full Level 3 Compliance**
+- Added flat `methods` string array to `capabilities.list` response (L2 requirement — biomeOS skips format detection when present)
+- Added `consumed_capabilities` (10 cross-primal deps) for composition completeness validation
+- Added `cost_estimates` (per-method cpu tier + latency_ms) for AI-assisted routing
+- Added `operation_dependencies` (method DAG) for execution planners
+- Added `protocol` and `transport` array metadata
+- Live-validated against CAPABILITY_WIRE_STANDARD.md v1.0
+
+**2. Manual Error Impls → thiserror (Modern Idiomatic Rust)**
+- Migrated `BearDogHttpError` from manual `Display`+`Error` to `thiserror::Error` derive
+- Migrated `NestGateHttpError` from manual `Display`+`Error` to `thiserror::Error` derive
+- Migrated `RateLimitExceeded` from manual `Display`+`Error` to `thiserror::Error` derive
+- All error types now consistent with `RhizoCryptError` and `RpcError` patterns
+
+**3. Hardcoded Path Elimination**
+- Replaced hardcoded `/tmp/biomeos/rhizocrypt.sock` fallback in UDS module with `temp_dir()/biomeos/rhizocrypt.sock` using ecosystem constants (`BIOMEOS_SOCKET_SUBDIR`, `SOCKET_FILE_EXTENSION`)
+
+**4. Smart Refactoring — `rhizocrypt.rs` (936 → 631 + 325)**
+- Converted `rhizocrypt.rs` to directory module `rhizocrypt/mod.rs`
+- Extracted dehydration pipeline (summary generation, attestation collection, permanent storage commit) to `rhizocrypt/dehydration_ops.rs`
+- Replaced anonymous `(Option<Timestamp>, Option<Timestamp>, u64, AgentRole)` tuple with named `AgentAccumulator` struct
+
+**5. Test Helper Deduplication**
+- Consolidated `create_test_store()` from 5 duplicated copies in redb test files into single definition in `store_redb.rs`
+- Child test modules access via `use super::*`
+
+**6. Dead Code Removal**
+- Removed no-op `Drop` impl on `TestHarness` (cleanup already handled by inner primal's own `Drop`)
+
+**7. Metrics**
+- 1,425 tests passing, 0 clippy warnings, 0 fmt issues
+- Zero unsafe code (all crates `#![forbid(unsafe_code)]`)
+
 ## [0.14.0-dev] - 2026-04-07 (session 26)
 
 ### Changed

@@ -273,21 +273,14 @@ impl RateLimiter {
 }
 
 /// Rate limit error.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("Rate limit exceeded for {operation:?} operation from {client}")]
 pub struct RateLimitExceeded {
     /// The operation that was rate limited.
     pub operation: OperationType,
     /// Client that was rate limited.
     pub client: IpAddr,
 }
-
-impl std::fmt::Display for RateLimitExceeded {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Rate limit exceeded for {:?} operation from {}", self.operation, self.client)
-    }
-}
-
-impl std::error::Error for RateLimitExceeded {}
 
 #[cfg(test)]
 mod tests {

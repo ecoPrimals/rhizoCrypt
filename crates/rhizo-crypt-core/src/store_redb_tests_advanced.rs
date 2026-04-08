@@ -9,13 +9,6 @@ use tempfile::TempDir;
 
 const VERTICES_TABLE: TableDefinition<&[u8], &[u8]> = TableDefinition::new("vertices");
 
-fn create_test_store() -> (RedbDagStore, TempDir) {
-    let dir = TempDir::new().expect("Failed to create temp dir");
-    let db_path = dir.path().join("db.redb");
-    let store = RedbDagStore::open(&db_path).expect("Failed to open store");
-    (store, dir)
-}
-
 // === Error handling tests ===
 
 #[test]

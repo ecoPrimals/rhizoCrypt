@@ -4,14 +4,6 @@
 use super::*;
 use crate::event::EventType;
 use crate::vertex::VertexBuilder;
-use tempfile::TempDir;
-
-fn create_test_store() -> (RedbDagStore, TempDir) {
-    let dir = TempDir::new().expect("Failed to create temp dir");
-    let db_path = dir.path().join("db.redb");
-    let store = RedbDagStore::open(&db_path).expect("Failed to open store");
-    (store, dir)
-}
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_stats_accuracy() {

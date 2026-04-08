@@ -7,13 +7,6 @@ use crate::store::DagStore;
 use crate::vertex::VertexBuilder;
 use tempfile::TempDir;
 
-fn create_test_store() -> (RedbDagStore, TempDir) {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("db.redb");
-    let store = RedbDagStore::open(&db_path).expect("open");
-    (store, dir)
-}
-
 #[test]
 fn test_open_with_non_database_file() {
     let dir = TempDir::new().expect("temp dir");

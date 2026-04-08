@@ -568,6 +568,14 @@ impl std::fmt::Debug for RedbDagStore {
 }
 
 #[cfg(test)]
+fn create_test_store() -> (RedbDagStore, tempfile::TempDir) {
+    let dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    let db_path = dir.path().join("db.redb");
+    let store = RedbDagStore::open(&db_path).expect("Failed to open store");
+    (store, dir)
+}
+
+#[cfg(test)]
 #[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "store_redb_tests.rs"]
 mod tests;
