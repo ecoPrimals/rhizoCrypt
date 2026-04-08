@@ -103,11 +103,75 @@ pub fn socket_dir() -> Option<PathBuf> {
 /// sockets are not available on this platform.
 ///
 /// Returns `{socket_dir}/{name}.sock` when [`socket_dir()`] is `Some`.
+/// For family-scoped sockets (BTSP Phase 1), use [`family_scoped_socket_path`].
 #[must_use]
 pub fn socket_path_for_primal(name: &str) -> Option<PathBuf> {
     let dir = socket_dir()?;
     let filename = format!("{name}{SOCKET_FILE_EXTENSION}");
     Some(dir.join(filename))
+}
+
+/// Constructs a BTSP Phase 1 family-scoped socket path.
+///
+/// When `FAMILY_ID` (or `{PRIMAL_ENV_PREFIX}_FAMILY_ID`) is set, returns
+/// `{socket_dir}/{name}-{family_id}.sock`. When unset, falls back to
+/// `{socket_dir}/{name}.sock` (development mode).
+///
+/// Returns `None` on platforms without path-based sockets.
+#[must_use]
+pub fn family_scoped_socket_path(name: &str, primal_env_prefix: &str) -> Option<PathBuf> {
+    let dir = socket_dir()?;
+    let family_id = read_family_id(primal_env_prefix);
+    let filename = family_id.map_or_else(
+        || format!("{name}{SOCKET_FILE_EXTENSION}"),
+        |fid| format!("{name}-{fid}{SOCKET_FILE_EXTENSION}"),
+    );
+    Some(dir.join(filename))
+}
+
+/// Read `FAMILY_ID` from the environment, checking the primal-specific
+/// override first (`{PREFIX}_FAMILY_ID`), then the ecosystem-wide `FAMILY_ID`.
+///
+/// Returns `None` if unset or the special value `"default"`.
+#[must_use]
+pub fn read_family_id(primal_env_prefix: &str) -> Option<String> {
+    let primal_key = format!("{primal_env_prefix}_FAMILY_ID");
+    let val = std::env::var(&primal_key).or_else(|_| std::env::var("FAMILY_ID")).ok()?;
+    let val = val.trim().to_string();
+    if val.is_empty() || val == "default" {
+        None
+    } else {
+        Some(val)
+    }
+}
+
+/// Returns `true` when `BIOMEOS_INSECURE` is set to a truthy value (`1`, `true`, `yes`).
+#[must_use]
+pub fn is_biomeos_insecure() -> bool {
+    std::env::var("BIOMEOS_INSECURE").ok().is_some_and(|v| matches!(v.trim(), "1" | "true" | "yes"))
+}
+
+/// BTSP Phase 1 environment guard.
+///
+/// Validates that `FAMILY_ID` and `BIOMEOS_INSECURE` are not both set.
+/// Per the BTSP protocol standard, this configuration is an error — the
+/// primal MUST refuse to start.
+///
+/// # Errors
+///
+/// Returns a human-readable error message when the conflict is detected.
+pub fn btsp_env_guard(primal_env_prefix: &str) -> Result<(), String> {
+    let family = read_family_id(primal_env_prefix);
+    let insecure = is_biomeos_insecure();
+
+    if family.is_some() && insecure {
+        return Err("BTSP conflict: FAMILY_ID is set (production mode) but BIOMEOS_INSECURE=1 \
+             (development mode). These are mutually exclusive. \
+             Unset BIOMEOS_INSECURE for production, or unset FAMILY_ID for development."
+            .to_string());
+    }
+
+    Ok(())
 }
 
 /// Transport hint for primal IPC, selected per-platform per ecoBin v2.0.
@@ -489,5 +553,202 @@ mod tests {
         };
         let tcp_cloned = tcp.clone();
         assert_eq!(tcp, tcp_cloned);
+    }
+
+    // ====================================================================
+    // BTSP Phase 1: Family-scoped socket naming + environment guard
+    // ====================================================================
+
+    #[test]
+    fn test_read_family_id_from_ecosystem_var() {
+        temp_env::with_vars(
+            [("FAMILY_ID", Some("acme-prod")), ("RHIZOCRYPT_FAMILY_ID", None::<&str>)],
+            || {
+                let fid = read_family_id("RHIZOCRYPT");
+                assert_eq!(fid.as_deref(), Some("acme-prod"));
+            },
+        );
+    }
+
+    #[test]
+    fn test_read_family_id_primal_override_takes_precedence() {
+        temp_env::with_vars(
+            [("FAMILY_ID", Some("eco-wide")), ("RHIZOCRYPT_FAMILY_ID", Some("primal-specific"))],
+            || {
+                let fid = read_family_id("RHIZOCRYPT");
+                assert_eq!(fid.as_deref(), Some("primal-specific"));
+            },
+        );
+    }
+
+    #[test]
+    fn test_read_family_id_none_when_unset() {
+        temp_env::with_vars(
+            [("FAMILY_ID", None::<&str>), ("RHIZOCRYPT_FAMILY_ID", None::<&str>)],
+            || {
+                assert!(read_family_id("RHIZOCRYPT").is_none());
+            },
+        );
+    }
+
+    #[test]
+    fn test_read_family_id_default_treated_as_none() {
+        temp_env::with_vars([("FAMILY_ID", Some("default"))], || {
+            assert!(read_family_id("RHIZOCRYPT").is_none());
+        });
+    }
+
+    #[test]
+    fn test_read_family_id_empty_treated_as_none() {
+        temp_env::with_vars([("FAMILY_ID", Some(""))], || {
+            assert!(read_family_id("RHIZOCRYPT").is_none());
+        });
+    }
+
+    #[test]
+    fn test_read_family_id_whitespace_trimmed() {
+        temp_env::with_vars([("FAMILY_ID", Some("  acme  "))], || {
+            let fid = read_family_id("RHIZOCRYPT");
+            assert_eq!(fid.as_deref(), Some("acme"));
+        });
+    }
+
+    #[test]
+    fn test_is_biomeos_insecure_truthy_values() {
+        for val in &["1", "true", "yes"] {
+            temp_env::with_vars([("BIOMEOS_INSECURE", Some(*val))], || {
+                assert!(is_biomeos_insecure(), "Expected insecure for '{val}'");
+            });
+        }
+    }
+
+    #[test]
+    fn test_is_biomeos_insecure_falsy_values() {
+        for val in &["0", "false", "no", ""] {
+            temp_env::with_vars([("BIOMEOS_INSECURE", Some(*val))], || {
+                assert!(!is_biomeos_insecure(), "Expected secure for '{val}'");
+            });
+        }
+        temp_env::with_vars([("BIOMEOS_INSECURE", None::<&str>)], || {
+            assert!(!is_biomeos_insecure(), "Expected secure when unset");
+        });
+    }
+
+    #[test]
+    fn test_btsp_guard_ok_production() {
+        temp_env::with_vars(
+            [("FAMILY_ID", Some("acme-prod")), ("BIOMEOS_INSECURE", None::<&str>)],
+            || {
+                assert!(btsp_env_guard("RHIZOCRYPT").is_ok());
+            },
+        );
+    }
+
+    #[test]
+    fn test_btsp_guard_ok_development() {
+        temp_env::with_vars([("FAMILY_ID", None::<&str>), ("BIOMEOS_INSECURE", Some("1"))], || {
+            assert!(btsp_env_guard("RHIZOCRYPT").is_ok());
+        });
+    }
+
+    #[test]
+    fn test_btsp_guard_ok_neither_set() {
+        temp_env::with_vars(
+            [("FAMILY_ID", None::<&str>), ("BIOMEOS_INSECURE", None::<&str>)],
+            || {
+                assert!(btsp_env_guard("RHIZOCRYPT").is_ok());
+            },
+        );
+    }
+
+    #[test]
+    fn test_btsp_guard_rejects_conflict() {
+        temp_env::with_vars(
+            [("FAMILY_ID", Some("acme-prod")), ("BIOMEOS_INSECURE", Some("1"))],
+            || {
+                let result = btsp_env_guard("RHIZOCRYPT");
+                assert!(result.is_err());
+                assert!(result.unwrap_err().contains("BTSP conflict"));
+            },
+        );
+    }
+
+    #[test]
+    fn test_btsp_guard_default_family_not_conflict() {
+        temp_env::with_vars(
+            [("FAMILY_ID", Some("default")), ("BIOMEOS_INSECURE", Some("1"))],
+            || {
+                assert!(btsp_env_guard("RHIZOCRYPT").is_ok(), "default is not a real FAMILY_ID");
+            },
+        );
+    }
+
+    #[test]
+    fn test_family_scoped_socket_path_with_family() {
+        if cfg!(target_os = "android") || cfg!(target_os = "windows") {
+            return;
+        }
+        let temp = tempfile::tempdir().expect("temp dir");
+        let path_str = temp.path().to_str().unwrap();
+        temp_env::with_vars(
+            [
+                ("XDG_RUNTIME_DIR", Some(path_str)),
+                ("FAMILY_ID", Some("acme-42")),
+                ("RHIZOCRYPT_FAMILY_ID", None::<&str>),
+            ],
+            || {
+                let path = family_scoped_socket_path("rhizocrypt", "RHIZOCRYPT").unwrap();
+                assert!(
+                    path.to_string_lossy().ends_with("rhizocrypt-acme-42.sock"),
+                    "Expected family-scoped path, got: {path:?}"
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_family_scoped_socket_path_without_family() {
+        if cfg!(target_os = "android") || cfg!(target_os = "windows") {
+            return;
+        }
+        let temp = tempfile::tempdir().expect("temp dir");
+        let path_str = temp.path().to_str().unwrap();
+        temp_env::with_vars(
+            [
+                ("XDG_RUNTIME_DIR", Some(path_str)),
+                ("FAMILY_ID", None::<&str>),
+                ("RHIZOCRYPT_FAMILY_ID", None::<&str>),
+            ],
+            || {
+                let path = family_scoped_socket_path("rhizocrypt", "RHIZOCRYPT").unwrap();
+                assert!(
+                    path.to_string_lossy().ends_with("rhizocrypt.sock"),
+                    "Expected unscoped path, got: {path:?}"
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_family_scoped_socket_primal_override() {
+        if cfg!(target_os = "android") || cfg!(target_os = "windows") {
+            return;
+        }
+        let temp = tempfile::tempdir().expect("temp dir");
+        let path_str = temp.path().to_str().unwrap();
+        temp_env::with_vars(
+            [
+                ("XDG_RUNTIME_DIR", Some(path_str)),
+                ("FAMILY_ID", Some("eco-wide")),
+                ("RHIZOCRYPT_FAMILY_ID", Some("override-99")),
+            ],
+            || {
+                let path = family_scoped_socket_path("rhizocrypt", "RHIZOCRYPT").unwrap();
+                assert!(
+                    path.to_string_lossy().ends_with("rhizocrypt-override-99.sock"),
+                    "Primal-specific FAMILY_ID should take precedence, got: {path:?}"
+                );
+            },
+        );
     }
 }

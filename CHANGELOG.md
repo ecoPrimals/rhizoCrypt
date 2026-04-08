@@ -5,6 +5,28 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-08 (session 29)
+
+### Changed
+
+#### BTSP Phase 1: Family-Scoped Socket Naming (GAP-MATRIX-12)
+
+- **`FAMILY_ID` env support**: Reads `RHIZOCRYPT_FAMILY_ID` (primal-specific override) or `FAMILY_ID` (ecosystem-wide); `"default"` treated as unset
+- **Family-scoped socket**: When `FAMILY_ID` is set, UDS path becomes `rhizocrypt-{family_id}.sock` per BTSP socket naming convention
+- **`BIOMEOS_INSECURE` guard**: Refuses to start when both `FAMILY_ID` and `BIOMEOS_INSECURE=1` are set (mutually exclusive production/dev modes)
+- **`is_biomeos_insecure()`**: Truthy check for development mode (`1`, `true`, `yes`)
+- **Service startup**: Logs BTSP family ID and dev-mode warnings; guard check runs before DAG engine initialization
+- **16 new tests**: `read_family_id` (6 tests), `is_biomeos_insecure` (2), `btsp_env_guard` (5), `family_scoped_socket_path` (3)
+
+#### GAP-MATRIX-10: Wire L2 Verified Already Resolved
+
+- `capabilities.list` already returns `{primal, version, methods}` flat array (session 27)
+- `identity.get` already implemented (session 26)
+- Existing tests at `test_capability_list` and `test_identity_get` confirm compliance
+
+**Metrics**
+- 1,441 tests passing (up from 1,425), 0 clippy warnings, 0 fmt issues
+
 ## [0.14.0-dev] - 2026-04-08 (session 28)
 
 ### Changed

@@ -145,20 +145,25 @@ pub fn cleanup_socket_at(path: &Path) {
     }
 }
 
-/// Resolve the default socket path for rhizoCrypt.
+/// Resolve the default socket path for rhizoCrypt (BTSP Phase 1 compliant).
 ///
-/// Uses `rhizo_crypt_core::transport::socket_path_for_primal` which
-/// respects `$XDG_RUNTIME_DIR/biomeos/` per the ecosystem standard.
-/// Falls back to `{temp_dir}/biomeos/rhizocrypt.sock` on platforms where
-/// path-based sockets are unavailable (Android, Windows).
+/// When `FAMILY_ID` is set, returns `rhizocrypt-{family_id}.sock` per BTSP
+/// socket naming convention. When unset, returns `rhizocrypt.sock` (dev mode).
+///
+/// Uses `$XDG_RUNTIME_DIR/biomeos/` per the ecosystem standard.
+/// Falls back to `{temp_dir}/biomeos/` when path-based sockets are unavailable.
 #[must_use]
 pub fn default_socket_path() -> PathBuf {
     use rhizo_crypt_core::constants::{BIOMEOS_SOCKET_SUBDIR, SOCKET_FILE_EXTENSION};
+    use rhizo_crypt_core::transport::{family_scoped_socket_path, read_family_id};
 
-    rhizo_crypt_core::transport::socket_path_for_primal("rhizocrypt").unwrap_or_else(|| {
-        std::env::temp_dir()
-            .join(BIOMEOS_SOCKET_SUBDIR)
-            .join(format!("rhizocrypt{SOCKET_FILE_EXTENSION}"))
+    family_scoped_socket_path("rhizocrypt", "RHIZOCRYPT").unwrap_or_else(|| {
+        let family_id = read_family_id("RHIZOCRYPT");
+        let stem = family_id.map_or_else(
+            || format!("rhizocrypt{SOCKET_FILE_EXTENSION}"),
+            |fid| format!("rhizocrypt-{fid}{SOCKET_FILE_EXTENSION}"),
+        );
+        std::env::temp_dir().join(BIOMEOS_SOCKET_SUBDIR).join(stem)
     })
 }
 

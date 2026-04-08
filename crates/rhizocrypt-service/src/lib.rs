@@ -230,6 +230,16 @@ pub async fn run_server_with_ready(
 
     info!("Starting rhizoCrypt service...");
 
+    rhizo_crypt_core::transport::btsp_env_guard("RHIZOCRYPT").map_err(ServiceError::Config)?;
+
+    if rhizo_crypt_core::transport::is_biomeos_insecure() {
+        warn!("BIOMEOS_INSECURE=1 — running in development mode (no BTSP handshake)");
+    }
+
+    if let Some(fid) = rhizo_crypt_core::transport::read_family_id("RHIZOCRYPT") {
+        info!(family_id = %fid, "BTSP Phase 1: family-scoped socket naming active");
+    }
+
     let addr = resolve_bind_addr(port_override, host_override)?;
 
     info!(address = %addr, "Binding RPC server");

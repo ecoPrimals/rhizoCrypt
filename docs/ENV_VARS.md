@@ -1,6 +1,6 @@
 # 🔐 rhizoCrypt — Environment Variables
 
-**Last Updated**: April 7, 2026  
+**Last Updated**: April 8, 2026  
 **Version**: 0.14.0-dev  
 **Philosophy**: Capability-based, not primal-based
 
@@ -26,7 +26,10 @@ rhizoCrypt follows the **infant discovery** pattern: it starts with **zero knowl
 | `RHIZOCRYPT_PORT` | u16 | `9400` | tarpc server port (legacy alias for `RHIZOCRYPT_RPC_PORT`) |
 | `RHIZOCRYPT_JSONRPC_PORT` | u16 | tarpc port + 1 | JSON-RPC TCP port (dual-mode: HTTP POST + newline). Defaults to tarpc port + `JSONRPC_PORT_OFFSET` (1). Set to `0` for OS-assigned. |
 | `RHIZOCRYPT_METRICS_PORT` | u16 | `9401` | Prometheus metrics port |
-| `XDG_RUNTIME_DIR` | path | `/run/user/$UID` | Base dir for UDS socket. When `--unix` is passed, the socket is created at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock`. |
+| `XDG_RUNTIME_DIR` | path | `/run/user/$UID` | Base dir for UDS socket. When `--unix` is passed, the socket is created at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` (or `rhizocrypt-{FAMILY_ID}.sock` when family-scoped). |
+| `FAMILY_ID` | string | (unset) | BTSP Phase 1: Family scope for socket naming. When set (not `"default"`), socket becomes `rhizocrypt-{family_id}.sock`. Production mode — BTSP handshake will be mandatory in Phase 2+. |
+| `RHIZOCRYPT_FAMILY_ID` | string | (unset) | Primal-specific override for `FAMILY_ID`. Takes precedence over the ecosystem-wide variable. |
+| `BIOMEOS_INSECURE` | boolean | (unset) | Development mode flag (`1`, `true`, `yes`). No BTSP handshake. **Cannot be set when `FAMILY_ID` is set** — primal refuses to start on conflict. |
 
 ### Unix Domain Socket (UDS)
 

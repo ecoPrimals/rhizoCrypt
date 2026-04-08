@@ -65,7 +65,7 @@ Three workspace crates:
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,425 passing (all features) |
+| Tests | 1,441 passing (all features) |
 | Coverage | 94.34% lines, 93.41% functions, 94.81% branches (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
 | Source files | 135 `.rs`, ~46,200 lines |
