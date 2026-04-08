@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`safe_env/mod.rs`** smart refactor: Extracted 427-line test module to `safe_env/tests.rs` (mod.rs: 687 → 260 lines); test strings evolved to capability-neutral IDs
 - **Ecosystem file count**: 136 `.rs` files (was 135)
 
+#### Documentation & Debris Cleanup
+
+- **DEPLOYMENT_CHECKLIST.md**: Updated test count (1,425 → 1,441), file count (135 → 136), session reference (28 → 30)
+- **Showcase docs**: Updated stale test counts across `00_START_HERE.md`, `README.md`; fixed phantom script tree in `01-inter-primal-live/README.md` to match actual files; fixed `GAPS_DISCOVERED.md` references → wateringHole handoffs; fixed `bins/` → `primalBins/` paths; removed foreign `RootPulse` reference; fixed broken `00_START_HERE.md` path in `QUICK_START.sh`
+- **Specs index**: Updated date to April 8, 2026
+- **wateringHole**: Fixed rhizoCrypt description (Encrypted Storage → Ephemeral DAG), grade distribution (A not B), test count in Tier 1, wire standard handoff columns, primalSpring gap matrix L2→L3
+
 ## [0.14.0-dev] - 2026-04-08 (session 29)
 
 ### Changed

@@ -2,7 +2,7 @@
 
 **Purpose**: Add real cryptographic signatures to rhizoCrypt vertices using BearDog HSM  
 **Status**: Phase 2 - Identity & Signing  
-**Binary**: `../../../bins/beardog`
+**Binary**: Signing provider via `showcase-env.sh` (`$PRIMAL_BINS`)
 
 ---
 
@@ -157,9 +157,8 @@ BearDog provides:
 
 ## 🔗 Related
 
-- [BearDog Status](../../../bins/beardog status)
 - [BearDog User Guide](https://github.com/eastgate-software/beardog)
-- [GAPS_DISCOVERED.md](../GAPS_DISCOVERED.md)
+- Gap tracking: `infra/wateringHole/` handoffs
 
 ---
 

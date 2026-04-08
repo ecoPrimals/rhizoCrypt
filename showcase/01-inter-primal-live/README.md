@@ -2,7 +2,7 @@
 
 **Purpose**: Demonstrate rhizoCrypt integration with **REAL Phase 1 binaries** (NO MOCKS)  
 **Philosophy**: "Interactions show us gaps in our evolution"  
-**Bins Location**: `../../bins/`
+**Bins Location**: `../../../primalBins/` (via `showcase-env.sh`)
 
 ---
 
@@ -22,40 +22,51 @@ Integrate rhizoCrypt with real Phase 1 primals to:
 
 ```
 01-inter-primal-live/
-├── 01-songbird-discovery/    # Foundation: Capability discovery
-│   ├── start-songbird.sh      # Start ../../../bins/songbird-rendezvous
-│   ├── demo-register.sh       # Register rhizoCrypt capabilities
-│   ├── demo-discover.sh       # Find other primals
-│   └── demo-health.sh         # Health monitoring
+├── 01-songbird-discovery/        # Foundation: Capability discovery
+│   ├── start-songbird.sh         # Start discovery adapter
+│   ├── stop-songbird.sh          # Clean shutdown
+│   ├── demo-register.sh          # Register rhizoCrypt capabilities
+│   ├── demo-register-presence.sh # Presence-based registration
+│   ├── demo-discover.sh          # Find other primals
+│   ├── demo-health.sh            # Health monitoring
+│   ├── demo-heartbeat.sh         # Heartbeat lifecycle
+│   ├── demo-capability-query.sh  # Query capabilities by type
+│   └── demo-infant-boot.sh       # Infant discovery bootstrap
 │
-├── 02-beardog-signing/        # Identity: DID & Signatures
-│   ├── start-beardog.sh       # Start ../../../bins/beardog
-│   ├── demo-did-verify.sh     # Verify DID
-│   ├── demo-sign-vertex.sh    # Sign vertex with real HSM
-│   └── demo-multi-agent.sh    # Multi-DID session
+├── 02-beardog-signing/           # Identity: DID & Signatures
+│   ├── start-beardog.sh          # Start signing provider
+│   ├── demo-sign-vertex.sh       # Sign vertex with real HSM
+│   ├── demo-real-signing.sh      # End-to-end signing flow
+│   ├── demo-real-verification.sh # Signature verification
+│   ├── demo-multi-agent.sh       # Multi-DID session
+│   ├── demo-real-multi-agent.sh  # Multi-agent live demo
+│   ├── demo-generate-keys.sh     # Key generation
+│   ├── demo-discover-hsm.sh      # HSM discovery
+│   └── demo-hsm-discover.sh      # HSM provider lookup
 │
-├── 03-nestgate-storage/       # Storage: Content-addressed payloads
-│   ├── start-nestgate.sh      # Start ../../../bins/nestgate
-│   ├── demo-store-payload.sh  # Store DAG payload
-│   ├── demo-retrieve.sh       # Retrieve by hash
-│   └── demo-zfs-magic.sh      # NestGate ZFS snapshots
+├── 03-nestgate-storage/          # Storage: Content-addressed payloads
+│   ├── start-nestgate.sh         # Start storage provider
+│   ├── stop-nestgate.sh          # Clean shutdown
+│   ├── demo-store-retrieve.sh    # Store and retrieve by hash
+│   ├── demo-real-storage.sh      # End-to-end storage flow
+│   ├── demo-payload-storage.sh   # Payload storage demo
+│   ├── demo-payload-metadata.sh  # Metadata operations
+│   ├── demo-content-addressed.sh # Content-addressing demo
+│   └── demo-workflow-integration.sh # Storage in workflow context
 │
-├── 04-toadstool-compute/      # Compute: GPU/ML event tracking
-│   ├── start-toadstool.sh     # Start ../../../bins/toadstool-byob-server
-│   ├── demo-gpu-task.sh       # GPU task → DAG events
-│   ├── demo-ml-training.sh    # ML session capture
-│   └── demo-gaming-events.sh  # Gaming session tracking
+├── 04-toadstool-compute/         # Compute: GPU/ML event tracking
+│   ├── demo-dag-compute.sh       # DAG-linked compute tasks
+│   ├── demo-distributed-compute.sh # Distributed compute demo
+│   └── demo-gpu-provenance.sh    # GPU provenance tracking
 │
-├── 05-squirrel-ai/            # AI: MCP routing
-│   ├── start-squirrel.sh      # Start ../../../bins/squirrel
-│   ├── demo-mcp-session.sh    # MCP session → DAG
-│   └── demo-multi-provider.sh # Track provider routing
+├── 05-squirrel-ai/               # AI: MCP routing
+│   └── demo-intelligent-routing.sh # Intelligent request routing
 │
-└── 05-complete-workflows/     # Full ecosystem coordination
-    ├── demo-supply-chain.sh   # Supply chain provenance
-    ├── demo-ml-pipeline.sh    # ML pipeline with provenance
-    ├── demo-federated-identity.sh  # Federated identity flow
-    └── demo-document-workflow.sh   # Document lifecycle
+└── 05-complete-workflows/        # Full ecosystem coordination
+    ├── demo-supply-chain.sh      # Supply chain provenance
+    ├── demo-ml-pipeline.sh       # ML pipeline with provenance
+    ├── demo-federated-identity.sh # Federated identity flow
+    └── demo-document-workflow.sh  # Document lifecycle
 ```
 
 ---
@@ -64,19 +75,11 @@ Integrate rhizoCrypt with real Phase 1 primals to:
 
 ### Prerequisites
 
-**Phase 1 Binaries** (already available):
+**Phase 1 Binaries** (via `showcase-env.sh`):
 ```bash
-ls -lh ../../../bins/
-# beardog
-# nestgate
-# nestgate-client
-# songbird-cli
-# songbird-orchestrator
-# songbird-rendezvous  ← We'll use this first
-# squirrel
-# squirrel-cli
-# toadstool-byob-server
-# toadstool-cli
+source ../showcase-env.sh
+ls -lh "$PRIMAL_BINS"/
+# Discovery adapter, signing provider, storage provider, etc.
 ```
 
 ### Start with Songbird Discovery
@@ -94,9 +97,9 @@ cd 01-songbird-discovery
 
 As we integrate with each primal, we'll document gaps in:
 
-**`GAPS_DISCOVERED.md`** (created as we go):
-- Songbird: JWT handling, registration stability
-- BearDog: HSM integration, signature formats
+**Gap tracking**: Gaps are documented in `infra/wateringHole/` handoffs and `CHANGELOG.md`:
+- Discovery adapter: registration stability, heartbeat lifecycle
+- Signing provider: HSM integration, signature formats
 - NestGate: JWT config, payload limits, compression
 - ToadStool: Event stream performance, GPU metadata
 - Squirrel: MCP event format, provider metadata
@@ -279,7 +282,7 @@ As we integrate with each primal, we'll document gaps in:
 
 ## 📝 Gap Documentation Template
 
-For each gap, create entry in `GAPS_DISCOVERED.md`:
+For each gap, create an entry in the wateringHole handoff or `CHANGELOG.md`:
 
 ```markdown
 ## Gap #N: [Short Description]
@@ -339,7 +342,7 @@ NestGate's STATUS.md shows this is a known issue.
 1. **Start Here**: `cd 01-songbird-discovery`
 2. **Run**: `./start-songbird.sh`
 3. **Test**: `./demo-register.sh`
-4. **Document**: Any gaps in `GAPS_DISCOVERED.md`
+4. **Document**: Any gaps in wateringHole handoff or `CHANGELOG.md`
 5. **Iterate**: Fix, test, document, repeat
 
 ---

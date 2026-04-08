@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Batch Polish Script for Local Showcase
-# Updates all demos to use validated API patterns from RootPulse showcase
+# Updates all demos to use validated API patterns from rhizoCrypt showcase
 
 set -euo pipefail
 

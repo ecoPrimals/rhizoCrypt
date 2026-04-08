@@ -193,7 +193,7 @@ Based on audit and Phase 1 experience:
 - [x] rhizoCrypt registers with mesh
 - [x] rhizoCrypt receives tower ID
 - [x] Registration persists (survives restarts)
-- [x] All gaps documented in `../GAPS_DISCOVERED.md`
+- [x] All gaps documented in wateringHole handoffs
 
 ### Phase 2 Complete When:
 - [x] rhizoCrypt discovers other primals
@@ -220,7 +220,7 @@ Based on audit and Phase 1 experience:
 3. Send basic capability declaration
 4. Verify tower ID received
 
-**Document**: Any issues immediately in GAPS_DISCOVERED.md
+**Document**: Any issues immediately in wateringHole handoff or CHANGELOG.md
 
 ### Step 2: Capability Refinement
 **Goal**: Declare rhizoCrypt capabilities accurately
@@ -263,9 +263,9 @@ Based on audit and Phase 1 experience:
 
 **Default Port**: 8888 (self-managed)  
 **Protocol**: HTTP/REST API  
-**TLS**: Optional (certs in `../../../bins/certs/`)
+**TLS**: Optional (certs in `primalBins/certs/`)
 
-**Binary**: `../../../bins/songbird-rendezvous`
+**Binary**: Discovery adapter via `showcase-env.sh` (`$PRIMAL_BINS`)
 
 **Key Points**:
 - Songbird manages its own port (8888)
