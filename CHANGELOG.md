@@ -5,6 +5,37 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-09 (session 31)
+
+### Added
+
+#### BTSP Phase 2: Server-Side Handshake Enforcement
+- **`btsp/` module** in `rhizo-crypt-rpc`: types, framing, and server handshake implementation
+- **4-step X25519 + HMAC-SHA256 handshake** enforced on every UDS accept when `FAMILY_ID` is set
+- **Length-prefixed framing codec** (4-byte BE u32 header, 16 MiB max frame)
+- **`BtspServer::accept_handshake()`**: server-side protocol with ephemeral keypairs, challenge-response, cipher negotiation, session key derivation via ECDH + HKDF
+- **`BtspSession`**: negotiated cipher, session ID, directional keys with `zeroize(drop)`
+- **Environment detection**: `is_btsp_required()` + `read_family_seed()` for production/dev mode dispatch
+- **UDS accept wiring**: `handle_uds_connection()` gates all connections — handshake failure → error frame + drop, zero RPC surface
+- **11 new BTSP tests**: full round-trip, wrong-seed rejection, error frame, key derivation, framing codec
+- **New deps** (Pure Rust, ecoBin-compliant): `x25519-dalek`, `hmac`, `sha2`, `hkdf`, `rand`, `zeroize`
+
+### Changed
+
+#### Deep Debt Cleanup & Evolution
+- **Production mocks eliminated**: `SongbirdClient::register` (no `live-clients`) now returns `Err` instead of fake success; `ComputeProviderClient` subscribe/query methods return `Err` instead of empty data; `TarpcAdapter::ensure_connected` returns `Err` instead of caching a dummy connection
+- **Hardcoded primal names removed**: Adapter docs now use agnostic `{primal}` templates
+- **Rate limiter evolved**: `Arc<RwLock<HashMap<IpAddr, _>>>` → `DashMap<IpAddr, _>` — `check()`, `client_count()`, `cleanup()` are now sync (no async lock contention)
+- **Handler DRY-up**: 24 manual `RhizoCryptRpcServer { primal: Arc::clone(...), start_time: ... }` constructions → `server.clone()`
+- **Test extraction**: 6 large files refactored via `#[path]` pattern — `client.rs` (692→382), `rate_limit.rs` (549→279), `types.rs` (644→384), `session.rs` (607→436), `error.rs` (673→497), `config.rs` (515→380)
+- **Lint hygiene**: Removed `#![allow(unused_imports)]` from test roots; fixed 4 unused imports; aligned all `#[expect]` attributes with actual lint usage
+- **`TarpcConnection` stub simplified**: Unit struct replaces `{ _stub: () }`; `allow(dead_code)` suppressions removed
+
+**Metrics**
+- 1,456 tests passing (up from 1,441), 146 `.rs` files (up from 136), max file 687 lines (down from 928)
+- musl-static binary: 5.7 MB (static-pie, stripped)
+- Zero clippy warnings, zero unsafe blocks, `cargo deny` clean
+
 ## [0.14.0-dev] - 2026-04-08 (session 30)
 
 ### Changed

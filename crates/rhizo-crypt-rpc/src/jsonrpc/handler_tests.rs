@@ -481,14 +481,17 @@ async fn test_capability_list() {
     assert!(method_strs.contains(&"capabilities.list"), "L2: meta method present");
 
     let provided = obj["provided_capabilities"].as_array().unwrap();
-    let types: Vec<&str> =
-        provided.iter().filter_map(|c| c.get("type").and_then(Value::as_str)).collect();
-    assert!(types.contains(&"dag"), "L3: provided_capabilities dag group");
+    assert!(
+        provided.iter().filter_map(|c| c.get("type").and_then(Value::as_str)).any(|t| t == "dag"),
+        "L3: provided_capabilities dag group",
+    );
 
     let consumed = obj["consumed_capabilities"].as_array().unwrap();
     assert!(!consumed.is_empty(), "L3: consumed_capabilities");
-    let consumed_strs: Vec<&str> = consumed.iter().filter_map(Value::as_str).collect();
-    assert!(consumed_strs.contains(&"crypto.sign"), "L3: consumes crypto.sign");
+    assert!(
+        consumed.iter().filter_map(Value::as_str).any(|s| s == "crypto.sign"),
+        "L3: consumes crypto.sign",
+    );
 
     let costs = obj["cost_estimates"].as_object().unwrap();
     assert!(costs.contains_key("dag.dehydration.trigger"), "L3: cost_estimates");

@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::net::UnixListener;
 use tokio::sync::watch;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 /// Unix domain socket JSON-RPC server.
 ///
@@ -82,14 +82,32 @@ impl UdsJsonRpcServer {
             notify.notify_one();
         }
 
+        let btsp_required = crate::btsp::is_btsp_required();
+        let family_seed = crate::btsp::read_family_seed("RHIZOCRYPT");
+
+        if btsp_required {
+            if family_seed.is_some() {
+                info!("BTSP Phase 2: handshake enforced on every UDS connection");
+            } else {
+                warn!(
+                    "FAMILY_ID is set but FAMILY_SEED is missing — \
+                     BTSP handshake will reject all connections"
+                );
+            }
+        } else {
+            debug!("BTSP not required (development mode), serving raw JSON-RPC");
+        }
+
         loop {
             tokio::select! {
                 result = listener.accept() => {
                     match result {
                         Ok((stream, _addr)) => {
                             let primal = Arc::clone(&self.primal);
+                            let seed = family_seed.clone();
+                            let enforce = btsp_required;
                             tokio::spawn(async move {
-                                if let Err(e) = super::newline::handle_newline_connection(stream, primal).await {
+                                if let Err(e) = handle_uds_connection(stream, primal, enforce, seed.as_deref()).await {
                                     warn!(error = %e, "UDS connection error");
                                 }
                             });
@@ -131,6 +149,57 @@ impl UdsJsonRpcServer {
             std::fs::remove_file(&self.socket_path)?;
         }
         Ok(())
+    }
+}
+
+/// Handle a single UDS connection with optional BTSP handshake enforcement.
+///
+/// When `btsp_required` is `true` and a `family_seed` is available, the 4-step
+/// BTSP handshake runs before any JSON-RPC methods are exposed. On handshake
+/// failure the connection is dropped with no RPC surface.
+///
+/// When `btsp_required` is `false` (development mode), the connection serves
+/// raw newline-delimited JSON-RPC immediately.
+async fn handle_uds_connection(
+    stream: tokio::net::UnixStream,
+    primal: Arc<RhizoCrypt>,
+    btsp_required: bool,
+    family_seed: Option<&[u8]>,
+) -> std::io::Result<()> {
+    use crate::btsp::BtspServer;
+
+    if btsp_required {
+        let Some(seed) = family_seed else {
+            warn!("BTSP required but no FAMILY_SEED — rejecting connection");
+            return Err(std::io::Error::other("BTSP: no family seed"));
+        };
+
+        let (reader, writer) = stream.into_split();
+        let mut rw = tokio::io::join(reader, writer);
+
+        match BtspServer::accept_handshake(&mut rw, seed).await {
+            Ok(session) => {
+                debug!(
+                    cipher = session.cipher.as_str(),
+                    "BTSP handshake complete, serving JSON-RPC"
+                );
+                // Post-handshake: serve JSON-RPC over length-prefixed frames.
+                // Phase 2 delivers handshake enforcement; per-frame cipher
+                // wrapping is Phase 3. For now, serve newline JSON-RPC on the
+                // authenticated stream (the handshake proved family membership).
+                let (reader, writer) = rw.into_inner();
+                let reunited = reader.reunite(writer).map_err(std::io::Error::other)?;
+                super::newline::handle_newline_connection(reunited, primal).await
+            }
+            Err(e) => {
+                warn!(error = %e, "BTSP handshake failed, dropping connection");
+                let (_, mut writer) = rw.into_inner();
+                let _ = BtspServer::send_handshake_error(&mut writer).await;
+                Err(std::io::Error::other(format!("BTSP handshake failed: {e}")))
+            }
+        }
+    } else {
+        super::newline::handle_newline_connection(stream, primal).await
     }
 }
 

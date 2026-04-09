@@ -6,13 +6,12 @@
 //! Provides token bucket rate limiting per client, with configurable
 //! limits for different operation types.
 
+use dashmap::DashMap;
 use rhizo_crypt_core::constants;
-use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::RwLock;
 use tokio::time::Instant;
 
 /// Rate limit configuration.
@@ -188,7 +187,7 @@ impl ClientState {
 #[derive(Debug)]
 pub struct RateLimiter {
     config: RateLimitConfig,
-    clients: Arc<RwLock<HashMap<IpAddr, ClientState>>>,
+    clients: Arc<DashMap<IpAddr, ClientState>>,
     /// Whether rate limiting is enabled.
     enabled: bool,
 }
@@ -199,7 +198,7 @@ impl RateLimiter {
     pub fn new(config: RateLimitConfig) -> Self {
         Self {
             config,
-            clients: Arc::new(RwLock::new(HashMap::new())),
+            clients: Arc::new(DashMap::new()),
             enabled: true,
         }
     }
@@ -209,7 +208,7 @@ impl RateLimiter {
     pub fn disabled() -> Self {
         Self {
             config: RateLimitConfig::default(),
-            clients: Arc::new(RwLock::new(HashMap::new())),
+            clients: Arc::new(DashMap::new()),
             enabled: false,
         }
     }
@@ -217,42 +216,35 @@ impl RateLimiter {
     /// Check if an operation is allowed for a client.
     ///
     /// Returns `true` if the operation is allowed, `false` if rate limited.
-    pub async fn check(&self, client: IpAddr, op: OperationType) -> bool {
+    #[must_use]
+    pub fn check(&self, client: IpAddr, op: OperationType) -> bool {
         if !self.enabled {
             return true;
         }
 
-        self.clients
-            .write()
-            .await
-            .entry(client)
-            .or_insert_with(|| ClientState::new(&self.config))
-            .try_consume(op)
+        self.clients.entry(client).or_insert_with(|| ClientState::new(&self.config)).try_consume(op)
     }
 
     /// Get the number of tracked clients.
-    pub async fn client_count(&self) -> usize {
-        self.clients.read().await.len()
+    #[must_use]
+    pub fn client_count(&self) -> usize {
+        self.clients.len()
     }
 
     /// Clean up stale client entries.
     ///
     /// Removes entries that haven't been seen within the cleanup interval.
-    pub async fn cleanup(&self) {
+    pub fn cleanup(&self) {
         let now = Instant::now();
         let cleanup_interval = self.config.cleanup_interval;
-        let mut clients = self.clients.write().await;
-        clients.retain(|_, state| now.duration_since(state.last_seen) < cleanup_interval);
+        self.clients.retain(|_, state| now.duration_since(state.last_seen) < cleanup_interval);
     }
 
     /// Clean up stale client entries with a custom staleness threshold.
-    ///
-    /// Used for testing to avoid sleep calls. Only available in test builds.
     #[cfg(test)]
-    pub async fn cleanup_with_threshold(&self, threshold: Duration) {
+    pub fn cleanup_with_threshold(&self, threshold: Duration) {
         let now = Instant::now();
-        let mut clients = self.clients.write().await;
-        clients.retain(|_, state| now.duration_since(state.last_seen) < threshold);
+        self.clients.retain(|_, state| now.duration_since(state.last_seen) < threshold);
     }
 
     /// Check if rate limiting is enabled.
@@ -283,267 +275,5 @@ pub struct RateLimitExceeded {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::net::Ipv4Addr;
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_rate_limiter_allows_within_limit() {
-        let config = RateLimitConfig {
-            read_rps: 10,
-            write_rps: 5,
-            expensive_rps: 2,
-            burst_multiplier: 2,
-            cleanup_interval: Duration::from_secs(60),
-        };
-
-        let limiter = RateLimiter::new(config);
-        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
-
-        // Should allow burst of requests
-        for _ in 0..20 {
-            assert!(limiter.check(client, OperationType::Read).await);
-        }
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_rate_limiter_blocks_when_exceeded() {
-        let config = RateLimitConfig {
-            read_rps: 10,
-            write_rps: 5,
-            expensive_rps: 1,
-            burst_multiplier: 1,
-            cleanup_interval: Duration::from_secs(60),
-        };
-
-        let limiter = RateLimiter::new(config);
-        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
-
-        // Consume all tokens
-        for _ in 0..10 {
-            let _ = limiter.check(client, OperationType::Read).await;
-        }
-
-        // Next should be blocked
-        assert!(!limiter.check(client, OperationType::Read).await);
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_rate_limiter_disabled() {
-        let limiter = RateLimiter::disabled();
-        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
-
-        // Should always allow when disabled
-        for _ in 0..1000 {
-            assert!(limiter.check(client, OperationType::Expensive).await);
-        }
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_rate_limiter_per_client() {
-        let config = RateLimitConfig {
-            read_rps: 5,
-            write_rps: 5,
-            expensive_rps: 5,
-            burst_multiplier: 1,
-            cleanup_interval: Duration::from_secs(60),
-        };
-
-        let limiter = RateLimiter::new(config);
-        let client1 = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let client2 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2));
-
-        // Exhaust client1's tokens
-        for _ in 0..5 {
-            let _ = limiter.check(client1, OperationType::Read).await;
-        }
-
-        // Client2 should still have tokens
-        assert!(limiter.check(client2, OperationType::Read).await);
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_rate_limiter_cleanup() {
-        let config = RateLimitConfig {
-            read_rps: 10,
-            write_rps: 5,
-            expensive_rps: 2,
-            burst_multiplier: 2,
-            cleanup_interval: Duration::from_secs(3600), // Default cleanup interval
-        };
-
-        let limiter = RateLimiter::new(config);
-        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
-
-        // Create client entry
-        limiter.check(client, OperationType::Read).await;
-        assert_eq!(limiter.client_count().await, 1);
-
-        // Use test-only cleanup with zero threshold (removes all entries instantly)
-        limiter.cleanup_with_threshold(Duration::from_nanos(0)).await;
-
-        // Client should be cleaned up (last_seen older than threshold)
-        assert_eq!(limiter.client_count().await, 0, "stale client should be removed");
-    }
-
-    #[test]
-    fn test_config_presets() {
-        let prod = RateLimitConfig::production();
-        assert_eq!(prod.read_rps, 500);
-
-        let dev = RateLimitConfig::development();
-        assert_eq!(dev.read_rps, 10000);
-    }
-
-    #[test]
-    fn test_config_default() {
-        let config = RateLimitConfig::default();
-        assert_eq!(config.read_rps, 1000);
-        assert_eq!(config.write_rps, 100);
-        assert_eq!(config.expensive_rps, 10);
-        assert_eq!(config.burst_multiplier, 2);
-    }
-
-    #[test]
-    fn test_config_from_env() {
-        temp_env::with_vars(
-            [
-                ("RHIZOCRYPT_RATE_LIMIT_READ_RPS", Some("42")),
-                ("RHIZOCRYPT_RATE_LIMIT_WRITE_RPS", Some("21")),
-                ("RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS", Some("7")),
-            ],
-            || {
-                let config = RateLimitConfig::from_env();
-                assert_eq!(config.read_rps, 42);
-                assert_eq!(config.write_rps, 21);
-                assert_eq!(config.expensive_rps, 7);
-            },
-        );
-    }
-
-    #[test]
-    fn test_config_from_env_invalid_ignored() {
-        temp_env::with_vars([("RHIZOCRYPT_RATE_LIMIT_READ_RPS", Some("not-a-number"))], || {
-            let config = RateLimitConfig::from_env();
-            assert_eq!(config.read_rps, 1000);
-        });
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_rate_limiter_very_short_window() {
-        let config = RateLimitConfig {
-            read_rps: 1,
-            write_rps: 1,
-            expensive_rps: 1,
-            burst_multiplier: 1,
-            cleanup_interval: Duration::from_secs(60),
-        };
-
-        let limiter = RateLimiter::new(config);
-        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
-
-        assert!(limiter.check(client, OperationType::Read).await);
-        assert!(!limiter.check(client, OperationType::Read).await);
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn test_rate_limiter_reset_after_window() {
-        let config = RateLimitConfig {
-            read_rps: 1,
-            write_rps: 1,
-            expensive_rps: 1,
-            burst_multiplier: 1,
-            cleanup_interval: Duration::from_secs(60),
-        };
-
-        let limiter = RateLimiter::new(config);
-        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
-
-        assert!(limiter.check(client, OperationType::Read).await);
-        assert!(!limiter.check(client, OperationType::Read).await);
-
-        tokio::time::advance(Duration::from_secs(2)).await;
-
-        assert!(limiter.check(client, OperationType::Read).await);
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_rate_limiter_write_and_expensive() {
-        let config = RateLimitConfig {
-            read_rps: 100,
-            write_rps: 2,
-            expensive_rps: 1,
-            burst_multiplier: 1,
-            cleanup_interval: Duration::from_secs(60),
-        };
-
-        let limiter = RateLimiter::new(config);
-        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
-
-        assert!(limiter.check(client, OperationType::Write).await);
-        assert!(limiter.check(client, OperationType::Write).await);
-        assert!(!limiter.check(client, OperationType::Write).await);
-
-        assert!(limiter.check(client, OperationType::Expensive).await);
-        assert!(!limiter.check(client, OperationType::Expensive).await);
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_rate_limiter_enable_disable() {
-        let mut limiter = RateLimiter::disabled();
-        assert!(!limiter.is_enabled());
-
-        limiter.enable();
-        assert!(limiter.is_enabled());
-
-        limiter.disable();
-        assert!(!limiter.is_enabled());
-
-        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        assert!(limiter.check(client, OperationType::Expensive).await);
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_rate_limiter_regular_cleanup() {
-        let config = RateLimitConfig {
-            read_rps: 10,
-            write_rps: 5,
-            expensive_rps: 2,
-            burst_multiplier: 2,
-            cleanup_interval: Duration::from_secs(1),
-        };
-
-        let limiter = RateLimiter::new(config);
-        let client = IpAddr::V4(Ipv4Addr::LOCALHOST);
-
-        limiter.check(client, OperationType::Read).await;
-        assert_eq!(limiter.client_count().await, 1);
-
-        limiter.cleanup().await;
-        assert_eq!(limiter.client_count().await, 1);
-
-        limiter.cleanup_with_threshold(Duration::from_nanos(0)).await;
-        assert_eq!(limiter.client_count().await, 0);
-    }
-
-    #[test]
-    fn test_rate_limit_exceeded_display() {
-        let err = RateLimitExceeded {
-            operation: OperationType::Write,
-            client: IpAddr::V4(Ipv4Addr::LOCALHOST),
-        };
-        let s = err.to_string();
-        assert!(s.contains("Write"));
-        assert!(s.contains("127.0.0.1"));
-    }
-
-    #[test]
-    fn test_rate_limit_exceeded_error() {
-        use std::error::Error;
-        let err = RateLimitExceeded {
-            operation: OperationType::Read,
-            client: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
-        };
-        assert!(err.source().is_none());
-    }
-}
+#[path = "rate_limit_tests.rs"]
+mod tests;

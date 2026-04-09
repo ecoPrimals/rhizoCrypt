@@ -57,13 +57,11 @@ struct TarpcConnection {
     client: EcoPrimalJsonRpcClient,
 }
 
-/// Stub connection when live-clients feature is disabled.
+/// Marker when `live-clients` is disabled — the connection is never actually
+/// created; `ensure_connected` returns an error instead.
 #[cfg(not(feature = "live-clients"))]
 #[derive(Debug, Clone)]
-struct TarpcConnection {
-    /// Placeholder for stub mode.
-    _stub: (),
-}
+struct TarpcConnection;
 
 // ============================================================================
 // TarpcAdapter
@@ -110,8 +108,7 @@ struct TarpcConnection {
 pub struct TarpcAdapter {
     endpoint: String,
     addr: SocketAddr,
-    /// Connection state (lazy-initialized, cached).
-    #[cfg_attr(not(feature = "live-clients"), allow(dead_code))]
+    /// Connection state (lazy-initialized, cached; unused when `live-clients` is off).
     connection: Arc<RwLock<Option<TarpcConnection>>>,
     /// Timeout for RPC calls.
     pub timeout_duration: Duration,
@@ -205,7 +202,11 @@ impl TarpcAdapter {
     ///
     /// This is called internally by call methods, but can be called explicitly
     /// to fail-fast on connection errors.
-    #[cfg_attr(not(feature = "live-clients"), allow(dead_code))]
+    ///
+    /// # Errors
+    ///
+    /// Returns `RhizoCryptError::Integration` when `live-clients` is disabled
+    /// or if the TCP/tarpc connection fails.
     async fn ensure_connected(&self) -> Result<()> {
         {
             let conn = self.connection.read().await;
@@ -252,13 +253,9 @@ impl TarpcAdapter {
 
         #[cfg(not(feature = "live-clients"))]
         {
-            let mut conn = self.connection.write().await;
-            if conn.is_none() {
-                tracing::debug!(endpoint = %self.addr, "tarpc stub connection (live-clients disabled)");
-                *conn = Some(TarpcConnection {
-                    _stub: (),
-                });
-            }
+            return Err(RhizoCryptError::integration(
+                "tarpc connections require the 'live-clients' feature",
+            ));
         }
 
         Ok(())

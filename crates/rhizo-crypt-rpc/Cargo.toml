@@ -41,6 +41,15 @@ hyper = { workspace = true }
 hyper-util = { workspace = true }
 hex = "0.4"
 uuid = { workspace = true }
+dashmap = { workspace = true }
+
+# BTSP Phase 2 — handshake crypto (Pure Rust, ecoBin-compliant)
+x25519-dalek = { workspace = true }
+hmac = { workspace = true }
+sha2 = { workspace = true }
+hkdf = { workspace = true }
+rand = { workspace = true }
+zeroize = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }

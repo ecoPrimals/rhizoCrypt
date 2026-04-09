@@ -180,14 +180,10 @@ impl ComputeProviderClient {
 
         debug!(%task_id, "Subscribing to task events");
 
-        // Create channel for events
-        let (tx, rx) = tokio::sync::mpsc::channel(self.config.event_buffer_size);
-
-        // Scaffolded mode: return empty channel
-        // With live-clients feature, this would connect to the actual event stream
-        drop(tx); // Close sender immediately in scaffolded mode
-
-        Ok(rx)
+        Err(RhizoCryptError::integration(
+            "Compute event subscription requires the 'live-clients' feature. \
+             Build with `--features live-clients` for live event streams.",
+        ))
     }
 
     /// Subscribe to events for all tasks by an agent.
@@ -207,10 +203,10 @@ impl ComputeProviderClient {
 
         debug!(agent = %agent.as_str(), "Subscribing to agent events");
 
-        let (tx, rx) = tokio::sync::mpsc::channel(self.config.event_buffer_size);
-        drop(tx);
-
-        Ok(rx)
+        Err(RhizoCryptError::integration(
+            "Compute event subscription requires the 'live-clients' feature. \
+             Build with `--features live-clients` for live event streams.",
+        ))
     }
 
     /// Get events for a task in a time range.
@@ -232,8 +228,10 @@ impl ComputeProviderClient {
 
         debug!(%task_id, ?start, ?end, "Querying task events");
 
-        // Scaffolded mode: return empty
-        Ok(Vec::new())
+        Err(RhizoCryptError::integration(
+            "Compute event query requires the 'live-clients' feature. \
+             Build with `--features live-clients` for live queries.",
+        ))
     }
 
     /// Get the current endpoint.
@@ -345,30 +343,28 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_subscribe_agent_connected() {
+    async fn test_subscribe_agent_connected_requires_live_clients() {
         let client = ComputeProviderClient::new(ComputeProviderConfig::default());
         *client.state.write().await = ClientState::Connected;
 
         let did = crate::types::Did::new("did:key:test");
         let result = client.subscribe_agent(&did).await;
 
-        assert!(result.is_ok());
-        let mut rx = result.unwrap();
-        // Channel should be closed (scaffolded mode)
-        assert!(rx.recv().await.is_none());
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("live-clients"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_subscribe_task_connected() {
+    async fn test_subscribe_task_connected_requires_live_clients() {
         let client = ComputeProviderClient::new(ComputeProviderConfig::default());
         *client.state.write().await = ClientState::Connected;
 
         let result = client.subscribe_task(TaskId::now()).await;
 
-        assert!(result.is_ok());
-        let mut rx = result.unwrap();
-        // Channel should be closed (scaffolded mode)
-        assert!(rx.recv().await.is_none());
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("live-clients"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -385,7 +381,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_get_events_connected() {
+    async fn test_get_events_connected_requires_live_clients() {
         let client = ComputeProviderClient::new(ComputeProviderConfig::default());
         *client.state.write().await = ClientState::Connected;
 
@@ -394,9 +390,9 @@ mod tests {
         let end = Timestamp::now();
 
         let result = client.get_events(task_id, start, end).await;
-        assert!(result.is_ok());
-        let events = result.unwrap();
-        assert!(events.is_empty()); // Scaffolded mode returns empty
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("live-clients"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

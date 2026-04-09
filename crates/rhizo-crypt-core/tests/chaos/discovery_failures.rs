@@ -12,7 +12,6 @@ use rhizo_crypt_core::{
     IntegrationStatus, ServiceEndpoint, ServiceStatus,
 };
 use std::sync::Arc;
-use std::time::Duration;
 
 /// Test discovery with no registered services.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Pin toolchain for reproducible local builds.
+# MSRV is in workspace.package.rust-version (Cargo.toml); this is the dev toolchain.
+[toolchain]
+channel = "1.94.1"
+components = ["rustfmt", "clippy", "llvm-tools-preview"]

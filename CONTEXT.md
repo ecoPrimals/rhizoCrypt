@@ -3,7 +3,7 @@
 **Version**: 0.14.0-dev
 **Role**: Ephemeral DAG Engine — working memory for the ecoPrimals ecosystem
 **License**: AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 (scyBorg Triple-Copyleft)
-**Language**: Rust 2024, edition 2024, rust-version 1.87
+**Language**: Rust 2024, edition 2024, MSRV 1.87 (dev toolchain 1.94.1)
 
 ## What It Does
 
@@ -48,6 +48,7 @@ Three workspace crates:
 - **JSON-RPC 2.0** — dual-mode TCP (auto-detects HTTP POST vs newline-delimited) + UDS
 - **tarpc 0.37** with bincode — optional, high-performance typed RPC
 - **Unix domain socket** at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` (`--unix` flag)
+- **BTSP Phase 2** — X25519 + HMAC-SHA256 handshake enforced on UDS accept when `FAMILY_ID` is set; dev mode (`BIOMEOS_INSECURE=1`) bypasses
 - Method names follow `domain.verb` semantic naming (`dag.session.create`, `health.check`)
 
 ## Compliance
@@ -58,19 +59,21 @@ Three workspace crates:
 | ecoBin v3.0 | Zero application C deps, zero reqwest, cross-compile (musl, RISC-V) |
 | genomeBin | Multi-stage Dockerfile (musl-static + Alpine), OCI labels, healthcheck |
 | Universal IPC v3 | JSON-RPC + tarpc, semantic naming |
+| BTSP Phase 2 | Server-side handshake enforcement on UDS accept |
+| Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 136 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 146 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,441 passing (all features) |
-| Coverage | 94.34% lines, 93.41% functions, 94.81% branches (CI gate: 90%) |
+| Tests | 1,456 passing (all features) |
+| Coverage | ~94% lines (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
-| Source files | 136 `.rs`, ~46,200 lines |
-| Max file size | 928 lines (limit: 1000) |
-| Binary size | 5.4 MB (musl-static, stripped, PIE) |
+| Source files | 146 `.rs`, ~46,600 lines |
+| Max file size | 687 lines (limit: 1000) |
+| Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |
 

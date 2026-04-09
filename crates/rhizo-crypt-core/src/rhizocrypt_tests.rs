@@ -664,6 +664,128 @@ async fn test_spawn_gc_sweeper_returns_join_handle() {
     handle.abort();
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_dehydrate_with_agent_join_leave_events() {
+    use crate::event::{AgentRole, LeaveReason};
+    use crate::types::Did;
+
+    let primal = running_primal().await;
+    let agent_a = Did::new("did:key:agentA");
+    let agent_b = Did::new("did:key:agentB");
+
+    let mut session = SessionBuilder::new(SessionType::Collaboration {
+        workspace_id: "ws".to_string(),
+    })
+    .with_name("agent-events")
+    .build();
+    session.agents.insert(agent_a.clone());
+    session.agents.insert(agent_b.clone());
+    let session_id = primal.create_session(session).unwrap();
+
+    let v1 = crate::vertex::VertexBuilder::new(EventType::AgentJoin {
+        role: AgentRole::Owner,
+    })
+    .with_agent(agent_a.clone())
+    .build();
+    let v1_id = primal.append_vertex(session_id, v1).await.unwrap();
+
+    let v2 = crate::vertex::VertexBuilder::new(EventType::AgentJoin {
+        role: AgentRole::Custom("researcher".to_string()),
+    })
+    .with_agent(agent_b.clone())
+    .with_parent(v1_id)
+    .build();
+    let v2_id = primal.append_vertex(session_id, v2).await.unwrap();
+
+    let v3 = crate::vertex::VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .with_agent(agent_a.clone())
+    .with_parent(v2_id)
+    .build();
+    let v3_id = primal.append_vertex(session_id, v3).await.unwrap();
+
+    let v4 = crate::vertex::VertexBuilder::new(EventType::AgentLeave {
+        reason: LeaveReason::Normal,
+    })
+    .with_agent(agent_b)
+    .with_parent(v3_id)
+    .build();
+    primal.append_vertex(session_id, v4).await.unwrap();
+
+    let root = primal.dehydrate(session_id).await.unwrap();
+    assert!(!root.as_bytes().iter().all(|&b| b == 0));
+
+    let status = primal.get_dehydration_status(session_id);
+    assert!(status.is_complete());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_dehydrate_with_observer_role() {
+    use crate::event::AgentRole;
+    use crate::types::Did;
+
+    let primal = running_primal().await;
+    let observer = Did::new("did:key:observer");
+
+    let session = SessionBuilder::new(SessionType::General).with_name("observer-test").build();
+    let session_id = primal.create_session(session).unwrap();
+
+    let v1 = crate::vertex::VertexBuilder::new(EventType::AgentJoin {
+        role: AgentRole::Observer,
+    })
+    .with_agent(observer)
+    .build();
+    primal.append_vertex(session_id, v1).await.unwrap();
+
+    let root = primal.dehydrate(session_id).await.unwrap();
+    assert!(!root.as_bytes().iter().all(|&b| b == 0));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_dehydrate_with_payload_store() {
+    use crate::store::PayloadStore;
+
+    let primal = running_primal().await;
+
+    let session = SessionBuilder::new(SessionType::General).build();
+    let session_id = primal.create_session(session).unwrap();
+
+    let store = primal.payload_store().await.unwrap();
+    let payload = bytes::Bytes::from("test payload data for dehydration");
+    let payload_ref = store.put(payload).await.unwrap();
+
+    let v1 = crate::vertex::VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .with_payload(payload_ref)
+    .build();
+    primal.append_vertex(session_id, v1).await.unwrap();
+
+    let root = primal.dehydrate(session_id).await.unwrap();
+    assert!(!root.as_bytes().iter().all(|&b| b == 0));
+
+    let status = primal.get_dehydration_status(session_id);
+    assert!(status.is_complete());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_dehydrate_with_registered_agents_no_vertices() {
+    use crate::types::Did;
+
+    let primal = running_primal().await;
+
+    let mut session = SessionBuilder::new(SessionType::General).build();
+    session.agents.insert(Did::new("did:key:silent-agent"));
+    let session_id = primal.create_session(session).unwrap();
+
+    let v = crate::vertex::VertexBuilder::new(EventType::SessionStart).build();
+    primal.append_vertex(session_id, v).await.unwrap();
+
+    let root = primal.dehydrate(session_id).await.unwrap();
+    assert!(!root.as_bytes().iter().all(|&b| b == 0));
+}
+
 #[cfg(feature = "redb")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_start_with_redb_backend() {

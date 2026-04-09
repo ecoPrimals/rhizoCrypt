@@ -10,8 +10,6 @@
 
 pub mod harness;
 
-pub use harness::{TestConfig, TestHarness};
-
 /// Chaos testing configuration.
 #[derive(Debug, Clone)]
 pub struct ChaosConfig {

@@ -6,7 +6,7 @@
 //! The core DAG engine with lock-free concurrency for maximum performance.
 //!
 //! The dehydration pipeline (summary generation, attestation collection,
-//! permanent storage commit) lives in [`dehydration_ops`].
+//! permanent storage commit) lives in the `dehydration_ops` submodule.
 
 mod dehydration_ops;
 

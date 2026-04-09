@@ -138,10 +138,10 @@ impl AdapterFactory {
     /// # Arguments
     ///
     /// * `endpoint` - Service endpoint:
-    ///   - `unix:///run/biomeos/beardog.sock` — Unix socket IPC
-    ///   - `/run/biomeos/beardog.sock` — bare path → Unix socket
-    ///   - `tarpc://10.0.1.6:9600` — tarpc binary protocol
-    ///   - `http://10.0.1.5:9500` — HTTP/REST (requires `http-clients` feature)
+    ///   - `unix:///run/biomeos/{primal}.sock` — Unix socket IPC
+    ///   - `/run/biomeos/{primal}.sock` — bare path → Unix socket
+    ///   - `tarpc://{host}:{port}` — tarpc binary protocol
+    ///   - `http://{host}:{port}` — HTTP/REST (requires `http-clients` feature)
     ///
     /// # Errors
     ///

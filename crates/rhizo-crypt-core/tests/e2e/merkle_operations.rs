@@ -4,8 +4,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use rhizo_crypt_core::{
-    DagStore, EventType, PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, SessionBuilder,
-    SessionType, VertexBuilder,
+    EventType, PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, SessionBuilder, SessionType,
+    VertexBuilder,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

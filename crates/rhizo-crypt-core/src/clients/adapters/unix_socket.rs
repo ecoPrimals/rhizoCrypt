@@ -174,20 +174,19 @@ impl UnixSocketAdapter {
                 RhizoCryptError::ipc(IpcErrorPhase::Read, format!("response read: {e}"))
             })?;
 
-        Self::parse_http_response(&response_buf)
+        Self::extract_http_body(response_buf)
     }
 
-    /// Parse an HTTP/1.1 response, extracting the body after status validation.
+    /// Extract the HTTP/1.1 response body after status validation.
     ///
-    /// Returns the body as zero-copy `Bytes` sliced from the raw response.
-    /// Uses structured [`IpcErrorPhase`] for each failure mode.
-    fn parse_http_response(raw: &[u8]) -> Result<bytes::Bytes> {
+    /// Takes ownership of the raw buffer and converts it to `Bytes` once,
+    /// then slices the body out — zero-copy after the initial read.
+    fn extract_http_body(raw: Vec<u8>) -> Result<bytes::Bytes> {
         let header_end = raw.windows(4).position(|w| w == b"\r\n\r\n").ok_or_else(|| {
             RhizoCryptError::ipc(IpcErrorPhase::Read, "malformed HTTP response: no header boundary")
         })?;
 
         let header_bytes = &raw[..header_end];
-        let body = &raw[header_end + 4..];
 
         let Ok(header_str) = std::str::from_utf8(header_bytes) else {
             return Err(RhizoCryptError::ipc(IpcErrorPhase::Read, "headers are not valid UTF-8"));
@@ -198,6 +197,7 @@ impl UnixSocketAdapter {
             status_line.split_whitespace().nth(1).and_then(|s| s.parse().ok()).unwrap_or(0);
 
         if !(200..300).contains(&status_code) {
+            let body = &raw[header_end + 4..];
             let body_preview = String::from_utf8_lossy(body);
             return Err(RhizoCryptError::ipc(
                 IpcErrorPhase::HttpStatus(status_code),
@@ -205,7 +205,9 @@ impl UnixSocketAdapter {
             ));
         }
 
-        Ok(bytes::Bytes::copy_from_slice(body))
+        let body_start = header_end + 4;
+        let bytes = bytes::Bytes::from(raw);
+        Ok(bytes.slice(body_start..))
     }
 }
 
@@ -327,17 +329,17 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_http_response_success() {
+    fn test_extract_http_body_success() {
         let raw = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n\
                      {\"jsonrpc\":\"2.0\",\"result\":true,\"id\":1}";
-        let body = UnixSocketAdapter::parse_http_response(raw).unwrap();
+        let body = UnixSocketAdapter::extract_http_body(raw.to_vec()).unwrap();
         assert_eq!(body.as_ref(), b"{\"jsonrpc\":\"2.0\",\"result\":true,\"id\":1}");
     }
 
     #[test]
-    fn test_parse_http_response_error_status() {
+    fn test_extract_http_body_error_status() {
         let raw = b"HTTP/1.1 500 Internal Server Error\r\n\r\nSomething went wrong";
-        let result = UnixSocketAdapter::parse_http_response(raw);
+        let result = UnixSocketAdapter::extract_http_body(raw.to_vec());
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.to_string().contains("http_500"));
@@ -345,9 +347,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_http_response_malformed() {
+    fn test_extract_http_body_malformed() {
         let raw = b"garbage data without headers";
-        let result = UnixSocketAdapter::parse_http_response(raw);
+        let result = UnixSocketAdapter::extract_http_body(raw.to_vec());
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("no header boundary"));
     }
@@ -427,9 +429,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_http_response_invalid_utf8() {
+    fn test_extract_http_body_invalid_utf8() {
         let raw = b"HTTP/1.1 200 OK\r\nX-Custom: \xff\xfe\r\n\r\nbody";
-        let result = UnixSocketAdapter::parse_http_response(raw);
+        let result = UnixSocketAdapter::extract_http_body(raw.to_vec());
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not valid UTF-8"));
     }

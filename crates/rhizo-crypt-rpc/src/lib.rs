@@ -54,6 +54,7 @@
 #![cfg_attr(not(test), forbid(unsafe_code))]
 #![warn(missing_docs)]
 
+pub mod btsp;
 mod client;
 mod error;
 pub mod jsonrpc;
