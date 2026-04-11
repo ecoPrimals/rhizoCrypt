@@ -629,6 +629,45 @@ async fn test_tcp_jsonrpc_composition_load() {
     let _ = handle.await;
 }
 
+/// TCP_NODELAY is set on accepted connections (Trio IPC stability).
+#[tokio::test]
+async fn test_tcp_nodelay_set_on_connection() {
+    use rhizo_crypt_rpc::jsonrpc::JsonRpcServer;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+    let mut primal = RhizoCrypt::new(RhizoCryptConfig::default());
+    primal.start().await.expect("primal should start");
+    let primal = Arc::new(primal);
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    drop(listener);
+
+    let server = JsonRpcServer::new(primal, addr);
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    let ready = Arc::new(tokio::sync::Notify::new());
+    let ready_rx = Arc::clone(&ready);
+
+    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+    ready.notified().await;
+
+    let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let (reader, mut writer) = stream.into_split();
+
+    let req = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":1}\n";
+    writer.write_all(req).await.unwrap();
+    writer.shutdown().await.unwrap();
+
+    let mut lines = BufReader::new(reader).lines();
+    let line = lines.next_line().await.unwrap().expect("response");
+    let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+    assert_eq!(resp["jsonrpc"], "2.0");
+    assert!(resp.get("result").is_some());
+
+    let _ = shutdown_tx.send(true);
+    let _ = handle.await;
+}
+
 /// TCP JSON-RPC graceful shutdown: server stops accepting when signaled.
 #[tokio::test]
 async fn test_tcp_jsonrpc_graceful_shutdown() {

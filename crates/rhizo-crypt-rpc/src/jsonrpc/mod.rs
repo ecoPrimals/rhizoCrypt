@@ -168,6 +168,8 @@ async fn handle_tcp_connection(
     primal: Arc<RhizoCrypt>,
     app: Router,
 ) -> std::io::Result<()> {
+    stream.set_nodelay(true)?;
+
     let mut peek = [0u8; 1];
     let n = stream.peek(&mut peek).await?;
 

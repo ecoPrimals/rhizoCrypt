@@ -5,6 +5,23 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-11 (session 33)
+
+### Changed
+
+#### Trio IPC Stability Hardening
+
+- **TCP_NODELAY** set on all accepted TCP connections in `handle_tcp_connection` — eliminates Nagle-algorithm latency on small JSON-RPC frames, aligning with sweetGrass flush+NODELAY pattern
+- **flush-on-write** audit confirmed: `newline.rs` already flushes after every `write_all`, BTSP framing likewise — no gap
+- **Tower Atomic TCP opt-in** audit confirmed: TCP JSON-RPC is always-on by default, no stale branches or unmerged transport work
+
+### Added
+
+- **1 new test**: `test_tcp_nodelay_set_on_connection` in `rpc_integration.rs` — verifies TCP connections receive responses under NODELAY
+
+**Metrics**
+- 1,471 tests passing (up from 1,470)
+
 ## [0.14.0-dev] - 2026-04-11 (session 32)
 
 ### Changed
