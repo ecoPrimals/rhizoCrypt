@@ -220,3 +220,99 @@ pub fn cached_capability_descriptors() -> &'static [CapabilityDescriptor] {
     static CACHE: std::sync::OnceLock<Vec<CapabilityDescriptor>> = std::sync::OnceLock::new();
     CACHE.get_or_init(build_capability_descriptors)
 }
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_capability_descriptors_not_empty() {
+        let descriptors = build_capability_descriptors();
+        assert!(!descriptors.is_empty(), "should produce at least one domain");
+    }
+
+    #[test]
+    fn test_descriptor_domains_are_unique() {
+        let descriptors = build_capability_descriptors();
+        let mut domains: Vec<&str> = descriptors.iter().map(|d| d.domain.as_str()).collect();
+        let count = domains.len();
+        domains.sort();
+        domains.dedup();
+        assert_eq!(count, domains.len(), "domains should be unique");
+    }
+
+    #[test]
+    fn test_descriptor_methods_have_cost_tiers() {
+        let descriptors = build_capability_descriptors();
+        for desc in &descriptors {
+            for method in &desc.methods {
+                assert!(
+                    ["low", "medium", "high"].contains(&method.cost.as_str()),
+                    "method {} has unexpected cost tier: {}",
+                    method.name,
+                    method.cost
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_cached_returns_same_slice() {
+        let a = cached_capability_descriptors();
+        let b = cached_capability_descriptors();
+        assert!(std::ptr::eq(a, b), "OnceLock should return same pointer");
+    }
+
+    #[test]
+    fn test_descriptor_version_matches_niche() {
+        let descriptors = build_capability_descriptors();
+        for desc in &descriptors {
+            assert_eq!(desc.version, niche::PRIMAL_VERSION);
+        }
+    }
+
+    #[test]
+    fn test_create_session_request_serialization() {
+        let req = CreateSessionRequest {
+            session_type: SessionType::default(),
+            description: Some("test".into()),
+            parent_session: None,
+            max_vertices: Some(100),
+            ttl_seconds: None,
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert!(json.get("session_type").is_some());
+        assert_eq!(json["description"], "test");
+        assert_eq!(json["max_vertices"], 100);
+    }
+
+    #[test]
+    fn test_health_status_serialization() {
+        let status = HealthStatus {
+            healthy: true,
+            state: "running".into(),
+            active_sessions: 5,
+            total_vertices: 42,
+            uptime_seconds: 300,
+        };
+        let json = serde_json::to_value(&status).unwrap();
+        assert_eq!(json["healthy"], true);
+        assert_eq!(json["active_sessions"], 5);
+    }
+
+    #[test]
+    fn test_service_metrics_serialization() {
+        let metrics = ServiceMetrics {
+            sessions_created: 10,
+            sessions_resolved: 8,
+            vertices_appended: 100,
+            queries_executed: 50,
+            slices_checked_out: 3,
+            dehydrations_completed: 2,
+        };
+        let json = serde_json::to_value(&metrics).unwrap();
+        assert_eq!(json["sessions_created"], 10);
+        assert_eq!(json["dehydrations_completed"], 2);
+    }
+}

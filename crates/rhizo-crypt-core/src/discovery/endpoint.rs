@@ -94,11 +94,47 @@ mod tests {
             vec![Capability::Signing],
         );
 
-        // Default health interval
-        assert_eq!(endpoint.health_interval, Duration::from_secs(30));
+        assert_eq!(endpoint.health_interval, crate::constants::DEFAULT_HEALTH_CHECK_INTERVAL);
 
-        // Customize health interval
         endpoint.health_interval = Duration::from_secs(60);
         assert_eq!(endpoint.health_interval, Duration::from_secs(60));
+    }
+
+    #[test]
+    fn test_endpoint_no_capabilities() {
+        let endpoint = ServiceEndpoint::new("empty", "127.0.0.1:9001".parse().unwrap(), vec![]);
+        assert!(!endpoint.has_capability(&Capability::Signing));
+        assert!(endpoint.capabilities.is_empty());
+    }
+
+    #[test]
+    fn test_endpoint_clone() {
+        let endpoint = ServiceEndpoint::new(
+            "cloneable",
+            "127.0.0.1:9002".parse().unwrap(),
+            vec![Capability::PermanentCommit],
+        );
+        let cloned = endpoint.clone();
+        assert_eq!(cloned.service_id, endpoint.service_id);
+        assert_eq!(cloned.addr, endpoint.addr);
+        assert_eq!(cloned.capabilities, endpoint.capabilities);
+    }
+
+    #[test]
+    fn test_endpoint_static_service_id() {
+        let endpoint = ServiceEndpoint::new(
+            "static-id",
+            "127.0.0.1:9003".parse().unwrap(),
+            vec![Capability::Signing],
+        );
+        assert_eq!(endpoint.service_id.as_ref(), "static-id");
+    }
+
+    #[test]
+    fn test_endpoint_owned_service_id() {
+        let id = String::from("dynamic-id");
+        let endpoint =
+            ServiceEndpoint::new(id, "127.0.0.1:9004".parse().unwrap(), vec![Capability::Signing]);
+        assert_eq!(endpoint.service_id.as_ref(), "dynamic-id");
     }
 }

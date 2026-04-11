@@ -118,3 +118,101 @@ impl SongbirdConfig {
         config
     }
 }
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_has_empty_address() {
+        let config = SongbirdConfig::new();
+        assert!(config.address.is_empty());
+        assert!(!config.is_configured());
+    }
+
+    #[test]
+    fn test_new_uses_primal_name() {
+        let config = SongbirdConfig::new();
+        assert_eq!(config.service_name.as_ref(), crate::constants::PRIMAL_NAME);
+    }
+
+    #[test]
+    fn test_new_has_advertised_capabilities() {
+        let config = SongbirdConfig::new();
+        assert!(!config.capabilities.is_empty());
+        assert_eq!(config.capabilities[0].as_ref(), crate::constants::ADVERTISED_CAPABILITIES[0]);
+    }
+
+    #[test]
+    fn test_with_address_sets_address() {
+        let config = SongbirdConfig::with_address("127.0.0.1:9500");
+        assert!(config.is_configured());
+        assert_eq!(config.address.as_ref(), "127.0.0.1:9500");
+    }
+
+    #[test]
+    fn test_heartbeat_uses_constant() {
+        let config = SongbirdConfig::new();
+        assert_eq!(config.heartbeat_interval, crate::constants::DEFAULT_HEARTBEAT_INTERVAL);
+    }
+
+    #[test]
+    fn test_auto_reconnect_default_true() {
+        let config = SongbirdConfig::new();
+        assert!(config.auto_reconnect);
+    }
+
+    #[test]
+    fn test_from_env_no_vars_empty_address() {
+        temp_env::with_vars(
+            [
+                ("DISCOVERY_ENDPOINT", None::<&str>),
+                ("DISCOVERY_SERVICE_ENDPOINT", None::<&str>),
+                ("SONGBIRD_ADDRESS", None::<&str>),
+                ("SONGBIRD_HOST", None::<&str>),
+                ("SONGBIRD_PORT", None::<&str>),
+            ],
+            || {
+                let config = SongbirdConfig::from_env();
+                assert!(!config.is_configured());
+            },
+        );
+    }
+
+    #[test]
+    fn test_from_env_host_port() {
+        temp_env::with_vars(
+            [
+                ("DISCOVERY_ENDPOINT", None::<&str>),
+                ("DISCOVERY_SERVICE_ENDPOINT", None::<&str>),
+                ("SONGBIRD_ADDRESS", None::<&str>),
+                ("SONGBIRD_HOST", Some("10.0.0.1")),
+                ("SONGBIRD_PORT", Some("9500")),
+            ],
+            || {
+                let config = SongbirdConfig::from_env();
+                assert!(config.is_configured());
+                assert_eq!(config.address.as_ref(), "10.0.0.1:9500");
+            },
+        );
+    }
+
+    #[test]
+    fn test_from_env_service_name_override() {
+        temp_env::with_vars(
+            [
+                ("DISCOVERY_ENDPOINT", None::<&str>),
+                ("DISCOVERY_SERVICE_ENDPOINT", None::<&str>),
+                ("SONGBIRD_ADDRESS", None::<&str>),
+                ("SONGBIRD_HOST", None::<&str>),
+                ("SONGBIRD_PORT", None::<&str>),
+                ("RHIZOCRYPT_SERVICE_NAME", Some("custom-name")),
+            ],
+            || {
+                let config = SongbirdConfig::from_env();
+                assert_eq!(config.service_name.as_ref(), "custom-name");
+            },
+        );
+    }
+}

@@ -5,6 +5,32 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-11 (session 34)
+
+### Changed
+
+#### Deep Debt: Compile Efficiency — Feature Flag Narrowing
+
+- **tokio**: `"full"` → explicit `["rt-multi-thread", "macros", "net", "sync", "time", "io-util", "signal", "fs"]` — drops `io-std`, `parking_lot`, `process`, `tracing` features
+- **tarpc**: `"full"` → `["serde-transport-bincode", "tcp"]` — drops unused JSON transport, Unix transport
+- **hyper**: `"full"` → `["http1", "client", "server"]` — drops unused HTTP/2
+- **bincode**: Deduplicated spec in `rhizo-crypt-core` to use `workspace = true` instead of inline version
+
+#### Deep Debt: Hardcoding Neutralization
+
+- **`loamspine_http.rs`**: Error/log strings neutralized from "LoamSpine" to "permanent storage provider" — primal-agnostic IPC
+
+### Added
+
+- **31 new tests** across 4 previously uncovered modules:
+  - `service_types.rs` (8): capability descriptors, OnceLock caching, DTO serialization
+  - `btsp/types.rs` (10): protocol constants, cipher serde, handshake messages, error display
+  - `songbird/config.rs` (9): defaults, env parsing, address config, capability advertise
+  - `discovery/endpoint.rs` (4): empty capabilities, clone, static/owned service IDs
+
+**Metrics**
+- 1,502 tests passing (up from 1,471)
+
 ## [0.14.0-dev] - 2026-04-11 (session 33)
 
 ### Changed

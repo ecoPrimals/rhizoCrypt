@@ -121,3 +121,106 @@ pub enum HandshakeError {
     #[error("BTSP key derivation error: {0}")]
     KeyDerivation(String),
 }
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_btsp_version_constant() {
+        assert_eq!(BTSP_VERSION, 1);
+    }
+
+    #[test]
+    fn test_max_frame_size_16mib() {
+        assert_eq!(MAX_FRAME_SIZE, 16 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_cipher_as_str() {
+        assert_eq!(BtspCipher::Chacha20Poly1305.as_str(), "chacha20_poly1305");
+        assert_eq!(BtspCipher::HmacPlain.as_str(), "hmac_plain");
+        assert_eq!(BtspCipher::Null.as_str(), "null");
+    }
+
+    #[test]
+    fn test_cipher_serde_roundtrip() {
+        for cipher in [BtspCipher::Chacha20Poly1305, BtspCipher::HmacPlain, BtspCipher::Null] {
+            let json = serde_json::to_string(&cipher).unwrap();
+            let back: BtspCipher = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, cipher);
+        }
+    }
+
+    #[test]
+    fn test_client_hello_serde() {
+        let hello = ClientHello {
+            version: BTSP_VERSION,
+            client_ephemeral_pub: [0xAA; 32],
+        };
+        let json = serde_json::to_value(&hello).unwrap();
+        assert_eq!(json["version"], BTSP_VERSION);
+        let back: ClientHello = serde_json::from_value(json).unwrap();
+        assert_eq!(back.client_ephemeral_pub, [0xAA; 32]);
+    }
+
+    #[test]
+    fn test_server_hello_serde() {
+        let hello = ServerHello {
+            version: BTSP_VERSION,
+            server_ephemeral_pub: [0xBB; 32],
+            challenge: [0xCC; 32],
+        };
+        let json = serde_json::to_value(&hello).unwrap();
+        let back: ServerHello = serde_json::from_value(json).unwrap();
+        assert_eq!(back.challenge, [0xCC; 32]);
+    }
+
+    #[test]
+    fn test_handshake_complete_serde() {
+        let complete = HandshakeComplete {
+            cipher: BtspCipher::Chacha20Poly1305,
+            session_id: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        };
+        let json = serde_json::to_value(&complete).unwrap();
+        let back: HandshakeComplete = serde_json::from_value(json).unwrap();
+        assert_eq!(back.cipher, BtspCipher::Chacha20Poly1305);
+        assert_eq!(back.session_id[0], 1);
+    }
+
+    #[test]
+    fn test_handshake_error_display() {
+        let io_err = HandshakeError::Io(std::io::Error::other("test"));
+        assert!(io_err.to_string().contains("test"));
+
+        let ver_err = HandshakeError::VersionMismatch {
+            expected: 1,
+            got: 2,
+        };
+        assert!(ver_err.to_string().contains("expected 1"));
+        assert!(ver_err.to_string().contains("got 2"));
+
+        let fam_err = HandshakeError::FamilyVerification;
+        assert!(fam_err.to_string().contains("family verification"));
+
+        let key_err = HandshakeError::KeyDerivation("bad key".into());
+        assert!(key_err.to_string().contains("bad key"));
+    }
+
+    #[test]
+    fn test_session_keys_zeroize_on_drop() {
+        let keys = SessionKeys {
+            encrypt_key: [0xFF; 32],
+            decrypt_key: [0xEE; 32],
+        };
+        assert_eq!(keys.encrypt_key[0], 0xFF);
+        assert_eq!(keys.decrypt_key[0], 0xEE);
+    }
+
+    #[test]
+    fn test_hkdf_constants() {
+        assert_eq!(HANDSHAKE_HKDF_SALT, b"btsp-v1");
+        assert_eq!(HANDSHAKE_HKDF_INFO, b"handshake");
+    }
+}

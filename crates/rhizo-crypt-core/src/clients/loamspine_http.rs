@@ -274,7 +274,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
 
         if !response.accepted {
             return Err(RhizoCryptError::integration(format!(
-                "LoamSpine rejected commit: {}",
+                "Permanent storage provider rejected commit: {}",
                 response.error.unwrap_or_else(|| "Unknown error".to_string())
             )));
         }
@@ -337,7 +337,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
                             status = %hc.status,
                             version = %hc.version,
                             spine_count = hc.spine_count,
-                            "Health check response from LoamSpine"
+                            "Health check response from permanent storage provider"
                         );
                         Ok(hc.is_healthy())
                     }

@@ -15,8 +15,8 @@ repository = "https://github.com/ecoPrimals/rhizoCrypt"
 authors = ["ecoPrimals Project"]
 
 [workspace.dependencies]
-# Async runtime
-tokio = { version = "1.46", features = ["full"] }
+# Async runtime — explicit features for compile efficiency (no "full")
+tokio = { version = "1.46", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util", "signal", "fs"] }
 async-trait = "0.1"
 futures-util = "0.3"
 
@@ -46,14 +46,14 @@ thiserror = "2.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Pure Rust RPC (tarpc) - compile-time type safety, no protobuf
-tarpc = { version = "0.37", features = ["full"] }
+# Pure Rust RPC (tarpc) — explicit features, no "full" (drops json transport + unix + unused codecs)
+tarpc = { version = "0.37", features = ["serde-transport-bincode", "tcp"] }
 
 # HTTP (axum for REST endpoints, hyper-util for outbound clients)
 axum = "0.7"
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.5", features = ["trace", "cors"] }
-hyper = { version = "1.0", features = ["full"] }
+hyper = { version = "1.0", features = ["http1", "client", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "client-legacy", "http1"] }
 http-body-util = "0.1"
 
