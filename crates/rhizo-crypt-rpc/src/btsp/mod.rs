@@ -45,3 +45,64 @@ pub fn read_family_seed(primal_env_prefix: &str) -> Option<Vec<u8>> {
 pub fn is_btsp_required() -> bool {
     rhizo_crypt_core::transport::read_family_id("RHIZOCRYPT").is_some()
 }
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_family_seed_empty_env() {
+        temp_env::with_vars(
+            [("RHIZOCRYPT_FAMILY_SEED", None::<&str>), ("FAMILY_SEED", None::<&str>)],
+            || {
+                assert!(read_family_seed("RHIZOCRYPT").is_none());
+            },
+        );
+    }
+
+    #[test]
+    fn test_read_family_seed_primal_override() {
+        temp_env::with_vars(
+            [
+                ("RHIZOCRYPT_FAMILY_SEED", Some("primal-seed")),
+                ("FAMILY_SEED", Some("generic-seed")),
+            ],
+            || {
+                let seed = read_family_seed("RHIZOCRYPT").unwrap();
+                assert_eq!(seed, b"primal-seed");
+            },
+        );
+    }
+
+    #[test]
+    fn test_read_family_seed_generic_fallback() {
+        temp_env::with_vars(
+            [("RHIZOCRYPT_FAMILY_SEED", None::<&str>), ("FAMILY_SEED", Some("generic-seed"))],
+            || {
+                let seed = read_family_seed("RHIZOCRYPT").unwrap();
+                assert_eq!(seed, b"generic-seed");
+            },
+        );
+    }
+
+    #[test]
+    fn test_read_family_seed_whitespace_only_returns_none() {
+        temp_env::with_vars(
+            [("RHIZOCRYPT_FAMILY_SEED", None::<&str>), ("FAMILY_SEED", Some("   "))],
+            || {
+                assert!(read_family_seed("RHIZOCRYPT").is_none());
+            },
+        );
+    }
+
+    #[test]
+    fn test_is_btsp_required_dev_mode() {
+        temp_env::with_vars(
+            [("RHIZOCRYPT_FAMILY_ID", None::<&str>), ("FAMILY_ID", None::<&str>)],
+            || {
+                assert!(!is_btsp_required());
+            },
+        );
+    }
+}

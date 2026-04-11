@@ -361,9 +361,10 @@ async fn test_dual_mode_raw_newline_client() {
     drop(listener);
 
     let server = JsonRpcServer::new(primal, addr);
+    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let ready = Arc::new(tokio::sync::Notify::new());
     let ready_rx = Arc::clone(&ready);
-    tokio::spawn(async move { server.serve_with_ready(ready_rx).await });
+    tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
     ready.notified().await;
 
     let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
@@ -388,9 +389,10 @@ async fn test_dual_mode_http_client() {
     drop(listener);
 
     let server = JsonRpcServer::new(primal, addr);
+    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let ready = Arc::new(tokio::sync::Notify::new());
     let ready_rx = Arc::clone(&ready);
-    tokio::spawn(async move { server.serve_with_ready(ready_rx).await });
+    tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
     ready.notified().await;
 
     let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();

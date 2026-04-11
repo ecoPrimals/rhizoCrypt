@@ -2,7 +2,7 @@
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 use super::*;
-use rhizo_crypt_core::{PrimalLifecycle, RhizoCrypt, RhizoCryptConfig};
+use rhizo_crypt_core::{EventType, PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, SessionType};
 use std::sync::Arc;
 
 #[test]

@@ -5,6 +5,47 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-11 (session 32)
+
+### Changed
+
+#### Deep Debt Cleanup: Constants Centralization & Idiomatic Evolution
+
+- **17 new constants** in `constants.rs`: `DEFAULT_GC_INTERVAL`, `DEFAULT_EXPIRATION_GRACE`, `DEFAULT_ATTESTATION_TIMEOUT`, `DEFAULT_DEHYDRATION_RETRY_DELAY`, `DEFAULT_MAX_PAYLOAD_BYTES`, `DEFAULT_SESSION_MAX_DURATION`, `DEFAULT_RETRY_MAX_BACKOFF`, `CIRCUIT_BREAKER_FAILURE_THRESHOLD`, `CIRCUIT_BREAKER_COOLDOWN`, `DEFAULT_HEARTBEAT_INTERVAL`, `DEFAULT_HEALTH_CHECK_INTERVAL`, `ADVERTISED_CAPABILITIES`, `LOCALHOST_HOSTNAME`
+- **9 files migrated** from hardcoded literals to constants: `config.rs`, `session.rs`, `loamspine_http.rs`, `adapters/http.rs`, `adapters/unix_socket.rs`, `songbird/config.rs`, `discovery/endpoint.rs`, `resilience.rs` (CircuitBreaker + RetryPolicy)
+- **Songbird capability registration** uses `ADVERTISED_CAPABILITIES[0]` instead of hardcoded `"dag-engine"`
+
+#### Large File Refactoring (Cohesion-Based)
+
+- **`service.rs` split** (687 → 485 LOC): Wire types + capability descriptors extracted to `service_types.rs` (222 LOC) — types change independently from RPC behavior, improving compile-time boundaries
+- **`store.rs` DagBackend dispatch** (676 → 631 LOC): 114 lines of repetitive `match` arms replaced with `dispatch_backend!` macro
+
+#### Clone Reduction & Zero-Copy
+
+- **`cached_capability_descriptors()`** now returns `&'static [CapabilityDescriptor]` instead of `&'static Vec<_>` — eliminates `.clone()` allocation on every `capabilities.list` call
+- **HTTP client constructors** in `loamspine_http.rs` and `adapters/http.rs` now reference `CONNECTION_TIMEOUT` constant
+
+#### Idiomatic Rust 2024
+
+- **`safe_env/mod.rs`**: `.map(…).unwrap_or(false)` → `.is_ok_and(…)`
+- **`config.rs`**: `.map(…).unwrap_or(true)` → `.map_or(true, …)`
+- **`rhizocrypt/mod.rs`**: `for`/`push` GC sweep loop → `.filter().map().collect()` iterator chain
+- **`store.rs`**: Removed redundant double-nesting and unnecessary scope blocks in `put_vertex`/`stats`
+
+#### Dependency Evolution
+
+- **Removed unused `toml` workspace dependency** (not referenced by any crate)
+- Dependency audit confirmed: stack is already ecoBin-compliant — zero application C deps, `deny.toml` bans openssl/ring/reqwest/sqlite
+
+### Added
+
+- **9 new tests**: BTSP `mod.rs` (5 — `read_family_seed` env variants, `is_btsp_required` dev mode), UDS (4 — `socket_path` accessor, idempotent cleanup, sequential requests, parent dir creation)
+
+**Metrics**
+- 1,470 tests passing (up from 1,456), 147 `.rs` files (up from 146), max file 664 lines (down from 687)
+- Zero clippy warnings, zero unsafe blocks, zero TODOs in production code
+- ~93% line coverage (`llvm-cov`)
+
 ## [0.14.0-dev] - 2026-04-09 (session 31)
 
 ### Added

@@ -59,9 +59,9 @@ impl Default for RhizoCryptConfig {
         Self {
             name: constants::PRIMAL_NAME.to_string(),
             default_session: SessionConfig::default(),
-            max_sessions: 1000,
-            gc_interval: Duration::from_secs(60),
-            expiration_grace: Duration::from_secs(3600),
+            max_sessions: constants::DEFAULT_MAX_SESSIONS,
+            gc_interval: constants::DEFAULT_GC_INTERVAL,
+            expiration_grace: constants::DEFAULT_EXPIRATION_GRACE,
             storage: StorageConfig::default(),
             metrics: MetricsConfig::default(),
             dehydration: DehydrationClientConfig::default(),
@@ -185,9 +185,9 @@ pub struct DehydrationClientConfig {
 impl Default for DehydrationClientConfig {
     fn default() -> Self {
         Self {
-            attestation_timeout: Duration::from_secs(60),
-            max_retries: 3,
-            retry_delay: Duration::from_secs(5),
+            attestation_timeout: constants::DEFAULT_ATTESTATION_TIMEOUT,
+            max_retries: u32::from(constants::DEFAULT_MAX_RETRIES),
+            retry_delay: constants::DEFAULT_DEHYDRATION_RETRY_DELAY,
             include_vertices: false,
             include_payloads: false,
         }
@@ -218,11 +218,11 @@ pub struct SliceConfig {
 impl Default for SliceConfig {
     fn default() -> Self {
         Self {
-            default_max_duration: Duration::from_secs(7 * 24 * 3600), // 1 week
-            default_loan_grace: Duration::from_secs(24 * 3600),       // 1 day
+            default_max_duration: constants::DEFAULT_SESSION_TIMEOUT,
+            default_loan_grace: constants::DEFAULT_LOAN_GRACE,
             allow_reslice: false,
             max_reslice_depth: 3,
-            max_slices_per_session: 100,
+            max_slices_per_session: constants::DEFAULT_MAX_SLICES_PER_SESSION,
         }
     }
 }
@@ -296,7 +296,7 @@ impl RpcConfig {
             .unwrap_or(Self::DEFAULT_PORT);
 
         let enabled =
-            reader("RHIZOCRYPT_RPC_ENABLED").map(|s| s.to_lowercase() != "false").unwrap_or(true);
+            reader("RHIZOCRYPT_RPC_ENABLED").map_or(true, |s| s.to_lowercase() != "false");
 
         Self {
             host,

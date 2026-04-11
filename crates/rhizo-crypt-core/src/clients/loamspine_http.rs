@@ -23,7 +23,6 @@ use crate::slice::{ResolutionOutcome, Slice, SliceOrigin};
 use crate::types::Did;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
 
 /// Native semantic JSON-RPC method names per the Universal IPC Standard.
 ///
@@ -93,7 +92,9 @@ impl LoamSpineHttpClient {
             format!("{endpoint}{}", crate::constants::JSON_RPC_PATH)
         };
 
-        let client = crate::clients::adapters::http::EcoHttpClient::new(Duration::from_secs(30));
+        let client = crate::clients::adapters::http::EcoHttpClient::new(
+            crate::constants::CONNECTION_TIMEOUT,
+        );
 
         Ok(Self {
             base_url,

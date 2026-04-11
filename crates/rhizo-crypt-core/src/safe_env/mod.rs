@@ -100,7 +100,7 @@ impl SafeEnv {
     #[inline]
     #[must_use]
     pub fn is_development() -> bool {
-        std::env::var(Self::ENV_MODE).map(|s| s.to_lowercase() == Self::DEV_MODE).unwrap_or(false)
+        std::env::var(Self::ENV_MODE).is_ok_and(|s| s.to_lowercase() == Self::DEV_MODE)
     }
 
     /// Check if running in production mode.

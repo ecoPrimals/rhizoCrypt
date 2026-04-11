@@ -165,7 +165,7 @@ impl SongbirdClient {
             let registration = RpcServiceRegistration {
                 service_id: format!("rhizocrypt-{}", uuid::Uuid::now_v7()),
                 service_name: self.config.service_name.to_string(),
-                capability: "dag-engine".to_string(),
+                capability: crate::constants::ADVERTISED_CAPABILITIES[0].to_string(),
                 endpoint: our_endpoint.to_string(),
                 metadata: self.config.metadata.clone(),
             };

@@ -14,10 +14,11 @@
 //! - Cleanup socket file on stop
 
 use rhizo_crypt_core::RhizoCrypt;
+use rhizo_crypt_core::constants::DEFAULT_MAX_CONNECTIONS;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::net::UnixListener;
-use tokio::sync::watch;
+use tokio::sync::{Semaphore, watch};
 use tracing::{debug, info, warn};
 
 /// Unix domain socket JSON-RPC server.
@@ -98,11 +99,18 @@ impl UdsJsonRpcServer {
             debug!("BTSP not required (development mode), serving raw JSON-RPC");
         }
 
+        let semaphore = Arc::new(Semaphore::new(DEFAULT_MAX_CONNECTIONS));
+
         loop {
             tokio::select! {
                 result = listener.accept() => {
                     match result {
                         Ok((stream, _addr)) => {
+                            let Ok(permit) = Arc::clone(&semaphore).try_acquire_owned() else {
+                                warn!("UDS connection rejected: limit reached");
+                                drop(stream);
+                                continue;
+                            };
                             let primal = Arc::clone(&self.primal);
                             let seed = family_seed.clone();
                             let enforce = btsp_required;
@@ -110,6 +118,7 @@ impl UdsJsonRpcServer {
                                 if let Err(e) = handle_uds_connection(stream, primal, enforce, seed.as_deref()).await {
                                     warn!(error = %e, "UDS connection error");
                                 }
+                                drop(permit);
                             });
                         }
                         Err(e) => {
@@ -330,5 +339,78 @@ mod tests {
             path_str.contains("biomeos") || path_str.contains("rhizocrypt"),
             "path should reference biomeos or rhizocrypt: {path_str}"
         );
+    }
+
+    #[test]
+    fn test_socket_path_accessor() {
+        let path = std::path::PathBuf::from("/tmp/test.sock");
+        let primal = tokio::runtime::Runtime::new().unwrap().block_on(test_primal());
+        let server = UdsJsonRpcServer::new(primal, path.clone());
+        assert_eq!(server.socket_path(), path);
+    }
+
+    #[tokio::test]
+    async fn test_uds_server_cleanup_idempotent() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let sock = dir.path().join("idempotent.sock");
+        let primal = test_primal().await;
+        let server = UdsJsonRpcServer::new(primal, sock.clone());
+        server.cleanup();
+        server.cleanup();
+    }
+
+    #[tokio::test]
+    async fn test_uds_multiple_sequential_requests() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let sock = dir.path().join("seq-test.sock");
+        let primal = test_primal().await;
+
+        let server = UdsJsonRpcServer::new(primal, sock.clone());
+        let (shutdown_tx, shutdown_rx) = watch::channel(false);
+        let ready = Arc::new(tokio::sync::Notify::new());
+        let ready_rx = Arc::clone(&ready);
+
+        let handle =
+            tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+        ready.notified().await;
+
+        for i in 0..5_u32 {
+            let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
+            let (reader, mut writer) = stream.into_split();
+
+            let req =
+                format!(r#"{{"jsonrpc":"2.0","method":"health.check","params":{{}},"id":{i}}}"#);
+            writer.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+            writer.shutdown().await.unwrap();
+
+            let mut lines = BufReader::new(reader).lines();
+            let line = lines.next_line().await.unwrap().expect("response");
+            let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(resp["id"], i);
+        }
+
+        let _ = shutdown_tx.send(true);
+        let _ = handle.await;
+    }
+
+    #[tokio::test]
+    async fn test_uds_serve_creates_parent_dirs() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let nested = dir.path().join("deep").join("nested").join("test.sock");
+        let primal = test_primal().await;
+
+        let server = UdsJsonRpcServer::new(primal, nested.clone());
+        let (shutdown_tx, shutdown_rx) = watch::channel(false);
+        let ready = Arc::new(tokio::sync::Notify::new());
+        let ready_rx = Arc::clone(&ready);
+
+        let handle =
+            tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+        ready.notified().await;
+
+        assert!(nested.exists(), "socket should exist under nested dirs");
+
+        let _ = shutdown_tx.send(true);
+        let _ = handle.await;
     }
 }

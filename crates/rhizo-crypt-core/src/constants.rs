@@ -66,6 +66,9 @@ pub const LOCALHOST: &str = "127.0.0.1";
 /// Localhost IPv6 address.
 pub const LOCALHOST_V6: &str = "::1";
 
+/// Localhost hostname for HTTP Host headers (especially UDS where IP is N/A).
+pub const LOCALHOST_HOSTNAME: &str = "localhost";
+
 /// Port offset for the JSON-RPC server relative to the tarpc port.
 ///
 /// When the JSON-RPC port is not explicitly configured, it is calculated as
@@ -202,8 +205,35 @@ pub const DEFAULT_ATTESTATION_TIMEOUT_SECS: u64 = 60;
 /// Default commit timeout (60 seconds).
 pub const DEFAULT_COMMIT_TIMEOUT_SECS: u64 = 60;
 
-/// Default garbage collection interval for expired sessions (2 minutes).
-pub const DEFAULT_GC_INTERVAL: Duration = Duration::from_secs(120);
+/// Default garbage collection interval for expired sessions.
+///
+/// Derivation: 60s keeps memory pressure low without excessive overhead.
+/// Shorter than the production 120s variant because dev sessions are small.
+pub const DEFAULT_GC_INTERVAL: Duration = Duration::from_secs(60);
+
+/// Default expiration grace period for sessions (1 hour).
+///
+/// Derivation: gives agents time to complete dehydration after session
+/// timeout before GC reclaims the session data.
+pub const DEFAULT_EXPIRATION_GRACE: Duration = Duration::from_secs(3600);
+
+/// Default dehydration attestation timeout.
+pub const DEFAULT_ATTESTATION_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Default dehydration retry delay.
+pub const DEFAULT_DEHYDRATION_RETRY_DELAY: Duration = Duration::from_secs(5);
+
+/// Default maximum payload size per session (1 GiB).
+///
+/// Derivation: accommodates large experiment data while preventing a
+/// single session from exhausting host memory.
+pub const DEFAULT_MAX_PAYLOAD_BYTES: usize = 1024 * 1024 * 1024;
+
+/// Default session max duration (1 hour).
+///
+/// Derivation: individual session config default; distinct from
+/// `DEFAULT_SESSION_TIMEOUT` which is the GC boundary (7 days).
+pub const DEFAULT_SESSION_MAX_DURATION: Duration = Duration::from_secs(3600);
 
 /// Rate-limit cleanup interval for production (1 minute).
 pub const RATE_LIMIT_CLEANUP_INTERVAL: Duration = Duration::from_secs(60);
@@ -230,6 +260,35 @@ pub const DEFAULT_MAX_RETRIES: u8 = 3;
 
 /// Default retry backoff base (milliseconds).
 pub const DEFAULT_RETRY_BACKOFF_MS: u64 = 100;
+
+/// Maximum retry backoff cap for IPC operations.
+///
+/// Derivation: 2s prevents unbounded backoff in tight retry loops while
+/// giving enough breathing room for a transiently-overloaded peer.
+pub const DEFAULT_RETRY_MAX_BACKOFF: Duration = Duration::from_secs(2);
+
+/// Circuit breaker default failure threshold for IPC.
+///
+/// Derivation: 5 consecutive failures balances fast failure detection
+/// against transient network hiccups. Aligned with biomeOS resilience defaults.
+pub const CIRCUIT_BREAKER_FAILURE_THRESHOLD: u8 = 5;
+
+/// Circuit breaker default cooldown for IPC.
+///
+/// Derivation: 30s allows overloaded peers to recover without retrying
+/// too aggressively. Matches `CONNECTION_TIMEOUT`.
+pub const CIRCUIT_BREAKER_COOLDOWN: Duration = Duration::from_secs(30);
+
+/// Default heartbeat interval for discovery registration.
+///
+/// Derivation: 45s is 1.5x the health probe interval (30s), ensuring
+/// the service ID stays fresh between probes. Validated: spring composition sessions.
+pub const DEFAULT_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(45);
+
+/// Default health check interval for service endpoints.
+///
+/// Derivation: 30s matches biomeOS health probe default and `CONNECTION_TIMEOUT`.
+pub const DEFAULT_HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(30);
 
 // ============================================================================
 // DISCOVERY CONSTANTS
@@ -317,6 +376,14 @@ pub const COST_TIER_MEDIUM_THRESHOLD_MS: u32 = 10;
 // COMPRESSION CONSTANTS
 // ============================================================================
 
+/// Maximum line length for newline-delimited JSON-RPC (16 MiB).
+///
+/// Derivation: matches BTSP `MAX_FRAME_SIZE` (16 MiB). Largest realistic
+/// single JSON-RPC request is a batch dehydration summary (~1 MiB). 16 MiB
+/// provides generous headroom while preventing unbounded memory allocation
+/// from misbehaving or adversarial clients.
+pub const MAX_JSONRPC_LINE_LENGTH: usize = 16 * 1024 * 1024;
+
 /// Default compression threshold (1 KB).
 ///
 /// Payloads smaller than this are not compressed.
@@ -343,6 +410,21 @@ pub const DEFAULT_SOCKET_DIR: &str = "/run/biomeos";
 
 /// File extension for Unix domain sockets.
 pub const SOCKET_FILE_EXTENSION: &str = ".sock";
+
+// ============================================================================
+// API PATH CONSTANTS
+// ============================================================================
+
+// ============================================================================
+// CAPABILITY ADVERTISEMENT
+// ============================================================================
+
+/// Capability domains this primal advertises for discovery registration.
+///
+/// Used by `SongbirdConfig` default and capability descriptors. Aligned
+/// with `capability_registry.toml` provider entries for `rhizocrypt`.
+pub const ADVERTISED_CAPABILITIES: &[&str] =
+    &["dag-engine", "session-management", "merkle-proofs", "slice-checkout", "dehydration"];
 
 // ============================================================================
 // API PATH CONSTANTS

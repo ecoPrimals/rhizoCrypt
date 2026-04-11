@@ -459,18 +459,16 @@ impl RhizoCrypt {
     /// the number of sessions reaped.
     pub async fn gc_sweep(&self) -> usize {
         let now = Timestamp::now();
-        let mut expired = Vec::new();
-
-        for entry in self.sessions.iter() {
-            let session = entry.value();
-            if session.is_terminal() {
-                continue;
-            }
-            let age = now.duration_since(session.created_at);
-            if age >= session.config.max_duration {
-                expired.push(*entry.key());
-            }
-        }
+        let expired: Vec<_> = self
+            .sessions
+            .iter()
+            .filter(|entry| {
+                let session = entry.value();
+                !session.is_terminal()
+                    && now.duration_since(session.created_at) >= session.config.max_duration
+            })
+            .map(|entry| *entry.key())
+            .collect();
 
         let count = expired.len();
         for session_id in expired {

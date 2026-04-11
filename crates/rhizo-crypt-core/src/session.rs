@@ -338,9 +338,9 @@ pub struct SessionConfig {
 impl Default for SessionConfig {
     fn default() -> Self {
         Self {
-            max_duration: Duration::from_secs(3600), // 1 hour
-            max_vertices: 100_000,
-            max_payload_bytes: 1024 * 1024 * 1024, // 1 GB
+            max_duration: crate::constants::DEFAULT_SESSION_MAX_DURATION,
+            max_vertices: crate::constants::DEFAULT_MAX_VERTICES_PER_SESSION as u64,
+            max_payload_bytes: crate::constants::DEFAULT_MAX_PAYLOAD_BYTES as u64,
             require_all_signatures: false,
             signature_required_events: HashSet::new(),
             auto_dehydrate: true,

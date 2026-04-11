@@ -4,7 +4,7 @@ use super::*;
 fn test_config_default() {
     let config = RhizoCryptConfig::default();
     assert_eq!(config.name, constants::PRIMAL_NAME);
-    assert_eq!(config.max_sessions, 1000);
+    assert_eq!(config.max_sessions, constants::DEFAULT_MAX_SESSIONS);
     assert_eq!(config.storage.backend, StorageBackend::Memory);
 }
 

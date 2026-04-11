@@ -98,11 +98,12 @@ impl UnixSocketAdapter {
     pub fn build_http_request(path: &str, body_len: usize) -> String {
         format!(
             "POST {path} HTTP/1.1\r\n\
-             Host: localhost\r\n\
+             Host: {}\r\n\
              Content-Type: application/json\r\n\
              Content-Length: {body_len}\r\n\
              Connection: close\r\n\
-             \r\n"
+             \r\n",
+            crate::constants::LOCALHOST_HOSTNAME,
         )
     }
 

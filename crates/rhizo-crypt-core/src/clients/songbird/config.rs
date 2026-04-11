@@ -56,17 +56,14 @@ impl SongbirdConfig {
         Self {
             address: Cow::Borrowed(""),
             service_name: Cow::Borrowed(crate::constants::PRIMAL_NAME),
-            capabilities: vec![
-                Cow::Borrowed("dag-engine"),
-                Cow::Borrowed("session-management"),
-                Cow::Borrowed("merkle-proofs"),
-                Cow::Borrowed("slice-checkout"),
-                Cow::Borrowed("dehydration"),
-            ],
+            capabilities: crate::constants::ADVERTISED_CAPABILITIES
+                .iter()
+                .map(|&s| Cow::Borrowed(s))
+                .collect(),
             metadata: HashMap::new(),
             timeout_ms: crate::constants::DEFAULT_CAPABILITY_TIMEOUT_MS,
             auto_reconnect: true,
-            heartbeat_interval: Duration::from_secs(45),
+            heartbeat_interval: crate::constants::DEFAULT_HEARTBEAT_INTERVAL,
         }
     }
 

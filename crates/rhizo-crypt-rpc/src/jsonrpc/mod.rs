@@ -14,10 +14,12 @@ mod types;
 pub mod uds;
 
 use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::post};
-use rhizo_crypt_core::{RhizoCrypt, constants::JSON_RPC_PATH};
+use rhizo_crypt_core::RhizoCrypt;
+use rhizo_crypt_core::constants::{DEFAULT_MAX_CONNECTIONS, JSON_RPC_PATH};
 use std::borrow::Cow;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tokio::sync::{Semaphore, watch};
 use tower::Service;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -57,21 +59,21 @@ impl JsonRpcServer {
         }
     }
 
-    /// Start the dual-mode JSON-RPC server.
+    /// Start the dual-mode JSON-RPC server with graceful shutdown.
     ///
     /// Accepts TCP connections and auto-detects the wire framing by peeking
     /// at the first byte:
     /// - `{` or `[` → raw newline-delimited JSON-RPC (ecosystem IPC standard)
     /// - Anything else → HTTP (Axum router, for `curl`/browser clients)
     ///
-    /// This follows the ecosystem dual-mode protocol-detection pattern and
-    /// resolves the IPC compliance matrix wire framing requirement.
+    /// The server stops accepting new connections when `shutdown` fires and
+    /// enforces a connection limit of [`DEFAULT_MAX_CONNECTIONS`].
     ///
     /// # Errors
     ///
     /// Returns `std::io::Error` if binding fails.
-    pub async fn serve(self) -> Result<(), std::io::Error> {
-        self.serve_inner(None).await
+    pub async fn serve(self, shutdown: watch::Receiver<bool>) -> Result<(), std::io::Error> {
+        self.serve_inner(shutdown, None).await
     }
 
     /// Start the server and signal `ready` once the listener is bound.
@@ -85,13 +87,15 @@ impl JsonRpcServer {
     /// Returns `std::io::Error` if binding fails.
     pub async fn serve_with_ready(
         self,
+        shutdown: watch::Receiver<bool>,
         ready: Arc<tokio::sync::Notify>,
     ) -> Result<(), std::io::Error> {
-        self.serve_inner(Some(ready)).await
+        self.serve_inner(shutdown, Some(ready)).await
     }
 
     async fn serve_inner(
         self,
+        mut shutdown: watch::Receiver<bool>,
         ready: Option<Arc<tokio::sync::Notify>>,
     ) -> Result<(), std::io::Error> {
         let listener = tokio::net::TcpListener::bind(self.addr).await?;
@@ -103,18 +107,34 @@ impl JsonRpcServer {
         }
 
         let app = Self::router(Arc::clone(&self.primal));
+        let semaphore = Arc::new(Semaphore::new(DEFAULT_MAX_CONNECTIONS));
 
         loop {
-            let (stream, peer) = listener.accept().await?;
-            let primal = Arc::clone(&self.primal);
-            let app = app.clone();
+            tokio::select! {
+                result = listener.accept() => {
+                    let (stream, peer) = result?;
+                    let Ok(permit) = Arc::clone(&semaphore).try_acquire_owned() else {
+                        warn!(peer = %peer, "connection rejected: limit reached");
+                        drop(stream);
+                        continue;
+                    };
+                    let primal = Arc::clone(&self.primal);
+                    let app = app.clone();
 
-            tokio::spawn(async move {
-                if let Err(e) = handle_tcp_connection(stream, peer, primal, app).await {
-                    debug!(peer = %peer, error = %e, "TCP connection ended");
+                    tokio::spawn(async move {
+                        if let Err(e) = handle_tcp_connection(stream, peer, primal, app).await {
+                            debug!(peer = %peer, error = %e, "TCP connection ended");
+                        }
+                        drop(permit);
+                    });
                 }
-            });
+                _ = shutdown.changed() => {
+                    info!("JSON-RPC TCP listener shutting down");
+                    break;
+                }
+            }
         }
+        Ok(())
     }
 
     /// Build the axum router for embedding in larger applications.

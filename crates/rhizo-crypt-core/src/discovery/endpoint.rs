@@ -47,7 +47,7 @@ impl ServiceEndpoint {
             addr,
             capabilities,
             last_healthy: std::time::Instant::now(),
-            health_interval: Duration::from_secs(30),
+            health_interval: crate::constants::DEFAULT_HEALTH_CHECK_INTERVAL,
         }
     }
 

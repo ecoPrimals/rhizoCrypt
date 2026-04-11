@@ -150,7 +150,7 @@ impl HttpAdapter {
     /// Returns error if base URL is invalid.
     pub fn new(base_url: &str) -> Result<Self> {
         let base_url = EcoHttpClient::validate_url(base_url)?;
-        let client = EcoHttpClient::new(std::time::Duration::from_secs(30));
+        let client = EcoHttpClient::new(crate::constants::CONNECTION_TIMEOUT);
         Ok(Self {
             base_url,
             client,

@@ -4,9 +4,10 @@
 //! RPC client implementation.
 
 use crate::error::{RpcError, RpcResult};
-use crate::service::{
+use crate::service::RhizoCryptRpcClient as GeneratedClient;
+use crate::service_types::{
     AppendEventRequest, CheckoutSliceRequest, CreateSessionRequest, HealthStatus, QueryRequest,
-    RhizoCryptRpcClient as GeneratedClient, ServiceMetrics, SessionInfo,
+    ServiceMetrics, SessionInfo,
 };
 use rhizo_crypt_core::{
     DehydrationStatus, MerkleProof, MerkleRoot, SessionId, Slice, SliceId, Vertex, VertexId,
@@ -364,7 +365,9 @@ impl RpcClient {
     /// # Errors
     ///
     /// Returns `RpcError::Transport` if the RPC call fails.
-    pub async fn list_capabilities(&self) -> RpcResult<Vec<crate::service::CapabilityDescriptor>> {
+    pub async fn list_capabilities(
+        &self,
+    ) -> RpcResult<Vec<crate::service_types::CapabilityDescriptor>> {
         self.inner
             .list_capabilities(context::current())
             .await

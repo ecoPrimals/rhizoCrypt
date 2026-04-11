@@ -221,32 +221,23 @@ impl DagStore for InMemoryDagStore {
         // Compute vertex ID if not already computed
         let vertex_id = vertex.id()?;
 
-        {
-            let mut sessions = self.sessions.write().await;
-            {
-                let session = sessions.entry(session_id).or_default();
+        let mut sessions = self.sessions.write().await;
+        let session = sessions.entry(session_id).or_default();
 
-                // Update children index
-                for parent_id in &vertex.parents {
-                    session.children.entry(*parent_id).or_default().insert(vertex_id);
-                }
-
-                // Update genesis/frontier
-                if vertex.is_genesis() {
-                    session.genesis.insert(vertex_id);
-                }
-
-                // Remove parents from frontier, add this vertex
-                for parent_id in &vertex.parents {
-                    session.frontier.remove(parent_id);
-                }
-                session.frontier.insert(vertex_id);
-
-                // Store vertex
-                session.vertices.insert(vertex_id, vertex);
-            }
-            drop(sessions);
+        for parent_id in &vertex.parents {
+            session.children.entry(*parent_id).or_default().insert(vertex_id);
         }
+
+        if vertex.is_genesis() {
+            session.genesis.insert(vertex_id);
+        }
+
+        for parent_id in &vertex.parents {
+            session.frontier.remove(parent_id);
+        }
+        session.frontier.insert(vertex_id);
+        session.vertices.insert(vertex_id, vertex);
+        drop(sessions);
 
         Ok(())
     }
@@ -350,16 +341,11 @@ impl DagStore for InMemoryDagStore {
     }
 
     async fn stats(&self) -> StorageStats {
-        let (session_count, vertex_count) = {
-            let sessions = self.sessions.read().await;
-            let session_count = u64::try_from(sessions.len()).unwrap_or(u64::MAX);
-            let vertex_count: u64 = sessions
-                .values()
-                .map(|s| u64::try_from(s.vertices.len()).unwrap_or(u64::MAX))
-                .sum();
-            drop(sessions);
-            (session_count, vertex_count)
-        };
+        let sessions = self.sessions.read().await;
+        let session_count = u64::try_from(sessions.len()).unwrap_or(u64::MAX);
+        let vertex_count: u64 =
+            sessions.values().map(|s| u64::try_from(s.vertices.len()).unwrap_or(u64::MAX)).sum();
+        drop(sessions);
 
         let bytes_estimate = vertex_count * crate::constants::ESTIMATED_BYTES_PER_VERTEX;
 
@@ -544,13 +530,20 @@ impl DagBackend {
     }
 }
 
+/// Dispatch a method call to the inner `DagStore` backend.
+macro_rules! dispatch_backend {
+    ($self:expr, $method:ident ( $($arg:expr),* $(,)? )) => {
+        match $self {
+            DagBackend::Memory(s) => s.$method($($arg),*).await,
+            #[cfg(feature = "redb")]
+            DagBackend::Redb(s) => s.$method($($arg),*).await,
+        }
+    };
+}
+
 impl DagStore for DagBackend {
     async fn put_vertex(&self, session_id: SessionId, vertex: Vertex) -> Result<()> {
-        match self {
-            Self::Memory(s) => s.put_vertex(session_id, vertex).await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.put_vertex(session_id, vertex).await,
-        }
+        dispatch_backend!(self, put_vertex(session_id, vertex))
     }
 
     async fn get_vertex(
@@ -558,11 +551,7 @@ impl DagStore for DagBackend {
         session_id: SessionId,
         vertex_id: VertexId,
     ) -> Result<Option<Vertex>> {
-        match self {
-            Self::Memory(s) => s.get_vertex(session_id, vertex_id).await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.get_vertex(session_id, vertex_id).await,
-        }
+        dispatch_backend!(self, get_vertex(session_id, vertex_id))
     }
 
     async fn get_vertices(
@@ -570,19 +559,11 @@ impl DagStore for DagBackend {
         session_id: SessionId,
         vertex_ids: &[VertexId],
     ) -> Result<Vec<Option<Vertex>>> {
-        match self {
-            Self::Memory(s) => s.get_vertices(session_id, vertex_ids).await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.get_vertices(session_id, vertex_ids).await,
-        }
+        dispatch_backend!(self, get_vertices(session_id, vertex_ids))
     }
 
     async fn exists(&self, session_id: SessionId, vertex_id: VertexId) -> Result<bool> {
-        match self {
-            Self::Memory(s) => s.exists(session_id, vertex_id).await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.exists(session_id, vertex_id).await,
-        }
+        dispatch_backend!(self, exists(session_id, vertex_id))
     }
 
     async fn get_children(
@@ -590,43 +571,23 @@ impl DagStore for DagBackend {
         session_id: SessionId,
         parent_id: VertexId,
     ) -> Result<Vec<VertexId>> {
-        match self {
-            Self::Memory(s) => s.get_children(session_id, parent_id).await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.get_children(session_id, parent_id).await,
-        }
+        dispatch_backend!(self, get_children(session_id, parent_id))
     }
 
     async fn get_genesis(&self, session_id: SessionId) -> Result<Vec<VertexId>> {
-        match self {
-            Self::Memory(s) => s.get_genesis(session_id).await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.get_genesis(session_id).await,
-        }
+        dispatch_backend!(self, get_genesis(session_id))
     }
 
     async fn get_frontier(&self, session_id: SessionId) -> Result<Vec<VertexId>> {
-        match self {
-            Self::Memory(s) => s.get_frontier(session_id).await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.get_frontier(session_id).await,
-        }
+        dispatch_backend!(self, get_frontier(session_id))
     }
 
     async fn count_vertices(&self, session_id: SessionId) -> Result<u64> {
-        match self {
-            Self::Memory(s) => s.count_vertices(session_id).await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.count_vertices(session_id).await,
-        }
+        dispatch_backend!(self, count_vertices(session_id))
     }
 
     async fn delete_session(&self, session_id: SessionId) -> Result<()> {
-        match self {
-            Self::Memory(s) => s.delete_session(session_id).await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.delete_session(session_id).await,
-        }
+        dispatch_backend!(self, delete_session(session_id))
     }
 
     async fn update_frontier(
@@ -635,27 +596,15 @@ impl DagStore for DagBackend {
         new_vertex: VertexId,
         consumed_parents: &[VertexId],
     ) -> Result<()> {
-        match self {
-            Self::Memory(s) => s.update_frontier(session_id, new_vertex, consumed_parents).await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.update_frontier(session_id, new_vertex, consumed_parents).await,
-        }
+        dispatch_backend!(self, update_frontier(session_id, new_vertex, consumed_parents))
     }
 
     async fn health(&self) -> StorageHealth {
-        match self {
-            Self::Memory(s) => s.health().await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.health().await,
-        }
+        dispatch_backend!(self, health())
     }
 
     async fn stats(&self) -> StorageStats {
-        match self {
-            Self::Memory(s) => s.stats().await,
-            #[cfg(feature = "redb")]
-            Self::Redb(s) => s.stats().await,
-        }
+        dispatch_backend!(self, stats())
     }
 }
 

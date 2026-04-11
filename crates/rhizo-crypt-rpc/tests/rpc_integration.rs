@@ -546,3 +546,114 @@ async fn test_rpc_dehydration() {
 
     server_handle.abort();
 }
+
+// ============================================================================
+// Composition-load: TCP JSON-RPC stability under concurrent spring clients
+// ============================================================================
+
+/// Composition-load: many concurrent TCP newline JSON-RPC clients.
+///
+/// Simulates downstream springs (wetSpring, ludoSpring, healthSpring)
+/// connecting simultaneously to the trio IPC surface. Validates stability
+/// under parallel connection pressure on the TCP dual-mode server.
+#[tokio::test]
+async fn test_tcp_jsonrpc_composition_load() {
+    use rhizo_crypt_rpc::jsonrpc::JsonRpcServer;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+    const CONCURRENT_CLIENTS: usize = 50;
+
+    let mut primal = RhizoCrypt::new(RhizoCryptConfig::default());
+    primal.start().await.expect("primal should start");
+    let primal = Arc::new(primal);
+
+    let addr: std::net::SocketAddr = "127.0.0.1:0".parse().unwrap();
+    let server = JsonRpcServer::new(Arc::clone(&primal), addr);
+    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    let ready = Arc::new(tokio::sync::Notify::new());
+    let ready_rx = Arc::clone(&ready);
+    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+    ready.notified().await;
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let _bound_port = listener.local_addr().unwrap().port();
+    drop(listener);
+
+    // The server bound to port 0 -- we need the actual port. Re-read from
+    // the server's bound address. Since we can't easily get it from
+    // JsonRpcServer after move, we use a different approach: bind ourselves,
+    // get port, drop, then pass that port. But simpler: just use the
+    // ready signal and retry connect.
+    //
+    // Actually, the serve_with_ready already bound. We need the actual addr.
+    // Let's abort and rebind with a known port.
+    handle.abort();
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let bound_addr = listener.local_addr().unwrap();
+    drop(listener);
+
+    let server = JsonRpcServer::new(Arc::clone(&primal), bound_addr);
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    let ready = Arc::new(tokio::sync::Notify::new());
+    let ready_rx = Arc::clone(&ready);
+    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+    ready.notified().await;
+
+    let mut tasks = Vec::with_capacity(CONCURRENT_CLIENTS);
+    for i in 0..CONCURRENT_CLIENTS {
+        let addr = bound_addr;
+        tasks.push(tokio::spawn(async move {
+            let stream = tokio::net::TcpStream::connect(addr).await.expect("connect");
+            let (reader, mut writer) = stream.into_split();
+
+            let req = format!(
+                "{{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{{}},\"id\":{i}}}\n"
+            );
+            writer.write_all(req.as_bytes()).await.unwrap();
+            writer.shutdown().await.unwrap();
+
+            let mut lines = BufReader::new(reader).lines();
+            let line = lines.next_line().await.unwrap().expect("response");
+            let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(resp["jsonrpc"], "2.0");
+            assert!(resp.get("result").is_some(), "client {i} expected result, got: {resp}");
+        }));
+    }
+
+    for task in tasks {
+        task.await.unwrap();
+    }
+
+    let _ = shutdown_tx.send(true);
+    let _ = handle.await;
+}
+
+/// TCP JSON-RPC graceful shutdown: server stops accepting when signaled.
+#[tokio::test]
+async fn test_tcp_jsonrpc_graceful_shutdown() {
+    use rhizo_crypt_rpc::jsonrpc::JsonRpcServer;
+
+    let mut primal = RhizoCrypt::new(RhizoCryptConfig::default());
+    primal.start().await.expect("primal should start");
+    let primal = Arc::new(primal);
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    drop(listener);
+
+    let server = JsonRpcServer::new(primal, addr);
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    let ready = Arc::new(tokio::sync::Notify::new());
+    let ready_rx = Arc::clone(&ready);
+
+    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+    ready.notified().await;
+
+    let _ = shutdown_tx.send(true);
+
+    let result = tokio::time::timeout(std::time::Duration::from_secs(5), handle)
+        .await
+        .expect("server should shut down within 5s");
+    assert!(result.is_ok(), "server task should complete cleanly");
+}

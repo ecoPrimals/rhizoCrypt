@@ -62,6 +62,7 @@ mod metrics;
 mod rate_limit;
 pub mod server;
 mod service;
+pub(crate) mod service_types;
 pub mod streaming;
 
 pub use client::RpcClient;
@@ -71,10 +72,11 @@ pub use metrics::{
 };
 pub use rate_limit::{OperationType, RateLimitConfig, RateLimitExceeded, RateLimiter};
 pub use server::RpcServer;
-pub use service::{
+pub use service::{RhizoCryptRpc, RhizoCryptRpcServer};
+pub use service_types::{
     AppendEventRequest, CapabilityDescriptor, CheckoutSliceRequest, CreateSessionRequest,
-    HealthStatus, MethodDescriptor, QueryRequest, RhizoCryptRpc, RhizoCryptRpcServer,
-    ServiceMetrics, SessionInfo, build_capability_descriptors,
+    HealthStatus, MethodDescriptor, QueryRequest, ServiceMetrics, SessionInfo,
+    build_capability_descriptors,
 };
 pub use streaming::{StreamItem, StreamingAppendResult, parse_ndjson_line};
 

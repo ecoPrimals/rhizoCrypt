@@ -67,10 +67,13 @@ impl CircuitBreaker {
         }
     }
 
-    /// Create with defaults: 5 failures, 30s cooldown.
+    /// Create with defaults from canonical constants.
     #[must_use]
     pub fn default_ipc() -> Self {
-        Self::new(5, Duration::from_secs(30))
+        Self::new(
+            crate::constants::CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+            crate::constants::CIRCUIT_BREAKER_COOLDOWN,
+        )
     }
 
     /// Current breaker state (lock-free, no await).
@@ -157,13 +160,13 @@ impl RetryPolicy {
         }
     }
 
-    /// Default IPC retry policy: 3 retries, 100ms base, 2s cap.
+    /// Default IPC retry policy from canonical constants.
     #[must_use]
     pub const fn default_ipc() -> Self {
         Self::new(
             crate::constants::DEFAULT_MAX_RETRIES,
             Duration::from_millis(crate::constants::DEFAULT_RETRY_BACKOFF_MS),
-            Duration::from_secs(2),
+            crate::constants::DEFAULT_RETRY_MAX_BACKOFF,
         )
     }
 

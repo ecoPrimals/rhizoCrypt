@@ -7,9 +7,9 @@
 
 use crate::error::RpcError;
 use crate::jsonrpc::types::JsonRpcRequest;
-use crate::service::{
-    AppendEventRequest, CheckoutSliceRequest, CreateSessionRequest, QueryRequest, RhizoCryptRpc,
-    RhizoCryptRpcServer,
+use crate::service::{RhizoCryptRpc, RhizoCryptRpcServer};
+use crate::service_types::{
+    AppendEventRequest, CheckoutSliceRequest, CreateSessionRequest, QueryRequest,
 };
 use rhizo_crypt_core::{MerkleRoot, SessionId, SliceId, SliceMode, VertexId};
 use serde::de::DeserializeOwned;

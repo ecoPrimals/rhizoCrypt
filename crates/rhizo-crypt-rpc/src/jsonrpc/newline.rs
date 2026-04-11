@@ -16,6 +16,7 @@
 //! ```
 
 use rhizo_crypt_core::RhizoCrypt;
+use rhizo_crypt_core::constants::MAX_JSONRPC_LINE_LENGTH;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::warn;
@@ -29,6 +30,9 @@ use super::{process_single_request, serialize_response};
 /// or batch), dispatches through the same handler as the HTTP path, and
 /// writes the response followed by `\n`. Empty lines are silently skipped.
 ///
+/// Individual lines are capped at [`MAX_JSONRPC_LINE_LENGTH`] bytes to
+/// prevent unbounded memory allocation from misbehaving clients.
+///
 /// The connection stays open until the peer closes or an I/O error occurs.
 ///
 /// # Errors
@@ -39,9 +43,25 @@ where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
     let (reader, mut writer) = tokio::io::split(stream);
-    let mut lines = BufReader::new(reader).lines();
+    let buf_reader = BufReader::new(reader);
+    let mut lines = buf_reader.lines();
 
     while let Some(line) = lines.next_line().await? {
+        if line.len() > MAX_JSONRPC_LINE_LENGTH {
+            warn!(
+                length = line.len(),
+                limit = MAX_JSONRPC_LINE_LENGTH,
+                "JSON-RPC line exceeds maximum length, dropping"
+            );
+            let resp = serialize_response(&error_response(
+                None,
+                codes::INVALID_REQUEST,
+                "Request too large",
+                None,
+            ));
+            write_response(&mut writer, &resp).await?;
+            continue;
+        }
         if line.trim().is_empty() {
             continue;
         }

@@ -257,9 +257,10 @@ pub async fn run_server_with_ready(
     let host = addr.ip();
     let jsonrpc_port = SafeEnv::get_jsonrpc_port(port);
     let jsonrpc_addr: SocketAddr = format!("{host}:{jsonrpc_port}").parse()?;
+    let (jsonrpc_shutdown_tx, jsonrpc_shutdown_rx) = tokio::sync::watch::channel(false);
     let jsonrpc_server = JsonRpcServer::new(Arc::clone(&primal), jsonrpc_addr);
-    tokio::spawn(async move {
-        if let Err(e) = jsonrpc_server.serve().await {
+    let jsonrpc_handle = tokio::spawn(async move {
+        if let Err(e) = jsonrpc_server.serve(jsonrpc_shutdown_rx).await {
             error!(error = %e, "JSON-RPC server error");
         }
     });
@@ -318,6 +319,7 @@ pub async fn run_server_with_ready(
         () = shutdown_signal() => {
             info!("Received shutdown signal, stopping gracefully");
             let _ = shutdown_tx.send(true);
+            let _ = jsonrpc_shutdown_tx.send(true);
             #[cfg(unix)]
             {
                 let _ = uds_shutdown_tx.send(true);
@@ -326,6 +328,7 @@ pub async fn run_server_with_ready(
                 error!(error = %e, "rhizoCrypt service error during shutdown");
                 return Err(ServiceError::Rpc(e));
             }
+            let _ = jsonrpc_handle.await;
             info!("rhizoCrypt service shutdown cleanly");
             Ok(())
         }
