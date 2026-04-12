@@ -8,20 +8,28 @@
 //! ```
 //!
 //! Max frame size: 16 MiB (`MAX_FRAME_SIZE`).
+//!
+//! Uses `bytes::Bytes` for zero-copy payload handling. Callers receive
+//! a reference-counted, cheaply cloneable buffer that avoids copying
+//! on the read path.
 
 use std::io;
 
+use bytes::{Bytes, BytesMut};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use super::types::MAX_FRAME_SIZE;
 
 /// Read a single length-prefixed frame from the stream.
 ///
+/// Returns the payload as a frozen `Bytes` buffer, enabling zero-copy
+/// downstream processing (CBOR decode, JSON-RPC dispatch, etc.).
+///
 /// # Errors
 ///
 /// - `UnexpectedEof` if the stream closes before a complete frame.
 /// - `InvalidData` if the frame exceeds `MAX_FRAME_SIZE`.
-pub async fn read_frame<R: AsyncRead + Unpin>(reader: &mut R) -> io::Result<Vec<u8>> {
+pub async fn read_frame<R: AsyncRead + Unpin>(reader: &mut R) -> io::Result<Bytes> {
     let mut len_buf = [0u8; 4];
     reader.read_exact(&mut len_buf).await?;
     let len = u32::from_be_bytes(len_buf);
@@ -33,9 +41,9 @@ pub async fn read_frame<R: AsyncRead + Unpin>(reader: &mut R) -> io::Result<Vec<
         ));
     }
 
-    let mut payload = vec![0u8; len as usize];
+    let mut payload = BytesMut::zeroed(len as usize);
     reader.read_exact(&mut payload).await?;
-    Ok(payload)
+    Ok(payload.freeze())
 }
 
 /// Write a single length-prefixed frame to the stream.
@@ -80,7 +88,7 @@ mod tests {
 
         let mut cursor = io::Cursor::new(buf);
         let read_back = read_frame(&mut cursor).await.expect("read");
-        assert_eq!(read_back, payload);
+        assert_eq!(read_back.as_ref(), payload);
     }
 
     #[tokio::test]

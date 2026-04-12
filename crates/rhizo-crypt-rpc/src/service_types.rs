@@ -237,7 +237,7 @@ mod tests {
         let descriptors = build_capability_descriptors();
         let mut domains: Vec<&str> = descriptors.iter().map(|d| d.domain.as_str()).collect();
         let count = domains.len();
-        domains.sort();
+        domains.sort_unstable();
         domains.dedup();
         assert_eq!(count, domains.len(), "domains should be unique");
     }

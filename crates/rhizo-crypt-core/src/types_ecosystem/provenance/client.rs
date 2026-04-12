@@ -208,6 +208,10 @@ impl ProvenanceNotifier {
 
     /// Notify provenance provider of a new provenance chain.
     ///
+    /// Sends a `contribution.record_provenance` JSON-RPC call with the chain's
+    /// vertex references. Non-fatal on failure (graceful degradation per
+    /// `SPRING_PROVENANCE_PATTERN.md` Section 7).
+    ///
     /// # Errors
     ///
     /// Returns error if notification fails.
@@ -216,12 +220,54 @@ impl ProvenanceNotifier {
             return Ok(());
         }
 
-        debug!(vertices = chain.len(), "Notifying provenance provider of provenance update");
+        let stored = *self.endpoint.read().await;
+        let Some(endpoint) = stored else {
+            return Ok(());
+        };
+
+        debug!(
+            vertices = chain.len(),
+            %endpoint,
+            "Notifying provenance provider of provenance update"
+        );
+
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "contribution.record_provenance",
+            "params": {
+                "source_primal": crate::constants::PRIMAL_NAME,
+                "vertices": chain.vertices,
+                "agent_count": chain.agents.len(),
+            },
+            "id": 1
+        });
+
+        match Self::send_jsonrpc(&endpoint, &request).await {
+            Ok(response) => {
+                info!(
+                    vertices = chain.len(),
+                    "Provenance provider notified of provenance chain: {}", response
+                );
+            }
+            Err(e) => {
+                warn!(
+                    vertices = chain.len(),
+                    error = %e,
+                    "Failed to notify provenance provider of provenance chain (non-fatal)"
+                );
+            }
+        }
 
         Ok(())
     }
 
     /// Send a JSON-RPC request to the given endpoint via TCP.
+    ///
+    /// Sets `TCP_NODELAY` to prevent Nagle buffering of newline-delimited
+    /// payloads, and flushes the writer before reading the response. This
+    /// mirrors the hardening already present in `jsonrpc/mod.rs` and
+    /// `btsp/framing.rs`, and fixes the loamSpine "connection closes after
+    /// first response" workaround.
     async fn send_jsonrpc(
         endpoint: &SocketAddr,
         request: &serde_json::Value,
@@ -235,10 +281,13 @@ impl ProvenanceNotifier {
                 .map_err(|_| format!("Connection timeout to {endpoint}"))?
                 .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
 
+        stream.set_nodelay(true).map_err(|e| format!("Failed to set TCP_NODELAY: {e}"))?;
+
         let (reader, mut writer) = stream.into_split();
 
         let payload = format!("{}\n", serde_json::to_string(request).unwrap_or_default());
         writer.write_all(payload.as_bytes()).await.map_err(|e| format!("Write failed: {e}"))?;
+        writer.flush().await.map_err(|e| format!("Flush failed: {e}"))?;
 
         let mut buf_reader = BufReader::new(reader);
         let mut response = String::new();
@@ -395,8 +444,49 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_notify_provenance_connected() {
-        let config = ProvenanceProviderConfig::with_push_address("127.0.0.1:9900");
+    async fn test_notify_provenance_connected_no_server() {
+        let config = ProvenanceProviderConfig::with_push_address("127.0.0.1:19904");
+        let notifier = ProvenanceNotifier::new(config);
+        notifier.connect().await.unwrap();
+
+        let mut chain = ProvenanceChain::new();
+        chain.add_vertex(VertexRef {
+            session_id: SessionId::now(),
+            vertex_id: VertexId::from_bytes(b"v1"),
+            event_type: "test".to_string(),
+            agent: Some(Did::new("did:key:test")),
+            timestamp: Timestamp::now(),
+            payload_ref: None,
+        });
+
+        // Non-fatal: should succeed even when provider is unreachable
+        let result = notifier.notify_provenance(&chain).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_send_jsonrpc_provenance_with_mock_server() {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let server_handle = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let (reader, mut writer) = stream.into_split();
+            let mut buf_reader = BufReader::new(reader);
+            let mut request = String::new();
+            buf_reader.read_line(&mut request).await.unwrap();
+
+            let parsed: serde_json::Value = serde_json::from_str(&request).unwrap();
+            assert_eq!(parsed["method"], "contribution.record_provenance");
+            assert!(parsed["params"]["vertices"].is_array());
+
+            let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
+            writer.write_all(format!("{response}\n").as_bytes()).await.unwrap();
+        });
+
+        let config = ProvenanceProviderConfig::with_push_address(addr.to_string());
         let notifier = ProvenanceNotifier::new(config);
         notifier.connect().await.unwrap();
 
@@ -412,6 +502,8 @@ mod tests {
 
         let result = notifier.notify_provenance(&chain).await;
         assert!(result.is_ok());
+
+        server_handle.await.unwrap();
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

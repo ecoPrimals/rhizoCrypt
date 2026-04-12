@@ -10,13 +10,8 @@
 //!
 //! Run with: `cargo bench -p rhizo-crypt-core`
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
-#![allow(clippy::too_many_lines)]
-#![allow(clippy::items_after_statements)]
-#![allow(clippy::redundant_clone)]
-#![allow(clippy::let_underscore_must_use)]
-#![allow(unused_must_use)]
-#![allow(missing_docs)]
+#![expect(clippy::unwrap_used, clippy::expect_used, reason = "benchmark harness")]
+#![expect(missing_docs, reason = "criterion benchmark functions")]
 
 use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use rhizo_crypt_core::{
@@ -212,11 +207,10 @@ fn bench_merkle_tree(c: &mut Criterion) {
 // DAG Store Benchmarks
 // ============================================================================
 
-fn bench_dag_store(c: &mut Criterion) {
+fn bench_dag_store_writes(c: &mut Criterion) {
     let rt = Runtime::new().expect("tokio runtime creation should succeed");
     let mut group = c.benchmark_group("dag_store");
 
-    // Benchmark vertex put
     group.bench_function("put_vertex", |b| {
         b.iter_custom(|iters| {
             let store = InMemoryDagStore::new();
@@ -238,13 +232,18 @@ fn bench_dag_store(c: &mut Criterion) {
         });
     });
 
-    // Benchmark vertex get
+    group.finish();
+}
+
+fn bench_dag_store_reads(c: &mut Criterion) {
+    let rt = Runtime::new().expect("tokio runtime creation should succeed");
+    let mut group = c.benchmark_group("dag_store");
+
     group.bench_function("get_vertex", |b| {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
 
         let vertex_id = rt.block_on(async {
-            // Populate with some vertices
             for i in 0..100 {
                 let vertex = VertexBuilder::new(EventType::DataCreate {
                     schema: Some(format!("schema-{i}")),
@@ -253,7 +252,6 @@ fn bench_dag_store(c: &mut Criterion) {
                 let _ = store.put_vertex(session_id, vertex).await;
             }
 
-            // Get a vertex ID to lookup
             store
                 .get_frontier(session_id)
                 .await
@@ -263,26 +261,23 @@ fn bench_dag_store(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            rt.block_on(async {
+            let _ = rt.block_on(async {
                 let vertex = store.get_vertex(session_id, black_box(vertex_id)).await;
                 black_box(vertex)
             });
         });
     });
 
-    // Benchmark frontier query
     group.bench_function("get_frontier", |b| {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
 
         rt.block_on(async {
-            // Create a DAG with multiple frontier vertices
             let genesis = VertexBuilder::new(EventType::SessionStart).build();
             let mut genesis_clone = genesis.clone();
             let genesis_id = genesis_clone.id().unwrap();
             let _ = store.put_vertex(session_id, genesis).await;
 
-            // Add several children to create a wider frontier
             for i in 0..10 {
                 let child = VertexBuilder::new(EventType::DataCreate {
                     schema: None,
@@ -295,20 +290,18 @@ fn bench_dag_store(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            rt.block_on(async {
+            let _ = rt.block_on(async {
                 let frontier = store.get_frontier(black_box(session_id)).await;
                 black_box(frontier)
             });
         });
     });
 
-    // Benchmark genesis query
     group.bench_function("get_genesis", |b| {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
 
         rt.block_on(async {
-            // Create some genesis vertices
             for _ in 0..5 {
                 let vertex = VertexBuilder::new(EventType::SessionStart).build();
                 let _ = store.put_vertex(session_id, vertex).await;
@@ -316,26 +309,30 @@ fn bench_dag_store(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            rt.block_on(async {
+            let _ = rt.block_on(async {
                 let genesis = store.get_genesis(black_box(session_id)).await;
                 black_box(genesis)
             });
         });
     });
 
-    // Benchmark children query
+    group.finish();
+}
+
+fn bench_dag_store_topology(c: &mut Criterion) {
+    let rt = Runtime::new().expect("tokio runtime creation should succeed");
+    let mut group = c.benchmark_group("dag_store");
+
     group.bench_function("get_children", |b| {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
 
         let parent_id = rt.block_on(async {
-            // Create parent
             let parent = VertexBuilder::new(EventType::SessionStart).build();
             let mut parent_clone = parent.clone();
             let parent_id = parent_clone.id().unwrap();
             let _ = store.put_vertex(session_id, parent).await;
 
-            // Add children
             for i in 0..20 {
                 let child = VertexBuilder::new(EventType::DataCreate {
                     schema: None,
@@ -350,14 +347,13 @@ fn bench_dag_store(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            rt.block_on(async {
+            let _ = rt.block_on(async {
                 let children = store.get_children(session_id, black_box(parent_id)).await;
                 black_box(children)
             });
         });
     });
 
-    // Benchmark vertex count
     group.bench_function("count_vertices", |b| {
         let store = InMemoryDagStore::new();
         let session_id = SessionId::now();
@@ -374,7 +370,7 @@ fn bench_dag_store(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            rt.block_on(async {
+            let _ = rt.block_on(async {
                 let count = store.count_vertices(black_box(session_id)).await;
                 black_box(count)
             });
@@ -393,7 +389,9 @@ criterion_group!(
     bench_vertex_creation,
     bench_content_addressing,
     bench_merkle_tree,
-    bench_dag_store,
+    bench_dag_store_writes,
+    bench_dag_store_reads,
+    bench_dag_store_topology,
 );
 
 criterion_main!(benches);

@@ -629,7 +629,7 @@ async fn test_tcp_jsonrpc_composition_load() {
     let _ = handle.await;
 }
 
-/// TCP_NODELAY is set on accepted connections (Trio IPC stability).
+/// `TCP_NODELAY` is set on accepted connections (Trio IPC stability).
 #[tokio::test]
 async fn test_tcp_nodelay_set_on_connection() {
     use rhizo_crypt_rpc::jsonrpc::JsonRpcServer;

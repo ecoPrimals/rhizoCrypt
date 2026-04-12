@@ -25,15 +25,16 @@ pub use types::{BtspCipher, HandshakeError};
 /// 2. `FAMILY_SEED` (ecosystem-wide)
 ///
 /// Returns `None` in development mode (no seed configured).
+/// Uses `bytes::Bytes` for O(1) clone when shared across connections.
 #[must_use]
-pub fn read_family_seed(primal_env_prefix: &str) -> Option<Vec<u8>> {
+pub fn read_family_seed(primal_env_prefix: &str) -> Option<bytes::Bytes> {
     let primal_key = format!("{primal_env_prefix}_FAMILY_SEED");
     let val = std::env::var(&primal_key).or_else(|_| std::env::var("FAMILY_SEED")).ok()?;
-    let val = val.trim().to_string();
-    if val.is_empty() {
+    let trimmed = val.trim();
+    if trimmed.is_empty() {
         None
     } else {
-        Some(val.into_bytes())
+        Some(bytes::Bytes::from(trimmed.as_bytes().to_vec()))
     }
 }
 
@@ -70,7 +71,7 @@ mod tests {
             ],
             || {
                 let seed = read_family_seed("RHIZOCRYPT").unwrap();
-                assert_eq!(seed, b"primal-seed");
+                assert_eq!(seed.as_ref(), b"primal-seed");
             },
         );
     }
@@ -81,7 +82,7 @@ mod tests {
             [("RHIZOCRYPT_FAMILY_SEED", None::<&str>), ("FAMILY_SEED", Some("generic-seed"))],
             || {
                 let seed = read_family_seed("RHIZOCRYPT").unwrap();
-                assert_eq!(seed, b"generic-seed");
+                assert_eq!(seed.as_ref(), b"generic-seed");
             },
         );
     }

@@ -129,6 +129,17 @@ method = "health.check"
 domain = "health"
 description = "Service health check with status, version, and uptime"
 
+[capabilities.health_liveness]
+method = "health.liveness"
+aliases = ["ping", "health"]
+domain = "health"
+description = "Zero-cost liveness probe (Kubernetes-compatible)"
+
+[capabilities.health_readiness]
+method = "health.readiness"
+domain = "health"
+description = "Readiness probe verifying store initialization and request acceptance"
+
 [capabilities.health_metrics]
 method = "health.metrics"
 domain = "health"
@@ -144,3 +155,17 @@ method = "capabilities.list"
 aliases = ["capability.list", "primal.capabilities"]
 domain = "capability"
 description = "List all capabilities this primal provides (biomeOS Format E)"
+
+# ── MCP tool exposure (Squirrel AI coordination) ─────────────────
+
+[capabilities.tools_list]
+method = "tools.list"
+aliases = ["mcp.tools.list"]
+domain = "tools"
+description = "List MCP tool definitions for AI agent coordination"
+
+[capabilities.tools_call]
+method = "tools.call"
+aliases = ["mcp.tools.call"]
+domain = "tools"
+description = "Execute an MCP tool call dispatched by AI agents"

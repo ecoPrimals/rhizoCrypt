@@ -460,9 +460,13 @@ pub fn operation_dependencies() -> serde_json::Value {
         "dag.dehydration.trigger": ["dag.session.create", "dag.event.append"],
         "dag.dehydration.status": ["dag.dehydration.trigger"],
         "health.check": [],
+        "health.liveness": [],
+        "health.readiness": [],
         "health.metrics": [],
         "capabilities.list": [],
         "identity.get": [],
+        "tools.list": [],
+        "tools.call": [],
     })
 }
 

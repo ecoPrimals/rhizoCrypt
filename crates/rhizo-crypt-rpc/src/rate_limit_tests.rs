@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2024–2026 ecoPrimals Project
+
 use super::*;
 use std::net::Ipv4Addr;
 

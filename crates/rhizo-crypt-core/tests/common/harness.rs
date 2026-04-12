@@ -30,7 +30,7 @@ pub struct TestConfig {
 impl Default for TestConfig {
     fn default() -> Self {
         Self {
-            base_port: 19400, // High port to avoid conflicts
+            base_port: 0,
             timeout_secs: 10,
             cleanup: true,
             max_sessions: 100,
@@ -66,15 +66,13 @@ impl TestHarness {
     }
 
     /// Start the primal.
-    pub async fn start(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.primal.write().await.start().await?;
-        Ok(())
+    pub async fn start(&self) -> Result<(), rhizo_crypt_core::primal::PrimalError> {
+        self.primal.write().await.start().await
     }
 
     /// Stop the primal.
-    pub async fn stop(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.primal.write().await.stop().await?;
-        Ok(())
+    pub async fn stop(&self) -> Result<(), rhizo_crypt_core::primal::PrimalError> {
+        self.primal.write().await.stop().await
     }
 
     /// Create a test session.

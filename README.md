@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.14.0-dev |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,502 passing (`--all-features`) |
+| Tests | 1,510 passing (`--all-features`) |
 | Coverage | ~93% lines (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -22,7 +22,7 @@
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 147 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 148 `.rs` files |
 | Niche | `niche.rs` self-knowledge (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `capability_registry.toml` (28 methods, 5 domains incl. `tools.*` MCP, `identity.get`) |
@@ -162,7 +162,7 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — Environment variable reference
 - [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) — Production deployment
 - [specs/](specs/) — Formal specifications (architecture, data model, protocols, experiments)
-- [showcase/](showcase/) — Progressive demo suite (70+ working demos)
+- [showcase/](showcase/) — Progressive demo suite (76 working demos)
 - [CHANGELOG.md](CHANGELOG.md) — Version history
 - [deny.toml](deny.toml) — Dependency audit policy (`cargo-deny`)
 - [capability_registry.toml](capability_registry.toml) — Capability registry for biomeOS routing

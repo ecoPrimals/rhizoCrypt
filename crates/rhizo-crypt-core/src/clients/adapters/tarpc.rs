@@ -11,12 +11,14 @@ use crate::constants::CONNECTION_TIMEOUT;
 use crate::error::{Result, RhizoCryptError};
 use async_trait::async_trait;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::RwLock;
 
 #[cfg(feature = "live-clients")]
 use serde_json::Value;
+#[cfg(feature = "live-clients")]
+use std::sync::Arc;
+#[cfg(feature = "live-clients")]
+use tokio::sync::RwLock;
 #[cfg(feature = "live-clients")]
 use tokio::time::timeout;
 
@@ -56,12 +58,6 @@ struct TarpcConnection {
     /// Spawned tarpc client for `EcoPrimalJsonRpc`.
     client: EcoPrimalJsonRpcClient,
 }
-
-/// Marker when `live-clients` is disabled — the connection is never actually
-/// created; `ensure_connected` returns an error instead.
-#[cfg(not(feature = "live-clients"))]
-#[derive(Debug, Clone)]
-struct TarpcConnection;
 
 // ============================================================================
 // TarpcAdapter
@@ -108,7 +104,7 @@ struct TarpcConnection;
 pub struct TarpcAdapter {
     endpoint: String,
     addr: SocketAddr,
-    /// Connection state (lazy-initialized, cached; unused when `live-clients` is off).
+    #[cfg(feature = "live-clients")]
     connection: Arc<RwLock<Option<TarpcConnection>>>,
     /// Timeout for RPC calls.
     pub timeout_duration: Duration,
@@ -152,6 +148,7 @@ impl TarpcAdapter {
         Ok(Self {
             endpoint: addr_str.to_string(),
             addr,
+            #[cfg(feature = "live-clients")]
             connection: Arc::new(RwLock::new(None)),
             timeout_duration: CONNECTION_TIMEOUT,
         })
@@ -186,6 +183,7 @@ impl TarpcAdapter {
         Ok(Self {
             endpoint: socket_addr.to_string(),
             addr: socket_addr,
+            #[cfg(feature = "live-clients")]
             connection: Arc::new(RwLock::new(None)),
             timeout_duration: CONNECTION_TIMEOUT,
         })
@@ -207,6 +205,7 @@ impl TarpcAdapter {
     ///
     /// Returns `RhizoCryptError::Integration` when `live-clients` is disabled
     /// or if the TCP/tarpc connection fails.
+    #[cfg(feature = "live-clients")]
     async fn ensure_connected(&self) -> Result<()> {
         {
             let conn = self.connection.read().await;
@@ -215,49 +214,38 @@ impl TarpcAdapter {
             }
         }
 
-        #[cfg(feature = "live-clients")]
-        {
-            let conn = self.connection.write().await;
-            if conn.is_some() {
-                return Ok(());
-            }
-            drop(conn);
-
-            tracing::debug!(endpoint = %self.addr, "Establishing tarpc connection");
-
-            let transport = tarpc::serde_transport::tcp::connect(
-                self.addr,
-                tarpc::tokio_serde::formats::Bincode::default,
-            )
-            .await
-            .map_err(|e| {
-                RhizoCryptError::integration(format!(
-                    "Failed to connect to tarpc service at {}: {e}",
-                    self.addr
-                ))
-            })?;
-
-            let client =
-                EcoPrimalJsonRpcClient::new(tarpc::client::Config::default(), transport).spawn();
-
-            let mut conn = self.connection.write().await;
-            if conn.is_none() {
-                *conn = Some(TarpcConnection {
-                    client,
-                });
-            }
-            drop(conn);
-
-            tracing::info!(endpoint = %self.addr, "tarpc connection established");
+        let conn = self.connection.write().await;
+        if conn.is_some() {
+            return Ok(());
         }
+        drop(conn);
 
-        #[cfg(not(feature = "live-clients"))]
-        {
-            return Err(RhizoCryptError::integration(
-                "tarpc connections require the 'live-clients' feature",
-            ));
+        tracing::debug!(endpoint = %self.addr, "Establishing tarpc connection");
+
+        let transport = tarpc::serde_transport::tcp::connect(
+            self.addr,
+            tarpc::tokio_serde::formats::Bincode::default,
+        )
+        .await
+        .map_err(|e| {
+            RhizoCryptError::integration(format!(
+                "Failed to connect to tarpc service at {}: {e}",
+                self.addr
+            ))
+        })?;
+
+        let client =
+            EcoPrimalJsonRpcClient::new(tarpc::client::Config::default(), transport).spawn();
+
+        let mut conn = self.connection.write().await;
+        if conn.is_none() {
+            *conn = Some(TarpcConnection {
+                client,
+            });
         }
+        drop(conn);
 
+        tracing::info!(endpoint = %self.addr, "tarpc connection established");
         Ok(())
     }
 }
@@ -432,21 +420,11 @@ mod tests {
         assert_eq!(adapter.timeout_duration, Duration::from_secs(5));
     }
 
+    #[cfg(feature = "live-clients")]
     #[tokio::test]
     async fn test_ensure_connected() {
         let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
-        // When live-clients disabled: stub connection; when enabled: real TCP (may fail)
-        let result = adapter.ensure_connected().await;
-        #[cfg(feature = "live-clients")]
-        {
-            // With live-clients, connection may fail (no server) or succeed
-            let _ = result;
-        }
-        #[cfg(not(feature = "live-clients"))]
-        {
-            assert!(result.is_ok());
-            assert!(adapter.connection.read().await.is_some());
-        }
+        let _ = adapter.ensure_connected().await;
     }
 
     #[tokio::test]
@@ -540,16 +518,13 @@ mod tests {
         assert_eq!(adapter.addr, "10.0.0.1:5555".parse::<SocketAddr>().unwrap());
     }
 
+    #[cfg(feature = "live-clients")]
     #[tokio::test]
     async fn test_ensure_connected_idempotent() {
-        #[cfg(not(feature = "live-clients"))]
-        {
-            let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
-            adapter.ensure_connected().await.unwrap();
-            assert!(adapter.connection.read().await.is_some());
-            adapter.ensure_connected().await.unwrap();
-            assert!(adapter.connection.read().await.is_some());
-        }
+        let adapter = TarpcAdapter::new("127.0.0.1:7777").unwrap();
+        let r1 = adapter.ensure_connected().await;
+        let r2 = adapter.ensure_connected().await;
+        assert_eq!(r1.is_ok(), r2.is_ok());
     }
 
     #[tokio::test]

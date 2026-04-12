@@ -44,7 +44,7 @@ use thiserror::Error;
 use tracing::{error, info, warn};
 
 /// Client operations for interacting with a running rhizoCrypt server.
-#[derive(Subcommand)]
+#[derive(Clone, Debug, Subcommand)]
 pub enum ClientOperation {
     /// Check server health.
     Health,
@@ -389,7 +389,7 @@ pub async fn register_with_discovery(
     config.address = std::borrow::Cow::Owned(discovery_addr);
     let client = DiscoveryClient::new(config);
 
-    let our_endpoint = format!("http://{our_addr}");
+    let our_endpoint = format!("{}://{our_addr}", constants::DISCOVERY_ENDPOINT_SCHEME);
     client.register(&our_endpoint).await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
     client.start_heartbeat().await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
 

@@ -69,6 +69,18 @@ fn operation_dependencies_reference_valid_capabilities() {
 }
 
 #[test]
+fn all_capabilities_have_dependency_entries() {
+    let deps = operation_dependencies();
+    let obj = deps.as_object().expect("deps should be an object");
+    for cap in CAPABILITIES {
+        assert!(
+            obj.contains_key(*cap),
+            "CAPABILITIES entry '{cap}' has no key in operation_dependencies()"
+        );
+    }
+}
+
+#[test]
 fn capability_list_has_required_fields() {
     let list = capability_list();
     assert!(list.get("primal").is_some());

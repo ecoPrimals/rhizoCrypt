@@ -443,19 +443,26 @@ async fn test_run_client_connection_failure() {
     assert!(err.to_string().contains("Failed to connect"));
 }
 
-/// Test `run_client` Health against running server.
-#[tokio::test]
-async fn test_run_client_health() {
-    let addr: SocketAddr = "127.0.0.1:19625".parse().unwrap();
+/// Spin up a server on an OS-assigned port, retry the given client operation
+/// until it succeeds, then tear down. Uses port 0 for OS assignment to
+/// eliminate hardcoded ports and test isolation issues.
+async fn assert_run_client_succeeds(operation: ClientOperation) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let bound_addr = listener.local_addr().unwrap();
+    drop(listener);
+
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
     primal.start().await.expect("primal should start");
     let primal = Arc::new(primal);
-    let server = RpcServer::new(primal, addr);
+    let server = RpcServer::new(primal, bound_addr);
+    let ready = server.ready_notifier();
     let handle = tokio::spawn(async move { server.serve().await });
+    ready.notified().await;
 
+    let addr_str = bound_addr.to_string();
     for _ in 0..50 {
-        if run_client("127.0.0.1:19625", ClientOperation::Health).await.is_ok() {
+        if run_client(&addr_str, operation.clone()).await.is_ok() {
             handle.abort();
             let _ = handle.await;
             return;
@@ -464,55 +471,25 @@ async fn test_run_client_health() {
     }
     handle.abort();
     let _ = handle.await;
-    panic!("run_client Health should succeed against running server");
+    panic!("run_client {operation:?} should succeed against running server");
+}
+
+/// Test `run_client` Health against running server.
+#[tokio::test]
+async fn test_run_client_health() {
+    assert_run_client_succeeds(ClientOperation::Health).await;
 }
 
 /// Test `run_client` `ListSessions` against running server.
 #[tokio::test]
 async fn test_run_client_list_sessions() {
-    let addr: SocketAddr = "127.0.0.1:19626".parse().unwrap();
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    primal.start().await.expect("primal should start");
-    let primal = Arc::new(primal);
-    let server = RpcServer::new(primal, addr);
-    let handle = tokio::spawn(async move { server.serve().await });
-
-    for _ in 0..50 {
-        if run_client("127.0.0.1:19626", ClientOperation::ListSessions).await.is_ok() {
-            handle.abort();
-            let _ = handle.await;
-            return;
-        }
-        tokio::task::yield_now().await;
-    }
-    handle.abort();
-    let _ = handle.await;
-    panic!("run_client ListSessions should succeed against running server");
+    assert_run_client_succeeds(ClientOperation::ListSessions).await;
 }
 
 /// Test `run_client` Metrics against running server.
 #[tokio::test]
 async fn test_run_client_metrics() {
-    let addr: SocketAddr = "127.0.0.1:19627".parse().unwrap();
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    primal.start().await.expect("primal should start");
-    let primal = Arc::new(primal);
-    let server = RpcServer::new(primal, addr);
-    let handle = tokio::spawn(async move { server.serve().await });
-
-    for _ in 0..50 {
-        if run_client("127.0.0.1:19627", ClientOperation::Metrics).await.is_ok() {
-            handle.abort();
-            let _ = handle.await;
-            return;
-        }
-        tokio::task::yield_now().await;
-    }
-    handle.abort();
-    let _ = handle.await;
-    panic!("run_client Metrics should succeed against running server");
+    assert_run_client_succeeds(ClientOperation::Metrics).await;
 }
 
 // --- run_server and resolve_bind_addr ---
@@ -544,7 +521,7 @@ fn test_run_server_standalone_mode_no_discovery() {
             let ready_clone = Arc::clone(&ready);
             let handle = rt.spawn(async move {
                 let _ = run_server_with_ready(
-                    Some(19709),
+                    Some(0),
                     Some("127.0.0.1".to_string()),
                     None,
                     Some(ready_clone),
@@ -567,7 +544,7 @@ fn test_run_server_standalone_mode_no_discovery() {
 fn test_run_server_discovery_failure_continues_standalone() {
     temp_env::with_vars(
         [
-            ("RHIZOCRYPT_PORT", Some("19710")),
+            ("RHIZOCRYPT_PORT", Some("0")),
             ("RHIZOCRYPT_HOST", Some("127.0.0.1")),
             ("RHIZOCRYPT_DISCOVERY_ADAPTER", Some("http://invalid-discovery-12345:99999")),
             ("RUST_LOG", Some("error")),
@@ -582,7 +559,7 @@ fn test_run_server_discovery_failure_continues_standalone() {
             let ready_clone = Arc::clone(&ready);
             let handle = rt.spawn(async move {
                 let _ = run_server_with_ready(
-                    Some(19710),
+                    Some(0),
                     Some("127.0.0.1".to_string()),
                     None,
                     Some(ready_clone),
@@ -807,7 +784,7 @@ mod uds_integration {
 
         let handle = rt.spawn(async move {
             let _ = run_server_with_ready(
-                Some(19711),
+                Some(0),
                 Some("127.0.0.1".to_string()),
                 Some(sock_str),
                 Some(ready_clone),

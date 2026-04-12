@@ -109,29 +109,38 @@ impl RedbDagStore {
         })
     }
 
-    /// Create a composite key from session and vertex IDs.
-    fn vertex_key(session_id: SessionId, vertex_id: VertexId) -> Vec<u8> {
-        let mut key = Vec::with_capacity(crate::constants::VERTEX_KEY_SIZE);
-        key.extend_from_slice(session_id.as_bytes());
-        key.push(crate::constants::VERTEX_KEY_SEPARATOR);
-        key.extend_from_slice(vertex_id.as_bytes());
+    /// Stack-allocated composite key: `[session_id : vertex_id]` (49 bytes).
+    fn vertex_key(
+        session_id: SessionId,
+        vertex_id: VertexId,
+    ) -> [u8; crate::constants::VERTEX_KEY_SIZE] {
+        let mut key = [0u8; crate::constants::VERTEX_KEY_SIZE];
+        key[..crate::constants::SESSION_ID_BYTES].copy_from_slice(session_id.as_bytes());
+        key[crate::constants::SESSION_ID_BYTES] = crate::constants::VERTEX_KEY_SEPARATOR;
+        key[crate::constants::SESSION_ID_BYTES + 1..].copy_from_slice(vertex_id.as_bytes());
         key
     }
 
-    /// Create a key from session ID only (16 bytes).
-    fn session_key(session_id: SessionId) -> Vec<u8> {
-        session_id.as_bytes().to_vec()
+    /// Stack-allocated session-only key (16 bytes, UUID v7).
+    const fn session_key(session_id: SessionId) -> [u8; crate::constants::SESSION_ID_BYTES] {
+        let mut key = [0u8; crate::constants::SESSION_ID_BYTES];
+        key.copy_from_slice(session_id.as_bytes());
+        key
     }
 
-    /// Create prefix range for session-scoped keys (vertices, children).
+    /// Stack-allocated prefix range for session-scoped key scans.
     ///
     /// Returns `(start, end)` where `start = session_id + ':'` and
     /// `end = session_id + ';'` (separator + 1 for exclusive upper bound).
-    fn session_prefix_range(session_id: SessionId) -> (Vec<u8>, Vec<u8>) {
-        let mut start = session_id.as_bytes().to_vec();
-        start.push(crate::constants::VERTEX_KEY_SEPARATOR);
-        let mut end = session_id.as_bytes().to_vec();
-        end.push(crate::constants::VERTEX_KEY_SEPARATOR + 1);
+    fn session_prefix_range(
+        session_id: SessionId,
+    ) -> ([u8; crate::constants::SESSION_ID_BYTES + 1], [u8; crate::constants::SESSION_ID_BYTES + 1])
+    {
+        let mut start = [0u8; crate::constants::SESSION_ID_BYTES + 1];
+        start[..crate::constants::SESSION_ID_BYTES].copy_from_slice(session_id.as_bytes());
+        start[crate::constants::SESSION_ID_BYTES] = crate::constants::VERTEX_KEY_SEPARATOR;
+        let mut end = start;
+        end[crate::constants::SESSION_ID_BYTES] = crate::constants::VERTEX_KEY_SEPARATOR + 1;
         (start, end)
     }
 
@@ -173,9 +182,11 @@ impl RedbDagStore {
     ) -> Result<std::collections::HashSet<VertexId>> {
         let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
         let t = read_txn.open_table(table).storage_ctx("Failed to open table")?;
-        let existing =
-            t.get(key).storage_ctx("Failed to read vertex set")?.map(|g| g.value().to_vec());
-        Ok(existing.as_deref().map(Self::parse_vertex_set).unwrap_or_default())
+        Ok(t.get(key)
+            .storage_ctx("Failed to read vertex set")?
+            .map_or_else(std::collections::HashSet::new, |guard| {
+                Self::parse_vertex_set(guard.value())
+            }))
     }
 
     /// Insert a serialized vertex set into an open table within a write transaction.
@@ -498,17 +509,7 @@ impl DagStore for RedbDagStore {
 
         let key = Self::session_key(session_id);
 
-        let existing: Option<Vec<u8>> = {
-            let read_txn = self.db.begin_read().storage_ctx("Failed to begin read")?;
-            let frontiers_table =
-                read_txn.open_table(FRONTIERS).storage_ctx("Failed to open frontiers table")?;
-            frontiers_table
-                .get(key.as_slice())
-                .storage_ctx("Failed to get frontier")?
-                .map(|g| g.value().to_vec())
-        };
-
-        let mut frontier = existing.as_deref().map(Self::parse_vertex_set).unwrap_or_default();
+        let mut frontier = self.read_vertex_set(FRONTIERS, &key)?;
         for parent in consumed_parents {
             frontier.remove(parent);
         }

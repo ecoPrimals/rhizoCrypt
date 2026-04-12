@@ -55,6 +55,12 @@ pub const PRODUCTION_RPC_PORT: u16 = 9400;
 /// Binds to localhost only for security in development mode.
 pub const DEFAULT_RPC_HOST: &str = "127.0.0.1";
 
+/// Discovery endpoint scheme per wateringHole transport conventions.
+///
+/// `http` = HTTP JSON-RPC, `tcp` = newline-delimited JSON-RPC.
+/// rhizoCrypt exposes dual-mode (HTTP + newline) on the same port.
+pub const DISCOVERY_ENDPOINT_SCHEME: &str = "http";
+
 /// Production bind address (all interfaces).
 ///
 /// In production, bind to all interfaces to accept external connections.

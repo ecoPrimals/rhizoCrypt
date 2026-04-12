@@ -792,7 +792,7 @@ fn test_session_key_format() {
     let session_id = SessionId::now();
     let key = RedbDagStore::session_key(session_id);
     assert_eq!(key.len(), 16);
-    assert_eq!(key, session_id.as_bytes().to_vec());
+    assert_eq!(&key[..], session_id.as_bytes());
 }
 
 #[test]

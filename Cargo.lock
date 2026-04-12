@@ -1548,6 +1548,7 @@ dependencies = [
  "async-trait",
  "axum",
  "bincode",
+ "bytes",
  "dashmap",
  "futures-util",
  "hex",
