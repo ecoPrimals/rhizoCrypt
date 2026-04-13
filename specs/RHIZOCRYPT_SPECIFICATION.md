@@ -1198,7 +1198,7 @@ paths:
 - [x] `DispatchOutcome<T>` for structured error handling
 
 ### Phase 7: Quality & Hardening — Active
-- [x] 1,394+ tests, clippy-clean, fmt-clean, docs-clean
+- [x] 1,510+ tests, clippy-clean, fmt-clean, docs-clean
 - [x] 3 fuzz targets (merkle, session builder, vertex CBOR)
 - [x] 5 chaos test suites
 - [x] proptest for IPC protocol invariants
@@ -1215,8 +1215,8 @@ paths:
 - [W3C PROV-DM](https://www.w3.org/TR/prov-dm/) — Provenance Data Model
 - [IPLD DAG-CBOR](https://ipld.io/specs/codecs/dag-cbor/) — Content-addressed data structures
 - [Merkle Trees](https://en.wikipedia.org/wiki/Merkle_tree) — Cryptographic verification
-- [BearDog Specification](../beardog/specs/) — Identity and signing
-- [LoamSpine Specification](./LOAMSPINE_SPECIFICATION.md) — Permanent storage
+- [BearDog Specification](../../bearDog/specs/) — Identity and signing
+- [LoamSpine Specification](../../loamSpine/specs/) — Permanent storage
 
 ---
 

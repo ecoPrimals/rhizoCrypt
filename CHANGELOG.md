@@ -5,6 +5,82 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-13 (sessions 38–41)
+
+### Changed
+
+#### S38: Handler Domain Split + Metrics Extraction
+
+- **JSON-RPC handler** (583 lines) refactored into 11 domain modules: `session`, `events`, `vertex`, `merkle`, `slice`, `dehydration`, `health`, `capabilities`, `tools`, `params` + `mod.rs` dispatch (102 lines)
+- **Metrics** (530 lines) split into `histogram.rs` (117) + `prometheus.rs` (113) + `metrics.rs` (319)
+- Removed overly broad `pub use rhizo_crypt_core;` / `pub use rhizo_crypt_rpc;` from service crate
+- `register_with_discovery` now takes `&str` (avoids allocation)
+
+#### S38: Doc Evolution
+
+- Production doc comments evolved from vendor-specific to capability-generic language
+- `provenance/client.rs`, `niche.rs`, `config.rs`, `safe_env/mod.rs`, `dehydration_wire.rs`, `integration/mod.rs` — primal names → generic capability language
+
+#### S39: Stale Metrics Reconciliation + Debris Removal
+
+- Deleted stale `showcase/00_START_HERE.md` (duplicate entry point)
+- Fixed test counts 1,441 → 1,510 across `DEPLOYMENT_CHECKLIST.md`, `showcase/README.md`
+- Corrected showcase demo catalog: 36 local + 29 inter-primal = 65 demo scripts
+- Fixed version strings `v0.14.0` → `v0.14.0-dev` in service crate README
+
+#### S40: Canonical EventType Reference
+
+- Created `specs/EVENT_TYPE_REFERENCE.md` — 27-variant wire format reference for domain springs
+- Corrected field name inaccuracies from primalSpring downstream docs
+- Enhanced `event.rs` module/type rustdoc with wire format and spec cross-reference
+
+#### S41: Supply Chain Tightening
+
+- Removed unmatched license allowances from `deny.toml` (ISC, Zlib, CDLA-Permissive-2.0, AGPL-3.0-only)
+- Full audit confirms: zero production files over 800 lines, zero hardcoded primal strings, zero unsafe blocks, zero TODO/FIXME markers
+
+### Added
+
+- **13 new source files** (handler domain modules + histogram + prometheus)
+- `specs/EVENT_TYPE_REFERENCE.md` — canonical `dag.event.append` wire format
+
+**Metrics**
+- 1,510 tests passing (up from 1,502), 0 failures
+- 160 `.rs` files (up from 148), SPDX on all
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok
+- Max production file: 664 lines (limit 1,000)
+
+## [0.14.0-dev] - 2026-04-12 (sessions 35–37)
+
+### Changed
+
+#### S36: Provenance Trio Debt Resolution
+
+- Completed provenance stub (full `WireWitnessRef` round-trip)
+- TCP hardening for inter-primal IPC (timeout, keep-alive)
+- Capability drift guard (verify advertised capabilities match actual handler)
+
+#### S37: UDS Unconditional, TCP Opt-in (LD-06)
+
+- **UDS unconditional** on Unix at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock`
+- **TCP opt-in** via `--port` or `RHIZOCRYPT_PORT` env var
+- New `has_explicit_tcp_config()` helper for robust TCP activation
+- Extracted `serve_with_tcp` to reduce `run_server_with_ready` line count
+
+#### S35: Documentation Cleanup
+
+- Updated all root docs, deployment checklist, deployment graphs
+- SPDX compliance to 148/148 `.rs` files (at that point)
+
+### Added
+
+- Witness chain test (`e2e/witness_roundtrip.rs`)
+- 8 new tests across provenance and TCP hardening
+
+**Metrics**
+- 1,510 tests passing (up from 1,502)
+- UDS + TCP dual-transport operational
+
 ## [0.14.0-dev] - 2026-04-11 (session 34)
 
 ### Changed

@@ -43,14 +43,14 @@ This guide provides:
 
 ```
 showcase/
-├── 00-local-primal/              ✅ 100% COMPLETE (30 demos)
+├── 00-local-primal/              ✅ 100% COMPLETE (36 demos)
 │   ├── 00_START_HERE.md          ⭐ Entry point for all users
 │   ├── 01-hello-rhizocrypt/      ✅ Quick start (3 demos)
 │   ├── 02-dag-engine/            ✅ DAG operations (4 demos)
 │   ├── 03-merkle-proofs/         ✅ Cryptographic integrity (4 demos)
 │   ├── 04-sessions/              ✅ Session lifecycle (4 demos)
 │   ├── 04-slice-semantics/       ✅ 6 modes (6 demos) - Unique!
-│   ├── 05-performance/           ✅ Lock-free concurrency (3 demos)
+│   ├── 05-performance/           ✅ Lock-free concurrency (6 demos)
 │   ├── 06-advanced-patterns/     ✅ Multi-agent (3 demos)
 │   ├── 06-real-world-scenarios/  ✅ Production use cases (4 demos)
 │   ├── 07-dehydration/           ✅ NEW! Complete workflow (1 demo)
@@ -362,12 +362,12 @@ ls -la ../bins/
 
 ### "Show, Then Integrate" ✅
 
-1. **Show Local Capabilities** (30 demos)
+1. **Show Local Capabilities** (36 demos)
    - "This is what I CAN DO alone"
    - Complete functionality demonstrated
    - Production-ready features shown
 
-2. **Show Integration** (11 demos)
+2. **Show Integration** (29 demos)
    - "This is how I WORK WITH others"
    - Real Phase 1 binaries (no mocks!)
    - Capability-based discovery

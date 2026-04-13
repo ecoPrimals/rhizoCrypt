@@ -98,9 +98,9 @@ RhizoCrypt is named after the **rhizome**—the branching, underground fungal ne
 - [SweetGrass Specification](../../sweetGrass/specs/)
 
 ### Gen 1 Dependencies
-- [BearDog Specification](../../../beardog/specs/)
-- [Songbird Specification](../../../songbird/specs/)
-- [NestGate Specification](../../../nestgate/specs/)
+- [BearDog Specification](../../bearDog/specs/)
+- [Songbird Specification](../../songBird/specs/)
+- [NestGate Specification](../../nestGate/specs/)
 - [ToadStool Specification](../../../toadstool/specs/)
 
 ### Foundational

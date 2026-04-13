@@ -31,7 +31,7 @@
 
 ### Documentation
 - [x] **README.md** (current metrics — 1,510 tests)
-- [x] **CHANGELOG.md** (version history through session 38)
+- [x] **CHANGELOG.md** (version history through session 41)
 - [x] **showcase/** (76 comprehensive demos)
 - [x] **specs/** (9 complete + 1 experimental specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
@@ -245,10 +245,10 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 - [CHANGELOG.md](../CHANGELOG.md) — Version history
 - [ENV_VARS.md](./ENV_VARS.md) — Environment variable reference
 - [specs/](../specs/) — Formal specifications
-- [showcase/](../showcase/) — 70+ progressive demos
+- [showcase/](../showcase/) — 76 scripts (65 demos)
 
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: April 8, 2026
+**Last Updated**: April 13, 2026
 **Version**: rhizoCrypt 0.14.0-dev
