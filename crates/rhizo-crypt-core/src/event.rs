@@ -3,14 +3,36 @@
 
 //! Event types for the `RhizoCrypt` DAG.
 //!
-//! Events are the domain-specific actions that are recorded in the DAG.
+//! Events are the domain-specific actions recorded in the DAG via
+//! `dag.event.append`. The [`EventType`] enum defines 27 variants across
+//! 7 domains (session, agent, data, slice, gaming, science, collaboration)
+//! plus a freeform [`Custom`](EventType::Custom) variant for domain springs.
+//!
+//! ## Wire Format (JSON-RPC)
+//!
+//! Uses serde's default externally-tagged representation:
+//! - Variants with fields: `{"VariantName": {"field": value}}`
+//! - Unit variants (no fields): `"VariantName"`
+//!
+//! ## Canonical Reference
+//!
+//! See `specs/EVENT_TYPE_REFERENCE.md` for the complete variant list with
+//! JSON wire examples, domain mapping, and guidance for domain springs.
 
 use crate::types::{Did, SliceId};
 use serde::{Deserialize, Serialize};
 
-/// Event type identifier.
+/// Event type identifier for `dag.event.append`.
 ///
-/// Defines the type of action that occurred in the DAG.
+/// 27 variants across 7 domains. Uses serde externally-tagged JSON:
+/// `{"DataCreate": {"schema": "v2"}}` for variants with fields,
+/// `"DataDelete"` for unit variants.
+///
+/// Domain springs should prefer built-in variants where they fit and use
+/// [`Custom`](Self::Custom) for domain-specific events, placing rich
+/// context in the request's `metadata` key-value pairs.
+///
+/// See `specs/EVENT_TYPE_REFERENCE.md` for the complete wire format guide.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum EventType {

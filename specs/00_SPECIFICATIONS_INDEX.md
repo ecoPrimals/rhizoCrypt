@@ -54,6 +54,7 @@ RhizoCrypt respects human dignity by:
 | [SLICE_SEMANTICS.md](./SLICE_SEMANTICS.md) | Slice modes, resolution routing, waypoints | ✅ Complete |
 | [DEHYDRATION_PROTOCOL.md](./DEHYDRATION_PROTOCOL.md) | DAG → LoamSpine commit protocol | ✅ Complete |
 | [API_SPECIFICATION.md](./API_SPECIFICATION.md) | tarpc & REST API definitions | ✅ Complete |
+| [EVENT_TYPE_REFERENCE.md](./EVENT_TYPE_REFERENCE.md) | `dag.event.append` — 27-variant wire format for domain springs | ✅ Complete |
 
 ### Integration Specifications
 
