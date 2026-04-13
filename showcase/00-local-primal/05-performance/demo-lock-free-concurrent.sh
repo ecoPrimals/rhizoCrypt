@@ -276,7 +276,7 @@ echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo "  • Try: demo-large-dag-scaling.sh (DAG size impact)"
 echo "  • Try: demo-memory-efficiency.sh (memory usage)"
-echo "  • See: ../00_START_HERE.md for more performance demos"
+echo "  • See: ../README.md for more performance demos"
 echo ""
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
 

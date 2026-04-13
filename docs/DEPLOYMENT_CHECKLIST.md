@@ -30,9 +30,9 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,441 tests)
-- [x] **CHANGELOG.md** (version history through session 30)
-- [x] **showcase/** (70+ comprehensive demos)
+- [x] **README.md** (current metrics — 1,510 tests)
+- [x] **CHANGELOG.md** (version history through session 38)
+- [x] **showcase/** (76 comprehensive demos)
 - [x] **specs/** (9 complete + 1 experimental specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
 

@@ -2,7 +2,7 @@
 
 **Purpose**: Demonstrate rhizoCrypt's ephemeral DAG engine capabilities  
 **Philosophy**: "Show local capabilities, then integration, then federation"  
-**Status**: **100% Local Complete** + **60% Inter-Primal Complete**  
+**Status**: **100% Local Complete** + **100% Inter-Primal Complete**  
 **Start Here**: **[00-local-primal/00_START_HERE.md](./00-local-primal/00_START_HERE.md)** ⭐
 
 ---
@@ -11,8 +11,8 @@
 
 rhizoCrypt is the "memory that knows when to forget." This showcase demonstrates:
 
-1. **Local Primal** (30 demos) — What rhizoCrypt CAN DO in isolation
-2. **Inter-Primal** (11 demos) — How rhizoCrypt WORKS WITH others (real binaries!)
+1. **Local Primal** (36 demos) — What rhizoCrypt CAN DO in isolation
+2. **Inter-Primal** (29 demos) — How rhizoCrypt WORKS WITH others (real binaries!)
 3. **Federation** (future) — How rhizoCrypt SCALES across instances
 
 **Real-World Value**: *"Fast ephemeral workspace with cryptographic proofs → Commit to permanent storage when meaningful"*
@@ -56,15 +56,16 @@ showcase/
 │   ├── 07-dehydration/           ✅ NEW! Complete workflow (1 demo)
 │   └── 08-production-features/   ✅ NEW! Service mode (1 demo)
 │
-├── 01-inter-primal-live/         ✅ 60% COMPLETE (11 demos)
-│   ├── 01-songbird-discovery/    ✅ Real binary (4 demos)
-│   ├── 02-beardog-signing/       ✅ Real binary (4 demos)
-│   ├── 03-nestgate-storage/      ✅ Real binary (3 demos)
+├── 01-inter-primal-live/         ✅ 100% COMPLETE (29 demos)
+│   ├── 01-songbird-discovery/    ✅ Real binary (7 demos)
+│   ├── 02-beardog-signing/       ✅ Real binary (8 demos)
+│   ├── 03-nestgate-storage/      ✅ Real binary (6 demos)
 │   ├── 04-toadstool-compute/     ✅ 3 demos
-│   └── 05-complete-workflows/    ✅ 4 demos
+│   ├── 05-complete-workflows/    ✅ 4 demos
+│   └── 05-squirrel-ai/          ✅ 1 demo
 ```
 
-**Total**: **41 comprehensive demos** (30 local + 11 inter-primal)
+**Total**: **65 demo scripts** (36 local + 29 inter-primal)
 
 ---
 
@@ -207,14 +208,15 @@ ls -la ../bins/
 
 ---
 
-### Inter-Primal Live (01-inter-primal-live/) — **60% Complete** ✅
+### Inter-Primal Live (01-inter-primal-live/) — **100% Complete** ✅
 
 **Integration with Phase 1 Primals** (all use REAL binaries, NO MOCKS):
-- ✅ **Songbird** — Capability-based discovery (4 demos)
-- ✅ **BearDog** — DID verification & signing (4 demos)
-- ✅ **NestGate** — Payload storage (3 demos)
-- ⏸️ **ToadStool** — Compute provenance (future)
-- ⏸️ **Complete Workflows** — Multi-primal scenarios (can enhance)
+- ✅ **Songbird** — Capability-based discovery (7 demos)
+- ✅ **BearDog** — DID verification & signing (8 demos)
+- ✅ **NestGate** — Payload storage (6 demos)
+- ✅ **ToadStool** — Compute provenance (3 demos)
+- ✅ **Complete Workflows** — Multi-primal scenarios (4 demos)
+- ✅ **Squirrel AI** — AI integration (1 demo)
 
 ---
 
@@ -241,7 +243,7 @@ ls -la ../bins/
 - **Conditional transfers** (escrow, consignment)
 
 ### 5. 🚀 Production Ready
-- **1,441 passing tests** (all features)
+- **1,510 passing tests** (all features)
 - **`--fail-under-lines 90` CI gate**
 - **Zero unsafe code** (`unsafe_code = "deny"`, zero `unsafe` in tests)
 - **Zero Clippy warnings** (pedantic + nursery, `unwrap_used`/`expect_used = "deny"`)
@@ -251,7 +253,7 @@ ls -la ../bins/
 
 ## 📋 Demo Catalog
 
-### Local Primal (30 demos)
+### Local Primal (36 demos)
 
 | Category | Demos | Time | Status |
 |----------|-------|------|--------|
@@ -260,27 +262,28 @@ ls -la ../bins/
 | **Merkle Proofs** | 4 | 10 min | ✅ Complete |
 | **Sessions** | 4 | 10 min | ✅ Complete |
 | **Slice Semantics** | 6 | 20 min | ✅ Complete |
-| **Performance** | 3 | 10 min | ✅ Complete |
+| **Performance** | 6 | 15 min | ✅ Complete |
 | **Advanced Patterns** | 3 | 10 min | ✅ Complete |
 | **Real-World Scenarios** | 4 | 30 min | ✅ Complete |
-| **Dehydration** | 1 | 10 min | ✅ NEW |
-| **Production Features** | 1 | 10 min | ✅ NEW |
+| **Dehydration** | 1 | 10 min | ✅ Complete |
+| **Production Features** | 1 | 10 min | ✅ Complete |
 
-**Total**: 30 local demos (ALL use real implementations, no mocks)
+**Total**: 36 local demos (ALL use real implementations, no mocks)
 
 ---
 
-### Inter-Primal (11 demos)
+### Inter-Primal (29 demos)
 
 | Integration | Demos | Time | Status |
 |------------|-------|------|--------|
-| **Songbird** (discovery) | 4 | 15 min | ✅ Complete |
-| **BearDog** (signing) | 4 | 15 min | ✅ Complete |
-| **NestGate** (storage) | 3 | 10 min | ✅ Complete |
-| **ToadStool** (compute) | - | - | ⏸️ Future |
-| **Complete Workflows** | - | - | ⏸️ Partial |
+| **Songbird** (discovery) | 7 | 15 min | ✅ Complete |
+| **BearDog** (signing) | 8 | 15 min | ✅ Complete |
+| **NestGate** (storage) | 6 | 10 min | ✅ Complete |
+| **ToadStool** (compute) | 3 | 10 min | ✅ Complete |
+| **Complete Workflows** | 4 | 15 min | ✅ Complete |
+| **Squirrel AI** | 1 | 5 min | ✅ Complete |
 
-**Total**: 11 inter-primal demos (ALL use real Phase 1 binaries!)
+**Total**: 29 inter-primal demos (ALL use real Phase 1 binaries!)
 
 ---
 
@@ -311,12 +314,12 @@ ls -la ../bins/
 - [x] Production features shown
 - [x] Real-world scenarios complete
 
-### Inter-Primal Showcase ✅ **60% COMPLETE**
+### Inter-Primal Showcase ✅ **100% COMPLETE**
 - [x] Songbird discovers rhizoCrypt capabilities
 - [x] BearDog signs vertices (real CLI)
 - [x] NestGate stores payloads (real service)
-- [ ] ToadStool compute provenance (future)
-- [ ] Complete multi-primal workflows (partial)
+- [x] ToadStool compute provenance
+- [x] Complete multi-primal workflows
 
 ---
 
@@ -331,7 +334,7 @@ ls -la ../bins/
 ### Common Questions:
 - **"Where do I start?"** → [00-local-primal/00_START_HERE.md](./00-local-primal/00_START_HERE.md)
 - **"What's unique about rhizoCrypt?"** → Slice semantics + Dehydration
-- **"Is it production-ready?"** → Yes! 1,441 tests, 94.34% coverage, `--fail-under-lines 90` CI gate, zero unsafe code
+- **"Is it production-ready?"** → Yes! 1,510 tests, ~93% coverage, `--fail-under-lines 90` CI gate, zero unsafe code
 - **"How do I integrate?"** → See [01-inter-primal-live/](./01-inter-primal-live/)
 
 ---
@@ -348,10 +351,10 @@ ls -la ../bins/
 
 | Category | Status | Demos | Quality |
 |----------|--------|-------|---------|
-| **Local Primal** | ✅ 100% | 30 | Exceptional |
-| **Inter-Primal** | ✅ 60% | 11 | Excellent |
+| **Local Primal** | ✅ 100% | 36 | Exceptional |
+| **Inter-Primal** | ✅ 100% | 29 | Excellent |
 | **Federation** | ⏸️ Future | 0 | N/A |
-| **Overall** | ✅ **Production Ready** | **41** | **A+** |
+| **Overall** | ✅ **Production Ready** | **65** | **A+** |
 
 ---
 
@@ -384,7 +387,7 @@ ls -la ../bins/
 
 ---
 
-**Updated**: March 16, 2026  
+**Updated**: April 13, 2026  
 **Version**: rhizoCrypt 0.14.0-dev  
-**Status**: Local 100% Complete, Inter-Primal 60% Complete
+**Status**: Local 100% Complete, Inter-Primal 100% Complete
 

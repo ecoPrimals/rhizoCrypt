@@ -246,7 +246,7 @@ By the end of Level 0, you should:
 ## 🔗 Quick Links
 
 - **Next**: Level 1 (../01-inter-primal-live/README.md)
-- **Showcase Overview**: ../00_START_HERE.md
+- **Showcase Overview**: ../README.md
 - **Specs**: ../../specs/RHIZOCRYPT_SPECIFICATION.md
 - **Architecture**: ../../specs/ARCHITECTURE.md
 
