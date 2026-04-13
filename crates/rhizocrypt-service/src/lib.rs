@@ -186,12 +186,15 @@ async fn shutdown_signal() {
     }
 }
 
-/// Start the RPC server (tarpc + JSON-RPC + optional UDS) with optional discovery registration.
+/// Start the RPC server with UDS unconditional (Unix) and TCP opt-in.
 ///
-/// `unix_socket`:
-/// - `None` — no UDS listener
-/// - `Some("")` — UDS at the default ecosystem path (`$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock`)
-/// - `Some(path)` — UDS at the given custom path
+/// Transport model (Provenance Trio standard — LD-06):
+/// - **UDS**: Always active on Unix when `unix_socket` is `Some`. Pass
+///   `Some("")` for the default ecosystem path, `Some(path)` for a custom
+///   path. `None` disables UDS (test backward-compat only).
+/// - **TCP**: Opt-in. Starts tarpc + JSON-RPC TCP when `port_override` is
+///   `Some`, or when `RHIZOCRYPT_PORT` / `RHIZOCRYPT_JSONRPC_PORT` env vars
+///   are set.
 ///
 /// # Errors
 ///
@@ -208,7 +211,7 @@ pub async fn run_server(
 
 /// Run the server with an optional readiness notification.
 ///
-/// When `ready` is `Some`, the notifier fires once the RPC server is bound
+/// When `ready` is `Some`, the notifier fires once the server is bound
 /// and accepting connections. Used by integration tests to avoid sleep-based
 /// readiness polling.
 ///
@@ -241,33 +244,83 @@ pub async fn run_server_with_ready(
         info!(family_id = %fid, "BTSP Phase 1: family-scoped socket naming active");
     }
 
-    let addr = resolve_bind_addr(port_override, host_override)?;
-
-    info!(address = %addr, "Binding RPC server");
-
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
     primal.start().await.map_err(|e| ServiceError::Config(e.to_string()))?;
     let primal = Arc::new(primal);
     info!("DAG engine initialized and running");
 
-    let server = RpcServer::new(Arc::clone(&primal), addr);
+    // UDS is unconditional on Unix (Provenance Trio standard — LD-06).
+    // None = no UDS (test backward-compat), Some("") = default, Some(path) = custom.
+    #[cfg(unix)]
+    let uds_shutdown_tx = start_uds_listener(unix_socket.as_ref(), &primal);
+
+    let tcp_requested =
+        port_override.is_some() || host_override.is_some() || has_explicit_tcp_config();
+
+    if tcp_requested {
+        serve_with_tcp(
+            port_override,
+            host_override,
+            &primal,
+            ready,
+            #[cfg(unix)]
+            uds_shutdown_tx,
+        )
+        .await
+    } else {
+        info!("TCP disabled (UDS-only mode — pass --port to enable)");
+
+        #[cfg(unix)]
+        info!("rhizoCrypt service ready (UDS-only)");
+        #[cfg(not(unix))]
+        warn!("No transport active — UDS unavailable on this platform, pass --port for TCP");
+
+        if let Some(notify) = ready {
+            tokio::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                notify.notify_one();
+            });
+        }
+
+        shutdown_signal().await;
+        info!("Received shutdown signal, stopping gracefully");
+        #[cfg(unix)]
+        {
+            let _ = uds_shutdown_tx.send(true);
+        }
+        info!("rhizoCrypt service shutdown cleanly");
+        Ok(())
+    }
+}
+
+/// Serve with TCP (tarpc + JSON-RPC) alongside UDS.
+///
+/// Extracted from `run_server_with_ready` to satisfy the 100-line function limit.
+async fn serve_with_tcp(
+    port_override: Option<u16>,
+    host_override: Option<String>,
+    primal: &Arc<RhizoCrypt>,
+    ready: Option<Arc<tokio::sync::Notify>>,
+    #[cfg(unix)] uds_shutdown_tx: tokio::sync::watch::Sender<bool>,
+) -> Result<(), ServiceError> {
+    let addr = resolve_bind_addr(port_override, host_override)?;
+    info!(address = %addr, "Binding TCP servers (opt-in)");
+
+    let server = RpcServer::new(Arc::clone(primal), addr);
 
     let port = addr.port();
     let host = addr.ip();
     let jsonrpc_port = SafeEnv::get_jsonrpc_port(port);
     let jsonrpc_addr: SocketAddr = format!("{host}:{jsonrpc_port}").parse()?;
     let (jsonrpc_shutdown_tx, jsonrpc_shutdown_rx) = tokio::sync::watch::channel(false);
-    let jsonrpc_server = JsonRpcServer::new(Arc::clone(&primal), jsonrpc_addr);
+    let jsonrpc_server = JsonRpcServer::new(Arc::clone(primal), jsonrpc_addr);
     let jsonrpc_handle = tokio::spawn(async move {
         if let Err(e) = jsonrpc_server.serve(jsonrpc_shutdown_rx).await {
             error!(error = %e, "JSON-RPC server error");
         }
     });
-    info!(address = %jsonrpc_addr, "JSON-RPC server started (dual-mode: HTTP + newline)");
-
-    #[cfg(unix)]
-    let uds_shutdown_tx = start_uds_listener(unix_socket.as_ref(), &primal);
+    info!(address = %jsonrpc_addr, "JSON-RPC TCP started (dual-mode: HTTP + newline)");
 
     if let Some(discovery_addr) = SafeEnv::get_discovery_address() {
         info!(discovery = %discovery_addr, "Registering with discovery service");
@@ -279,7 +332,7 @@ pub async fn run_server_with_ready(
         info!("No discovery service configured (standalone mode)");
     }
 
-    info!("rhizoCrypt service ready");
+    info!("rhizoCrypt service ready (UDS + TCP)");
 
     let shutdown_tx = server.shutdown_sender();
     let is_running = server.running_flag();
@@ -335,6 +388,18 @@ pub async fn run_server_with_ready(
     }
 }
 
+/// Check whether TCP transports were explicitly requested via environment.
+///
+/// Returns `true` when any TCP-related env var is set. Used to implement
+/// opt-in TCP: when no CLI flag and no env var requests TCP, only the UDS
+/// socket is started (Provenance Trio standard).
+#[must_use]
+pub fn has_explicit_tcp_config() -> bool {
+    std::env::var("RHIZOCRYPT_PORT").is_ok()
+        || std::env::var("RHIZOCRYPT_RPC_PORT").is_ok()
+        || std::env::var("RHIZOCRYPT_JSONRPC_PORT").is_ok()
+}
+
 /// Resolve UDS path from the CLI value.
 ///
 /// Empty string → ecosystem default (`$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock`).
@@ -348,7 +413,11 @@ fn resolve_uds_path(raw: &str) -> PathBuf {
     }
 }
 
-/// Optionally start the UDS JSON-RPC listener, returning the shutdown sender.
+/// Start the UDS JSON-RPC listener if `unix_socket` is `Some`.
+///
+/// `None` = no UDS (test backward-compat). `Some("")` = default ecosystem
+/// path. `Some(path)` = custom path. On production Unix, `main.rs` always
+/// passes `Some` so UDS is unconditional.
 #[cfg(unix)]
 fn start_uds_listener(
     unix_socket: Option<&String>,

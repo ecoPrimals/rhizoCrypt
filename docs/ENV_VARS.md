@@ -1,6 +1,6 @@
 # 🔐 rhizoCrypt — Environment Variables
 
-**Last Updated**: April 8, 2026  
+**Last Updated**: April 12, 2026  
 **Version**: 0.14.0-dev  
 **Philosophy**: Capability-based, not primal-based
 
@@ -22,33 +22,35 @@ rhizoCrypt follows the **infant discovery** pattern: it starts with **zero knowl
 |----------|------|---------|-------------|
 | `RHIZOCRYPT_ENV` | string | `production` | Environment mode (`development` or `production`) |
 | `RHIZOCRYPT_RPC_HOST` | string | `0.0.0.0` | RPC server bind address |
-| `RHIZOCRYPT_RPC_PORT` | u16 | `9400` | tarpc server port (preferred) |
-| `RHIZOCRYPT_PORT` | u16 | `9400` | tarpc server port (legacy alias for `RHIZOCRYPT_RPC_PORT`) |
-| `RHIZOCRYPT_JSONRPC_PORT` | u16 | tarpc port + 1 | JSON-RPC TCP port (dual-mode: HTTP POST + newline). Defaults to tarpc port + `JSONRPC_PORT_OFFSET` (1). Set to `0` for OS-assigned. |
+| `RHIZOCRYPT_RPC_PORT` | u16 | — | **Opt-in TCP**: tarpc server port. Setting this triggers TCP transport alongside UDS. |
+| `RHIZOCRYPT_PORT` | u16 | — | **Opt-in TCP**: legacy alias for `RHIZOCRYPT_RPC_PORT`. |
+| `RHIZOCRYPT_JSONRPC_PORT` | u16 | tarpc port + 1 | **Opt-in TCP**: JSON-RPC TCP port (dual-mode: HTTP POST + newline). Setting this also triggers TCP. |
 | `RHIZOCRYPT_METRICS_PORT` | u16 | `9401` | Prometheus metrics port |
-| `XDG_RUNTIME_DIR` | path | `/run/user/$UID` | Base dir for UDS socket. When `--unix` is passed, the socket is created at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` (or `rhizocrypt-{FAMILY_ID}.sock` when family-scoped). |
+| `XDG_RUNTIME_DIR` | path | `/run/user/$UID` | Base dir for UDS socket. Socket is always created at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` (or `rhizocrypt-{FAMILY_ID}.sock` when family-scoped). UDS is unconditional on Unix. |
 | `FAMILY_ID` | string | (unset) | BTSP Phase 1: Family scope for socket naming. When set (not `"default"`), socket becomes `rhizocrypt-{family_id}.sock`. Production mode — BTSP handshake will be mandatory in Phase 2+. |
 | `RHIZOCRYPT_FAMILY_ID` | string | (unset) | Primal-specific override for `FAMILY_ID`. Takes precedence over the ecosystem-wide variable. |
 | `BIOMEOS_INSECURE` | boolean | (unset) | Development mode flag (`1`, `true`, `yes`). No BTSP handshake. **Cannot be set when `FAMILY_ID` is set** — primal refuses to start on conflict. |
 
 ### Unix Domain Socket (UDS)
 
-rhizoCrypt supports a Unix domain socket listener for local IPC, following the
-ecosystem standard from the wateringHole `IPC_COMPLIANCE_MATRIX.md`:
+UDS is **unconditional on Unix** (Provenance Trio standard). The socket binds
+automatically at startup with no flag required:
 
 ```bash
-# Default path (ecosystem standard)
-rhizocrypt server --unix
-# → $XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock
+# UDS-only (default — socket at $XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock)
+rhizocrypt server
 
-# Custom path
+# UDS + TCP (opt-in via --port)
+rhizocrypt server --port 9400
+
+# Custom UDS path
 rhizocrypt server --unix /tmp/rhizocrypt.sock
 ```
 
 The UDS listener serves newline-delimited JSON-RPC 2.0 (same wire format as
-`socat`, biomeOS pipeline coordinator, and other ecoPrimals tooling). The TCP
-JSON-RPC port also auto-detects raw newline clients vs HTTP POST clients on a
-per-connection basis.
+`socat`, biomeOS pipeline coordinator, and other ecoPrimals tooling). TCP
+(when opted-in) also auto-detects raw newline clients vs HTTP POST clients on
+a per-connection basis.
 
 ### Capability Endpoints (Preferred ✅)
 

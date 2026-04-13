@@ -8,23 +8,28 @@
 //! ## Usage
 //!
 //! ```bash
-//! rhizocrypt server                    # Start with TCP + UDS (default socket)
-//! rhizocrypt server --unix             # Explicit UDS at default path
-//! rhizocrypt server --unix /tmp/rc.sock  # Explicit custom UDS path
-//! rhizocrypt server --port 9400        # Custom port
-//! rhizocrypt status                    # Check service health
-//! rhizocrypt doctor                    # Health diagnostics (UniBin standard)
-//! rhizocrypt doctor --comprehensive    # Detailed checks including discovery
-//! rhizocrypt client health             # Check server health (UniBin standard)
+//! rhizocrypt server                       # UDS-only (default socket)
+//! rhizocrypt server --port 9400           # UDS + TCP (opt-in)
+//! rhizocrypt server --unix /tmp/rc.sock   # UDS at custom path
+//! rhizocrypt status                       # Check service health
+//! rhizocrypt doctor                       # Health diagnostics (UniBin standard)
+//! rhizocrypt doctor --comprehensive       # Detailed checks including discovery
+//! rhizocrypt client health                # Check server health (UniBin standard)
 //! rhizocrypt client --address HOST:PORT list-sessions  # List sessions
-//! rhizocrypt --version                 # Version info
-//! rhizocrypt --help                    # Help
+//! rhizocrypt --version                    # Version info
+//! rhizocrypt --help                       # Help
 //! ```
+//!
+//! ## Transport Model
+//!
+//! UDS is unconditional on Unix (Provenance Trio standard). TCP is opt-in via
+//! `--port`, `RHIZOCRYPT_PORT`, or `RHIZOCRYPT_JSONRPC_PORT`.
 //!
 //! ## Environment Variables
 //!
-//! - `RHIZOCRYPT_PORT` - RPC server port (default: OS-assigned in dev, 9400 production)
-//! - `RHIZOCRYPT_HOST` - Bind address (default: 0.0.0.0)
+//! - `RHIZOCRYPT_PORT` - Opt-in TCP: tarpc port (triggers TCP transport)
+//! - `RHIZOCRYPT_JSONRPC_PORT` - Opt-in TCP: JSON-RPC port
+//! - `RHIZOCRYPT_HOST` - TCP bind address (default: 0.0.0.0)
 //! - `RHIZOCRYPT_DISCOVERY_ADAPTER` or `DISCOVERY_ENDPOINT` - Discovery adapter for registration
 //! - `RHIZOCRYPT_ENV` - Environment mode (development/production)
 
@@ -59,20 +64,23 @@ struct Cli {
 /// Available subcommands.
 #[derive(Subcommand)]
 enum Commands {
-    /// Start the RPC service.
+    /// Start the RPC service (UDS unconditional, TCP opt-in).
     Server {
-        /// Port to bind to (overrides `RHIZOCRYPT_PORT` env var).
+        /// Opt-in TCP: bind tarpc + JSON-RPC on this port.
+        ///
+        /// When omitted and no `RHIZOCRYPT_PORT` env var is set, only the
+        /// UDS transport is started (Provenance Trio standard).
         #[arg(short, long)]
         port: Option<u16>,
 
-        /// Host address to bind to (overrides `RHIZOCRYPT_HOST` env var).
+        /// TCP bind address (only used when TCP is active).
         #[arg(long)]
         host: Option<String>,
 
-        /// Enable Unix domain socket listener at PATH.
+        /// Override the UDS socket path.
         ///
-        /// Defaults to `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` when
-        /// supplied without a value. Omit to disable UDS (TCP-only).
+        /// UDS is always active on Unix. Use this to override the default
+        /// `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` path.
         #[arg(long, value_name = "PATH", num_args = 0..=1, default_missing_value = "")]
         unix: Option<String>,
     },
@@ -111,7 +119,13 @@ async fn main() {
             port,
             host,
             unix,
-        } => rhizocrypt_service::run_server(port, host, unix).await,
+        } => {
+            #[cfg(unix)]
+            let uds = Some(unix.unwrap_or_default());
+            #[cfg(not(unix))]
+            let uds = unix;
+            rhizocrypt_service::run_server(port, host, uds).await
+        }
         Commands::Status => {
             rhizocrypt_service::print_status();
             Ok(())

@@ -12,13 +12,13 @@
 | Edition | 2024 (rust-version 1.87) |
 | Unsafe | `unsafe_code = "deny"` workspace-wide, `#![forbid(unsafe_code)]` in non-test, zero `unsafe` blocks |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
-| IPC | JSON-RPC 2.0 (HTTP + newline) + tarpc 0.37 (bincode) — dual-transport first |
+| IPC | JSON-RPC 2.0 (HTTP + newline) + tarpc 0.37 (bincode) — UDS unconditional, TCP opt-in |
 | Streaming | NDJSON pipeline coordination for `event.append_batch` |
 | Resilience | Lock-free CircuitBreaker (atomics) + RetryPolicy for IPC clients |
 | Error Model | Structured `IpcErrorPhase` + `DispatchOutcome` (protocol vs application) |
 | Discovery | Capability-based + manifest-based (`$XDG_RUNTIME_DIR/biomeos/{primal}.json`) |
 | Chaos | `ChaosEngine` framework with 7 fault classes |
-| Transport | Platform-agnostic (Unix socket / TCP / abstract socket), BTSP Phase 2 handshake on UDS |
+| Transport | UDS unconditional (Unix), TCP opt-in (`--port` / env), BTSP Phase 2 handshake on UDS |
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
@@ -103,18 +103,18 @@ cargo build --workspace
 # Run all tests
 cargo test --workspace
 
-# Run the service (TCP + dual-mode JSON-RPC)
+# Run the service (UDS-only, default socket)
 cargo run -p rhizocrypt-service -- server
 
-# With UDS listener (ecosystem standard socket path)
-cargo run -p rhizocrypt-service -- server --unix
+# With TCP opt-in (tarpc + JSON-RPC on port 9400)
+cargo run -p rhizocrypt-service -- server --port 9400
 
-# With custom UDS path
-cargo run -p rhizocrypt-service -- server --unix /tmp/rhizocrypt.sock
+# With custom UDS path + TCP
+cargo run -p rhizocrypt-service -- server --unix /tmp/rhizocrypt.sock --port 9400
 
 # With discovery adapter
 RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500 \
-  cargo run -p rhizocrypt-service -- server --port 9400 --unix
+  cargo run -p rhizocrypt-service -- server --port 9400
 
 # Lint (pedantic)
 cargo clippy --workspace --all-targets --all-features -- -D warnings
@@ -136,8 +136,8 @@ rhizoCrypt discovers all services at runtime via environment variables:
 | `SIGNING_ENDPOINT` | Direct signing provider endpoint |
 | `COMPUTE_ENDPOINT` | Direct compute orchestration endpoint |
 | `PROVENANCE_ENDPOINT` | Direct provenance query endpoint |
-| `RHIZOCRYPT_PORT` | tarpc listen port (default: OS-assigned dev, 9400 production) |
-| `RHIZOCRYPT_JSONRPC_PORT` | JSON-RPC TCP port (default: tarpc port + 1, dual-mode HTTP + newline) |
+| `RHIZOCRYPT_PORT` | Opt-in TCP: tarpc listen port (triggers TCP transport) |
+| `RHIZOCRYPT_JSONRPC_PORT` | Opt-in TCP: JSON-RPC port (default: tarpc port + 1) |
 | `XDG_RUNTIME_DIR` | UDS socket directory base (default: `/run/user/$UID`); socket at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` |
 
 See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.

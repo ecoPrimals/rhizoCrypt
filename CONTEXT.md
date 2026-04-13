@@ -45,9 +45,10 @@ Three workspace crates:
 
 ## IPC
 
+- **UDS unconditional** on Unix at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` (Provenance Trio standard)
+- **TCP opt-in** via `--port` or `RHIZOCRYPT_PORT` env var (tarpc + JSON-RPC dual-mode)
 - **JSON-RPC 2.0** — dual-mode TCP (auto-detects HTTP POST vs newline-delimited) + UDS
 - **tarpc 0.37** with bincode — optional, high-performance typed RPC
-- **Unix domain socket** at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` (`--unix` flag)
 - **BTSP Phase 2** — X25519 + HMAC-SHA256 handshake enforced on UDS accept when `FAMILY_ID` is set; dev mode (`BIOMEOS_INSECURE=1`) bypasses
 - Method names follow `domain.verb` semantic naming (`dag.session.create`, `health.check`)
 
