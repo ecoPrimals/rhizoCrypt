@@ -279,7 +279,7 @@ impl RpcConfig {
 
     /// Create config from an arbitrary environment reader (DI pattern).
     ///
-    /// Absorbed from sweetGrass v0.7.15 `config_from_reader` pattern.
+    /// Absorbed from ecosystem attribution patterns (`config_from_reader` style).
     /// Enables test isolation without `temp-env` or `unsafe` env mutation.
     #[must_use]
     pub fn from_env_reader<F>(reader: F) -> Self

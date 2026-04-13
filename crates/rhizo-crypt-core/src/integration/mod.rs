@@ -203,7 +203,7 @@ const fn status_str(status: &ServiceStatus) -> &'static str {
 /// Factory for creating connected clients via discovery.
 ///
 /// This factory provides a production-ready way to create clients for
-/// sibling primals, using the discovery registry to find endpoints.
+/// peer services, using the discovery registry to find endpoints.
 ///
 /// ## Usage
 ///

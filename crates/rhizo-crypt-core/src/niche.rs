@@ -580,7 +580,7 @@ pub fn normalize_method(method: &str) -> &str {
 
 /// MCP tool definitions for Squirrel AI coordination.
 ///
-/// Absorbed from sweetGrass v0.7.24 / airSpring v0.10 MCP pattern.
+/// Absorbed from ecosystem attribution patterns for MCP tool listing.
 /// Returns a JSON array of tool definitions with JSON Schema input
 /// descriptions, enabling `tools.list` + `tools.call` for AI agents.
 #[must_use]

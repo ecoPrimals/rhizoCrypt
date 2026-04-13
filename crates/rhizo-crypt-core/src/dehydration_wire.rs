@@ -4,8 +4,8 @@
 //! Outbound wire types for JSON-RPC dehydration notifications.
 //!
 //! These structs define rhizoCrypt's own serialization format for the
-//! `contribution.record_dehydration` JSON-RPC call to the provenance
-//! provider (sweetGrass or any compatible endpoint).
+//! `contribution.record_dehydration` JSON-RPC call to any provenance
+//! provider that exposes a compatible attribution endpoint.
 //!
 //! Each primal owns its own wire types — the shared contract is the
 //! JSON schema on the wire, not a compile-time Rust crate. This

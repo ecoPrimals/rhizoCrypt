@@ -24,6 +24,14 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
+#[path = "histogram.rs"]
+mod histogram;
+#[path = "prometheus.rs"]
+mod prometheus;
+
+#[allow(unused_imports)] // Re-export only; used by downstream crates and tests.
+pub use histogram::{Histogram, HistogramSnapshot, LATENCY_BUCKETS};
+
 /// Metric labels for RPC methods.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RpcMethod {
@@ -136,119 +144,6 @@ impl ErrorType {
             Self::RateLimited => "rate_limited",
             Self::Timeout => "timeout",
         }
-    }
-}
-
-/// Histogram bucket boundaries for latency (in seconds).
-const LATENCY_BUCKETS: [f64; 12] = [
-    0.0001, // 100µs
-    0.0005, // 500µs
-    0.001,  // 1ms
-    0.005,  // 5ms
-    0.01,   // 10ms
-    0.025,  // 25ms
-    0.05,   // 50ms
-    0.1,    // 100ms
-    0.25,   // 250ms
-    0.5,    // 500ms
-    1.0,    // 1s
-    5.0,    // 5s
-];
-
-/// Simple histogram for latency tracking.
-#[derive(Debug)]
-struct Histogram {
-    /// Bucket counts.
-    buckets: [AtomicU64; 12],
-    /// Sum of all observations.
-    sum: AtomicU64,
-    /// Count of observations.
-    count: AtomicU64,
-}
-
-impl Default for Histogram {
-    fn default() -> Self {
-        Self {
-            buckets: std::array::from_fn(|_| AtomicU64::new(0)),
-            sum: AtomicU64::new(0),
-            count: AtomicU64::new(0),
-        }
-    }
-}
-
-impl Histogram {
-    fn observe(&self, value: f64) {
-        for (i, &bound) in LATENCY_BUCKETS.iter().enumerate() {
-            if value <= bound {
-                self.buckets[i].fetch_add(1, Ordering::Relaxed);
-                break;
-            }
-        }
-
-        // Integer microseconds for lock-free atomicity; negative/NaN → 0.
-        let micros = value * 1_000_000.0;
-        let value_micros = if micros.is_finite() && micros > 0.0 {
-            // Truncation is acceptable: latencies exceeding u64::MAX µs (~584 millennia) are
-            // not realistic, and sub-microsecond fractional loss is immaterial for observability.
-            // Sign loss is guarded by the `> 0.0` predicate.
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "truncation and sign loss are guarded by the > 0.0 predicate above"
-            )]
-            let v = micros as u64;
-            v
-        } else {
-            0
-        };
-        self.sum.fetch_add(value_micros, Ordering::Relaxed);
-        self.count.fetch_add(1, Ordering::Relaxed);
-    }
-
-    fn snapshot(&self) -> HistogramSnapshot {
-        HistogramSnapshot {
-            buckets: std::array::from_fn(|i| self.buckets[i].load(Ordering::Relaxed)),
-            sum_micros: self.sum.load(Ordering::Relaxed),
-            count: self.count.load(Ordering::Relaxed),
-        }
-    }
-}
-
-/// Snapshot of histogram data.
-#[derive(Debug, Clone)]
-pub struct HistogramSnapshot {
-    /// Bucket counts.
-    pub buckets: [u64; 12],
-    /// Sum of observations in microseconds.
-    pub sum_micros: u64,
-    /// Total observation count.
-    pub count: u64,
-}
-
-impl HistogramSnapshot {
-    /// Get the bucket boundaries.
-    #[must_use]
-    pub const fn bucket_bounds() -> &'static [f64; 12] {
-        &LATENCY_BUCKETS
-    }
-
-    /// Get the mean latency in seconds.
-    ///
-    /// Precision loss from `u64 → f64` is acceptable for observability data.
-    #[must_use]
-    pub fn mean_seconds(&self) -> f64 {
-        if self.count == 0 {
-            return 0.0;
-        }
-        // Precision loss: f64 mantissa is 53 bits; u64 values above 2^53 lose
-        // low-order bits. For microsecond sums this corresponds to ~285 years of
-        // accumulated latency — acceptable for observability.
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "f64 precision loss only matters above 2^53 µs (~285 years of accumulated latency)"
-        )]
-        let mean = (self.sum_micros as f64 / 1_000_000.0) / self.count as f64;
-        mean
     }
 }
 
@@ -367,114 +262,9 @@ impl MetricsCollector {
     /// Export metrics in Prometheus text format.
     #[must_use]
     pub fn export_prometheus(&self) -> String {
-        use std::fmt::Write;
-
-        let mut output = String::with_capacity(4096);
-
-        // Uptime
-        output.push_str("# HELP rhizocrypt_uptime_seconds Time since service start\n");
-        output.push_str("# TYPE rhizocrypt_uptime_seconds gauge\n");
-        let _ = writeln!(output, "rhizocrypt_uptime_seconds {:.3}\n", self.uptime_seconds());
-
-        // Active sessions
-        output.push_str("# HELP rhizocrypt_sessions_active Currently active sessions\n");
-        output.push_str("# TYPE rhizocrypt_sessions_active gauge\n");
-        let _ = writeln!(output, "rhizocrypt_sessions_active {}\n", self.active_sessions());
-
-        // Total vertices
-        output.push_str("# HELP rhizocrypt_vertices_total Total vertices created\n");
-        output.push_str("# TYPE rhizocrypt_vertices_total counter\n");
-        let _ = writeln!(output, "rhizocrypt_vertices_total {}\n", self.vertices_total());
-
-        // Request counts
-        output.push_str("# HELP rhizocrypt_rpc_requests_total Total RPC requests\n");
-        output.push_str("# TYPE rhizocrypt_rpc_requests_total counter\n");
-        for method in ALL_METHODS {
-            let count = self.request_count(method);
-            if count > 0 {
-                let _ = writeln!(
-                    output,
-                    "rhizocrypt_rpc_requests_total{{method=\"{}\"}} {}",
-                    method.as_str(),
-                    count
-                );
-            }
-        }
-        output.push('\n');
-
-        // Error counts
-        output.push_str("# HELP rhizocrypt_rpc_errors_total Total RPC errors\n");
-        output.push_str("# TYPE rhizocrypt_rpc_errors_total counter\n");
-        for error_type in ALL_ERROR_TYPES {
-            let count = self.error_count(error_type);
-            if count > 0 {
-                let _ = writeln!(
-                    output,
-                    "rhizocrypt_rpc_errors_total{{type=\"{}\"}} {}",
-                    error_type.as_str(),
-                    count
-                );
-            }
-        }
-        output.push('\n');
-
-        // Request latencies (simplified - just mean)
-        output.push_str(
-            "# HELP rhizocrypt_rpc_request_duration_seconds_mean Mean request duration\n",
-        );
-        output.push_str("# TYPE rhizocrypt_rpc_request_duration_seconds_mean gauge\n");
-        for method in ALL_METHODS {
-            let hist = self.latency_histogram(method);
-            if hist.count > 0 {
-                let _ = writeln!(
-                    output,
-                    "rhizocrypt_rpc_request_duration_seconds_mean{{method=\"{}\"}} {:.6}",
-                    method.as_str(),
-                    hist.mean_seconds()
-                );
-            }
-        }
-
-        output
+        prometheus::export_prometheus(self)
     }
 }
-
-/// All RPC methods for iteration.
-const ALL_METHODS: [RpcMethod; RPC_METHOD_COUNT] = [
-    RpcMethod::CreateSession,
-    RpcMethod::GetSession,
-    RpcMethod::ListSessions,
-    RpcMethod::DiscardSession,
-    RpcMethod::AppendEvent,
-    RpcMethod::AppendBatch,
-    RpcMethod::GetVertex,
-    RpcMethod::GetFrontier,
-    RpcMethod::GetGenesis,
-    RpcMethod::QueryVertices,
-    RpcMethod::GetChildren,
-    RpcMethod::GetMerkleRoot,
-    RpcMethod::GetMerkleProof,
-    RpcMethod::VerifyProof,
-    RpcMethod::CheckoutSlice,
-    RpcMethod::GetSlice,
-    RpcMethod::ListSlices,
-    RpcMethod::ResolveSlice,
-    RpcMethod::Dehydrate,
-    RpcMethod::GetDehydrationStatus,
-    RpcMethod::Health,
-    RpcMethod::Metrics,
-    RpcMethod::ListCapabilities,
-];
-
-/// All error types for iteration.
-const ALL_ERROR_TYPES: [ErrorType; ERROR_TYPE_COUNT] = [
-    ErrorType::SessionNotFound,
-    ErrorType::VertexNotFound,
-    ErrorType::InvalidInput,
-    ErrorType::Internal,
-    ErrorType::RateLimited,
-    ErrorType::Timeout,
-];
 
 /// Shared metrics instance for global access.
 #[derive(Clone)]

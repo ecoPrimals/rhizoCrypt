@@ -4,8 +4,8 @@
 //! Provenance provider notifier for push updates.
 //!
 //! Used to notify provenance provider when new provenance data is available.
-//! When connected, sends JSON-RPC calls to the attribution provider (sweetGrass
-//! or any provider with `ProvenanceQuery` capability).
+//! When connected, sends JSON-RPC calls to any attribution provider that
+//! implements the `ProvenanceQuery` capability.
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -266,8 +266,8 @@ impl ProvenanceNotifier {
     /// Sets `TCP_NODELAY` to prevent Nagle buffering of newline-delimited
     /// payloads, and flushes the writer before reading the response. This
     /// mirrors the hardening already present in `jsonrpc/mod.rs` and
-    /// `btsp/framing.rs`, and fixes the loamSpine "connection closes after
-    /// first response" workaround.
+    /// `btsp/framing.rs`, and mitigates the "connection closes after first
+    /// response" issue common with newline-delimited JSON-RPC over TCP.
     async fn send_jsonrpc(
         endpoint: &SocketAddr,
         request: &serde_json::Value,

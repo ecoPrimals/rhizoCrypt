@@ -8,8 +8,6 @@
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
-pub use rhizo_crypt_core;
-
 mod doctor;
 pub use doctor::{
     DoctorCheck, check_dag_engine, check_discovery_connectivity, check_storage_backend, run_doctor,
@@ -28,7 +26,6 @@ pub mod exit_codes {
     /// Interrupted (SIGINT).
     pub const INTERRUPTED: i32 = 130;
 }
-pub use rhizo_crypt_rpc;
 
 use clap::Subcommand;
 use rhizo_crypt_core::constants;
@@ -324,7 +321,7 @@ async fn serve_with_tcp(
 
     if let Some(discovery_addr) = SafeEnv::get_discovery_address() {
         info!(discovery = %discovery_addr, "Registering with discovery service");
-        match register_with_discovery(discovery_addr.clone(), addr).await {
+        match register_with_discovery(&discovery_addr, addr).await {
             Ok(()) => info!("Registered with discovery service"),
             Err(e) => warn!(error = %e, "Discovery registration failed, continuing standalone"),
         }
@@ -449,13 +446,13 @@ fn start_uds_listener(
 ///
 /// Returns [`ServiceError::Discovery`] if registration or heartbeat setup fails.
 pub async fn register_with_discovery(
-    discovery_addr: String,
+    discovery_addr: &str,
     our_addr: SocketAddr,
 ) -> Result<(), ServiceError> {
     use rhizo_crypt_core::clients::songbird::{DiscoveryClient, DiscoveryConfig};
 
     let mut config = DiscoveryConfig::new();
-    config.address = std::borrow::Cow::Owned(discovery_addr);
+    config.address = std::borrow::Cow::Owned(discovery_addr.to_owned());
     let client = DiscoveryClient::new(config);
 
     let our_endpoint = format!("{}://{our_addr}", constants::DISCOVERY_ENDPOINT_SCHEME);

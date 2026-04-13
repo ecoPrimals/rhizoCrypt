@@ -204,10 +204,10 @@ impl SafeEnv {
         Self::parse("RHIZOCRYPT_METRICS_PORT", default)
     }
 
-    /// Construct the canonical socket env var name for any primal.
+    /// Construct the canonical socket env var name for any service identity.
     ///
-    /// Absorbed from sweetGrass V0717 generic helper pattern. Avoids
-    /// per-primal constant proliferation — any primal can be discovered
+    /// Absorbed from ecosystem attribution patterns (generic helper style). Avoids
+    /// per-component constant proliferation — any provider name can be discovered
     /// via `{UPPER_NAME}_SOCKET` at runtime.
     ///
     /// # Example
@@ -215,22 +215,22 @@ impl SafeEnv {
     /// ```
     /// use rhizo_crypt_core::safe_env::SafeEnv;
     /// assert_eq!(SafeEnv::socket_env_var("rhizoCrypt"), "RHIZOCRYPT_SOCKET");
-    /// assert_eq!(SafeEnv::socket_env_var("loamSpine"), "LOAMSPINE_SOCKET");
+    /// assert_eq!(SafeEnv::socket_env_var("examplePeer"), "EXAMPLEPEER_SOCKET");
     /// ```
     #[must_use]
     pub fn socket_env_var(primal_name: &str) -> String {
         format!("{}_SOCKET", primal_name.to_uppercase())
     }
 
-    /// Construct the canonical address env var name for any primal.
+    /// Construct the canonical address env var name for any service identity.
     ///
-    /// Absorbed from sweetGrass V0717 generic helper pattern.
+    /// Absorbed from ecosystem attribution patterns (generic helper style).
     ///
     /// # Example
     ///
     /// ```
     /// use rhizo_crypt_core::safe_env::SafeEnv;
-    /// assert_eq!(SafeEnv::address_env_var("bearDog"), "BEARDOG_ADDRESS");
+    /// assert_eq!(SafeEnv::address_env_var("exampleSigner"), "EXAMPLESIGNER_ADDRESS");
     /// ```
     #[must_use]
     pub fn address_env_var(primal_name: &str) -> String {

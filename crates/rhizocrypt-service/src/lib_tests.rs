@@ -147,7 +147,7 @@ fn test_print_status_no_panic() {
 #[tokio::test]
 async fn test_register_with_discovery_unreachable() {
     let addr: SocketAddr = "127.0.0.1:9999".parse().unwrap();
-    let result = register_with_discovery("http://invalid-host-12345:99999".to_string(), addr).await;
+    let result = register_with_discovery("http://invalid-host-12345:99999", addr).await;
     assert!(result.is_err());
     match &result.unwrap_err() {
         ServiceError::Discovery(msg) => assert!(!msg.is_empty()),
