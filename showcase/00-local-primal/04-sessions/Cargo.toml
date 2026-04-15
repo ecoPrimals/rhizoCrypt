@@ -25,5 +25,5 @@ path = "src/demo_dehydration.rs"
 
 [dependencies]
 rhizo-crypt-core = { path = "../../../crates/rhizo-crypt-core" }
-tokio = { version = "1.46", features = ["full"] }
+tokio = { version = "1.46", features = ["rt-multi-thread", "macros"] }
 

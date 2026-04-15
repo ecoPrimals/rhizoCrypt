@@ -40,6 +40,9 @@ const ALL_ERROR_TYPES: [ErrorType; ERROR_TYPE_COUNT] = [
     ErrorType::Timeout,
 ];
 
+// All `let _ = writeln!()` below target `String`, whose `fmt::Write` impl is
+// infallible. The discarded `Result` cannot be `Err` in practice.
+
 #[expect(
     clippy::redundant_pub_crate,
     reason = "crate-private helper; pub(crate) matches metrics API contract"
@@ -47,22 +50,18 @@ const ALL_ERROR_TYPES: [ErrorType; ERROR_TYPE_COUNT] = [
 pub(crate) fn export_prometheus(collector: &MetricsCollector) -> String {
     let mut output = String::with_capacity(4096);
 
-    // Uptime
     output.push_str("# HELP rhizocrypt_uptime_seconds Time since service start\n");
     output.push_str("# TYPE rhizocrypt_uptime_seconds gauge\n");
     let _ = writeln!(output, "rhizocrypt_uptime_seconds {:.3}\n", collector.uptime_seconds());
 
-    // Active sessions
     output.push_str("# HELP rhizocrypt_sessions_active Currently active sessions\n");
     output.push_str("# TYPE rhizocrypt_sessions_active gauge\n");
     let _ = writeln!(output, "rhizocrypt_sessions_active {}\n", collector.active_sessions());
 
-    // Total vertices
     output.push_str("# HELP rhizocrypt_vertices_total Total vertices created\n");
     output.push_str("# TYPE rhizocrypt_vertices_total counter\n");
     let _ = writeln!(output, "rhizocrypt_vertices_total {}\n", collector.vertices_total());
 
-    // Request counts
     output.push_str("# HELP rhizocrypt_rpc_requests_total Total RPC requests\n");
     output.push_str("# TYPE rhizocrypt_rpc_requests_total counter\n");
     for method in ALL_METHODS {
@@ -78,7 +77,6 @@ pub(crate) fn export_prometheus(collector: &MetricsCollector) -> String {
     }
     output.push('\n');
 
-    // Error counts
     output.push_str("# HELP rhizocrypt_rpc_errors_total Total RPC errors\n");
     output.push_str("# TYPE rhizocrypt_rpc_errors_total counter\n");
     for error_type in ALL_ERROR_TYPES {
@@ -94,7 +92,6 @@ pub(crate) fn export_prometheus(collector: &MetricsCollector) -> String {
     }
     output.push('\n');
 
-    // Request latencies (simplified - just mean)
     output.push_str("# HELP rhizocrypt_rpc_request_duration_seconds_mean Mean request duration\n");
     output.push_str("# TYPE rhizocrypt_rpc_request_duration_seconds_mean gauge\n");
     for method in ALL_METHODS {

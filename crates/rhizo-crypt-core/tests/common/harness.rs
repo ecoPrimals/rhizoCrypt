@@ -5,7 +5,6 @@
 //!
 //! Provides a standardized way to set up and tear down test environments.
 
-#![allow(dead_code)]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use rhizo_crypt_core::{
@@ -15,6 +14,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// Test configuration.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct TestConfig {
     /// Base port for test RPC server.
@@ -27,6 +27,7 @@ pub struct TestConfig {
     pub max_sessions: usize,
 }
 
+#[allow(dead_code)]
 impl Default for TestConfig {
     fn default() -> Self {
         Self {
@@ -41,6 +42,7 @@ impl Default for TestConfig {
 /// Test harness for rhizoCrypt.
 ///
 /// Manages lifecycle of a test primal instance.
+#[allow(dead_code)]
 pub struct TestHarness {
     /// The primal under test.
     primal: Arc<RwLock<RhizoCrypt>>,
@@ -48,6 +50,7 @@ pub struct TestHarness {
     config: TestConfig,
 }
 
+#[allow(dead_code)]
 impl TestHarness {
     /// Create a new test harness.
     pub fn new(config: TestConfig) -> Self {

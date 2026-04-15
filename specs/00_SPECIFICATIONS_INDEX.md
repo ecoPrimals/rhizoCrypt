@@ -64,6 +64,12 @@ RhizoCrypt respects human dignity by:
 | [INTEGRATION_SPECIFICATION_V2.md](./INTEGRATION_SPECIFICATION_V2.md) | Capability-based integration (current) | ✅ Complete |
 | [STORAGE_BACKENDS.md](./STORAGE_BACKENDS.md) | redb (default), in-memory | ✅ Complete |
 
+### Security & Cryptography
+
+| Document | Purpose | Status |
+|----------|---------|--------|
+| [CRYPTO_MODEL.md](./CRYPTO_MODEL.md) | Canonical crypto delegation pattern (BearDog IPC) | ✅ Complete |
+
 ### Experimental Specifications
 
 | Document | Purpose | Status |

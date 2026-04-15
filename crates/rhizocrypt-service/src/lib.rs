@@ -38,7 +38,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Client operations for interacting with a running rhizoCrypt server.
 #[derive(Clone, Debug, Subcommand)]
@@ -163,12 +163,16 @@ async fn shutdown_signal() {
         use tokio::signal::unix::{SignalKind, signal};
         let Ok(mut sigterm) = signal(SignalKind::terminate()) else {
             warn!("Failed to register SIGTERM handler, falling back to ctrl_c");
-            let _ = tokio::signal::ctrl_c().await;
+            if let Err(e) = tokio::signal::ctrl_c().await {
+                debug!(error = %e, "ctrl_c signal handler unavailable");
+            }
             return;
         };
         let Ok(mut sigint) = signal(SignalKind::interrupt()) else {
             warn!("Failed to register SIGINT handler, falling back to ctrl_c");
-            let _ = tokio::signal::ctrl_c().await;
+            if let Err(e) = tokio::signal::ctrl_c().await {
+                debug!(error = %e, "ctrl_c signal handler unavailable");
+            }
             return;
         };
         tokio::select! {
@@ -179,7 +183,9 @@ async fn shutdown_signal() {
 
     #[cfg(not(unix))]
     {
-        let _ = tokio::signal::ctrl_c().await;
+        if let Err(e) = tokio::signal::ctrl_c().await {
+            debug!(error = %e, "ctrl_c signal handler unavailable");
+        }
     }
 }
 
@@ -284,7 +290,9 @@ pub async fn run_server_with_ready(
         info!("Received shutdown signal, stopping gracefully");
         #[cfg(unix)]
         {
-            let _ = uds_shutdown_tx.send(true);
+            if uds_shutdown_tx.send(true).is_err() {
+                debug!("UDS shutdown channel already closed (UDS-only mode)");
+            }
         }
         info!("rhizoCrypt service shutdown cleanly");
         Ok(())
@@ -368,17 +376,25 @@ async fn serve_with_tcp(
         }
         () = shutdown_signal() => {
             info!("Received shutdown signal, stopping gracefully");
-            let _ = shutdown_tx.send(true);
-            let _ = jsonrpc_shutdown_tx.send(true);
+            if shutdown_tx.send(true).is_err() {
+                debug!("tarpc shutdown channel already closed");
+            }
+            if jsonrpc_shutdown_tx.send(true).is_err() {
+                debug!("JSON-RPC shutdown channel already closed");
+            }
             #[cfg(unix)]
             {
-                let _ = uds_shutdown_tx.send(true);
+                if uds_shutdown_tx.send(true).is_err() {
+                    debug!("UDS shutdown channel already closed");
+                }
             }
             if let Ok(Err(e)) = serve_handle.await {
                 error!(error = %e, "rhizoCrypt service error during shutdown");
                 return Err(ServiceError::Rpc(e));
             }
-            let _ = jsonrpc_handle.await;
+            if let Err(e) = jsonrpc_handle.await {
+                debug!(error = %e, "JSON-RPC task join error during shutdown");
+            }
             info!("rhizoCrypt service shutdown cleanly");
             Ok(())
         }

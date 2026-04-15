@@ -203,7 +203,9 @@ async fn handle_uds_connection(
             Err(e) => {
                 warn!(error = %e, "BTSP handshake failed, dropping connection");
                 let (_, mut writer) = rw.into_inner();
-                let _ = BtspServer::send_handshake_error(&mut writer).await;
+                if let Err(e) = BtspServer::send_handshake_error(&mut writer).await {
+                    debug!(error = %e, "failed to send BTSP handshake error to client");
+                }
                 Err(std::io::Error::other(format!("BTSP handshake failed: {e}")))
             }
         }

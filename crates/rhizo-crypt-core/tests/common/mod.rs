@@ -6,11 +6,12 @@
 //! This module provides shared infrastructure for integration testing across
 //! all test suites.
 
-#![allow(dead_code)]
-
 pub mod harness;
 
 /// Chaos testing configuration.
+///
+/// Available for chaos test suites; not all consumers reference every field.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ChaosConfig {
     /// Network latency to inject (ms).
@@ -23,6 +24,7 @@ pub struct ChaosConfig {
     pub max_concurrent_ops: usize,
 }
 
+#[allow(dead_code)]
 impl Default for ChaosConfig {
     fn default() -> Self {
         Self {

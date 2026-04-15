@@ -69,11 +69,11 @@ Three workspace crates:
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,510 passing (all features) |
-| Coverage | ~93% lines (CI gate: 90%) |
+| Tests | 1,506 passing (all features) |
+| Coverage | 93.88% lines (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
-| Source files | 160 `.rs`, ~48,100 lines |
-| Max file size | 664 lines (limit: 1000) |
+| Source files | 170 `.rs`, ~48,350 lines |
+| Max file size | 724 lines (limit: 1000) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |
@@ -86,10 +86,10 @@ Three workspace crates:
 ## Key Files
 
 - `Cargo.toml` — Workspace config, lint policy, dependency pins
-- `capability_registry.toml` — Capability method registry (24 declared, 28 total via handler; 5 domains)
+- `capability_registry.toml` — Capability method registry (28 methods in `METHOD_CATALOG`, 5 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
-- `specs/` — 10 specification documents
-- `showcase/` — 76 progressive demos
+- `specs/` — 11 specification documents (incl. `CRYPTO_MODEL.md` — BearDog crypto delegation)
+- `showcase/` — 65 progressive demos
 
 ## Part of ecoPrimals
 

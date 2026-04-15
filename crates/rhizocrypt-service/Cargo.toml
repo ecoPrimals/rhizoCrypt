@@ -21,6 +21,10 @@ path = "src/lib.rs"
 name = "rhizocrypt"
 path = "src/main.rs"
 
+[[test]]
+name = "service_integration"
+path = "tests/service_integration/mod.rs"
+
 [dependencies]
 rhizo-crypt-core = { path = "../rhizo-crypt-core" }
 tempfile = "3.15"

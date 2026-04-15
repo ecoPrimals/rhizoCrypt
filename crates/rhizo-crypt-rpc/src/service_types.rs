@@ -185,8 +185,10 @@ pub fn build_capability_descriptors() -> Vec<CapabilityDescriptor> {
 
     let mut domain_methods: BTreeMap<String, Vec<MethodDescriptor>> = BTreeMap::new();
 
-    for &(method, estimated_ms, _gpu) in niche::COST_ESTIMATES {
-        let domain = method.split('.').next().unwrap_or("unknown").to_string();
+    for spec in niche::METHOD_CATALOG {
+        let domain = spec.domain.to_string();
+        let method = spec.fqn;
+        let estimated_ms = spec.estimated_ms;
 
         let method_deps = deps
             .get(method)

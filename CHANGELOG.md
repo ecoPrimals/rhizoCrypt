@@ -5,6 +5,52 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0-dev] - 2026-04-15 (session 43)
+
+### Changed
+
+#### S43: Comprehensive Audit + Deep Debt Evolution
+
+- **`CRYPTO_MODEL.md`** — canonical spec: rhizoCrypt delegates all asymmetric crypto to BearDog via IPC; Blake3 for internal integrity only
+- **Shared `DiscoveryRegistry`** — `RhizoCrypt` struct holds `Arc<DiscoveryRegistry>` initialized once and shared across dehydration attestation + permanent storage commit; eliminated orphan per-call registries
+- **`collect_attestations`** — uses `request_attestation()` for proper round-trip attestation (not manual `sign` + `verified: true`)
+- **`niche.rs` `METHOD_CATALOG`** — single source of truth (`MethodSpec` struct) replaces 4× redundant lists (`CAPABILITIES`, `SEMANTIC_MAPPINGS`, `COST_ESTIMATES`, `CAPABILITY_DOMAINS`); derived via `LazyLock`
+- **Prometheus export** — `infallible_write` helper replaced with idiomatic `let _ = writeln!()` pattern for `String` (infallible `fmt::Write`)
+- **Shutdown error logging** — `let _ =` during graceful shutdown evolved to `if .is_err() { debug!(...) }` for traceability
+- **`capability_registry.toml`** — domain mismatch fixed (`capability` → `capabilities` matching `METHOD_CATALOG`)
+
+#### S43: Smart Test File Refactoring (>800 line files)
+
+- **`service_integration.rs`** (960 → 231 + 173 + 310 + 268 LOC): split into `mod.rs`, `doctor.rs`, `client_and_config.rs`, `uds.rs`
+- **`store_redb_tests_advanced.rs`** (861 → 594 + 272 LOC): coverage tests extracted to `store_redb_tests_coverage.rs`
+- **`loamspine_http_tests.rs`** (858 → 303 + 512 LOC): wiremock tests extracted to `loamspine_http_tests_wiremock.rs`
+- **`rhizocrypt_tests.rs`** (805 → 463 + 355 LOC): extended tests extracted to `rhizocrypt_tests_extended.rs`
+- **`niche.rs`** (654 → 404 LOC): `MethodSpec` + `METHOD_CATALOG` eliminated structural redundancy
+
+#### S43: Documentation Refresh
+
+- **README.md** — tests 1,506, coverage 93.88%, 170 `.rs` files, `METHOD_CATALOG` mention, `CRYPTO_MODEL.md` link, demo count 65
+- **CONTEXT.md** — registry note corrected (28 methods in `METHOD_CATALOG`), file/line counts updated
+- **`specs/00_SPECIFICATIONS_INDEX.md`** — added Security & Cryptography section with `CRYPTO_MODEL.md`
+- **showcase `Cargo.toml`** — `tokio = "full"` → explicit features (ecoBin compile efficiency)
+- **Test harness** — module-level `#![allow(dead_code)]` narrowed to targeted per-struct `#[allow]`
+
+### Added
+
+- `specs/CRYPTO_MODEL.md` — canonical crypto delegation pattern
+- `crates/rhizo-crypt-core/src/store_redb_tests_coverage.rs`
+- `crates/rhizo-crypt-core/src/clients/loamspine_http_tests_wiremock.rs`
+- `crates/rhizo-crypt-core/src/rhizocrypt_tests_extended.rs`
+- `crates/rhizocrypt-service/tests/service_integration/` directory module (4 files)
+
+**Metrics**
+- 1,506 tests passing (0 failures)
+- 170 `.rs` files, ~48,350 lines
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok
+- Max file: 724 lines (limit 1,000)
+- Zero clippy warnings, zero unsafe blocks, zero production unwrap/expect
+- 93.88% line coverage (CI gate: 90%)
+
 ## [0.14.0-dev] - 2026-04-13 (sessions 38–41)
 
 ### Changed
@@ -1738,6 +1784,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **0.14.0-dev** (2026-04-15 s43): Comprehensive audit — CRYPTO_MODEL spec, shared DiscoveryRegistry, METHOD_CATALOG single source of truth, 5 smart test-file refactors, doc refresh
+- **0.14.0-dev** (2026-04-13 s38–41): Handler domain split, metrics extraction, EventType reference, deny.toml tightening, doc reconciliation
 - **0.14.0-dev** (2026-04-07 s26): `dag.dehydrate` alias fix (blocking), `attested_at`→`witnessed_at` vocabulary, musl-static binary, Dockerfile Alpine, doc cleanup
 - **0.14.0-dev** (2026-04-02 s25): Comprehensive audit — tower 0.5, hashbrown→std, 78 clippy fixes, lock tightening, tarpc semantic fix, portability
 - **0.14.0-dev** (2026-04-01 s24): Lock-free CircuitBreaker, zero-sleep testing, Cow errors, OnceLock cache, dehydration evolution, +21 tests → 1,423

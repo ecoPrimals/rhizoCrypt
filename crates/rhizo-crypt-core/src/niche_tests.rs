@@ -12,42 +12,39 @@ fn primal_identity_is_consistent() {
 }
 
 #[test]
-fn capabilities_count_matches_cost_estimates() {
-    assert_eq!(
-        CAPABILITIES.len(),
-        COST_ESTIMATES.len(),
-        "every capability must have a cost estimate"
+fn capabilities_derived_from_catalog() {
+    assert_eq!(CAPABILITIES.len(), METHOD_CATALOG.len());
+    for (i, spec) in METHOD_CATALOG.iter().enumerate() {
+        assert_eq!(CAPABILITIES[i], spec.fqn);
+    }
+}
+
+#[test]
+fn catalog_fqns_match_domain_plus_short_name() {
+    for spec in METHOD_CATALOG {
+        let expected = format!("{}.{}", spec.domain, spec.short_name);
+        assert_eq!(spec.fqn, expected, "FQN mismatch for {}", spec.fqn);
+    }
+}
+
+#[test]
+fn semantic_mappings_include_catalog_and_aliases() {
+    let mappings = &*SEMANTIC_MAPPINGS;
+    for spec in METHOD_CATALOG {
+        assert!(
+            mappings.contains(&(spec.short_name, spec.fqn)),
+            "missing standard mapping for {}",
+            spec.fqn
+        );
+    }
+    assert!(
+        mappings.contains(&("health", "health.check")),
+        "missing alias 'health' → 'health.check'"
     );
-}
-
-#[test]
-fn all_capabilities_have_cost_estimates() {
-    for cap in CAPABILITIES {
-        assert!(
-            COST_ESTIMATES.iter().any(|(method, _, _)| method == cap),
-            "missing cost estimate for {cap}"
-        );
-    }
-}
-
-#[test]
-fn all_cost_estimates_are_valid_capabilities() {
-    for (method, _, _) in COST_ESTIMATES {
-        assert!(
-            CAPABILITIES.contains(method),
-            "{method} in COST_ESTIMATES but not in CAPABILITIES"
-        );
-    }
-}
-
-#[test]
-fn semantic_mappings_resolve_to_capabilities() {
-    for (_, full_method) in SEMANTIC_MAPPINGS {
-        assert!(
-            CAPABILITIES.contains(full_method),
-            "semantic mapping {full_method} not in CAPABILITIES"
-        );
-    }
+    assert!(
+        mappings.contains(&("mcp.tools.list", "tools.list")),
+        "missing alias 'mcp.tools.list' → 'tools.list'"
+    );
 }
 
 #[test]
@@ -72,7 +69,7 @@ fn operation_dependencies_reference_valid_capabilities() {
 fn all_capabilities_have_dependency_entries() {
     let deps = operation_dependencies();
     let obj = deps.as_object().expect("deps should be an object");
-    for cap in CAPABILITIES {
+    for cap in CAPABILITIES.iter() {
         assert!(
             obj.contains_key(*cap),
             "CAPABILITIES entry '{cap}' has no key in operation_dependencies()"
@@ -88,16 +85,26 @@ fn capability_list_has_required_fields() {
     assert!(list.get("capabilities").is_some());
     assert!(list.get("consumed_capabilities").is_some());
     assert!(list.get("methods").is_some());
+    assert!(list.get("domains").is_some());
+    assert!(list.get("locality").is_some());
 
     let methods = list["methods"].as_array().expect("methods array");
-    assert_eq!(methods.len(), CAPABILITIES.len());
+    assert_eq!(methods.len(), METHOD_CATALOG.len());
 
     for method in methods {
         assert!(method.get("method").is_some());
         assert!(method.get("domain").is_some());
         assert!(method.get("cost").is_some());
         assert!(method.get("deps").is_some());
+        assert!(method.get("external").is_some());
     }
+
+    let locality = &list["locality"];
+    assert_eq!(
+        locality["local"].as_u64().expect("local count"),
+        u64::try_from(CAPABILITIES.len()).expect("cap len fits u64")
+    );
+    assert_eq!(locality["external"].as_u64().expect("external count"), 0);
 }
 
 #[test]
@@ -112,8 +119,12 @@ fn cost_tier_thresholds() {
 
 #[test]
 fn no_gpu_beneficial_operations() {
-    for (method, _, gpu) in COST_ESTIMATES {
-        assert!(!gpu, "{method} marked as GPU beneficial — rhizoCrypt is CPU-only infrastructure");
+    for spec in METHOD_CATALOG {
+        assert!(
+            !spec.gpu_beneficial,
+            "{} marked as GPU beneficial — rhizoCrypt is CPU-only infrastructure",
+            spec.fqn
+        );
     }
 }
 
@@ -139,25 +150,6 @@ fn dependencies_reference_capability_domains_not_primal_names() {
 }
 
 #[test]
-fn capability_domains_cover_all_capabilities() {
-    let domain_fqns: Vec<&str> = all_methods().iter().map(|m| m.fqn).collect();
-    for cap in CAPABILITIES {
-        assert!(domain_fqns.contains(cap), "capability {cap} not covered by any CapabilityDomain");
-    }
-}
-
-#[test]
-fn all_domain_methods_are_valid_capabilities() {
-    for method in all_methods() {
-        assert!(
-            CAPABILITIES.contains(&method.fqn),
-            "domain method {} not in CAPABILITIES",
-            method.fqn
-        );
-    }
-}
-
-#[test]
 fn all_rhizocrypt_methods_are_local() {
     let (local, external) = method_locality_counts();
     assert_eq!(external, 0, "rhizoCrypt is CPU-only infrastructure — all methods local");
@@ -165,35 +157,14 @@ fn all_rhizocrypt_methods_are_local() {
 }
 
 #[test]
-fn capability_list_includes_domains_and_locality() {
-    let list = capability_list();
-    assert!(list.get("domains").is_some(), "missing 'domains' field");
-    assert!(list.get("locality").is_some(), "missing 'locality' field");
-
-    let locality = &list["locality"];
-    assert_eq!(
-        locality["local"].as_u64().expect("local count"),
-        u64::try_from(CAPABILITIES.len()).expect("cap len fits u64")
-    );
-    assert_eq!(locality["external"].as_u64().expect("external count"), 0);
-
-    let methods = list["methods"].as_array().expect("methods array");
-    for method in methods {
-        assert!(method.get("external").is_some(), "method missing 'external' flag");
-    }
-}
-
-#[test]
-fn capability_domains_have_consistent_prefixes() {
-    for domain in CAPABILITY_DOMAINS {
-        for method in domain.methods {
-            assert!(
-                method.fqn.starts_with(domain.prefix),
-                "method {} doesn't start with domain prefix {}",
-                method.fqn,
-                domain.prefix
-            );
-        }
+fn domain_descriptions_cover_all_domains() {
+    let described: Vec<&str> = DOMAIN_DESCRIPTIONS.iter().map(|(d, _)| *d).collect();
+    for spec in METHOD_CATALOG {
+        assert!(
+            described.contains(&spec.domain),
+            "domain '{}' has no description in DOMAIN_DESCRIPTIONS",
+            spec.domain
+        );
     }
 }
 

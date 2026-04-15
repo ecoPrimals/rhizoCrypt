@@ -12,6 +12,7 @@ mod dehydration_ops;
 
 use crate::config::{RhizoCryptConfig, StorageBackend};
 use crate::dehydration;
+use crate::discovery::DiscoveryRegistry;
 use crate::error::{Result, RhizoCryptError};
 use crate::event::EventType;
 use crate::merkle::{MerkleProof, MerkleRoot};
@@ -63,6 +64,8 @@ pub struct RhizoCrypt {
     vertex_session_index: Arc<DashMap<VertexId, SessionId>>,
     // Atomic metrics (lock-free)
     metrics: Arc<PrimalMetrics>,
+    // Capability-based discovery registry shared across dehydration & integration
+    discovery_registry: Arc<DiscoveryRegistry>,
     // Provenance notifier (optional, non-fatal)
     provenance_notifier: Arc<crate::types_ecosystem::provenance::ProvenanceNotifier>,
 }
@@ -71,7 +74,9 @@ impl RhizoCrypt {
     /// Create a new `RhizoCrypt` instance.
     #[must_use]
     pub fn new(config: RhizoCryptConfig) -> Self {
-        use crate::types_ecosystem::provenance::{ProvenanceNotifier, ProvenanceProviderConfig};
+        use crate::types_ecosystem::provenance::ProvenanceNotifier;
+
+        let registry = Arc::new(DiscoveryRegistry::new(crate::constants::PRIMAL_NAME));
 
         Self {
             config,
@@ -84,9 +89,8 @@ impl RhizoCrypt {
             dehydration_status: Arc::new(DashMap::new()),
             vertex_session_index: Arc::new(DashMap::new()),
             metrics: Arc::new(PrimalMetrics::new()),
-            provenance_notifier: Arc::new(ProvenanceNotifier::new(
-                ProvenanceProviderConfig::from_env(),
-            )),
+            discovery_registry: Arc::clone(&registry),
+            provenance_notifier: Arc::new(ProvenanceNotifier::with_discovery(registry)),
         }
     }
 
@@ -101,6 +105,15 @@ impl RhizoCrypt {
     #[must_use]
     pub const fn config(&self) -> &RhizoCryptConfig {
         &self.config
+    }
+
+    /// Get the shared discovery registry.
+    ///
+    /// Callers can register endpoints to enable capability-based discovery
+    /// for dehydration attestations, permanent storage, and provenance notifications.
+    #[must_use]
+    pub const fn discovery_registry(&self) -> &Arc<DiscoveryRegistry> {
+        &self.discovery_registry
     }
 
     /// Get the DAG store (if running).
@@ -627,3 +640,7 @@ impl PrimalHealth for RhizoCrypt {
 #[cfg(test)]
 #[path = "../rhizocrypt_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../rhizocrypt_tests_extended.rs"]
+mod tests_extended;

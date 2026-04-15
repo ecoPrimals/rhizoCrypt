@@ -7,17 +7,21 @@
 //! in a single module so that orchestrators and discovery providers can reason
 //! about it without hardcoded primal names or port numbers.
 //!
-//! This module holds:
-//! - Identity (who am I?)
-//! - Capabilities (what do I expose via biomeOS?)
-//! - Consumed capabilities (what do I need from other primals?)
-//! - Cost estimates (scheduling hints for biomeOS Pathway Learner)
-//! - Operation dependencies (parallelization DAG for Pathway Learner)
-//! - Semantic mappings (short operation name → full method)
+//! ## Single Source of Truth
+//!
+//! All method metadata lives in [`METHOD_CATALOG`]. The separate capability
+//! lists, cost estimates, semantic mappings, and domain structures are all
+//! derived from this one catalog — adding a new capability means a single edit.
 //!
 //! Other modules reference these constants rather than duplicating string
 //! literals. rhizoCrypt only knows itself — it discovers other primals at
 //! runtime via capability-based discovery through Songbird.
+
+use std::sync::LazyLock;
+
+// ============================================================================
+// PRIMAL IDENTITY
+// ============================================================================
 
 /// Primal identity — used in all JSON-RPC, IPC, and biomeOS interactions.
 pub const PRIMAL_ID: &str = "rhizocrypt";
@@ -41,77 +45,93 @@ pub const TRANSPORT: &str = "http+tarpc";
 /// Wire protocol.
 pub const PROTOCOL: &str = "jsonrpc_2.0";
 
-/// All capabilities this primal exposes to biomeOS.
+// ============================================================================
+// METHOD CATALOG — Single Source of Truth
+// ============================================================================
+
+/// Complete metadata for one method this primal exposes.
+#[derive(Clone, Debug)]
+pub struct MethodSpec {
+    /// Fully qualified name (e.g., "dag.session.create").
+    pub fqn: &'static str,
+    /// Domain prefix (e.g., "dag").
+    pub domain: &'static str,
+    /// Short name within the domain (e.g., "session.create").
+    pub short_name: &'static str,
+    /// Estimated latency in milliseconds for Pathway Learner scheduling.
+    pub estimated_ms: u32,
+    /// Whether this operation benefits from GPU acceleration.
+    pub gpu_beneficial: bool,
+    /// Whether this method requires external IPC routing (false = in-process).
+    pub external: bool,
+    /// Operations this method depends on (for parallelization DAG).
+    pub deps: &'static [&'static str],
+}
+
+/// The single source of truth for every method this primal exposes.
 ///
-/// Each string is a fully qualified capability name (`{domain}.{method}`)
-/// that biomeOS can route via `capability.call`.
-pub const CAPABILITIES: &[&str] = &[
-    // Session lifecycle
-    "dag.session.create",
-    "dag.session.get",
-    "dag.session.list",
-    "dag.session.discard",
-    // Event operations
-    "dag.event.append",
-    "dag.event.append_batch",
-    // Vertex queries
-    "dag.vertex.get",
-    "dag.vertex.query",
-    "dag.vertex.children",
-    // DAG topology
-    "dag.frontier.get",
-    "dag.genesis.get",
-    // Merkle integrity
-    "dag.merkle.root",
-    "dag.merkle.proof",
-    "dag.merkle.verify",
-    // Slice operations
-    "dag.slice.checkout",
-    "dag.slice.get",
-    "dag.slice.list",
-    "dag.slice.resolve",
-    // Dehydration
-    "dag.dehydration.trigger",
-    "dag.dehydration.status",
+/// [`CAPABILITIES`], cost estimates, semantic mappings, and domain groupings
+/// are all derived from this catalog. To add a new capability, add one entry
+/// here — everything else follows.
+pub const METHOD_CATALOG: &[MethodSpec] = &[
+    // Session lifecycle — fast, in-memory
+    MethodSpec { fqn: "dag.session.create",  domain: "dag", short_name: "session.create",  estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec { fqn: "dag.session.get",     domain: "dag", short_name: "session.get",     estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec { fqn: "dag.session.list",    domain: "dag", short_name: "session.list",    estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec { fqn: "dag.session.discard", domain: "dag", short_name: "session.discard", estimated_ms: 2, gpu_beneficial: false, external: false, deps: &["dag.session.create"] },
+    // Event operations — BLAKE3 hashing + DashMap insert
+    MethodSpec { fqn: "dag.event.append",       domain: "dag", short_name: "event.append",       estimated_ms: 2, gpu_beneficial: false, external: false, deps: &["dag.session.create"] },
+    MethodSpec { fqn: "dag.event.append_batch", domain: "dag", short_name: "event.append_batch", estimated_ms: 5, gpu_beneficial: false, external: false, deps: &["dag.session.create"] },
+    // Vertex queries — DashMap lookup
+    MethodSpec { fqn: "dag.vertex.get",      domain: "dag", short_name: "vertex.get",      estimated_ms: 1, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
+    MethodSpec { fqn: "dag.vertex.query",    domain: "dag", short_name: "vertex.query",    estimated_ms: 3, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
+    MethodSpec { fqn: "dag.vertex.children", domain: "dag", short_name: "vertex.children", estimated_ms: 1, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
+    // DAG topology — DashMap scan
+    MethodSpec { fqn: "dag.frontier.get", domain: "dag", short_name: "frontier.get", estimated_ms: 2, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
+    MethodSpec { fqn: "dag.genesis.get",  domain: "dag", short_name: "genesis.get",  estimated_ms: 2, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
+    // Merkle operations — BLAKE3 tree computation
+    MethodSpec { fqn: "dag.merkle.root",   domain: "dag", short_name: "merkle.root",   estimated_ms: 5, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
+    MethodSpec { fqn: "dag.merkle.proof",  domain: "dag", short_name: "merkle.proof",  estimated_ms: 3, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
+    MethodSpec { fqn: "dag.merkle.verify", domain: "dag", short_name: "merkle.verify", estimated_ms: 2, gpu_beneficial: false, external: false, deps: &[] },
+    // Slice operations — may involve permanent storage I/O
+    MethodSpec { fqn: "dag.slice.checkout", domain: "dag", short_name: "slice.checkout", estimated_ms: 10, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec { fqn: "dag.slice.get",     domain: "dag", short_name: "slice.get",     estimated_ms: 1,  gpu_beneficial: false, external: false, deps: &["dag.slice.checkout"] },
+    MethodSpec { fqn: "dag.slice.list",    domain: "dag", short_name: "slice.list",    estimated_ms: 1,  gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec { fqn: "dag.slice.resolve", domain: "dag", short_name: "slice.resolve", estimated_ms: 5,  gpu_beneficial: false, external: false, deps: &["dag.slice.checkout"] },
+    // Dehydration — multi-step I/O to permanent storage
+    MethodSpec { fqn: "dag.dehydration.trigger", domain: "dag", short_name: "dehydration.trigger", estimated_ms: 50, gpu_beneficial: false, external: false, deps: &["dag.session.create", "dag.event.append"] },
+    MethodSpec { fqn: "dag.dehydration.status",  domain: "dag", short_name: "dehydration.status",  estimated_ms: 1,  gpu_beneficial: false, external: false, deps: &["dag.dehydration.trigger"] },
     // Health and introspection
-    "health.check",
-    "health.liveness",
-    "health.readiness",
-    "health.metrics",
-    "capabilities.list",
+    MethodSpec { fqn: "health.check",     domain: "health",       short_name: "check",     estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec { fqn: "health.liveness",  domain: "health",       short_name: "liveness",  estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec { fqn: "health.readiness", domain: "health",       short_name: "readiness", estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec { fqn: "health.metrics",   domain: "health",       short_name: "metrics",   estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec { fqn: "capabilities.list", domain: "capabilities", short_name: "list",     estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
     // Identity
-    "identity.get",
+    MethodSpec { fqn: "identity.get", domain: "identity", short_name: "get", estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
     // MCP tool exposure (Squirrel AI coordination)
-    "tools.list",
-    "tools.call",
+    MethodSpec { fqn: "tools.list", domain: "tools", short_name: "list", estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec { fqn: "tools.call", domain: "tools", short_name: "call", estimated_ms: 5, gpu_beneficial: false, external: false, deps: &[] },
 ];
 
-/// Semantic mappings: short operation name → fully qualified capability.
+/// Flat list of all capability FQN strings this primal exposes.
 ///
-/// biomeOS uses these during domain registration so
-/// `capability.call { domain: "dag", operation: "session.create" }` routes
-/// to the correct JSON-RPC method.
-pub const SEMANTIC_MAPPINGS: &[(&str, &str)] = &[
-    ("session.create", "dag.session.create"),
-    ("session.get", "dag.session.get"),
-    ("session.list", "dag.session.list"),
-    ("session.discard", "dag.session.discard"),
-    ("event.append", "dag.event.append"),
-    ("event.append_batch", "dag.event.append_batch"),
-    ("vertex.get", "dag.vertex.get"),
-    ("vertex.query", "dag.vertex.query"),
-    ("vertex.children", "dag.vertex.children"),
-    ("frontier.get", "dag.frontier.get"),
-    ("genesis.get", "dag.genesis.get"),
-    ("merkle.root", "dag.merkle.root"),
-    ("merkle.proof", "dag.merkle.proof"),
-    ("merkle.verify", "dag.merkle.verify"),
-    ("slice.checkout", "dag.slice.checkout"),
-    ("slice.get", "dag.slice.get"),
-    ("slice.list", "dag.slice.list"),
-    ("slice.resolve", "dag.slice.resolve"),
-    ("dehydration.trigger", "dag.dehydration.trigger"),
-    ("dehydration.status", "dag.dehydration.status"),
+/// Derived from [`METHOD_CATALOG`] at startup. Used by JSON-RPC dispatch
+/// and biomeOS capability advertisement.
+pub static CAPABILITIES: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
+    METHOD_CATALOG.iter().map(|m| m.fqn).collect()
+});
+
+// ============================================================================
+// SEMANTIC ALIASES
+// ============================================================================
+
+/// Extra semantic aliases beyond the standard `short_name → fqn` mapping.
+///
+/// These allow callers to use shorter or alternative names when routing
+/// through `capability.call`. Standard mappings (e.g., "session.create" →
+/// "dag.session.create") are derived automatically from [`METHOD_CATALOG`].
+const SEMANTIC_ALIASES: &[(&str, &str)] = &[
     ("health", "health.check"),
     ("liveness", "health.liveness"),
     ("readiness", "health.readiness"),
@@ -125,12 +145,28 @@ pub const SEMANTIC_MAPPINGS: &[(&str, &str)] = &[
     ("mcp.tools.call", "tools.call"),
 ];
 
+/// All semantic mappings: standard (`short_name` → `fqn`) + aliases.
+///
+/// biomeOS uses these during domain registration so
+/// `capability.call { domain: "dag", operation: "session.create" }` routes
+/// to the correct JSON-RPC method.
+pub static SEMANTIC_MAPPINGS: LazyLock<Vec<(&'static str, &'static str)>> = LazyLock::new(|| {
+    let mut mappings: Vec<(&str, &str)> = METHOD_CATALOG
+        .iter()
+        .map(|m| (m.short_name, m.fqn))
+        .collect();
+    mappings.extend_from_slice(SEMANTIC_ALIASES);
+    mappings
+});
+
+// ============================================================================
+// CONSUMED CAPABILITIES & DEPENDENCIES
+// ============================================================================
+
 /// Consumed capabilities — what rhizoCrypt calls on other primals.
 ///
 /// rhizoCrypt discovers these at runtime via the discovery adapter; it
-/// never hardcodes which primal provides them. The Pathway Learner uses
-/// this list to ensure required capabilities are available before routing
-/// to rhizoCrypt.
+/// never hardcodes which primal provides them.
 pub const CONSUMED_CAPABILITIES: &[&str] = &[
     "crypto.sign",
     "crypto.verify",
@@ -146,10 +182,7 @@ pub const CONSUMED_CAPABILITIES: &[&str] = &[
 
 /// Primal dependencies for deployment.
 ///
-/// Each entry: `(primal_capability_domain, required, description)`.
-/// `required = true` means rhizoCrypt cannot function without it.
-/// `required = false` means graceful degradation is supported.
-///
+/// Each entry: `(capability_domain, required, description)`.
 /// Note: these reference capability domains, not primal names.
 pub const DEPENDENCIES: &[(&str, bool, &str)] = &[
     ("crypto", false, "vertex signing and verification (graceful fallback to unsigned)"),
@@ -159,266 +192,22 @@ pub const DEPENDENCIES: &[(&str, bool, &str)] = &[
     ("provenance", false, "attribution braids (graceful fallback to unattributed)"),
 ];
 
-/// Cost estimates for pathway learner scheduling.
-///
-/// Each entry: `(capability, estimated_ms, gpu_beneficial)`.
-/// Times are representative for typical workloads. The Pathway Learner
-/// uses these to make intelligent routing decisions.
-pub const COST_ESTIMATES: &[(&str, u32, bool)] = &[
-    // Session lifecycle — fast, in-memory
-    ("dag.session.create", 1, false),
-    ("dag.session.get", 1, false),
-    ("dag.session.list", 1, false),
-    ("dag.session.discard", 2, false),
-    // Event operations — BLAKE3 hashing + DashMap insert
-    ("dag.event.append", 2, false),
-    ("dag.event.append_batch", 5, false),
-    // Vertex queries — DashMap lookup
-    ("dag.vertex.get", 1, false),
-    ("dag.vertex.query", 3, false),
-    ("dag.vertex.children", 1, false),
-    // DAG topology — DashMap scan
-    ("dag.frontier.get", 2, false),
-    ("dag.genesis.get", 2, false),
-    // Merkle operations — BLAKE3 tree computation
-    ("dag.merkle.root", 5, false),
-    ("dag.merkle.proof", 3, false),
-    ("dag.merkle.verify", 2, false),
-    // Slice operations — may involve permanent storage I/O
-    ("dag.slice.checkout", 10, false),
-    ("dag.slice.get", 1, false),
-    ("dag.slice.list", 1, false),
-    ("dag.slice.resolve", 5, false),
-    // Dehydration — multi-step I/O to permanent storage
-    ("dag.dehydration.trigger", 50, false),
-    ("dag.dehydration.status", 1, false),
-    // Health and introspection
-    ("health.check", 1, false),
-    ("health.liveness", 1, false),
-    ("health.readiness", 1, false),
-    ("health.metrics", 1, false),
-    ("capabilities.list", 1, false),
-    ("identity.get", 1, false),
-    ("tools.list", 1, false),
-    ("tools.call", 5, false),
+// ============================================================================
+// DOMAIN DESCRIPTIONS
+// ============================================================================
+
+/// Human-readable descriptions for each capability domain.
+const DOMAIN_DESCRIPTIONS: &[(&str, &str)] = &[
+    ("dag", "Ephemeral DAG session and vertex operations"),
+    ("health", "Health probes and introspection"),
+    ("capabilities", "Capability introspection"),
+    ("identity", "Primal identity for biomeOS discovery"),
+    ("tools", "MCP tool exposure for AI coordination"),
 ];
 
-/// Capability domain descriptor for biomeOS introspection.
-///
-/// Absorbed from ludoSpring V20 `capability_domains.rs` pattern. The `external`
-/// flag tells biomeOS which methods require IPC routing vs in-process dispatch.
-#[derive(Clone, Debug)]
-pub struct CapabilityMethod {
-    /// Short method name (e.g., "session.create").
-    pub name: &'static str,
-    /// Fully qualified capability (e.g., "dag.session.create").
-    pub fqn: &'static str,
-    /// Whether this method requires external IPC routing (false = in-process).
-    pub external: bool,
-}
-
-/// Structured capability domain for biomeOS routing decisions.
-///
-/// biomeOS uses the `external` flag to determine whether a `capability.call`
-/// for this primal needs IPC routing (external) or can be dispatched in-process
-/// (local). All rhizoCrypt methods are local since it processes requests directly.
-#[derive(Clone, Debug)]
-pub struct CapabilityDomain {
-    /// Domain prefix (e.g., "dag").
-    pub prefix: &'static str,
-    /// Human-readable domain description.
-    pub description: &'static str,
-    /// Methods within this domain.
-    pub methods: &'static [CapabilityMethod],
-}
-
-/// Capability domain definitions with external/local classification.
-///
-/// All rhizoCrypt methods are local (in-process) since the primal processes
-/// all requests directly. The classification helps biomeOS plan dispatch.
-pub const CAPABILITY_DOMAINS: &[CapabilityDomain] = &[
-    CapabilityDomain {
-        prefix: "dag",
-        description: "Ephemeral DAG session and vertex operations",
-        methods: &[
-            CapabilityMethod {
-                name: "session.create",
-                fqn: "dag.session.create",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "session.get",
-                fqn: "dag.session.get",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "session.list",
-                fqn: "dag.session.list",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "session.discard",
-                fqn: "dag.session.discard",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "event.append",
-                fqn: "dag.event.append",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "event.append_batch",
-                fqn: "dag.event.append_batch",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "vertex.get",
-                fqn: "dag.vertex.get",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "vertex.query",
-                fqn: "dag.vertex.query",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "vertex.children",
-                fqn: "dag.vertex.children",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "frontier.get",
-                fqn: "dag.frontier.get",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "genesis.get",
-                fqn: "dag.genesis.get",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "merkle.root",
-                fqn: "dag.merkle.root",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "merkle.proof",
-                fqn: "dag.merkle.proof",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "merkle.verify",
-                fqn: "dag.merkle.verify",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "slice.checkout",
-                fqn: "dag.slice.checkout",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "slice.get",
-                fqn: "dag.slice.get",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "slice.list",
-                fqn: "dag.slice.list",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "slice.resolve",
-                fqn: "dag.slice.resolve",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "dehydration.trigger",
-                fqn: "dag.dehydration.trigger",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "dehydration.status",
-                fqn: "dag.dehydration.status",
-                external: false,
-            },
-        ],
-    },
-    CapabilityDomain {
-        prefix: "health",
-        description: "Health probes and introspection",
-        methods: &[
-            CapabilityMethod {
-                name: "check",
-                fqn: "health.check",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "liveness",
-                fqn: "health.liveness",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "readiness",
-                fqn: "health.readiness",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "metrics",
-                fqn: "health.metrics",
-                external: false,
-            },
-        ],
-    },
-    CapabilityDomain {
-        prefix: "capabilities",
-        description: "Capability introspection",
-        methods: &[CapabilityMethod {
-            name: "list",
-            fqn: "capabilities.list",
-            external: false,
-        }],
-    },
-    CapabilityDomain {
-        prefix: "identity",
-        description: "Primal identity for biomeOS discovery",
-        methods: &[CapabilityMethod {
-            name: "get",
-            fqn: "identity.get",
-            external: false,
-        }],
-    },
-    CapabilityDomain {
-        prefix: "tools",
-        description: "MCP tool exposure for AI coordination",
-        methods: &[
-            CapabilityMethod {
-                name: "list",
-                fqn: "tools.list",
-                external: false,
-            },
-            CapabilityMethod {
-                name: "call",
-                fqn: "tools.call",
-                external: false,
-            },
-        ],
-    },
-];
-
-/// Returns all methods across all domains.
-#[must_use]
-pub fn all_methods() -> Vec<&'static CapabilityMethod> {
-    CAPABILITY_DOMAINS.iter().flat_map(|domain| domain.methods.iter()).collect()
-}
-
-/// Returns the count of local (in-process) vs external (IPC-routed) methods.
-#[must_use]
-pub fn method_locality_counts() -> (usize, usize) {
-    let methods = all_methods();
-    let local = methods.iter().filter(|m| !m.external).count();
-    let external = methods.iter().filter(|m| m.external).count();
-    (local, external)
-}
+// ============================================================================
+// DERIVED ACCESSORS
+// ============================================================================
 
 /// Cost tier for a given estimated latency.
 #[must_use]
@@ -432,74 +221,56 @@ pub const fn cost_tier(estimated_ms: u32) -> &'static str {
     }
 }
 
+/// Returns the count of local (in-process) vs external (IPC-routed) methods.
+#[must_use]
+pub fn method_locality_counts() -> (usize, usize) {
+    let local = METHOD_CATALOG.iter().filter(|m| !m.external).count();
+    let external = METHOD_CATALOG.iter().filter(|m| m.external).count();
+    (local, external)
+}
+
 /// Operation dependency hints for biomeOS Pathway Learner parallelization.
-///
-/// Maps each operation to the operations it depends on, enabling the
-/// Pathway Learner to build a DAG and parallelize independent operations.
 #[must_use]
 pub fn operation_dependencies() -> serde_json::Value {
-    serde_json::json!({
-        "dag.session.create": [],
-        "dag.session.get": [],
-        "dag.session.list": [],
-        "dag.session.discard": ["dag.session.create"],
-        "dag.event.append": ["dag.session.create"],
-        "dag.event.append_batch": ["dag.session.create"],
-        "dag.vertex.get": ["dag.event.append"],
-        "dag.vertex.query": ["dag.event.append"],
-        "dag.vertex.children": ["dag.event.append"],
-        "dag.frontier.get": ["dag.event.append"],
-        "dag.genesis.get": ["dag.event.append"],
-        "dag.merkle.root": ["dag.event.append"],
-        "dag.merkle.proof": ["dag.event.append"],
-        "dag.merkle.verify": [],
-        "dag.slice.checkout": [],
-        "dag.slice.get": ["dag.slice.checkout"],
-        "dag.slice.list": [],
-        "dag.slice.resolve": ["dag.slice.checkout"],
-        "dag.dehydration.trigger": ["dag.session.create", "dag.event.append"],
-        "dag.dehydration.status": ["dag.dehydration.trigger"],
-        "health.check": [],
-        "health.liveness": [],
-        "health.readiness": [],
-        "health.metrics": [],
-        "capabilities.list": [],
-        "identity.get": [],
-        "tools.list": [],
-        "tools.call": [],
-    })
+    let map: serde_json::Map<String, serde_json::Value> = METHOD_CATALOG
+        .iter()
+        .map(|m| {
+            let deps: Vec<&str> = m.deps.to_vec();
+            (m.fqn.to_string(), serde_json::json!(deps))
+        })
+        .collect();
+    serde_json::Value::Object(map)
 }
 
 /// Return the capability list as a JSON-RPC response payload.
 ///
 /// Implements the `capabilities.list` semantic method. Aligns with the ecosystem
 /// enhanced format: domain, method, dependencies, cost tier.
-/// Includes ludoSpring V20 domain introspection with external/local flags.
 #[must_use]
 pub fn capability_list() -> serde_json::Value {
     let deps = operation_dependencies();
-    let methods: Vec<serde_json::Value> = COST_ESTIMATES
+
+    let methods: Vec<serde_json::Value> = METHOD_CATALOG
         .iter()
-        .map(|(method, ms, _gpu)| {
-            let all = all_methods();
-            let external = all.iter().find(|m| m.fqn == *method).is_some_and(|m| m.external);
+        .map(|m| {
             serde_json::json!({
-                "method": method,
-                "domain": method.split('.').next().unwrap_or("unknown"),
-                "cost": cost_tier(*ms),
-                "external": external,
-                "deps": deps.get(method).cloned().unwrap_or(serde_json::json!([])),
+                "method": m.fqn,
+                "domain": m.domain,
+                "cost": cost_tier(m.estimated_ms),
+                "external": m.external,
+                "deps": deps.get(m.fqn).cloned().unwrap_or(serde_json::json!([])),
             })
         })
         .collect();
 
-    let domains: Vec<serde_json::Value> = CAPABILITY_DOMAINS
+    let domains: Vec<serde_json::Value> = DOMAIN_DESCRIPTIONS
         .iter()
-        .map(|d| {
+        .map(|(prefix, description)| {
+            let count = METHOD_CATALOG.iter().filter(|m| m.domain == *prefix).count();
             serde_json::json!({
-                "prefix": d.prefix,
-                "description": d.description,
-                "method_count": d.methods.len(),
+                "prefix": prefix,
+                "description": description,
+                "method_count": count,
             })
         })
         .collect();
@@ -514,7 +285,7 @@ pub fn capability_list() -> serde_json::Value {
         "license": LICENSE,
         "transport": TRANSPORT,
         "protocol": PROTOCOL,
-        "capabilities": CAPABILITIES,
+        "capabilities": *CAPABILITIES,
         "consumed_capabilities": CONSUMED_CAPABILITIES,
         "domains": domains,
         "locality": { "local": local_count, "external": external_count },
@@ -523,10 +294,6 @@ pub fn capability_list() -> serde_json::Value {
 }
 
 /// Identity probe for biomeOS primal discovery.
-///
-/// Returns primal name, version, domain, and description per the
-/// `PRIMAL_IPC_PROTOCOL` v3.1 `identity.get` standard. biomeOS calls
-/// this during capability discovery to learn who the primal is.
 #[must_use]
 pub fn identity_get() -> serde_json::Value {
     serde_json::json!({
@@ -541,21 +308,12 @@ pub fn identity_get() -> serde_json::Value {
 }
 
 /// Zero-cost liveness probe.
-///
-/// Returns `{ "status": "alive" }` per the Semantic Method Naming Standard
-/// (wateringHole `SEMANTIC_METHOD_NAMING_STANDARD.md`). Suitable for
-/// Kubernetes liveness probes and biomeOS health monitoring.
 #[must_use]
 pub fn health_liveness() -> serde_json::Value {
     serde_json::json!({ "status": "alive" })
 }
 
 /// Readiness probe — checks whether the primal can accept work.
-///
-/// Returns `{ "status": "ready" | "not_ready", ... }` per the Semantic
-/// Method Naming Standard. Unlike liveness (always `"alive"` if the
-/// process is running), readiness verifies that the store is initialized
-/// and the primal is in a state to process requests.
 #[must_use]
 pub fn health_readiness(is_running: bool) -> serde_json::Value {
     serde_json::json!({
@@ -566,10 +324,6 @@ pub fn health_readiness(is_running: bool) -> serde_json::Value {
 }
 
 /// Normalize a JSON-RPC method name, handling legacy prefixes.
-///
-/// Absorbed from barraCuda v0.3.7 `normalize_method()` pattern. Allows
-/// backward-compatible routing when method names evolve across ecosystem
-/// versions (e.g., `rhizocrypt.dag.session.create` → `dag.session.create`).
 #[must_use]
 pub fn normalize_method(method: &str) -> &str {
     method
@@ -579,10 +333,6 @@ pub fn normalize_method(method: &str) -> &str {
 }
 
 /// MCP tool definitions for Squirrel AI coordination.
-///
-/// Absorbed from ecosystem attribution patterns for MCP tool listing.
-/// Returns a JSON array of tool definitions with JSON Schema input
-/// descriptions, enabling `tools.list` + `tools.call` for AI agents.
 #[must_use]
 pub fn mcp_tools() -> serde_json::Value {
     serde_json::json!([

@@ -27,17 +27,17 @@ pub async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Va
         })
         .collect();
 
-    let cost_estimates: serde_json::Map<String, Value> = niche::COST_ESTIMATES
+    let cost_estimates: serde_json::Map<String, Value> = niche::METHOD_CATALOG
         .iter()
-        .map(|&(method, ms, _)| {
-            (method.to_string(), json!({ "cpu": niche::cost_tier(ms), "latency_ms": ms }))
+        .map(|m| {
+            (m.fqn.to_string(), json!({ "cpu": niche::cost_tier(m.estimated_ms), "latency_ms": m.estimated_ms }))
         })
         .collect();
 
     Ok(json!({
         "primal": niche::PRIMAL_ID,
         "version": niche::PRIMAL_VERSION,
-        "methods": niche::CAPABILITIES,
+        "methods": *niche::CAPABILITIES,
         "provided_capabilities": provided_capabilities,
         "consumed_capabilities": niche::CONSUMED_CAPABILITIES,
         "cost_estimates": cost_estimates,

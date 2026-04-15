@@ -662,3 +662,7 @@ impl HealthCheckResponse {
 #[cfg(test)]
 #[path = "loamspine_http_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "loamspine_http_tests_wiremock.rs"]
+mod tests_wiremock;

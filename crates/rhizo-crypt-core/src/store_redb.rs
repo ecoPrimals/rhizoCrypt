@@ -588,6 +588,11 @@ mod tests_advanced;
 
 #[cfg(test)]
 #[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
+#[path = "store_redb_tests_coverage.rs"]
+mod tests_coverage;
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "store_redb_tests_query.rs"]
 mod tests_query;
 

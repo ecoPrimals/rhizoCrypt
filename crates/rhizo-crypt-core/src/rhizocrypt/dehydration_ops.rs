@@ -9,7 +9,6 @@
 
 use super::RhizoCrypt;
 use crate::dehydration::{self, Attestation, DehydrationConfig, DehydrationSummary};
-use crate::discovery::DiscoveryRegistry;
 use crate::error::{Result, RhizoCryptError};
 use crate::event::{AgentRole, EventType};
 use crate::merkle::MerkleRoot;
@@ -211,10 +210,11 @@ impl RhizoCrypt {
 
     /// Collect attestations from session participants via capability-based signing.
     ///
-    /// Discovers a `SigningProvider` at runtime and requests attestations from
-    /// each required attester. Returns whatever attestations could be collected
-    /// within the configured timeout. If no signing provider is available,
-    /// returns an empty set (attestations are optional for dehydration).
+    /// Discovers a `SigningProvider` at runtime through the shared discovery
+    /// registry and requests attestations from each required attester. Returns
+    /// whatever attestations could be collected within the configured timeout.
+    /// If no signing provider is discoverable, returns an empty set
+    /// (attestations are optional for standalone deployments).
     async fn collect_attestations(
         &self,
         session_id: SessionId,
@@ -229,30 +229,20 @@ impl RhizoCrypt {
             },
         );
 
-        let summary_hash = summary.compute_hash();
-
-        let registry = DiscoveryRegistry::new(crate::constants::PRIMAL_NAME);
-        let signing_client = match crate::clients::SigningClient::discover(&registry).await {
-            Ok(client) => client,
-            Err(e) => {
-                tracing::debug!(error = %e, "No signing provider available, skipping attestations");
-                return Vec::new();
-            }
-        };
+        let signing_client =
+            match crate::clients::SigningClient::discover(&self.discovery_registry).await {
+                Ok(client) => client,
+                Err(e) => {
+                    tracing::debug!(error = %e, "No signing provider available, skipping attestations");
+                    return Vec::new();
+                }
+            };
 
         let mut attestations = Vec::new();
         for attester in &config.required_attestations {
-            match signing_client.sign(&summary_hash, attester).await {
-                Ok(sig) => {
-                    attestations.push(Attestation {
-                        attester: attester.clone(),
-                        statement: dehydration::AttestationStatement::SessionSummary {
-                            summary_hash,
-                        },
-                        signature: sig.into_bytes(),
-                        witnessed_at: Timestamp::now(),
-                        verified: true,
-                    });
+            match signing_client.request_attestation(attester, summary).await {
+                Ok(attestation) => {
+                    attestations.push(attestation);
                     self.dehydration_status.insert(
                         session_id,
                         dehydration::DehydrationStatus::CollectingAttestations {
@@ -282,9 +272,7 @@ impl RhizoCrypt {
     async fn commit_to_permanent_storage(&self, summary: &DehydrationSummary) -> Result<CommitRef> {
         use crate::clients::PermanentStorageClient;
 
-        let registry = DiscoveryRegistry::new(crate::constants::PRIMAL_NAME);
-
-        match PermanentStorageClient::discover(&registry).await {
+        match PermanentStorageClient::discover(&self.discovery_registry).await {
             Ok(client) => {
                 tracing::info!(
                     session_id = %summary.session_id,

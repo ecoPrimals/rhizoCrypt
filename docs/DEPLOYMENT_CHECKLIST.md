@@ -1,6 +1,6 @@
 # DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.0-dev
 
-**Date**: April 13, 2026
+**Date**: April 15, 2026
 **Version**: 0.14.0-dev
 **Status**: PRODUCTION READY
 
@@ -9,13 +9,13 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,510 tests passing** (all features), 0 failures
+- [x] **1,506 tests passing** (all features), 0 failures
 - [x] **`--fail-under-lines 90` CI gate** enforced
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all files under 1000 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 160 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 170 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
@@ -30,8 +30,8 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,510 tests)
-- [x] **CHANGELOG.md** (version history through session 41)
+- [x] **README.md** (current metrics — 1,506 tests)
+- [x] **CHANGELOG.md** (version history through session 43)
 - [x] **showcase/** (76 comprehensive demos)
 - [x] **specs/** (9 complete + 1 experimental specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
@@ -245,10 +245,10 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 - [CHANGELOG.md](../CHANGELOG.md) — Version history
 - [ENV_VARS.md](./ENV_VARS.md) — Environment variable reference
 - [specs/](../specs/) — Formal specifications
-- [showcase/](../showcase/) — 76 scripts (65 demos)
+- [showcase/](../showcase/) — 65 demo scripts
 
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: April 13, 2026
+**Last Updated**: April 15, 2026
 **Version**: rhizoCrypt 0.14.0-dev
