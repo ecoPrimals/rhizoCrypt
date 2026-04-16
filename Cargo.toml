@@ -17,7 +17,6 @@ authors = ["ecoPrimals Project"]
 [workspace.dependencies]
 # Async runtime — explicit features for compile efficiency (no "full")
 tokio = { version = "1.46", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util", "signal", "fs"] }
-async-trait = "0.1"
 futures-util = "0.3"
 
 # Serialization

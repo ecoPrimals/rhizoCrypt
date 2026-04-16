@@ -397,10 +397,11 @@ impl SigningClient {
 // Wire DTOs — aligned with BearDog's crypto.* JSON-RPC interface (BD-01)
 // ============================================================================
 
-/// `crypto.sign_ed25519` request: message as standard base64, `key_id` optional.
+/// `crypto.sign_ed25519` request: message as standard base64, `key_id` as DID string.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CryptoSignRequest {
     message: String,
+    /// DID string identifying the signing key (e.g. `did:key:z6Mk...`).
     #[serde(skip_serializing_if = "Option::is_none")]
     key_id: Option<String>,
 }
@@ -416,6 +417,11 @@ struct CryptoSignResponse {
 }
 
 /// `crypto.verify_ed25519` request: all fields as encoded strings.
+///
+/// The `public_key` field accepts a `did:key:` string (e.g. `did:key:z6Mk...`).
+/// `BearDog` resolves `did:key:` DIDs to raw Ed25519 public keys internally,
+/// so the DID format is the canonical wire representation for identity-aware
+/// verification. See `CRYPTO_MODEL.md` §Wire Format Alignment.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CryptoVerifyRequest {
     message: String,

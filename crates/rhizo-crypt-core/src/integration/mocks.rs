@@ -471,52 +471,62 @@ impl MockProtocolAdapter {
     }
 }
 
-#[async_trait::async_trait]
 impl crate::clients::adapters::ProtocolAdapter for MockProtocolAdapter {
     fn protocol(&self) -> &'static str {
         "mock"
     }
 
-    async fn call_json(&self, method: &str, _args: &str) -> Result<String> {
-        if !self.permissive {
-            return Err(crate::error::RhizoCryptError::integration(
-                "Mock adapter is in strict mode",
-            ));
-        }
+    fn call_json<'a>(
+        &'a self,
+        method: &'a str,
+        _args: &'a str,
+    ) -> crate::clients::adapters::BoxFuture<'a, Result<String>> {
+        Box::pin(async move {
+            if !self.permissive {
+                return Err(crate::error::RhizoCryptError::integration(
+                    "Mock adapter is in strict mode",
+                ));
+            }
 
-        // Check for pre-configured response
-        if let Some(response) = {
-            let responses = self.responses.read().await;
-            responses.get(method).cloned()
-        } {
-            return Ok(response);
-        }
+            if let Some(response) = {
+                let responses = self.responses.read().await;
+                responses.get(method).cloned()
+            } {
+                return Ok(response);
+            }
 
-        // Return default responses based on method
-        match method {
-            "sign" => Ok(r#"{"bytes":[222,173,190,239]}"#.to_string()),
-            "verify_did" | "verify_signature" => Ok("true".to_string()),
-            "put_payload" => Ok(r#"{"hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"size":0}"#.to_string()),
-            "get_payload" => Ok("null".to_string()),
-            "payload_exists" => Ok("false".to_string()),
-            _ => Err(crate::error::RhizoCryptError::integration(format!("Mock adapter: unknown method '{method}'"))),
-        }
+            match method {
+                "sign" => Ok(r#"{"bytes":[222,173,190,239]}"#.to_string()),
+                "verify_did" | "verify_signature" => Ok("true".to_string()),
+                "put_payload" => Ok(r#"{"hash":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"size":0}"#.to_string()),
+                "get_payload" => Ok("null".to_string()),
+                "payload_exists" => Ok("false".to_string()),
+                _ => Err(crate::error::RhizoCryptError::integration(format!(
+                    "Mock adapter: unknown method '{method}'"
+                ))),
+            }
+        })
     }
 
-    async fn call_oneway_json(&self, method: &str, _args: &str) -> Result<()> {
-        if !self.permissive {
-            return Err(crate::error::RhizoCryptError::integration(
-                "Mock adapter is in strict mode",
-            ));
-        }
+    fn call_oneway_json<'a>(
+        &'a self,
+        method: &'a str,
+        _args: &'a str,
+    ) -> crate::clients::adapters::BoxFuture<'a, Result<()>> {
+        Box::pin(async move {
+            if !self.permissive {
+                return Err(crate::error::RhizoCryptError::integration(
+                    "Mock adapter is in strict mode",
+                ));
+            }
 
-        // One-way calls always succeed in permissive mode
-        tracing::debug!("Mock adapter: one-way call to '{}'", method);
-        Ok(())
+            tracing::debug!("Mock adapter: one-way call to '{}'", method);
+            Ok(())
+        })
     }
 
-    async fn is_healthy(&self) -> bool {
-        self.permissive
+    fn is_healthy(&self) -> crate::clients::adapters::BoxFuture<'_, bool> {
+        Box::pin(async move { self.permissive })
     }
 
     fn endpoint(&self) -> &'static str {

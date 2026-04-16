@@ -30,9 +30,18 @@
 //! ```
 
 use crate::error::{Result, RhizoCryptError};
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
+
+/// Boxed future for object-safe async trait methods.
+///
+/// `ProtocolAdapter` is used as `Arc<dyn ProtocolAdapter>` (trait objects),
+/// which requires object safety. Native `async fn in dyn Trait` is not yet
+/// stable (RFC 3185), so async methods return a pinned boxed future. This
+/// replaces the `async-trait` proc macro with explicit desugaring.
+pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 #[cfg(feature = "http-clients")]
 pub mod http;
@@ -56,7 +65,6 @@ pub use unix_socket::UnixSocketAdapter;
 ///
 /// Note: This trait uses JSON serialization to be object-safe.
 /// For performance-critical paths, consider using concrete adapter types directly.
-#[async_trait]
 pub trait ProtocolAdapter: Send + Sync + fmt::Debug {
     /// Get the protocol name (http, tarpc, grpc, etc.).
     fn protocol(&self) -> &str;
@@ -71,46 +79,63 @@ pub trait ProtocolAdapter: Send + Sync + fmt::Debug {
     /// # Returns
     ///
     /// JSON-serialized response or error
-    async fn call_json(&self, method: &str, args_json: &str) -> Result<String>;
+    fn call_json<'a>(
+        &'a self,
+        method: &'a str,
+        args_json: &'a str,
+    ) -> BoxFuture<'a, Result<String>>;
 
     /// Call a remote method without expecting a response (fire-and-forget).
-    async fn call_oneway_json(&self, method: &str, args_json: &str) -> Result<()>;
+    fn call_oneway_json<'a>(
+        &'a self,
+        method: &'a str,
+        args_json: &'a str,
+    ) -> BoxFuture<'a, Result<()>>;
 
     /// Check if the adapter is connected/healthy.
-    async fn is_healthy(&self) -> bool;
+    fn is_healthy(&self) -> BoxFuture<'_, bool>;
 
     /// Get endpoint information.
     fn endpoint(&self) -> &str;
 }
 
 /// Helper trait for type-safe calls (convenience wrapper).
-#[async_trait]
 pub trait ProtocolAdapterExt: ProtocolAdapter {
     /// Call a remote method with typed arguments.
-    async fn call<Args, Response>(&self, method: &str, args: Args) -> Result<Response>
+    fn call<'a, Args, Response>(
+        &'a self,
+        method: &'a str,
+        args: Args,
+    ) -> BoxFuture<'a, Result<Response>>
     where
-        Args: Serialize + Send + Sync,
-        Response: for<'de> Deserialize<'de> + Send,
+        Args: Serialize + Send + Sync + 'a,
+        Response: for<'de> Deserialize<'de> + Send + 'a,
     {
-        let args_json = serde_json::to_string(&args)
-            .map_err(|e| RhizoCryptError::integration(format!("Failed to serialize args: {e}")))?;
+        Box::pin(async move {
+            let args_json = serde_json::to_string(&args).map_err(|e| {
+                RhizoCryptError::integration(format!("Failed to serialize args: {e}"))
+            })?;
 
-        let response_json = self.call_json(method, &args_json).await?;
+            let response_json = self.call_json(method, &args_json).await?;
 
-        serde_json::from_str(&response_json).map_err(|e| {
-            RhizoCryptError::integration(format!("Failed to deserialize response: {e}"))
+            serde_json::from_str(&response_json).map_err(|e| {
+                RhizoCryptError::integration(format!("Failed to deserialize response: {e}"))
+            })
         })
     }
 
     /// Call a remote method without expecting a response.
-    async fn call_oneway<Args>(&self, method: &str, args: Args) -> Result<()>
+    fn call_oneway<'a, Args>(&'a self, method: &'a str, args: Args) -> BoxFuture<'a, Result<()>>
     where
-        Args: Serialize + Send + Sync,
+        Args: Serialize + Send + Sync + 'a,
     {
-        let args_json = serde_json::to_string(&args)
-            .map_err(|e| RhizoCryptError::integration(format!("Failed to serialize args: {e}")))?;
+        Box::pin(async move {
+            let args_json = serde_json::to_string(&args).map_err(|e| {
+                RhizoCryptError::integration(format!("Failed to serialize args: {e}"))
+            })?;
 
-        self.call_oneway_json(method, &args_json).await
+            self.call_oneway_json(method, &args_json).await
+        })
     }
 }
 

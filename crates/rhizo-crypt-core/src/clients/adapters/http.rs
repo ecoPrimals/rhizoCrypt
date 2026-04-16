@@ -6,9 +6,8 @@
 //! Provides a generic HTTP adapter for calling REST APIs from capability clients.
 //! Uses `hyper-util` for outbound connections (ecoBin compliant, no reqwest/ring).
 
-use super::ProtocolAdapter;
+use super::{BoxFuture, ProtocolAdapter};
 use crate::error::{Result, RhizoCryptError};
-use async_trait::async_trait;
 use std::fmt;
 
 pub use eco_http::EcoHttpClient;
@@ -172,47 +171,60 @@ impl fmt::Debug for HttpAdapter {
     }
 }
 
-#[async_trait]
 impl ProtocolAdapter for HttpAdapter {
     fn protocol(&self) -> &'static str {
         "http"
     }
 
-    async fn call_json(&self, method: &str, args_json: &str) -> Result<String> {
-        let url = self.build_url(method);
+    fn call_json<'a>(
+        &'a self,
+        method: &'a str,
+        args_json: &'a str,
+    ) -> BoxFuture<'a, Result<String>> {
+        Box::pin(async move {
+            let url = self.build_url(method);
 
-        tracing::debug!(url = %url, method = method, "HTTP adapter calling method");
+            tracing::debug!(url = %url, method = method, "HTTP adapter calling method");
 
-        let (status, body) = self.client.post_json(&url, args_json).await?;
+            let (status, body) = self.client.post_json(&url, args_json).await?;
 
-        if !(200..300).contains(&status) {
-            return Err(RhizoCryptError::integration(format!(
-                "HTTP request failed with status {status}: {body}"
-            )));
-        }
+            if !(200..300).contains(&status) {
+                return Err(RhizoCryptError::integration(format!(
+                    "HTTP request failed with status {status}: {body}"
+                )));
+            }
 
-        Ok(body)
+            Ok(body)
+        })
     }
 
-    async fn call_oneway_json(&self, method: &str, args_json: &str) -> Result<()> {
-        let url = self.build_url(method);
+    fn call_oneway_json<'a>(
+        &'a self,
+        method: &'a str,
+        args_json: &'a str,
+    ) -> BoxFuture<'a, Result<()>> {
+        Box::pin(async move {
+            let url = self.build_url(method);
 
-        tracing::debug!(url = %url, method = method, "HTTP adapter calling method (oneway)");
+            tracing::debug!(url = %url, method = method, "HTTP adapter calling method (oneway)");
 
-        let (status, _) = self.client.post_json(&url, args_json).await?;
+            let (status, _) = self.client.post_json(&url, args_json).await?;
 
-        if !(200..300).contains(&status) {
-            return Err(RhizoCryptError::integration(format!(
-                "HTTP request failed with status {status}"
-            )));
-        }
+            if !(200..300).contains(&status) {
+                return Err(RhizoCryptError::integration(format!(
+                    "HTTP request failed with status {status}"
+                )));
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
-    async fn is_healthy(&self) -> bool {
-        let health_url = format!("{}/health", self.base_url);
-        self.client.get(&health_url).await.is_ok_and(|(status, _)| (200..300).contains(&status))
+    fn is_healthy(&self) -> BoxFuture<'_, bool> {
+        Box::pin(async move {
+            let health_url = format!("{}/health", self.base_url);
+            self.client.get(&health_url).await.is_ok_and(|(status, _)| (200..300).contains(&status))
+        })
     }
 
     fn endpoint(&self) -> &str {

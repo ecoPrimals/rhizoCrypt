@@ -19,9 +19,8 @@
 //! rhizoCrypt ──unix socket──► any storage provider     (payload storage)
 //! ```
 
-use super::ProtocolAdapter;
+use super::{BoxFuture, ProtocolAdapter};
 use crate::error::{IpcErrorPhase, Result, RhizoCryptError};
-use async_trait::async_trait;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -222,70 +221,84 @@ impl fmt::Debug for UnixSocketAdapter {
     }
 }
 
-#[async_trait]
 impl ProtocolAdapter for UnixSocketAdapter {
     fn protocol(&self) -> &'static str {
         "unix"
     }
 
-    async fn call_json(&self, method: &str, args_json: &str) -> Result<String> {
-        let params: serde_json::Value = serde_json::from_str(args_json)
-            .unwrap_or_else(|_| serde_json::Value::String(args_json.to_owned()));
+    fn call_json<'a>(
+        &'a self,
+        method: &'a str,
+        args_json: &'a str,
+    ) -> BoxFuture<'a, Result<String>> {
+        Box::pin(async move {
+            let params: serde_json::Value = serde_json::from_str(args_json)
+                .unwrap_or_else(|_| serde_json::Value::String(args_json.to_owned()));
 
-        let request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params,
-            "id": self.next_id()
-        });
+            let request = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": method,
+                "params": params,
+                "id": self.next_id()
+            });
 
-        let body = serde_json::to_vec(&request).map_err(|e| {
-            RhizoCryptError::integration(format!("Failed to serialize JSON-RPC request: {e}"))
-        })?;
+            let body = serde_json::to_vec(&request).map_err(|e| {
+                RhizoCryptError::integration(format!("Failed to serialize JSON-RPC request: {e}"))
+            })?;
 
-        tracing::debug!(
-            method = %method,
-            socket = %self.socket_path.display(),
-            "Unix socket adapter calling method"
-        );
-
-        let response_body = self.http_post(&self.rpc_path, &body).await?;
-        Self::parse_json_rpc_response(&response_body)
-    }
-
-    async fn call_oneway_json(&self, method: &str, args_json: &str) -> Result<()> {
-        let params: serde_json::Value = serde_json::from_str(args_json)
-            .unwrap_or_else(|_| serde_json::Value::String(args_json.to_owned()));
-
-        // JSON-RPC 2.0 notification: no `id` field
-        let request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params,
-        });
-
-        let body = serde_json::to_vec(&request).map_err(|e| {
-            RhizoCryptError::integration(format!("Failed to serialize JSON-RPC notification: {e}"))
-        })?;
-
-        tracing::debug!(
-            method = %method,
-            socket = %self.socket_path.display(),
-            "Unix socket adapter sending notification"
-        );
-
-        if let Err(e) = self.http_post(&self.rpc_path, &body).await {
-            tracing::warn!(
+            tracing::debug!(
                 method = %method,
-                error = %e,
-                "Notification delivery failed (fire-and-forget)"
+                socket = %self.socket_path.display(),
+                "Unix socket adapter calling method"
             );
-        }
-        Ok(())
+
+            let response_body = self.http_post(&self.rpc_path, &body).await?;
+            Self::parse_json_rpc_response(&response_body)
+        })
     }
 
-    async fn is_healthy(&self) -> bool {
-        self.socket_path.exists() && self.call_json("health.check", "{}").await.is_ok()
+    fn call_oneway_json<'a>(
+        &'a self,
+        method: &'a str,
+        args_json: &'a str,
+    ) -> BoxFuture<'a, Result<()>> {
+        Box::pin(async move {
+            let params: serde_json::Value = serde_json::from_str(args_json)
+                .unwrap_or_else(|_| serde_json::Value::String(args_json.to_owned()));
+
+            let request = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": method,
+                "params": params,
+            });
+
+            let body = serde_json::to_vec(&request).map_err(|e| {
+                RhizoCryptError::integration(format!(
+                    "Failed to serialize JSON-RPC notification: {e}"
+                ))
+            })?;
+
+            tracing::debug!(
+                method = %method,
+                socket = %self.socket_path.display(),
+                "Unix socket adapter sending notification"
+            );
+
+            if let Err(e) = self.http_post(&self.rpc_path, &body).await {
+                tracing::warn!(
+                    method = %method,
+                    error = %e,
+                    "Notification delivery failed (fire-and-forget)"
+                );
+            }
+            Ok(())
+        })
+    }
+
+    fn is_healthy(&self) -> BoxFuture<'_, bool> {
+        Box::pin(async move {
+            self.socket_path.exists() && self.call_json("health.check", "{}").await.is_ok()
+        })
     }
 
     fn endpoint(&self) -> &str {

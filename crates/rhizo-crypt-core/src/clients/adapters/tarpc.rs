@@ -6,10 +6,9 @@
 //! This adapter allows capability-based clients (`SigningProvider`, `StorageProvider`, etc.)
 //! to communicate with `rhizoCrypt` or other primals using the tarpc protocol.
 
-use crate::clients::adapters::ProtocolAdapter;
+use crate::clients::adapters::{BoxFuture, ProtocolAdapter};
 use crate::constants::CONNECTION_TIMEOUT;
 use crate::error::{Result, RhizoCryptError};
-use async_trait::async_trait;
 use std::net::SocketAddr;
 use std::time::Duration;
 
@@ -250,132 +249,143 @@ impl TarpcAdapter {
     }
 }
 
-#[async_trait]
 impl ProtocolAdapter for TarpcAdapter {
     fn protocol(&self) -> &'static str {
         "tarpc"
     }
 
-    async fn call_json(&self, method: &str, args_json: &str) -> Result<String> {
-        #[cfg(not(feature = "live-clients"))]
-        {
-            let _ = (method, args_json);
-            return Err(RhizoCryptError::integration(
-                "tarpc support requires 'live-clients' feature",
-            ));
-        }
-
-        #[cfg(feature = "live-clients")]
-        {
-            self.ensure_connected().await?;
-
-            let _args: Value = serde_json::from_str(args_json)
-                .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
-
-            tracing::debug!(
-                method = %method,
-                endpoint = %self.addr,
-                "Calling tarpc method"
-            );
-
-            let method_owned = method.to_string();
-            let args_owned = args_json.to_owned();
-            let client = {
-                let conn = self.connection.read().await;
-                let client = conn
-                    .as_ref()
-                    .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?
-                    .client
-                    .clone();
-                drop(conn);
-                client
-            };
-
-            let call_future =
-                client.call(tarpc::context::current(), method_owned.clone(), args_owned);
-
-            let result = timeout(self.timeout_duration, call_future).await.map_err(|_| {
-                RhizoCryptError::integration(format!(
-                    "tarpc call timed out after {:?}: method={}, endpoint={}",
-                    self.timeout_duration, method_owned, self.addr
-                ))
-            })?;
-
-            result
-                .map_err(|e| RhizoCryptError::integration(format!("tarpc call failed: {e}")))?
-                .map_err(|e| RhizoCryptError::integration(format!("Remote error: {e}")))
-        }
-    }
-
-    async fn call_oneway_json(&self, method: &str, args_json: &str) -> Result<()> {
-        #[cfg(not(feature = "live-clients"))]
-        {
-            let _ = (method, args_json);
-            return Err(RhizoCryptError::integration(
-                "tarpc support requires 'live-clients' feature",
-            ));
-        }
-
-        #[cfg(feature = "live-clients")]
-        {
-            // EcoPrimalJsonRpc has no oneway method; fire-and-forget by spawning
-            // and discarding the response future.
-            self.ensure_connected().await?;
-
-            let _args: Value = serde_json::from_str(args_json)
-                .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
-
-            tracing::debug!(
-                method = %method,
-                endpoint = %self.addr,
-                "Calling tarpc method (oneway)"
-            );
-
-            let method_owned = method.to_string();
-            let args_owned = args_json.to_owned();
-            let client = {
-                let conn = self.connection.read().await;
-                let client = conn
-                    .as_ref()
-                    .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?
-                    .client
-                    .clone();
-                drop(conn);
-                client
-            };
-            tokio::spawn(async move {
-                let _ = client.call(tarpc::context::current(), method_owned, args_owned).await;
-            });
-
-            Ok(())
-        }
-    }
-
-    async fn is_healthy(&self) -> bool {
-        #[cfg(not(feature = "live-clients"))]
-        {
-            tracing::debug!(
-                endpoint = %self.addr,
-                "tarpc adapter unhealthy: live-clients feature disabled"
-            );
-            return false;
-        }
-
-        #[cfg(feature = "live-clients")]
-        match self.ensure_connected().await {
-            Ok(()) => {
-                tracing::debug!(endpoint = %self.addr, "tarpc adapter connection healthy");
-                true
+    fn call_json<'a>(
+        &'a self,
+        method: &'a str,
+        args_json: &'a str,
+    ) -> BoxFuture<'a, Result<String>> {
+        Box::pin(async move {
+            #[cfg(not(feature = "live-clients"))]
+            {
+                let _ = (method, args_json);
+                return Err(RhizoCryptError::integration(
+                    "tarpc support requires 'live-clients' feature",
+                ));
             }
-            Err(e) => {
-                tracing::warn!(
+
+            #[cfg(feature = "live-clients")]
+            {
+                self.ensure_connected().await?;
+
+                let _args: Value = serde_json::from_str(args_json)
+                    .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
+
+                tracing::debug!(
+                    method = %method,
                     endpoint = %self.addr,
-                    error = %e,
-                    "tarpc adapter connection failed"
+                    "Calling tarpc method"
                 );
-                false
+
+                let method_owned = method.to_string();
+                let args_owned = args_json.to_owned();
+                let client = {
+                    let conn = self.connection.read().await;
+                    let client = conn
+                        .as_ref()
+                        .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?
+                        .client
+                        .clone();
+                    drop(conn);
+                    client
+                };
+
+                let call_future =
+                    client.call(tarpc::context::current(), method_owned.clone(), args_owned);
+
+                let result = timeout(self.timeout_duration, call_future).await.map_err(|_| {
+                    RhizoCryptError::integration(format!(
+                        "tarpc call timed out after {:?}: method={}, endpoint={}",
+                        self.timeout_duration, method_owned, self.addr
+                    ))
+                })?;
+
+                result
+                    .map_err(|e| RhizoCryptError::integration(format!("tarpc call failed: {e}")))?
+                    .map_err(|e| RhizoCryptError::integration(format!("Remote error: {e}")))
             }
-        }
+        })
+    }
+
+    fn call_oneway_json<'a>(
+        &'a self,
+        method: &'a str,
+        args_json: &'a str,
+    ) -> BoxFuture<'a, Result<()>> {
+        Box::pin(async move {
+            #[cfg(not(feature = "live-clients"))]
+            {
+                let _ = (method, args_json);
+                return Err(RhizoCryptError::integration(
+                    "tarpc support requires 'live-clients' feature",
+                ));
+            }
+
+            #[cfg(feature = "live-clients")]
+            {
+                self.ensure_connected().await?;
+
+                let _args: Value = serde_json::from_str(args_json)
+                    .map_err(|e| RhizoCryptError::integration(format!("Invalid JSON args: {e}")))?;
+
+                tracing::debug!(
+                    method = %method,
+                    endpoint = %self.addr,
+                    "Calling tarpc method (oneway)"
+                );
+
+                let method_owned = method.to_string();
+                let args_owned = args_json.to_owned();
+                let client = {
+                    let conn = self.connection.read().await;
+                    let client = conn
+                        .as_ref()
+                        .ok_or_else(|| RhizoCryptError::integration("tarpc connection lost"))?
+                        .client
+                        .clone();
+                    drop(conn);
+                    client
+                };
+                tokio::spawn(async move {
+                    let _ = client.call(tarpc::context::current(), method_owned, args_owned).await;
+                });
+
+                Ok(())
+            }
+        })
+    }
+
+    fn is_healthy(&self) -> BoxFuture<'_, bool> {
+        Box::pin(async move {
+            #[cfg(not(feature = "live-clients"))]
+            {
+                tracing::debug!(
+                    endpoint = %self.addr,
+                    "tarpc adapter unhealthy: live-clients feature disabled"
+                );
+                return false;
+            }
+
+            #[cfg(feature = "live-clients")]
+            match self.ensure_connected().await {
+                Ok(()) => {
+                    tracing::debug!(endpoint = %self.addr, "tarpc adapter connection healthy");
+                    true
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        endpoint = %self.addr,
+                        error = %e,
+                        "tarpc adapter connection failed"
+                    );
+                    false
+                }
+            }
+        })
     }
 
     fn endpoint(&self) -> &str {

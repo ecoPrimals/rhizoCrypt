@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S43.3: async-trait Removal + DID Semantic Closure
+
+- **`async-trait` dependency removed** — 6 direct usages replaced with manual `Pin<Box<dyn Future>>` desugaring via `BoxFuture` type alias; `ProtocolAdapter` remains object-safe (`Arc<dyn ProtocolAdapter>`) without the proc macro
+- **DID → `public_key` semantic gap closed** — documented that `did:key:` strings are the canonical wire format for the `public_key` field in `crypto.verify_ed25519`; `BearDog` resolves `did:key:` → raw Ed25519 transparently; formally closed in `CRYPTO_MODEL.md`
+- **Wire DTO docs** — `CryptoVerifyRequest.public_key` and `CryptoSignRequest.key_id` doc comments updated to reflect DID string semantics
+
 #### S43.2: Lint Policy, Dependency Hygiene, Format Sweep
 
 - **`#[allow(unused_imports)]` → `#[expect]`** in `metrics.rs` — aligned with project lint policy (prefer `#[expect]` over `#[allow]`)

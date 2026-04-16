@@ -16,7 +16,6 @@ rhizo-crypt-core = { path = "../rhizo-crypt-core", default-features = true }
 
 # Async
 tokio.workspace = true
-async-trait.workspace = true
 futures-util.workspace = true
 
 # Pure Rust RPC - compile-time type safety

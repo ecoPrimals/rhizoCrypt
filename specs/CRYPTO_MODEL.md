@@ -158,12 +158,25 @@ translation (public API unchanged, wire format matches BearDog):
 | `request_attestation` | `crypto.sign_contract` | **RESOLVED** — `signer` (DID), `terms` (JSON), response mapped to `Attestation` |
 | `verify_did` | (no equivalent yet) | Forward-compat stub — BearDog DID types present but not wired |
 
+### DID as Public Key Identifier — RESOLVED
+
+The `public_key` field in `crypto.verify_ed25519` accepts `did:key:` strings
+(e.g. `did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK`).
+This is the correct semantic: `did:key:` is a self-describing public key
+encoding (multibase + multicodec + raw Ed25519 bytes). BearDog resolves
+`did:key:` → raw Ed25519 public key transparently during verification.
+
+This is preferable to sending raw key bytes because:
+1. DID strings are the ecosystem's canonical identity representation
+2. No separate `crypto.resolve_did` round-trip is needed
+3. The encoding is self-describing (includes algorithm identifier)
+4. Any provider that implements `crypto.verify_ed25519` can parse `did:key:`
+
+rhizoCrypt sends DID strings in `key_id` (sign) and `public_key` (verify)
+fields consistently. This gap is formally closed.
+
 ### Remaining Evolution
 
-- **DID → public key resolution**: `crypto.verify_ed25519` expects raw
-  public key bytes, but `SigningClient` passes DID strings. This works
-  when BearDog resolves `did:key:` DIDs internally, but a formal
-  `crypto.resolve_did` method would be cleaner.
 - **BTSP Phase 3**: Per-frame AEAD using derived session keys.
 
 ---
