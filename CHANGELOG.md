@@ -63,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Metrics**
 - 1,507 tests passing (0 failures)
-- 170 `.rs` files, ~48,620 lines
+- 170 `.rs` files, ~48,700 lines
 - `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok (RUSTSEC-2026-0007 resolved)
 - Max file: 724 lines (limit 1,000)
 - Zero clippy warnings, zero unsafe blocks, zero production unwrap/expect
