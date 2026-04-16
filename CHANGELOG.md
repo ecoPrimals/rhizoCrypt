@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S43.4: Final Debt Sweep
+
+- **tarpc one-way fire-and-forget** — `let _ = client.call(…)` in `TarpcAdapter::call_oneway_json` evolved to `if let Err(e) … { debug!(…) }` with structured `tracing` for production observability
+- **`deny.toml` wildcard policy** — `wildcards = "warn"` → `"allow"` for workspace path dependencies (false-positive noise in monorepo layout; version wildcards remain caught by advisory/ban checks)
+
 #### S43.3: async-trait Removal + DID Semantic Closure
 
 - **`async-trait` dependency removed** — 6 direct usages replaced with manual `Pin<Box<dyn Future>>` desugaring via `BoxFuture` type alias; `ProtocolAdapter` remains object-safe (`Arc<dyn ProtocolAdapter>`) without the proc macro

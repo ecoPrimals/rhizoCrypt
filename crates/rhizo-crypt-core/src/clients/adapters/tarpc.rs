@@ -351,7 +351,16 @@ impl ProtocolAdapter for TarpcAdapter {
                     client
                 };
                 tokio::spawn(async move {
-                    let _ = client.call(tarpc::context::current(), method_owned, args_owned).await;
+                    if let Err(e) = client
+                        .call(tarpc::context::current(), method_owned.clone(), args_owned)
+                        .await
+                    {
+                        tracing::debug!(
+                            method = %method_owned,
+                            error = %e,
+                            "One-way tarpc call failed (fire-and-forget)"
+                        );
+                    }
                 });
 
                 Ok(())

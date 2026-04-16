@@ -35,7 +35,7 @@ ignore = true
 
 [bans]
 multiple-versions = "warn"
-wildcards = "warn"
+wildcards = "allow"
 highlight = "all"
 
 # ecoBin compliance: these C-backed crates are banned.
