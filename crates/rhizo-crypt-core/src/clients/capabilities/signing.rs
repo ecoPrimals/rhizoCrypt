@@ -38,14 +38,18 @@
 //! # });
 //! ```
 
+use base64::Engine as _;
 use crate::clients::adapters::{AdapterFactory, ProtocolAdapter, ProtocolAdapterExt};
-use crate::dehydration::{Attestation, DehydrationSummary};
+use crate::dehydration::{Attestation, AttestationStatement, DehydrationSummary};
 use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::{Result, RhizoCryptError};
-use crate::types::{Did, Signature};
+use crate::types::{ContentHash, Did, Signature, Timestamp};
 use crate::vertex::Vertex;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
+const B64: base64::engine::general_purpose::GeneralPurpose =
+    base64::engine::general_purpose::STANDARD;
 
 // ============================================================================
 // Signing Client (Generic)
@@ -196,17 +200,22 @@ impl SigningClient {
         tracing::debug!(
             signer = %signer,
             data_len = data.len(),
-            "Requesting signature"
+            "Requesting signature via crypto.sign_ed25519"
         );
 
-        let request = SignRequest {
-            data,
-            signer: signer.clone(),
+        let request = CryptoSignRequest {
+            message: B64.encode(&data),
+            key_id: Some(signer.to_string()),
         };
 
-        let response: SignResponse = self.adapter.call("sign", request).await?;
+        let response: CryptoSignResponse =
+            self.adapter.call("crypto.sign_ed25519", request).await?;
 
-        Ok(Signature::from(response.signature))
+        let sig_bytes = B64.decode(&response.signature).map_err(|e| {
+            RhizoCryptError::integration(format!("Invalid base64 signature from provider: {e}"))
+        })?;
+
+        Ok(Signature::from(bytes::Bytes::from(sig_bytes)))
     }
 
     /// Verify a signature.
@@ -238,16 +247,17 @@ impl SigningClient {
         tracing::debug!(
             signer = %signer,
             data_len = data.len(),
-            "Verifying signature"
+            "Verifying signature via crypto.verify_ed25519"
         );
 
-        let request = VerifyRequest {
-            data,
-            signature: signature.0.clone(),
-            signer: signer.clone(),
+        let request = CryptoVerifyRequest {
+            message: B64.encode(&data),
+            signature: B64.encode(signature.as_bytes()),
+            public_key: signer.to_string(),
         };
 
-        let response: VerifyResponse = self.adapter.call("verify", request).await?;
+        let response: CryptoVerifyResponse =
+            self.adapter.call("crypto.verify_ed25519", request).await?;
 
         Ok(response.valid)
     }
@@ -295,7 +305,7 @@ impl SigningClient {
     ///
     /// Returns error if verification fails.
     pub async fn verify_did(&self, did: &Did) -> Result<bool> {
-        tracing::debug!(did = %did, "Verifying DID");
+        tracing::debug!(did = %did, "Verifying DID (no BearDog equivalent yet — local stub)");
 
         let request = VerifyDidRequest {
             did: did.clone(),
@@ -321,16 +331,40 @@ impl SigningClient {
         attester: &Did,
         summary: &DehydrationSummary,
     ) -> Result<Attestation> {
-        tracing::debug!(attester = %attester, "Requesting attestation");
+        tracing::debug!(attester = %attester, "Requesting attestation via crypto.sign_contract");
 
-        let request = AttestRequest {
-            attester: attester.clone(),
-            summary: summary.clone(),
+        let terms = serde_json::to_value(summary).map_err(|e| {
+            RhizoCryptError::integration(format!("Failed to serialize summary as terms: {e}"))
+        })?;
+
+        let request = CryptoSignContractRequest {
+            signer: attester.to_string(),
+            terms,
+            context: Some("dehydration-attestation".to_string()),
         };
 
-        let response: AttestResponse = self.adapter.call("attest", request).await?;
+        let response: CryptoSignContractResponse =
+            self.adapter.call("crypto.sign_contract", request).await?;
 
-        Ok(response.attestation)
+        let sig_bytes = hex::decode(&response.signature).map_err(|e| {
+            RhizoCryptError::integration(format!("Invalid hex signature from contract: {e}"))
+        })?;
+
+        let summary_hash_bytes: [u8; 32] =
+            hex::decode(&response.terms_hash)
+                .ok()
+                .and_then(|b| <[u8; 32]>::try_from(b).ok())
+                .unwrap_or_default();
+
+        Ok(Attestation {
+            attester: attester.clone(),
+            statement: AttestationStatement::SessionSummary {
+                summary_hash: ContentHash::from(summary_hash_bytes),
+            },
+            signature: bytes::Bytes::from(sig_bytes),
+            witnessed_at: Timestamp::now(),
+            verified: true,
+        })
     }
 
     #[cfg(test)]
@@ -361,51 +395,71 @@ impl SigningClient {
 }
 
 // ============================================================================
-// Request/Response DTOs
+// Wire DTOs — aligned with BearDog's crypto.* JSON-RPC interface (BD-01)
 // ============================================================================
 
+/// `crypto.sign_ed25519` request: message as standard base64, `key_id` optional.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct SignRequest {
-    data: bytes::Bytes,
-    signer: Did,
+struct CryptoSignRequest {
+    message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    key_id: Option<String>,
 }
 
+/// `crypto.sign_ed25519` response: base64 signature, algorithm, `key_id`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct SignResponse {
-    signature: bytes::Bytes,
+struct CryptoSignResponse {
+    signature: String,
+    #[serde(default)]
+    algorithm: Option<String>,
+    #[serde(default)]
+    key_id: Option<String>,
 }
 
+/// `crypto.verify_ed25519` request: all fields as encoded strings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct VerifyRequest {
-    data: bytes::Bytes,
-    signature: bytes::Bytes,
-    signer: Did,
+struct CryptoVerifyRequest {
+    message: String,
+    signature: String,
+    public_key: String,
 }
 
+/// `crypto.verify_ed25519` response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct VerifyResponse {
+struct CryptoVerifyResponse {
     valid: bool,
+    #[serde(default)]
+    algorithm: Option<String>,
 }
 
+/// `crypto.sign_contract` request (ionic bond attestation).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CryptoSignContractRequest {
+    signer: String,
+    terms: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    context: Option<String>,
+}
+
+/// `crypto.sign_contract` response: hex-encoded signature and public key.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CryptoSignContractResponse {
+    terms_hash: String,
+    signature: String,
+    public_key: String,
+    signed_at: String,
+}
+
+/// `verify_did` request — no `BearDog` equivalent yet; kept for forward compat.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct VerifyDidRequest {
     did: Did,
 }
 
+/// `verify_did` response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct VerifyDidResponse {
     valid: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct AttestRequest {
-    attester: Did,
-    summary: DehydrationSummary,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct AttestResponse {
-    attestation: Attestation,
 }
 
 // ============================================================================

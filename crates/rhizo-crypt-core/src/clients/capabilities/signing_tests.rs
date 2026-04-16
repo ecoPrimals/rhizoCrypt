@@ -21,10 +21,7 @@ fn test_signing_client_invalid_endpoint() {
 #[tokio::test]
 async fn test_signing_client_availability() {
     let client = SigningClient::with_endpoint("127.0.0.1:9999").unwrap();
-    // Should return false for non-existent service
     let available = client.is_available().await;
-    // Note: This might be true or false depending on what's running
-    // Just testing that the method doesn't panic
     let _ = available;
 }
 
@@ -41,7 +38,6 @@ async fn test_signing_client_discover_no_providers() {
 async fn test_signing_client_discover_with_provider() {
     let registry = DiscoveryRegistry::new("test-rhizocrypt");
 
-    // Register a mock signing provider
     let addr: SocketAddr = "127.0.0.1:9500".parse().unwrap();
     let endpoint = ServiceEndpoint::new("test-signer".to_string(), addr, vec![Capability::Signing]);
     registry.register_endpoint(endpoint).await;
@@ -53,62 +49,120 @@ async fn test_signing_client_discover_with_provider() {
     assert_eq!(client.service_name(), Some("test-signer"));
 }
 
+// ============================================================================
+// Wire DTO serialization tests — BearDog-aligned shapes
+// ============================================================================
+
 #[test]
-fn test_signing_request_serialization() {
-    let did = Did::new("did:key:test");
-    let request = SignRequest {
-        data: bytes::Bytes::from_static(&[1, 2, 3]),
-        signer: did,
+fn test_crypto_sign_request_serialization() {
+    let request = CryptoSignRequest {
+        message: "AQID".to_string(),
+        key_id: Some("did:key:test".to_string()),
     };
 
     let serialized = serde_json::to_string(&request).unwrap();
-    assert!(serialized.contains("did:key:test"));
+    assert!(serialized.contains("\"message\":\"AQID\""));
+    assert!(serialized.contains("\"key_id\":\"did:key:test\""));
 
-    let deserialized: SignRequest = serde_json::from_str(&serialized).unwrap();
-    assert_eq!(&deserialized.data[..], &[1, 2, 3]);
+    let deserialized: CryptoSignRequest = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(deserialized.message, "AQID");
+    assert_eq!(deserialized.key_id.as_deref(), Some("did:key:test"));
 }
 
 #[test]
-fn test_signing_response_serialization() {
-    let response = SignResponse {
-        signature: bytes::Bytes::from_static(&[1, 2, 3, 4]),
+fn test_crypto_sign_request_no_key_id() {
+    let request = CryptoSignRequest {
+        message: "dGVzdA==".to_string(),
+        key_id: None,
+    };
+
+    let serialized = serde_json::to_string(&request).unwrap();
+    assert!(!serialized.contains("key_id"));
+}
+
+#[test]
+fn test_crypto_sign_response_serialization() {
+    let response = CryptoSignResponse {
+        signature: "AQIDBA==".to_string(),
+        algorithm: Some("Ed25519".to_string()),
+        key_id: Some("default_signing_key".to_string()),
     };
 
     let serialized = serde_json::to_string(&response).unwrap();
-    let deserialized: SignResponse = serde_json::from_str(&serialized).unwrap();
-    assert_eq!(&deserialized.signature[..], &[1, 2, 3, 4]);
+    let deserialized: CryptoSignResponse = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(deserialized.signature, "AQIDBA==");
+    assert_eq!(deserialized.algorithm.as_deref(), Some("Ed25519"));
 }
 
 #[test]
-fn test_verify_request_serialization() {
-    let did = Did::new("did:key:verifier");
-    let request = VerifyRequest {
-        data: bytes::Bytes::from_static(&[5, 6, 7]),
-        signature: bytes::Bytes::from_static(&[8, 9, 10]),
-        signer: did,
+fn test_crypto_sign_response_minimal() {
+    let json = r#"{"signature":"AQID"}"#;
+    let response: CryptoSignResponse = serde_json::from_str(json).unwrap();
+    assert_eq!(response.signature, "AQID");
+    assert!(response.algorithm.is_none());
+    assert!(response.key_id.is_none());
+}
+
+#[test]
+fn test_crypto_verify_request_serialization() {
+    let request = CryptoVerifyRequest {
+        message: "BQYH".to_string(),
+        signature: "CAkK".to_string(),
+        public_key: "did:key:verifier".to_string(),
     };
 
     let serialized = serde_json::to_string(&request).unwrap();
-    let deserialized: VerifyRequest = serde_json::from_str(&serialized).unwrap();
-    assert_eq!(&deserialized.data[..], &[5, 6, 7]);
-    assert_eq!(&deserialized.signature[..], &[8, 9, 10]);
+    let deserialized: CryptoVerifyRequest = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(deserialized.message, "BQYH");
+    assert_eq!(deserialized.signature, "CAkK");
+    assert_eq!(deserialized.public_key, "did:key:verifier");
 }
 
 #[test]
-fn test_verify_response_serialization() {
-    let response = VerifyResponse {
+fn test_crypto_verify_response_serialization() {
+    let response = CryptoVerifyResponse {
         valid: true,
+        algorithm: Some("Ed25519".to_string()),
     };
     let serialized = serde_json::to_string(&response).unwrap();
-    let deserialized: VerifyResponse = serde_json::from_str(&serialized).unwrap();
+    let deserialized: CryptoVerifyResponse = serde_json::from_str(&serialized).unwrap();
     assert!(deserialized.valid);
 
-    let response_false = VerifyResponse {
+    let response_false = CryptoVerifyResponse {
         valid: false,
+        algorithm: None,
     };
     let serialized = serde_json::to_string(&response_false).unwrap();
-    let deserialized: VerifyResponse = serde_json::from_str(&serialized).unwrap();
+    let deserialized: CryptoVerifyResponse = serde_json::from_str(&serialized).unwrap();
     assert!(!deserialized.valid);
+}
+
+#[test]
+fn test_crypto_sign_contract_request_serialization() {
+    let request = CryptoSignContractRequest {
+        signer: "did:key:attester".to_string(),
+        terms: serde_json::json!({"session_id": "abc-123", "vertex_count": 10}),
+        context: Some("dehydration-attestation".to_string()),
+    };
+
+    let serialized = serde_json::to_string(&request).unwrap();
+    assert!(serialized.contains("\"signer\":\"did:key:attester\""));
+    assert!(serialized.contains("\"context\":\"dehydration-attestation\""));
+}
+
+#[test]
+fn test_crypto_sign_contract_response_serialization() {
+    let response = CryptoSignContractResponse {
+        terms_hash: "abcdef1234567890".to_string(),
+        signature: "deadbeef".repeat(16),
+        public_key: "cafebabe".repeat(8),
+        signed_at: "2026-04-15T12:00:00Z".to_string(),
+    };
+
+    let serialized = serde_json::to_string(&response).unwrap();
+    let deserialized: CryptoSignContractResponse = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(deserialized.terms_hash, "abcdef1234567890");
+    assert_eq!(deserialized.signed_at, "2026-04-15T12:00:00Z");
 }
 
 #[test]
@@ -126,100 +180,34 @@ fn test_verify_did_request_serialization() {
 }
 
 #[test]
-fn test_attest_request_serialization() {
-    use crate::event::SessionOutcome;
-    use crate::merkle::MerkleRoot;
-    use crate::types::ContentHash;
-
-    let attester = Did::new("did:key:attester");
-    let summary = DehydrationSummary {
-        session_id: crate::types::SessionId::new(uuid::Uuid::now_v7()),
-        session_type: "test".to_string(),
-        created_at: crate::types::Timestamp::now(),
-        resolved_at: crate::types::Timestamp::now(),
-        outcome: SessionOutcome::Success,
-        merkle_root: MerkleRoot::new(ContentHash::from([0u8; 32])),
-        vertex_count: 10,
-        payload_bytes: 1000,
-        results: vec![],
-        agents: vec![],
-        attestations: vec![],
-    };
-    let request = AttestRequest {
-        attester,
-        summary,
-    };
-
-    let serialized = serde_json::to_string(&request).unwrap();
-    assert!(serialized.contains("did:key:attester"));
-
-    let _deserialized: AttestRequest = serde_json::from_str(&serialized).unwrap();
-    // Basic deserialization works
-}
-
-#[test]
-fn test_attest_response_serialization() {
-    use crate::dehydration::{Attestation, AttestationStatement};
-    use crate::types::ContentHash;
-
-    let attestation = Attestation {
-        attester: Did::new("did:key:attester"),
-        statement: AttestationStatement::SessionSummary {
-            summary_hash: ContentHash::from([1u8; 32]),
-        },
-        signature: bytes::Bytes::from_static(&[1, 2, 3, 4]),
-        witnessed_at: crate::types::Timestamp::now(),
-        verified: true,
-    };
-    let response = AttestResponse {
-        attestation: attestation.clone(),
-    };
-
-    let serialized = serde_json::to_string(&response).unwrap();
-    let deserialized: AttestResponse = serde_json::from_str(&serialized).unwrap();
-    assert_eq!(deserialized.attestation.attester, attestation.attester);
-    assert!(deserialized.attestation.verified);
-}
-
-#[test]
 fn test_verify_did_response_serialization() {
-    let response = VerifyDidResponse {
-        valid: true,
-    };
+    let response = VerifyDidResponse { valid: true };
     let serialized = serde_json::to_string(&response).unwrap();
     let deserialized: VerifyDidResponse = serde_json::from_str(&serialized).unwrap();
     assert!(deserialized.valid);
 
-    let response_false = VerifyDidResponse {
-        valid: false,
-    };
+    let response_false = VerifyDidResponse { valid: false };
     let serialized = serde_json::to_string(&response_false).unwrap();
     let deserialized: VerifyDidResponse = serde_json::from_str(&serialized).unwrap();
     assert!(!deserialized.valid);
 }
 
-#[test]
-fn test_sign_request_roundtrip() {
-    let did = Did::new("did:key:roundtrip");
-    let request = SignRequest {
-        data: bytes::Bytes::from_static(&[10, 20, 30]),
-        signer: did.clone(),
-    };
-    let serialized = serde_json::to_string(&request).unwrap();
-    let deserialized: SignRequest = serde_json::from_str(&serialized).unwrap();
-    assert_eq!(&deserialized.data[..], &[10, 20, 30]);
-    assert_eq!(deserialized.signer, did);
-}
+// ============================================================================
+// Base64 round-trip tests
+// ============================================================================
 
 #[test]
-fn test_sign_response_roundtrip() {
-    let response = SignResponse {
-        signature: bytes::Bytes::from_static(&[1, 2, 3, 4, 5, 6]),
-    };
-    let serialized = serde_json::to_string(&response).unwrap();
-    let deserialized: SignResponse = serde_json::from_str(&serialized).unwrap();
-    assert_eq!(&deserialized.signature[..], &response.signature[..]);
+fn test_base64_roundtrip_sign() {
+    let data = bytes::Bytes::from_static(&[0xDE, 0xAD, 0xBE, 0xEF]);
+    let encoded = B64.encode(&data);
+    assert_eq!(encoded, "3q2+7w==");
+    let decoded = B64.decode(&encoded).unwrap();
+    assert_eq!(decoded, &[0xDE, 0xAD, 0xBE, 0xEF]);
 }
+
+// ============================================================================
+// Client unit tests
+// ============================================================================
 
 #[test]
 fn test_signing_client_clone() {
@@ -240,7 +228,6 @@ fn test_signing_client_debug() {
 async fn test_signing_client_multiple_providers() {
     let registry = DiscoveryRegistry::new("test-rhizocrypt");
 
-    // Register multiple signing providers
     let addr1: SocketAddr = "127.0.0.1:9500".parse().unwrap();
     registry
         .register_endpoint(ServiceEndpoint::new(
@@ -259,7 +246,6 @@ async fn test_signing_client_multiple_providers() {
         ))
         .await;
 
-    // Discovery should return the first available
     let result = SigningClient::discover(&registry).await;
     assert!(result.is_ok());
     let client = result.unwrap();
@@ -337,20 +323,18 @@ async fn test_signing_client_discover_failed() {
 #[test]
 #[cfg(feature = "http-clients")]
 fn test_signing_client_endpoint_formats() {
-    // Test various endpoint formats (HTTP/HTTPS - requires http-clients feature)
     let http_client = SigningClient::with_endpoint("http://localhost:9500").unwrap();
     assert_eq!(http_client.endpoint(), "http://localhost:9500");
 
     let https_client = SigningClient::with_endpoint("https://signing.example.com:443").unwrap();
     assert_eq!(https_client.endpoint(), "https://signing.example.com:443");
 
-    // AdapterFactory auto-adds http:// for addresses without protocol
     let auto_http = SigningClient::with_endpoint("localhost:9500").unwrap();
     assert!(auto_http.endpoint().contains("localhost:9500"));
 }
 
 // ============================================================================
-// Mock adapter tests — exercise sign/verify/attest code paths
+// Mock adapter tests — exercise sign/verify/attest via BearDog wire format
 // ============================================================================
 
 fn mock_client() -> SigningClient {
@@ -365,9 +349,11 @@ async fn test_sign_via_mock() {
     let adapter = MockProtocolAdapter::permissive();
     adapter
         .set_response(
-            "sign",
-            SignResponse {
-                signature: bytes::Bytes::from_static(&[0xAA, 0xBB]),
+            "crypto.sign_ed25519",
+            CryptoSignResponse {
+                signature: B64.encode([0xAA, 0xBB]),
+                algorithm: Some("Ed25519".to_string()),
+                key_id: Some("default_signing_key".to_string()),
             },
         )
         .await
@@ -384,9 +370,11 @@ async fn test_sign_owned_via_mock() {
     let adapter = MockProtocolAdapter::permissive();
     adapter
         .set_response(
-            "sign",
-            SignResponse {
-                signature: bytes::Bytes::from_static(&[1, 2, 3]),
+            "crypto.sign_ed25519",
+            CryptoSignResponse {
+                signature: B64.encode([1, 2, 3]),
+                algorithm: Some("Ed25519".to_string()),
+                key_id: None,
             },
         )
         .await
@@ -403,9 +391,10 @@ async fn test_verify_via_mock() {
     let adapter = MockProtocolAdapter::permissive();
     adapter
         .set_response(
-            "verify",
-            VerifyResponse {
+            "crypto.verify_ed25519",
+            CryptoVerifyResponse {
                 valid: true,
+                algorithm: Some("Ed25519".to_string()),
             },
         )
         .await
@@ -423,9 +412,10 @@ async fn test_verify_owned_via_mock() {
     let adapter = MockProtocolAdapter::permissive();
     adapter
         .set_response(
-            "verify",
-            VerifyResponse {
+            "crypto.verify_ed25519",
+            CryptoVerifyResponse {
                 valid: false,
+                algorithm: None,
             },
         )
         .await
@@ -466,9 +456,11 @@ async fn test_sign_vertex_via_mock() {
     let adapter = MockProtocolAdapter::permissive();
     adapter
         .set_response(
-            "sign",
-            SignResponse {
-                signature: bytes::Bytes::from_static(&[0xDE, 0xAD]),
+            "crypto.sign_ed25519",
+            CryptoSignResponse {
+                signature: B64.encode([0xDE, 0xAD]),
+                algorithm: Some("Ed25519".to_string()),
+                key_id: None,
             },
         )
         .await
@@ -482,29 +474,22 @@ async fn test_sign_vertex_via_mock() {
 
 #[tokio::test]
 async fn test_request_attestation_via_mock() {
-    use crate::dehydration::{Attestation, AttestationStatement};
     use crate::event::SessionOutcome;
     use crate::integration::mocks::MockProtocolAdapter;
     use crate::merkle::MerkleRoot;
     use crate::types::ContentHash;
 
     let attester = Did::new("did:key:attester");
-    let attestation = Attestation {
-        attester: attester.clone(),
-        statement: AttestationStatement::SessionSummary {
-            summary_hash: ContentHash::from([0xABu8; 32]),
-        },
-        signature: bytes::Bytes::from_static(&[7, 8, 9]),
-        witnessed_at: crate::types::Timestamp::now(),
-        verified: true,
-    };
 
     let adapter = MockProtocolAdapter::permissive();
     adapter
         .set_response(
-            "attest",
-            AttestResponse {
-                attestation,
+            "crypto.sign_contract",
+            CryptoSignContractResponse {
+                terms_hash: hex::encode([0xABu8; 32]),
+                signature: hex::encode([0x01u8; 64]),
+                public_key: hex::encode([0x02u8; 32]),
+                signed_at: "2026-04-15T12:00:00Z".to_string(),
             },
         )
         .await
@@ -528,6 +513,7 @@ async fn test_request_attestation_via_mock() {
     let result = client.request_attestation(&attester, &summary).await.unwrap();
     assert_eq!(result.attester, attester);
     assert!(result.verified);
+    assert_eq!(result.signature.len(), 64);
 }
 
 #[tokio::test]

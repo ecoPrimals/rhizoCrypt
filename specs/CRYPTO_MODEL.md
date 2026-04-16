@@ -146,25 +146,25 @@ handshake read/write path yet.
 
 ---
 
-## Known Evolution Gaps
+## Wire Format Alignment (Session 43)
 
-### Wire Format Alignment (post-Phase 43)
+`SigningClient` uses BearDog-aligned wire DTOs with adapter-level
+translation (public API unchanged, wire format matches BearDog):
 
-`SigningClient` currently uses abstract method names (`sign`, `verify`,
-`attest`) and its own DTO shapes (`SignRequest { data, signer }`,
-`AttestRequest { attester, summary }`). BearDog's actual JSON-RPC methods
-use semantic names and different field shapes:
+| `SigningClient` method | BearDog JSON-RPC method | Status |
+|------------------------|------------------------|--------|
+| `sign` / `sign_owned` | `crypto.sign_ed25519` | **RESOLVED** — `message` (base64), `key_id` (DID string) |
+| `verify` / `verify_owned` | `crypto.verify_ed25519` | **RESOLVED** — `message`, `signature` (base64), `public_key` (DID string) |
+| `request_attestation` | `crypto.sign_contract` | **RESOLVED** — `signer` (DID), `terms` (JSON), response mapped to `Attestation` |
+| `verify_did` | (no equivalent yet) | Forward-compat stub — BearDog DID types present but not wired |
 
-| rhizoCrypt adapter | BearDog UDS method | Status |
-|--------------------|-------------------|--------|
-| `sign` | `crypto.sign_ed25519` | Field mismatch: `data`/`signer` vs `message`/`key_id` |
-| `verify` | `crypto.verify_ed25519` | Field mismatch: `data`/`signature` vs `message`/`signature` |
-| `attest` | `crypto.sign_contract` | Conceptual match: summary→terms, attester→signer |
-| `verify_did` | (no equivalent yet) | BearDog DID types present but not wired |
+### Remaining Evolution
 
-**Evolution path**: Align `SigningClient` method names to `crypto.*` semantic
-namespace and bridge DTOs through an adapter-level translation layer, or
-evolve both sides to a shared wire schema.
+- **DID → public key resolution**: `crypto.verify_ed25519` expects raw
+  public key bytes, but `SigningClient` passes DID strings. This works
+  when BearDog resolves `did:key:` DIDs internally, but a formal
+  `crypto.resolve_did` method would be cleaner.
+- **BTSP Phase 3**: Per-frame AEAD using derived session keys.
 
 ---
 
