@@ -63,16 +63,16 @@ Three workspace crates:
 | BTSP Phase 2 | Server-side handshake enforcement on UDS accept |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 160 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 170 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,506 passing (all features) |
+| Tests | 1,507 passing (all features) |
 | Coverage | 93.88% lines (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
-| Source files | 170 `.rs`, ~48,350 lines |
+| Source files | 170 `.rs`, ~48,620 lines |
 | Max file size | 724 lines (limit: 1000) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |

@@ -181,12 +181,16 @@ fn test_verify_did_request_serialization() {
 
 #[test]
 fn test_verify_did_response_serialization() {
-    let response = VerifyDidResponse { valid: true };
+    let response = VerifyDidResponse {
+        valid: true,
+    };
     let serialized = serde_json::to_string(&response).unwrap();
     let deserialized: VerifyDidResponse = serde_json::from_str(&serialized).unwrap();
     assert!(deserialized.valid);
 
-    let response_false = VerifyDidResponse { valid: false };
+    let response_false = VerifyDidResponse {
+        valid: false,
+    };
     let serialized = serde_json::to_string(&response_false).unwrap();
     let deserialized: VerifyDidResponse = serde_json::from_str(&serialized).unwrap();
     assert!(!deserialized.valid);

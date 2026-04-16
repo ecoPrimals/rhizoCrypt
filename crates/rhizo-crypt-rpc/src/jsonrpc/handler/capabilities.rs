@@ -30,7 +30,10 @@ pub async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Va
     let cost_estimates: serde_json::Map<String, Value> = niche::METHOD_CATALOG
         .iter()
         .map(|m| {
-            (m.fqn.to_string(), json!({ "cpu": niche::cost_tier(m.estimated_ms), "latency_ms": m.estimated_ms }))
+            (
+                m.fqn.to_string(),
+                json!({ "cpu": niche::cost_tier(m.estimated_ms), "latency_ms": m.estimated_ms }),
+            )
         })
         .collect();
 

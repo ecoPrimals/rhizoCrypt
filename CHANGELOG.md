@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S43.2: Lint Policy, Dependency Hygiene, Format Sweep
+
+- **`#[allow(unused_imports)]` → `#[expect]`** in `metrics.rs` — aligned with project lint policy (prefer `#[expect]` over `#[allow]`)
+- **`cargo update`** — all workspace dependencies updated to latest compatible semver; resolved RUSTSEC-2026-0007 (`opentelemetry_sdk` advisory)
+- **`deny.toml`** — removed stale RUSTSEC-2026-0007 advisory ignore (resolved by dep update); updated evolution comments
+- **`cargo fmt`** — applied across 6 files with formatting drift from prior sessions (signing.rs, signing_tests.rs, niche.rs, dehydration_ops.rs, capabilities.rs)
+
 #### S43: Comprehensive Audit + Deep Debt Evolution
 
 - **`CRYPTO_MODEL.md`** — canonical spec: rhizoCrypt delegates all asymmetric crypto to BearDog via IPC; Blake3 for internal integrity only
@@ -44,9 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `crates/rhizocrypt-service/tests/service_integration/` directory module (4 files)
 
 **Metrics**
-- 1,506 tests passing (0 failures)
-- 170 `.rs` files, ~48,350 lines
-- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok
+- 1,507 tests passing (0 failures)
+- 170 `.rs` files, ~48,620 lines
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok (RUSTSEC-2026-0007 resolved)
 - Max file: 724 lines (limit 1,000)
 - Zero clippy warnings, zero unsafe blocks, zero production unwrap/expect
 - 93.88% line coverage (CI gate: 90%)

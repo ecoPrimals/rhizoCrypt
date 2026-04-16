@@ -10,9 +10,9 @@ all-features = true
 yanked = "deny"
 ignore = [
     # Transitive dependencies from tarpc 0.37; tracked for upstream resolution.
-    # RUSTSEC-2024-0384 (instant) and RUSTSEC-2025-0057 (fxhash) resolved upstream.
+    # RUSTSEC-2024-0384 (instant), RUSTSEC-2025-0057 (fxhash), RUSTSEC-2026-0007 (opentelemetry_sdk)
+    # all resolved via cargo update as of 2026-04-15.
     { id = "RUSTSEC-2025-0141", reason = "bincode v1 is transitive via tarpc → tokio-serde; awaiting bincode v2 migration" },
-    { id = "RUSTSEC-2026-0007", reason = "opentelemetry_sdk is transitive via tarpc → tracing-opentelemetry" },
 ]
 
 [licenses]
@@ -62,8 +62,8 @@ deny = [
     { crate = "reqwest", wrappers = [] },
 ]
 # Evolution: migrate to rustls-rustcrypto when it reaches stable, then ban ring too.
-# Evolution: tarpc transitive deps (bincode v1, opentelemetry_sdk) tracked upstream.
-#   instant + fxhash resolved as of tarpc 0.37 dependency updates.
+# Evolution: tarpc transitive dep (bincode v1) tracked upstream; awaiting bincode v2 migration.
+#   instant, fxhash, opentelemetry_sdk resolved as of 2026-04-15 cargo update.
 skip = []
 
 [sources]

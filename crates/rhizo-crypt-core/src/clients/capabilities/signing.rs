@@ -38,13 +38,13 @@
 //! # });
 //! ```
 
-use base64::Engine as _;
 use crate::clients::adapters::{AdapterFactory, ProtocolAdapter, ProtocolAdapterExt};
 use crate::dehydration::{Attestation, AttestationStatement, DehydrationSummary};
 use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::{Result, RhizoCryptError};
 use crate::types::{ContentHash, Did, Signature, Timestamp};
 use crate::vertex::Vertex;
+use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -350,11 +350,10 @@ impl SigningClient {
             RhizoCryptError::integration(format!("Invalid hex signature from contract: {e}"))
         })?;
 
-        let summary_hash_bytes: [u8; 32] =
-            hex::decode(&response.terms_hash)
-                .ok()
-                .and_then(|b| <[u8; 32]>::try_from(b).ok())
-                .unwrap_or_default();
+        let summary_hash_bytes: [u8; 32] = hex::decode(&response.terms_hash)
+            .ok()
+            .and_then(|b| <[u8; 32]>::try_from(b).ok())
+            .unwrap_or_default();
 
         Ok(Attestation {
             attester: attester.clone(),

@@ -229,14 +229,15 @@ impl RhizoCrypt {
             },
         );
 
-        let signing_client =
-            match crate::clients::SigningClient::discover(&self.discovery_registry).await {
-                Ok(client) => client,
-                Err(e) => {
-                    tracing::debug!(error = %e, "No signing provider available, skipping attestations");
-                    return Vec::new();
-                }
-            };
+        let signing_client = match crate::clients::SigningClient::discover(&self.discovery_registry)
+            .await
+        {
+            Ok(client) => client,
+            Err(e) => {
+                tracing::debug!(error = %e, "No signing provider available, skipping attestations");
+                return Vec::new();
+            }
+        };
 
         let mut attestations = Vec::new();
         for attester in &config.required_attestations {

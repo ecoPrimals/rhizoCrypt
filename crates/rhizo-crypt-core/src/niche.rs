@@ -75,52 +75,275 @@ pub struct MethodSpec {
 /// here — everything else follows.
 pub const METHOD_CATALOG: &[MethodSpec] = &[
     // Session lifecycle — fast, in-memory
-    MethodSpec { fqn: "dag.session.create",  domain: "dag", short_name: "session.create",  estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
-    MethodSpec { fqn: "dag.session.get",     domain: "dag", short_name: "session.get",     estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
-    MethodSpec { fqn: "dag.session.list",    domain: "dag", short_name: "session.list",    estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
-    MethodSpec { fqn: "dag.session.discard", domain: "dag", short_name: "session.discard", estimated_ms: 2, gpu_beneficial: false, external: false, deps: &["dag.session.create"] },
+    MethodSpec {
+        fqn: "dag.session.create",
+        domain: "dag",
+        short_name: "session.create",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "dag.session.get",
+        domain: "dag",
+        short_name: "session.get",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "dag.session.list",
+        domain: "dag",
+        short_name: "session.list",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "dag.session.discard",
+        domain: "dag",
+        short_name: "session.discard",
+        estimated_ms: 2,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create"],
+    },
     // Event operations — BLAKE3 hashing + DashMap insert
-    MethodSpec { fqn: "dag.event.append",       domain: "dag", short_name: "event.append",       estimated_ms: 2, gpu_beneficial: false, external: false, deps: &["dag.session.create"] },
-    MethodSpec { fqn: "dag.event.append_batch", domain: "dag", short_name: "event.append_batch", estimated_ms: 5, gpu_beneficial: false, external: false, deps: &["dag.session.create"] },
+    MethodSpec {
+        fqn: "dag.event.append",
+        domain: "dag",
+        short_name: "event.append",
+        estimated_ms: 2,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create"],
+    },
+    MethodSpec {
+        fqn: "dag.event.append_batch",
+        domain: "dag",
+        short_name: "event.append_batch",
+        estimated_ms: 5,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create"],
+    },
     // Vertex queries — DashMap lookup
-    MethodSpec { fqn: "dag.vertex.get",      domain: "dag", short_name: "vertex.get",      estimated_ms: 1, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
-    MethodSpec { fqn: "dag.vertex.query",    domain: "dag", short_name: "vertex.query",    estimated_ms: 3, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
-    MethodSpec { fqn: "dag.vertex.children", domain: "dag", short_name: "vertex.children", estimated_ms: 1, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
+    MethodSpec {
+        fqn: "dag.vertex.get",
+        domain: "dag",
+        short_name: "vertex.get",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.event.append"],
+    },
+    MethodSpec {
+        fqn: "dag.vertex.query",
+        domain: "dag",
+        short_name: "vertex.query",
+        estimated_ms: 3,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.event.append"],
+    },
+    MethodSpec {
+        fqn: "dag.vertex.children",
+        domain: "dag",
+        short_name: "vertex.children",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.event.append"],
+    },
     // DAG topology — DashMap scan
-    MethodSpec { fqn: "dag.frontier.get", domain: "dag", short_name: "frontier.get", estimated_ms: 2, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
-    MethodSpec { fqn: "dag.genesis.get",  domain: "dag", short_name: "genesis.get",  estimated_ms: 2, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
+    MethodSpec {
+        fqn: "dag.frontier.get",
+        domain: "dag",
+        short_name: "frontier.get",
+        estimated_ms: 2,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.event.append"],
+    },
+    MethodSpec {
+        fqn: "dag.genesis.get",
+        domain: "dag",
+        short_name: "genesis.get",
+        estimated_ms: 2,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.event.append"],
+    },
     // Merkle operations — BLAKE3 tree computation
-    MethodSpec { fqn: "dag.merkle.root",   domain: "dag", short_name: "merkle.root",   estimated_ms: 5, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
-    MethodSpec { fqn: "dag.merkle.proof",  domain: "dag", short_name: "merkle.proof",  estimated_ms: 3, gpu_beneficial: false, external: false, deps: &["dag.event.append"] },
-    MethodSpec { fqn: "dag.merkle.verify", domain: "dag", short_name: "merkle.verify", estimated_ms: 2, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec {
+        fqn: "dag.merkle.root",
+        domain: "dag",
+        short_name: "merkle.root",
+        estimated_ms: 5,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.event.append"],
+    },
+    MethodSpec {
+        fqn: "dag.merkle.proof",
+        domain: "dag",
+        short_name: "merkle.proof",
+        estimated_ms: 3,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.event.append"],
+    },
+    MethodSpec {
+        fqn: "dag.merkle.verify",
+        domain: "dag",
+        short_name: "merkle.verify",
+        estimated_ms: 2,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
     // Slice operations — may involve permanent storage I/O
-    MethodSpec { fqn: "dag.slice.checkout", domain: "dag", short_name: "slice.checkout", estimated_ms: 10, gpu_beneficial: false, external: false, deps: &[] },
-    MethodSpec { fqn: "dag.slice.get",     domain: "dag", short_name: "slice.get",     estimated_ms: 1,  gpu_beneficial: false, external: false, deps: &["dag.slice.checkout"] },
-    MethodSpec { fqn: "dag.slice.list",    domain: "dag", short_name: "slice.list",    estimated_ms: 1,  gpu_beneficial: false, external: false, deps: &[] },
-    MethodSpec { fqn: "dag.slice.resolve", domain: "dag", short_name: "slice.resolve", estimated_ms: 5,  gpu_beneficial: false, external: false, deps: &["dag.slice.checkout"] },
+    MethodSpec {
+        fqn: "dag.slice.checkout",
+        domain: "dag",
+        short_name: "slice.checkout",
+        estimated_ms: 10,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "dag.slice.get",
+        domain: "dag",
+        short_name: "slice.get",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.slice.checkout"],
+    },
+    MethodSpec {
+        fqn: "dag.slice.list",
+        domain: "dag",
+        short_name: "slice.list",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "dag.slice.resolve",
+        domain: "dag",
+        short_name: "slice.resolve",
+        estimated_ms: 5,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.slice.checkout"],
+    },
     // Dehydration — multi-step I/O to permanent storage
-    MethodSpec { fqn: "dag.dehydration.trigger", domain: "dag", short_name: "dehydration.trigger", estimated_ms: 50, gpu_beneficial: false, external: false, deps: &["dag.session.create", "dag.event.append"] },
-    MethodSpec { fqn: "dag.dehydration.status",  domain: "dag", short_name: "dehydration.status",  estimated_ms: 1,  gpu_beneficial: false, external: false, deps: &["dag.dehydration.trigger"] },
+    MethodSpec {
+        fqn: "dag.dehydration.trigger",
+        domain: "dag",
+        short_name: "dehydration.trigger",
+        estimated_ms: 50,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create", "dag.event.append"],
+    },
+    MethodSpec {
+        fqn: "dag.dehydration.status",
+        domain: "dag",
+        short_name: "dehydration.status",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.dehydration.trigger"],
+    },
     // Health and introspection
-    MethodSpec { fqn: "health.check",     domain: "health",       short_name: "check",     estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
-    MethodSpec { fqn: "health.liveness",  domain: "health",       short_name: "liveness",  estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
-    MethodSpec { fqn: "health.readiness", domain: "health",       short_name: "readiness", estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
-    MethodSpec { fqn: "health.metrics",   domain: "health",       short_name: "metrics",   estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
-    MethodSpec { fqn: "capabilities.list", domain: "capabilities", short_name: "list",     estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec {
+        fqn: "health.check",
+        domain: "health",
+        short_name: "check",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "health.liveness",
+        domain: "health",
+        short_name: "liveness",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "health.readiness",
+        domain: "health",
+        short_name: "readiness",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "health.metrics",
+        domain: "health",
+        short_name: "metrics",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "capabilities.list",
+        domain: "capabilities",
+        short_name: "list",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
     // Identity
-    MethodSpec { fqn: "identity.get", domain: "identity", short_name: "get", estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec {
+        fqn: "identity.get",
+        domain: "identity",
+        short_name: "get",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
     // MCP tool exposure (Squirrel AI coordination)
-    MethodSpec { fqn: "tools.list", domain: "tools", short_name: "list", estimated_ms: 1, gpu_beneficial: false, external: false, deps: &[] },
-    MethodSpec { fqn: "tools.call", domain: "tools", short_name: "call", estimated_ms: 5, gpu_beneficial: false, external: false, deps: &[] },
+    MethodSpec {
+        fqn: "tools.list",
+        domain: "tools",
+        short_name: "list",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "tools.call",
+        domain: "tools",
+        short_name: "call",
+        estimated_ms: 5,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
 ];
 
 /// Flat list of all capability FQN strings this primal exposes.
 ///
 /// Derived from [`METHOD_CATALOG`] at startup. Used by JSON-RPC dispatch
 /// and biomeOS capability advertisement.
-pub static CAPABILITIES: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
-    METHOD_CATALOG.iter().map(|m| m.fqn).collect()
-});
+pub static CAPABILITIES: LazyLock<Vec<&'static str>> =
+    LazyLock::new(|| METHOD_CATALOG.iter().map(|m| m.fqn).collect());
 
 // ============================================================================
 // SEMANTIC ALIASES
@@ -151,10 +374,8 @@ const SEMANTIC_ALIASES: &[(&str, &str)] = &[
 /// `capability.call { domain: "dag", operation: "session.create" }` routes
 /// to the correct JSON-RPC method.
 pub static SEMANTIC_MAPPINGS: LazyLock<Vec<(&'static str, &'static str)>> = LazyLock::new(|| {
-    let mut mappings: Vec<(&str, &str)> = METHOD_CATALOG
-        .iter()
-        .map(|m| (m.short_name, m.fqn))
-        .collect();
+    let mut mappings: Vec<(&str, &str)> =
+        METHOD_CATALOG.iter().map(|m| (m.short_name, m.fqn)).collect();
     mappings.extend_from_slice(SEMANTIC_ALIASES);
     mappings
 });

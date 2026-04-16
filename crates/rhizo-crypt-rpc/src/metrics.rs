@@ -29,7 +29,7 @@ mod histogram;
 #[path = "prometheus.rs"]
 mod prometheus;
 
-#[allow(unused_imports)] // Re-export only; used by downstream crates and tests.
+#[expect(unused_imports, reason = "re-exported for downstream crates and tests")]
 pub use histogram::{Histogram, HistogramSnapshot, LATENCY_BUCKETS};
 
 /// Metric labels for RPC methods.
