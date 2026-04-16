@@ -11,7 +11,7 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 BINS_DIR="${PRIMAL_BINS_DIR:-$REPO_ROOT/../../primalBins}"
-SONGBIRD_BIN="${SONGBIRD_BIN:-$BINS_DIR/songbird-rendezvous}"
+SONGBIRD_BIN="${SONGBIRD_BIN:-$BINS_DIR/songbird}"
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}   👶 Infant Boot: Start with Zero Knowledge${NC}"
@@ -22,7 +22,7 @@ echo ""
 if [ ! -f "$SONGBIRD_BIN" ]; then
     echo -e "${RED}❌ Songbird binary not found at: $SONGBIRD_BIN${NC}"
     echo ""
-    echo "Expected location: $BINS_DIR/songbird-rendezvous"
+    echo "Expected location: $BINS_DIR/songbird"
     echo "Please ensure Phase 1 binaries are available."
     exit 1
 fi
@@ -42,7 +42,7 @@ SONGBIRD_PORT=8888
 export SONGBIRD_PORT
 export RUST_LOG=info
 
-echo "   Starting songbird-rendezvous on port $SONGBIRD_PORT..."
+echo "   Starting songbird on port $SONGBIRD_PORT..."
 $SONGBIRD_BIN > "$SCRIPT_DIR/logs/songbird.log" 2>&1 &
 SONGBIRD_PID=$!
 echo $SONGBIRD_PID > "$SCRIPT_DIR/logs/songbird.pid"

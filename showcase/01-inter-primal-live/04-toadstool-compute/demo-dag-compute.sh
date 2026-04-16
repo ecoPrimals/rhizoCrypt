@@ -9,7 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 BINS_DIR="${PRIMAL_BINS_DIR:-$REPO_ROOT/../../primalBins}"
-TOADSTOOL_BIN="${TOADSTOOL_BIN:-$BINS_DIR/toadstool-cli}"
+TOADSTOOL_BIN="${TOADSTOOL_BIN:-$BINS_DIR/toadstool}"
 RHIZO_BIN="${RHIZO_BIN:-$REPO_ROOT/target/release/rhizocrypt}"
 
 # Colors

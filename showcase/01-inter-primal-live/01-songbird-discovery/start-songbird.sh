@@ -39,7 +39,7 @@ echo -e "${NC}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 BINS_DIR="${PRIMAL_BINS_DIR:-$REPO_ROOT/../../primalBins}"
-SONGBIRD_BIN="${SONGBIRD_BIN:-$BINS_DIR/songbird-cli}"
+SONGBIRD_BIN="${SONGBIRD_BIN:-$BINS_DIR/songbird}"
 
 # Verify binary exists
 if [ ! -f "$SONGBIRD_BIN" ]; then
@@ -58,12 +58,12 @@ if lsof -Pi :8888 -sTCP:LISTEN -t >/dev/null 2>&1; then
     warn "Songbird rendezvous already running on port 8888"
     echo ""
     info "To stop existing instance:"
-    echo "  pkill -f songbird-rendezvous"
+    echo "  pkill -f songbird"
     echo ""
     info "To continue with existing instance:"
     echo "  Press Ctrl+C to cancel, or wait 5 seconds to kill and restart..."
     sleep 5
-    pkill -f songbird-rendezvous || true
+    pkill -f songbird || true
     sleep 2
 fi
 

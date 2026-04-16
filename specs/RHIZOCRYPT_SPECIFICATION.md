@@ -1190,7 +1190,7 @@ paths:
 - [x] MCP tools.list + tools.call for AI coordination (Squirrel)
 
 ### Phase 6: IPC & Protocol — Complete
-- [x] JSON-RPC 2.0 handler with 27 methods across 8 domains
+- [x] JSON-RPC 2.0 handler with 28 methods across 8 domains
 - [x] tarpc binary RPC service
 - [x] `normalize_method()` for backward-compatible routing
 - [x] 4-format capability response parsing
@@ -1198,13 +1198,13 @@ paths:
 - [x] `DispatchOutcome<T>` for structured error handling
 
 ### Phase 7: Quality & Hardening — Active
-- [x] 1,506+ tests, clippy-clean, fmt-clean, docs-clean
+- [x] 1,507+ tests, clippy-clean, fmt-clean, docs-clean
 - [x] 3 fuzz targets (merkle, session builder, vertex CBOR)
 - [x] 5 chaos test suites
 - [x] proptest for IPC protocol invariants
 - [x] `#[forbid(unsafe_code)]` (non-test), `#[deny(unwrap_used, expect_used)]`
 - [x] `cargo-deny` supply chain audit
-- [ ] Achieve 90%+ line coverage (CI gated)
+- [x] Achieve 90%+ line coverage (CI gated) — 93.88%
 - [ ] `Arc<str>` for hot-path identifiers (zero-copy evolution)
 - [ ] Streaming/NDJSON for long-running operations
 

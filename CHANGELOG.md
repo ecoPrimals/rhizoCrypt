@@ -32,11 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`store_redb_tests_advanced.rs`** (861 → 594 + 272 LOC): coverage tests extracted to `store_redb_tests_coverage.rs`
 - **`loamspine_http_tests.rs`** (858 → 303 + 512 LOC): wiremock tests extracted to `loamspine_http_tests_wiremock.rs`
 - **`rhizocrypt_tests.rs`** (805 → 463 + 355 LOC): extended tests extracted to `rhizocrypt_tests_extended.rs`
-- **`niche.rs`** (654 → 404 LOC): `MethodSpec` + `METHOD_CATALOG` eliminated structural redundancy
+- **`niche.rs`** (654 → 404 compact; 625 after rustfmt): `MethodSpec` + `METHOD_CATALOG` eliminated structural redundancy
 
 #### S43: Documentation Refresh
 
-- **README.md** — tests 1,506, coverage 93.88%, 170 `.rs` files, `METHOD_CATALOG` mention, `CRYPTO_MODEL.md` link, demo count 65
+- **README.md** — tests 1,507, coverage 93.88%, 170 `.rs` files, `METHOD_CATALOG` mention, `CRYPTO_MODEL.md` link, demo count 65
 - **CONTEXT.md** — registry note corrected (28 methods in `METHOD_CATALOG`), file/line counts updated
 - **`specs/00_SPECIFICATIONS_INDEX.md`** — added Security & Cryptography section with `CRYPTO_MODEL.md`
 - **showcase `Cargo.toml`** — `tokio = "full"` → explicit features (ecoBin compile efficiency)
