@@ -214,6 +214,27 @@ fn check_transport() -> Vec<(String, DoctorCheck, Option<String>)> {
         Some(btsp_detail),
     ));
 
+    // Capability manifest (PG-32: file-based discovery)
+    let manifest_path = rhizo_crypt_core::discovery::manifest::manifest_dir()
+        .map(|dir| dir.join("rhizocrypt.json"));
+    let (manifest_status, manifest_detail) = match &manifest_path {
+        Some(path) if path.exists() => {
+            (DoctorCheck::Pass, format!("present at {}", path.display()))
+        }
+        Some(path) => (
+            DoctorCheck::Warn,
+            format!(
+                "absent (server not running or XDG_RUNTIME_DIR changed), expected={}",
+                path.display()
+            ),
+        ),
+        None => (
+            DoctorCheck::Warn,
+            "XDG_RUNTIME_DIR not set (manifest discovery unavailable)".to_string(),
+        ),
+    };
+    results.push(("Discovery: manifest".to_string(), manifest_status, Some(manifest_detail)));
+
     results
 }
 

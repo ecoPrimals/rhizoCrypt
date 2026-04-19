@@ -261,9 +261,9 @@ pub async fn run_server_with_ready(
     let tcp_requested =
         port_override.is_some() || host_override.is_some() || has_explicit_tcp_config();
 
-    // Resolve TCP address early so the manifest can include it.
+    // Resolve TCP address once — used for both manifest and serve_with_tcp.
     let tcp_addr = if tcp_requested {
-        resolve_bind_addr(port_override, host_override.clone()).ok()
+        Some(resolve_bind_addr(port_override, host_override)?)
     } else {
         None
     };
@@ -275,10 +275,9 @@ pub async fn run_server_with_ready(
         publish_capability_manifest(socket_path, tcp_addr).await;
     }
 
-    let result = if tcp_requested {
+    let result = if let Some(addr) = tcp_addr {
         serve_with_tcp(
-            port_override,
-            host_override,
+            addr,
             &primal,
             ready,
             #[cfg(unix)]
@@ -324,15 +323,14 @@ pub async fn run_server_with_ready(
 
 /// Serve with TCP (tarpc + JSON-RPC) alongside UDS.
 ///
-/// Extracted from `run_server_with_ready` to satisfy the 100-line function limit.
+/// Takes a pre-resolved `SocketAddr` (computed once in `run_server_with_ready`
+/// and shared with the capability manifest).
 async fn serve_with_tcp(
-    port_override: Option<u16>,
-    host_override: Option<String>,
+    addr: SocketAddr,
     primal: &Arc<RhizoCrypt>,
     ready: Option<Arc<tokio::sync::Notify>>,
     #[cfg(unix)] uds_shutdown_tx: tokio::sync::watch::Sender<bool>,
 ) -> Result<(), ServiceError> {
-    let addr = resolve_bind_addr(port_override, host_override)?;
     info!(address = %addr, "Binding TCP servers (opt-in)");
 
     let server = RpcServer::new(Arc::clone(primal), addr);

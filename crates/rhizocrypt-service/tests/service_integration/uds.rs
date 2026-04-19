@@ -3,6 +3,7 @@
 
 //! UDS transport integration tests.
 
+use rhizo_crypt_core::discovery::PrimalManifest;
 use rhizo_crypt_core::{PrimalLifecycle, RhizoCrypt, RhizoCryptConfig};
 use rhizo_crypt_rpc::jsonrpc::uds::UdsJsonRpcServer;
 use rhizocrypt_service::run_server_with_ready;
@@ -259,4 +260,69 @@ async fn test_uds_graceful_shutdown_under_load() {
         .expect("server should shut down within 5s");
     assert!(result.is_ok(), "server should shut down cleanly");
     assert!(!sock.exists(), "socket should be cleaned up");
+}
+
+/// Verify that `PrimalManifest` round-trips correctly with rhizoCrypt's
+/// canonical capabilities, validating the PG-32 discovery contract.
+///
+/// Uses a dedicated runtime to allow `temp_env::with_var` (sync) to wrap
+/// async manifest operations without nesting runtimes.
+#[test]
+fn test_manifest_publish_lifecycle() {
+    let dir = tempfile::tempdir().unwrap();
+    let biomeos_dir = dir.path().join("biomeos");
+    std::fs::create_dir_all(&biomeos_dir).unwrap();
+
+    let manifest_path = biomeos_dir.join("rhizocrypt.json");
+    let sock_path = dir.path().join("rhizocrypt.sock");
+
+    let manifest = PrimalManifest {
+        primal: "rhizocrypt".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        socket: sock_path.display().to_string(),
+        address: None,
+        capabilities: rhizo_crypt_core::niche::CAPABILITIES
+            .iter()
+            .map(|s| (*s).to_string())
+            .collect(),
+    };
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    temp_env::with_var("XDG_RUNTIME_DIR", Some(dir.path().to_str().unwrap()), || {
+        rt.block_on(async {
+            rhizo_crypt_core::discovery::publish_manifest(&manifest)
+                .await
+                .expect("publish should succeed");
+        });
+    });
+
+    assert!(manifest_path.exists(), "manifest should exist after publish");
+
+    let contents = std::fs::read_to_string(&manifest_path).unwrap();
+    let loaded: PrimalManifest = serde_json::from_str(&contents).unwrap();
+    assert_eq!(loaded.primal, "rhizocrypt");
+    assert!(!loaded.socket.is_empty(), "socket path should be populated");
+    assert!(!loaded.capabilities.is_empty(), "capabilities should be populated");
+    assert!(
+        loaded.capabilities.iter().any(|c| c.starts_with("dag.")),
+        "should advertise dag.* capabilities"
+    );
+
+    let first_cap = loaded.capabilities[0].clone();
+    temp_env::with_var("XDG_RUNTIME_DIR", Some(dir.path().to_str().unwrap()), || {
+        rt.block_on(async {
+            let found = rhizo_crypt_core::discovery::discover_by_capability(&first_cap).await;
+            assert!(!found.is_empty(), "discover_by_capability should find rhizocrypt");
+            assert_eq!(found[0].primal, "rhizocrypt");
+        });
+    });
+
+    temp_env::with_var("XDG_RUNTIME_DIR", Some(dir.path().to_str().unwrap()), || {
+        rt.block_on(async {
+            rhizo_crypt_core::discovery::unpublish_manifest("rhizocrypt").await;
+        });
+    });
+
+    assert!(!manifest_path.exists(), "manifest should be cleaned up after unpublish");
 }

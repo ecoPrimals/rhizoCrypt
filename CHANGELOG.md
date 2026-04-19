@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S43.8: TCP Resolution Dedup + Doctor Manifest + Integration Test
+
+- **Deduplicate `resolve_bind_addr`** — TCP address resolved once in `run_server_with_ready()` and passed to both manifest publication and `serve_with_tcp()`; eliminates redundant resolution and `.ok()` vs `?` inconsistency
+- **Doctor manifest check** — `check_transport()` now verifies `rhizocrypt.json` presence at the expected `$XDG_RUNTIME_DIR/biomeos/` path, reporting pass/warn for PG-32 discoverability
+- **Manifest lifecycle integration test** — `test_manifest_publish_lifecycle` validates publish → discover_by_capability → unpublish round-trip with real `CAPABILITIES` from `METHOD_CATALOG` (test count: 1,508)
+
 #### S43.7: Manifest-Based Discovery — PG-32 Resolution
 
 - **Capability manifest publish on startup** — `run_server_with_ready()` now publishes `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.json` containing UDS socket path, optional TCP address, and all 28 capabilities from `METHOD_CATALOG`; springs calling `discover_by_capability("dag")` now find rhizoCrypt's socket
