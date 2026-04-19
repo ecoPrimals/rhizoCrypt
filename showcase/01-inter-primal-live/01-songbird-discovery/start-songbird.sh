@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# 🎵 Start Songbird Rendezvous Server
+# 🎵 Start Songbird Server
 #
-# Starts the REAL songbird-rendezvous binary from Phase 1
+# Starts the REAL songbird binary from Phase 1
 # NO MOCKS - This is live integration!
 #
 
@@ -82,9 +82,9 @@ echo ""
 # Create log directory
 LOG_DIR="$SCRIPT_DIR/logs"
 mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/songbird-rendezvous.log"
+LOG_FILE="$LOG_DIR/songbird.log"
 
-log "Starting Songbird tower (rendezvous mode)..."
+log "Starting Songbird tower..."
 echo ""
 
 # Start tower in background

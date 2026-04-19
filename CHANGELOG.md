@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S43.6: Doc Reconciliation + Showcase Binary Alignment
+
+- **Doctor TCP env var alignment** — transport message now lists all three opt-in env vars matching `has_explicit_tcp_config()`
+- **Showcase binary names** — remaining `songbird-rendezvous` references → `songbird` (UniBin canonical) in `start-songbird.sh`, songbird README
+- **Showcase paths** — `../../../bins/` → `${PRIMAL_BINS:-../../../primalBins}` in nestgate demo
+- **Metrics** — line count ~48,800 (from ~48,700)
+
 #### S43.5: Transport Diagnostics (ludoSpring GAP-06 Response)
 
 - **`doctor` transport checks** — new `check_transport()` reports UDS socket path + status, TCP opt-in state, and BTSP enforcement mode; resolves ludoSpring GAP-06 ("TCP-only, no UDS") which was stale documentation — UDS has been unconditional since S23/S37
@@ -67,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Metrics**
 - 1,507 tests passing (0 failures)
-- 170 `.rs` files, ~48,700 lines
+- 170 `.rs` files, ~48,800 lines
 - `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok (RUSTSEC-2026-0007 resolved)
 - Max file: 724 lines (limit 1,000)
 - Zero clippy warnings, zero unsafe blocks, zero production unwrap/expect

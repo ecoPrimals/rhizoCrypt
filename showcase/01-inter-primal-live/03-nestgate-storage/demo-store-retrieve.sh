@@ -33,7 +33,7 @@ if ! curl -sf "$NESTGATE_ENDPOINT/health" > /dev/null 2>&1; then
     echo -e "${RED}✗ NestGate not responding at $NESTGATE_ENDPOINT${NC}"
     echo ""
     echo "To start NestGate:"
-    echo "  cd ../../../bins/"
+    echo "  cd \${PRIMAL_BINS:-../../../primalBins}"
     echo "  ./nestgate --port 9500 --storage ./nestgate-data"
     echo ""
     echo "Or set custom endpoint:"

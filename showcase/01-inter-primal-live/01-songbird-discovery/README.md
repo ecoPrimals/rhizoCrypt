@@ -14,7 +14,7 @@ Integrate rhizoCrypt with **real Songbird rendezvous server** to:
 3. Monitor health and connectivity
 4. Establish foundation for all other primal coordination
 
-**Key Philosophy**: Use **REAL** `songbird-rendezvous` binary (NO MOCKS)
+**Key Philosophy**: Use **REAL** `songbird` binary (NO MOCKS)
 
 ---
 
@@ -58,7 +58,7 @@ Songbird is the **Pure Infant Discovery** primal that enables:
 ```
 
 **What it does**:
-- Starts real `songbird-rendezvous` binary
+- Starts real `songbird` binary
 - Configures ports and certificates
 - Establishes mesh foundation
 - Monitors for readiness
@@ -189,7 +189,7 @@ Based on audit and Phase 1 experience:
 ## 📊 Success Criteria
 
 ### Phase 1 Complete When:
-- [x] `songbird-rendezvous` starts successfully
+- [x] `songbird` starts successfully
 - [x] rhizoCrypt registers with mesh
 - [x] rhizoCrypt receives tower ID
 - [x] Registration persists (survives restarts)
@@ -215,7 +215,7 @@ Based on audit and Phase 1 experience:
 **Goal**: Get rhizoCrypt to show up in Songbird mesh
 
 **Approach**:
-1. Start `songbird-rendezvous` with defaults
+1. Start `songbird` with defaults
 2. Create minimal rhizoCrypt registration client
 3. Send basic capability declaration
 4. Verify tower ID received
