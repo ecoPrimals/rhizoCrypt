@@ -26,8 +26,9 @@ pub enum DoctorCheck {
 
 /// Run health diagnostics per the `UniBin` Architecture Standard.
 ///
-/// Performs checks on DAG engine, storage, configuration, and optional
-/// discovery connectivity. Output is human-readable for operator inspection.
+/// Performs checks on DAG engine, storage, transport, configuration, and
+/// optional discovery connectivity. Output is human-readable for operator
+/// inspection.
 pub async fn run_doctor(comprehensive: bool) {
     let version = env!("CARGO_PKG_VERSION");
     println!("rhizoCrypt Doctor v{version}");
@@ -56,6 +57,9 @@ pub async fn run_doctor(comprehensive: bool) {
         },
         None,
     ));
+
+    let transport_checks = check_transport();
+    checks.extend(transport_checks);
 
     let (config_ok, config_msg) = check_configuration();
     checks.push((
@@ -139,6 +143,77 @@ fn check_redb_storage() -> Result<(), ServiceError> {
     let db_path = temp_dir.path().join("doctor_check.redb");
     let _store = RedbDagStore::open(&db_path).map_err(|e| ServiceError::Storage(e.to_string()))?;
     Ok(())
+}
+
+/// Check transport configuration (UDS + TCP).
+///
+/// Reports the active transport modes and socket paths so downstream springs
+/// can verify that UDS is available without inspecting source code.
+fn check_transport() -> Vec<(String, DoctorCheck, Option<String>)> {
+    use rhizo_crypt_core::transport;
+
+    let mut results = Vec::new();
+
+    // UDS transport (unconditional on Unix)
+    #[cfg(unix)]
+    {
+        let socket_path = rhizo_crypt_rpc::jsonrpc::uds::default_socket_path();
+        let parent_exists = socket_path.parent().is_some_and(std::path::Path::exists);
+        let (status, detail) = if parent_exists {
+            (DoctorCheck::Pass, format!("unconditional, path={}", socket_path.display()))
+        } else {
+            (
+                DoctorCheck::Warn,
+                format!(
+                    "socket dir missing (will create on startup), path={}",
+                    socket_path.display()
+                ),
+            )
+        };
+        results.push(("Transport: UDS".to_string(), status, Some(detail)));
+    }
+
+    #[cfg(not(unix))]
+    {
+        results.push((
+            "Transport: UDS".to_string(),
+            DoctorCheck::Warn,
+            Some("unavailable (non-Unix platform)".to_string()),
+        ));
+    }
+
+    // TCP transport (opt-in)
+    let tcp_active = crate::has_explicit_tcp_config();
+    let tcp_detail = if tcp_active {
+        "enabled via env (RHIZOCRYPT_PORT or RHIZOCRYPT_RPC_PORT)".to_string()
+    } else {
+        "disabled (opt-in: pass --port or set RHIZOCRYPT_PORT)".to_string()
+    };
+    results.push(("Transport: TCP".to_string(), DoctorCheck::Pass, Some(tcp_detail)));
+
+    // BTSP security
+    let btsp_required = rhizo_crypt_rpc::btsp::is_btsp_required();
+    let insecure = transport::is_biomeos_insecure();
+    let family_id = transport::read_family_id("RHIZOCRYPT");
+    let btsp_detail = if btsp_required {
+        let fid = family_id.as_deref().unwrap_or("(missing FAMILY_SEED — will reject all)");
+        format!("enforced (FAMILY_ID={fid})")
+    } else if insecure {
+        "bypassed (BIOMEOS_INSECURE=1, dev mode)".to_string()
+    } else {
+        "not required (no FAMILY_ID set, raw JSON-RPC)".to_string()
+    };
+    results.push((
+        "Transport: BTSP".to_string(),
+        if btsp_required && family_id.is_none() {
+            DoctorCheck::Warn
+        } else {
+            DoctorCheck::Pass
+        },
+        Some(btsp_detail),
+    ));
+
+    results
 }
 
 /// Check environment variable configuration.

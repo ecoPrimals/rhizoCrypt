@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S43.5: Transport Diagnostics (ludoSpring GAP-06 Response)
+
+- **`doctor` transport checks** — new `check_transport()` reports UDS socket path + status, TCP opt-in state, and BTSP enforcement mode; resolves ludoSpring GAP-06 ("TCP-only, no UDS") which was stale documentation — UDS has been unconditional since S23/S37
+
 #### S43.4: Final Debt Sweep
 
 - **tarpc one-way fire-and-forget** — `let _ = client.call(…)` in `TarpcAdapter::call_oneway_json` evolved to `if let Err(e) … { debug!(…) }` with structured `tracing` for production observability
