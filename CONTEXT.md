@@ -69,7 +69,7 @@ Three workspace crates:
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,507 passing (all features) |
+| Tests | 1,508 passing (all features) |
 | Coverage | 93.88% lines (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
 | Source files | 170 `.rs`, ~48,800 lines |
@@ -88,7 +88,7 @@ Three workspace crates:
 - `Cargo.toml` — Workspace config, lint policy, dependency pins
 - `capability_registry.toml` — Capability method registry (28 methods in `METHOD_CATALOG`, 5 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
-- `specs/` — 11 specification documents (incl. `CRYPTO_MODEL.md` — BearDog crypto delegation)
+- `specs/` — 12 specification documents (incl. `CRYPTO_MODEL.md` — BearDog crypto delegation)
 - `showcase/` — 65 progressive demos
 
 ## Part of ecoPrimals

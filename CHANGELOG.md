@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### S43: Documentation Refresh
 
-- **README.md** — tests 1,507, coverage 93.88%, 170 `.rs` files, `METHOD_CATALOG` mention, `CRYPTO_MODEL.md` link, demo count 65
+- **README.md** — tests 1,508, coverage 93.88%, 170 `.rs` files, `METHOD_CATALOG` mention, `CRYPTO_MODEL.md` link, demo count 65
 - **CONTEXT.md** — registry note corrected (28 methods in `METHOD_CATALOG`), file/line counts updated
 - **`specs/00_SPECIFICATIONS_INDEX.md`** — added Security & Cryptography section with `CRYPTO_MODEL.md`
 - **showcase `Cargo.toml`** — `tokio = "full"` → explicit features (ecoBin compile efficiency)
@@ -86,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `crates/rhizocrypt-service/tests/service_integration/` directory module (4 files)
 
 **Metrics**
-- 1,507 tests passing (0 failures)
+- 1,508 tests passing (0 failures)
 - 170 `.rs` files, ~48,800 lines
 - `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok (RUSTSEC-2026-0007 resolved)
 - Max file: 724 lines (limit 1,000)

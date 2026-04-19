@@ -2,7 +2,7 @@
 
 **Version**: 2.0.0 🥇  
 **Status**: Current (Capability-Based Architecture)  
-**Last Updated**: December 26, 2025
+**Last Updated**: April 2026
 
 ---
 
@@ -58,8 +58,7 @@ Any service that implements cryptographic signing capabilities.
 /// Signing provider trait - capability-based (v2.0) 🥇
 ///
 /// Any service can implement this trait to provide signing capabilities.
-/// rhizoCrypt discovers providers at runtime via Songbird.
-#[async_trait]
+/// rhizoCrypt discovers providers at runtime via Songbird or manifest-based discovery.
 pub trait SigningProvider: Send + Sync {
     // ==================== Identity ====================
     
@@ -159,8 +158,7 @@ Any service that implements immutable, permanent storage capabilities.
 /// Permanent storage provider trait - capability-based (v2.0) 🥇
 ///
 /// Any service can implement this trait to provide permanent storage.
-/// rhizoCrypt discovers providers at runtime via Songbird.
-#[async_trait]
+/// rhizoCrypt discovers providers at runtime via Songbird or manifest-based discovery.
 pub trait PermanentStorageProvider: Send + Sync {
     // ==================== Commit ====================
     
@@ -260,8 +258,7 @@ Any service that implements ephemeral blob storage capabilities.
 /// Payload storage provider trait - capability-based (v2.0) 🥇
 ///
 /// Any service can implement this trait to provide payload storage.
-/// rhizoCrypt discovers providers at runtime via Songbird.
-#[async_trait]
+/// rhizoCrypt discovers providers at runtime via Songbird or manifest-based discovery.
 pub trait PayloadStorageProvider: Send + Sync {
     /// Store a payload and return its reference
     async fn put_payload(&self, data: Bytes) -> Result<PayloadRef>;
@@ -490,5 +487,5 @@ assert!(mock.sign(data, &did).await.is_ok());
 **Version**: 2.0.0 🥇  
 **Status**: Production Ready - Ecosystem Leader  
 **Philosophy**: Request capabilities, not vendors  
-**Last Updated**: December 26, 2025
+**Last Updated**: April 2026
 

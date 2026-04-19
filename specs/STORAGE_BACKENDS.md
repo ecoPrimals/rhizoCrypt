@@ -2,7 +2,7 @@
 
 **Version**: 0.2.0  
 **Status**: Draft  
-**Last Updated**: March 2026
+**Last Updated**: April 2026
 
 ---
 
@@ -33,11 +33,9 @@ The `DagStore` trait uses RPITIT (non-object-safe), so runtime dispatch uses the
 ### 2.1 DAG Store Trait
 
 ```rust
-use async_trait::async_trait;
 use bytes::Bytes;
 
-/// Primary storage trait for DAG vertices
-#[async_trait]
+/// Primary storage trait for DAG vertices (native async — no async-trait crate)
 pub trait DagStore: Send + Sync + Clone {
     /// Store a vertex
     async fn put_vertex(
@@ -156,7 +154,6 @@ pub struct StorageStats {
 
 ```rust
 /// Storage trait for large payloads
-#[async_trait]
 pub trait PayloadStore: Send + Sync + Clone {
     /// Store a payload
     async fn put(&self, data: Bytes) -> Result<PayloadRef, StorageError>;
@@ -212,7 +209,6 @@ pub enum CompressionType {
 
 ```rust
 /// Storage trait for session metadata
-#[async_trait]
 pub trait SessionStore: Send + Sync + Clone {
     /// Store session metadata
     async fn put_session(&self, session: &Session) -> Result<(), StorageError>;
@@ -310,7 +306,6 @@ impl InMemoryDagStore {
     }
 }
 
-#[async_trait]
 impl DagStore for InMemoryDagStore {
     async fn put_vertex(
         &self,
@@ -482,7 +477,6 @@ impl InMemoryPayloadStore {
     }
 }
 
-#[async_trait]
 impl PayloadStore for InMemoryPayloadStore {
     async fn put(&self, data: Bytes) -> Result<PayloadRef, StorageError> {
         let payload_ref = PayloadRef::from_bytes(&data);

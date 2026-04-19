@@ -2,7 +2,7 @@
 
 **Version**: 0.2.0  
 **Status**: Draft  
-**Last Updated**: December 22, 2025
+**Last Updated**: April 2026
 
 ---
 
@@ -977,8 +977,7 @@ impl PayloadRef {
 ### 7.2 Payload Store Trait
 
 ```rust
-/// Trait for payload storage backends
-#[async_trait]
+/// Trait for payload storage backends (native async — no async-trait crate)
 pub trait PayloadStore: Send + Sync {
     /// Store a payload
     async fn put(&self, data: bytes::Bytes) -> Result<PayloadRef, StorageError>;
