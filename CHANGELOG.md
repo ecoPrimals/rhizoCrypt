@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S43.7: Manifest-Based Discovery — PG-32 Resolution
+
+- **Capability manifest publish on startup** — `run_server_with_ready()` now publishes `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.json` containing UDS socket path, optional TCP address, and all 28 capabilities from `METHOD_CATALOG`; springs calling `discover_by_capability("dag")` now find rhizoCrypt's socket
+- **Manifest unpublish on shutdown** — `unpublish_manifest("rhizocrypt")` called on every exit path (graceful shutdown, TCP + UDS combined)
+- **`start_uds_listener` returns socket path** — enables manifest publication with the actual bound socket path
+- **`publish_manifest` / `unpublish_manifest` re-exported** from `discovery` module for service-layer access
+
 #### S43.6: Doc Reconciliation + Showcase Binary Alignment
 
 - **Doctor TCP env var alignment** — transport message now lists all three opt-in env vars matching `has_explicit_tcp_config()`

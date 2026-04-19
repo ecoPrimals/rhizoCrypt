@@ -256,12 +256,26 @@ pub async fn run_server_with_ready(
     // UDS is unconditional on Unix (Provenance Trio standard — LD-06).
     // None = no UDS (test backward-compat), Some("") = default, Some(path) = custom.
     #[cfg(unix)]
-    let uds_shutdown_tx = start_uds_listener(unix_socket.as_ref(), &primal);
+    let (uds_shutdown_tx, uds_socket_path) = start_uds_listener(unix_socket.as_ref(), &primal);
 
     let tcp_requested =
         port_override.is_some() || host_override.is_some() || has_explicit_tcp_config();
 
-    if tcp_requested {
+    // Resolve TCP address early so the manifest can include it.
+    let tcp_addr = if tcp_requested {
+        resolve_bind_addr(port_override, host_override.clone()).ok()
+    } else {
+        None
+    };
+
+    // Publish manifest so springs can discover us via capability-based lookup
+    // (PG-32: discover_by_capability("dag") must find our socket).
+    #[cfg(unix)]
+    if let Some(ref socket_path) = uds_socket_path {
+        publish_capability_manifest(socket_path, tcp_addr).await;
+    }
+
+    let result = if tcp_requested {
         serve_with_tcp(
             port_override,
             host_override,
@@ -296,7 +310,16 @@ pub async fn run_server_with_ready(
         }
         info!("rhizoCrypt service shutdown cleanly");
         Ok(())
+    };
+
+    // Unpublish manifest on shutdown (best-effort cleanup).
+    #[cfg(unix)]
+    {
+        rhizo_crypt_core::discovery::unpublish_manifest("rhizocrypt").await;
+        debug!("Capability manifest unpublished");
     }
+
+    result
 }
 
 /// Serve with TCP (tarpc + JSON-RPC) alongside UDS.
@@ -431,24 +454,53 @@ fn resolve_uds_path(raw: &str) -> PathBuf {
 /// `None` = no UDS (test backward-compat). `Some("")` = default ecosystem
 /// path. `Some(path)` = custom path. On production Unix, `main.rs` always
 /// passes `Some` so UDS is unconditional.
+///
+/// Returns `(shutdown_sender, Option<socket_path>)` — the socket path is
+/// used for manifest publication so springs can discover this primal.
 #[cfg(unix)]
 fn start_uds_listener(
     unix_socket: Option<&String>,
     primal: &Arc<RhizoCrypt>,
-) -> tokio::sync::watch::Sender<bool> {
+) -> (tokio::sync::watch::Sender<bool>, Option<PathBuf>) {
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
-    if let Some(raw_path) = unix_socket {
-        let socket_path = resolve_uds_path(raw_path);
-        info!(path = %socket_path.display(), "Starting UDS JSON-RPC listener");
+    let socket_path = unix_socket.map(|raw_path| {
+        let path = resolve_uds_path(raw_path);
+        info!(path = %path.display(), "Starting UDS JSON-RPC listener");
         let uds_server =
-            rhizo_crypt_rpc::jsonrpc::uds::UdsJsonRpcServer::new(Arc::clone(primal), socket_path);
+            rhizo_crypt_rpc::jsonrpc::uds::UdsJsonRpcServer::new(Arc::clone(primal), path.clone());
         tokio::spawn(async move {
             if let Err(e) = uds_server.serve(shutdown_rx).await {
                 error!(error = %e, "UDS JSON-RPC server error");
             }
         });
+        path
+    });
+    (shutdown_tx, socket_path)
+}
+
+/// Publish a capability manifest so sibling primals (and springs) can discover
+/// rhizoCrypt via file-based capability lookup (PG-32).
+///
+/// Writes `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.json` with the UDS socket path
+/// and all capabilities from `METHOD_CATALOG`. Logs on failure but does not
+/// abort — the service still runs, just without manifest-based discoverability.
+#[cfg(unix)]
+async fn publish_capability_manifest(socket_path: &std::path::Path, tcp_addr: Option<SocketAddr>) {
+    use rhizo_crypt_core::discovery::{PrimalManifest, publish_manifest};
+    use rhizo_crypt_core::niche::CAPABILITIES;
+
+    let manifest = PrimalManifest {
+        primal: "rhizocrypt".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        socket: socket_path.display().to_string(),
+        address: tcp_addr.map(|a| a.to_string()),
+        capabilities: CAPABILITIES.iter().map(|s| (*s).to_string()).collect(),
+    };
+
+    match publish_manifest(&manifest).await {
+        Ok(path) => info!(path = %path.display(), "Capability manifest published"),
+        Err(e) => warn!(error = %e, "Failed to publish capability manifest (discovery degraded)"),
     }
-    shutdown_tx
 }
 
 /// Register this primal with the configured discovery adapter.
