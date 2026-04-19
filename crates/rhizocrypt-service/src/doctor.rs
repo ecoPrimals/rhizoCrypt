@@ -182,12 +182,13 @@ fn check_transport() -> Vec<(String, DoctorCheck, Option<String>)> {
         ));
     }
 
-    // TCP transport (opt-in)
+    // TCP transport (opt-in via --port, RHIZOCRYPT_PORT, RHIZOCRYPT_RPC_PORT,
+    // or RHIZOCRYPT_JSONRPC_PORT — mirrors has_explicit_tcp_config())
     let tcp_active = crate::has_explicit_tcp_config();
     let tcp_detail = if tcp_active {
-        "enabled via env (RHIZOCRYPT_PORT or RHIZOCRYPT_RPC_PORT)".to_string()
+        "enabled via env or CLI".to_string()
     } else {
-        "disabled (opt-in: pass --port or set RHIZOCRYPT_PORT)".to_string()
+        "disabled (opt-in: --port / RHIZOCRYPT_PORT / RHIZOCRYPT_JSONRPC_PORT)".to_string()
     };
     results.push(("Transport: TCP".to_string(), DoctorCheck::Pass, Some(tcp_detail)));
 
