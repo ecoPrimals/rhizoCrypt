@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Deduplicate `resolve_bind_addr`** — TCP address resolved once in `run_server_with_ready()` and passed to both manifest publication and `serve_with_tcp()`; eliminates redundant resolution and `.ok()` vs `?` inconsistency
 - **Doctor manifest check** — `check_transport()` now verifies `rhizocrypt.json` presence at the expected `$XDG_RUNTIME_DIR/biomeos/` path, reporting pass/warn for PG-32 discoverability
-- **Manifest lifecycle integration test** — `test_manifest_publish_lifecycle` validates publish → discover_by_capability → unpublish round-trip with real `CAPABILITIES` from `METHOD_CATALOG` (test count: 1,508)
+- **Manifest lifecycle integration test** — `test_manifest_publish_lifecycle` validates publish → discover_by_capability → unpublish round-trip with real `CAPABILITIES` from `METHOD_CATALOG` (test count: 1,512 after S45.1)
 
 #### S43.7: Manifest-Based Discovery — PG-32 Resolution
 
@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Doctor TCP env var alignment** — transport message now lists all three opt-in env vars matching `has_explicit_tcp_config()`
 - **Showcase binary names** — remaining `songbird-rendezvous` references → `songbird` (UniBin canonical) in `start-songbird.sh`, songbird README
 - **Showcase paths** — `../../../bins/` → `${PRIMAL_BINS:-../../../primalBins}` in nestgate demo
-- **Metrics** — line count ~48,800 (from ~48,700)
+- **Metrics** — line count ~48,600
 
 #### S43.5: Transport Diagnostics (ludoSpring GAP-06 Response)
 
@@ -80,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### S43: Documentation Refresh
 
-- **README.md** — tests 1,508, coverage 93.88%, 170 `.rs` files, `METHOD_CATALOG` mention, `CRYPTO_MODEL.md` link, demo count 65
+- **README.md** — tests 1,512, coverage 93.88%, 170 `.rs` files, `METHOD_CATALOG` mention, `CRYPTO_MODEL.md` link, demo count 65
 - **CONTEXT.md** — registry note corrected (28 methods in `METHOD_CATALOG`), file/line counts updated
 - **`specs/00_SPECIFICATIONS_INDEX.md`** — added Security & Cryptography section with `CRYPTO_MODEL.md`
 - **showcase `Cargo.toml`** — `tokio = "full"` → explicit features (ecoBin compile efficiency)
@@ -95,8 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `crates/rhizocrypt-service/tests/service_integration/` directory module (4 files)
 
 **Metrics**
-- 1,508 tests passing (0 failures)
-- 170 `.rs` files, ~48,800 lines
+- 1,512 tests passing (0 failures)
+- 170 `.rs` files, ~48,600 lines
 - `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok (RUSTSEC-2026-0007 resolved)
 - Max file: 724 lines (limit 1,000)
 - Zero clippy warnings, zero unsafe blocks, zero production unwrap/expect
