@@ -163,19 +163,24 @@ impl UdsJsonRpcServer {
 
 /// Handle a single UDS connection with optional BTSP handshake enforcement.
 ///
-/// When `btsp_required` is `true` and a `family_seed` is available, the 4-step
-/// BTSP handshake runs before any JSON-RPC methods are exposed. On handshake
-/// failure the connection is dropped with no RPC surface.
+/// When `btsp_required` is `true`, uses first-byte auto-detect:
+/// - `{` or `[` → plain JSON-RPC probe (liveness-only: `health.check`,
+///   `capability.list`, etc.) — no BTSP required
+/// - Anything else → BTSP length-prefixed handshake, then full JSON-RPC
+///
+/// This matches the ecosystem pattern (BearDog/Squirrel PG-35, PG-30) where
+/// `health.check` must work without authentication for discovery probes.
 ///
 /// When `btsp_required` is `false` (development mode), the connection serves
-/// raw newline-delimited JSON-RPC immediately.
+/// raw newline-delimited JSON-RPC immediately with all methods.
 async fn handle_uds_connection(
-    stream: tokio::net::UnixStream,
+    mut stream: tokio::net::UnixStream,
     primal: Arc<RhizoCrypt>,
     btsp_required: bool,
     family_seed: Option<&[u8]>,
 ) -> std::io::Result<()> {
     use crate::btsp::BtspServer;
+    use tokio::io::AsyncReadExt;
 
     if btsp_required {
         let Some(seed) = family_seed else {
@@ -183,8 +188,27 @@ async fn handle_uds_connection(
             return Err(std::io::Error::other("BTSP: no family seed"));
         };
 
+        // First-byte auto-detect: JSON-RPC starts with `{`/`[`, BTSP frames
+        // start with a 4-byte big-endian length (never 0x7B/0x5B for valid
+        // frame sizes). Read 1 byte, then chain it back for the chosen path.
+        let mut first = [0u8; 1];
+        let n = stream.read(&mut first).await?;
+        if n == 0 {
+            return Ok(());
+        }
+
         let (reader, writer) = stream.into_split();
-        let mut rw = tokio::io::join(reader, writer);
+
+        if first[0] == b'{' || first[0] == b'[' {
+            debug!("detected plain JSON-RPC on BTSP socket (liveness-only mode)");
+            let chained_reader = (&first[..]).chain(reader);
+            let joined = tokio::io::join(chained_reader, writer);
+            return super::newline::handle_liveness_connection(joined, primal).await;
+        }
+
+        // BTSP path: prepend consumed byte for length-prefix framing.
+        let chained_reader = (&first[..]).chain(reader);
+        let mut rw = tokio::io::join(chained_reader, writer);
 
         match BtspServer::accept_handshake(&mut rw, seed).await {
             Ok(session) => {
@@ -192,13 +216,7 @@ async fn handle_uds_connection(
                     cipher = session.cipher.as_str(),
                     "BTSP handshake complete, serving JSON-RPC"
                 );
-                // Post-handshake: serve JSON-RPC over length-prefixed frames.
-                // Phase 2 delivers handshake enforcement; per-frame cipher
-                // wrapping is Phase 3. For now, serve newline JSON-RPC on the
-                // authenticated stream (the handshake proved family membership).
-                let (reader, writer) = rw.into_inner();
-                let reunited = reader.reunite(writer).map_err(std::io::Error::other)?;
-                super::newline::handle_newline_connection(reunited, primal).await
+                super::newline::handle_newline_connection(rw, primal).await
             }
             Err(e) => {
                 warn!(error = %e, "BTSP handshake failed, dropping connection");

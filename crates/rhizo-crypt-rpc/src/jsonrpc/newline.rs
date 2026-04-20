@@ -19,10 +19,32 @@ use rhizo_crypt_core::RhizoCrypt;
 use rhizo_crypt_core::constants::MAX_JSONRPC_LINE_LENGTH;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tracing::warn;
+use tracing::{debug, warn};
 
-use super::types::{codes, error_response};
+use super::types::{JsonRpcId, codes, error_response};
 use super::{process_single_request, serialize_response};
+
+/// Methods allowed without BTSP authentication (liveness probes only).
+///
+/// When a plain JSON-RPC connection arrives on a BTSP-enforced UDS socket
+/// (first byte `{`/`[` instead of a length-prefix), these methods are served
+/// without authentication. All other methods return a "BTSP authentication
+/// required" error. This matches the BearDog/Squirrel first-byte auto-detect
+/// pattern (PG-35, PG-30).
+const UNAUTHENTICATED_METHODS: &[&str] = &[
+    "health.check",
+    "health.liveness",
+    "health.readiness",
+    "health",
+    "ping",
+    "status",
+    "check",
+    "identity.get",
+    "capabilities.list",
+    "capability.list",
+    "primal.capabilities",
+    "lifecycle.status",
+];
 
 /// Handle a newline-delimited JSON-RPC connection over any async stream.
 ///
@@ -105,6 +127,101 @@ where
                 write_response(&mut writer, &response).await?;
             }
         }
+    }
+
+    Ok(())
+}
+
+/// Handle a liveness-only JSON-RPC connection (no BTSP authentication).
+///
+/// Identical to [`handle_newline_connection`] but rejects any method not in
+/// [`UNAUTHENTICATED_METHODS`] with a JSON-RPC error. Used when a plain
+/// JSON-RPC probe arrives on a BTSP-enforced UDS socket (first-byte `{`/`[`
+/// auto-detect). This allows `health.check` probes to succeed without
+/// requiring the full BTSP handshake.
+///
+/// # Errors
+///
+/// Returns `std::io::Error` if reading from or writing to the stream fails.
+pub async fn handle_liveness_connection<S>(
+    stream: S,
+    primal: Arc<RhizoCrypt>,
+) -> std::io::Result<()>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    let (reader, mut writer) = tokio::io::split(stream);
+    let buf_reader = BufReader::new(reader);
+    let mut lines = buf_reader.lines();
+
+    while let Some(line) = lines.next_line().await? {
+        if line.len() > MAX_JSONRPC_LINE_LENGTH {
+            let resp = serialize_response(&error_response(
+                None,
+                codes::INVALID_REQUEST,
+                "Request too large",
+                None,
+            ));
+            write_response(&mut writer, &resp).await?;
+            continue;
+        }
+        if line.trim().is_empty() {
+            continue;
+        }
+
+        let value: serde_json::Value = match serde_json::from_str(&line) {
+            Ok(v) => v,
+            Err(e) => {
+                warn!(error = %e, "liveness JSON-RPC parse error");
+                let resp = serialize_response(&error_response(
+                    None,
+                    codes::PARSE_ERROR,
+                    "Parse error",
+                    Some(serde_json::json!(e.to_string())),
+                ));
+                write_response(&mut writer, &resp).await?;
+                continue;
+            }
+        };
+
+        let response = match &value {
+            serde_json::Value::Object(map) => {
+                let method = map.get("method").and_then(serde_json::Value::as_str);
+                let id =
+                    map.get("id").and_then(|v| serde_json::from_value::<JsonRpcId>(v.clone()).ok());
+                if let Some(m) = method {
+                    if UNAUTHENTICATED_METHODS.contains(&m) {
+                        process_single_request(Arc::clone(&primal), value).await
+                    } else {
+                        debug!(method = m, "rejected unauthenticated method (BTSP required)");
+                        serialize_response(&error_response(
+                            id,
+                            codes::FORBIDDEN,
+                            "BTSP authentication required for this method",
+                            Some(serde_json::json!({
+                                "method": m,
+                                "hint": "Use BTSP handshake or call health.check / capability.list for unauthenticated probes"
+                            })),
+                        ))
+                    }
+                } else {
+                    serialize_response(&error_response(
+                        id,
+                        codes::INVALID_REQUEST,
+                        "Missing method field",
+                        None,
+                    ))
+                }
+            }
+            _ => serialize_response(&error_response(
+                None,
+                codes::INVALID_REQUEST,
+                "Batch requests require BTSP authentication",
+                None,
+            )),
+        };
+
+        write_response(&mut writer, &response).await?;
     }
 
     Ok(())
@@ -200,5 +317,68 @@ mod tests {
         let results = roundtrip(primal, input).await;
         assert_eq!(results.len(), 1);
         assert_eq!(results[0]["error"]["code"], -32600);
+    }
+
+    async fn liveness_roundtrip(primal: Arc<RhizoCrypt>, input: &[u8]) -> Vec<serde_json::Value> {
+        let (mut client, server) = duplex(8192);
+        let handle = tokio::spawn(handle_liveness_connection(server, primal));
+
+        AsyncWriteExt::write_all(&mut client, input).await.unwrap();
+        AsyncWriteExt::shutdown(&mut client).await.unwrap();
+
+        let mut lines = BufReader::new(client).lines();
+        let mut results = Vec::new();
+        while let Some(line) = lines.next_line().await.unwrap() {
+            results.push(serde_json::from_str(&line).unwrap());
+        }
+
+        handle.await.unwrap().unwrap();
+        results
+    }
+
+    #[tokio::test]
+    async fn test_liveness_allows_health_check() {
+        let primal = test_primal().await;
+        let input = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":1}\n";
+        let results = liveness_roundtrip(primal, input).await;
+        assert_eq!(results.len(), 1);
+        assert!(results[0]["result"].is_object(), "health.check should succeed");
+    }
+
+    #[tokio::test]
+    async fn test_liveness_allows_capability_list() {
+        let primal = test_primal().await;
+        let input =
+            b"{\"jsonrpc\":\"2.0\",\"method\":\"capability.list\",\"params\":{},\"id\":2}\n";
+        let results = liveness_roundtrip(primal, input).await;
+        assert_eq!(results.len(), 1);
+        assert!(results[0]["result"].is_object(), "capability.list should succeed");
+    }
+
+    #[tokio::test]
+    async fn test_liveness_rejects_data_method() {
+        let primal = test_primal().await;
+        let input =
+            b"{\"jsonrpc\":\"2.0\",\"method\":\"dag.session.create\",\"params\":{},\"id\":3}\n";
+        let results = liveness_roundtrip(primal, input).await;
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0]["error"]["code"], -32000,
+            "data methods should be rejected with FORBIDDEN"
+        );
+        let data = &results[0]["error"]["data"];
+        assert_eq!(data["method"], "dag.session.create");
+    }
+
+    #[tokio::test]
+    async fn test_liveness_rejects_batch() {
+        let primal = test_primal().await;
+        let input = b"[{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":1}]\n";
+        let results = liveness_roundtrip(primal, input).await;
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0]["error"]["code"], -32600,
+            "batch requests should be rejected on liveness"
+        );
     }
 }

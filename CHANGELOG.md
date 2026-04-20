@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S45.1: BTSP Liveness Passthrough — First-Byte Auto-Detect (Phase 45 Item #3)
+
+- **First-byte auto-detect on UDS** — when BTSP is enforced, the UDS handler now peeks the first byte: `{`/`[` routes to liveness-only JSON-RPC, anything else proceeds with BTSP handshake. Matches the ecosystem pattern (BearDog/Squirrel PG-35, PG-30)
+- **Liveness-only handler** (`handle_liveness_connection`) — allows `health.check`, `health.liveness`, `capability.list`, `identity.get`, and other probe methods without BTSP; rejects data methods (`dag.*`, etc.) with `-32000 FORBIDDEN` + hint
+- **`UNAUTHENTICATED_METHODS` allowlist** — single source of truth for which methods bypass BTSP
+- **`codes::FORBIDDEN` (-32000)** — new JSON-RPC error code for authentication-required methods
+- **4 new tests** — liveness allows health.check, allows capability.list, rejects data methods, rejects batch requests (test count: 1,512)
+- **Resolves primalSpring Phase 45 audit item #3**: plain `health.check` probes no longer fail with EPIPE/ECONNRESET on BTSP-enforced sockets
+
 #### S43.8: TCP Resolution Dedup + Doctor Manifest + Integration Test
 
 - **Deduplicate `resolve_bind_addr`** — TCP address resolved once in `run_server_with_ready()` and passed to both manifest publication and `serve_with_tcp()`; eliminates redundant resolution and `.ok()` vs `?` inconsistency

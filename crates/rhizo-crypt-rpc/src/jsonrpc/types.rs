@@ -104,6 +104,9 @@ pub mod codes {
 
     /// Internal error.
     pub const INTERNAL_ERROR: i32 = -32603;
+
+    /// Authentication required (BTSP handshake not performed).
+    pub const FORBIDDEN: i32 = -32000;
 }
 
 /// Create a success response.
