@@ -40,6 +40,7 @@ tower-http.workspace = true
 hyper = { workspace = true }
 hyper-util = { workspace = true }
 hex = "0.4"
+base64 = "0.22"
 uuid = { workspace = true }
 dashmap = { workspace = true }
 

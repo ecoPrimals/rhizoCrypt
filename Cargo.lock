@@ -1604,6 +1604,7 @@ name = "rhizo-crypt-rpc"
 version = "0.14.0-dev"
 dependencies = [
  "axum",
+ "base64",
  "bincode",
  "bytes",
  "dashmap",

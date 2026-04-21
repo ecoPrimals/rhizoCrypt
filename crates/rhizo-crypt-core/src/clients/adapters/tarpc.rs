@@ -263,9 +263,7 @@ impl ProtocolAdapter for TarpcAdapter {
             #[cfg(not(feature = "live-clients"))]
             {
                 let _ = (method, args_json);
-                return Err(RhizoCryptError::integration(
-                    "tarpc support requires 'live-clients' feature",
-                ));
+                Err(RhizoCryptError::integration("tarpc support requires 'live-clients' feature"))
             }
 
             #[cfg(feature = "live-clients")]
@@ -320,9 +318,7 @@ impl ProtocolAdapter for TarpcAdapter {
             #[cfg(not(feature = "live-clients"))]
             {
                 let _ = (method, args_json);
-                return Err(RhizoCryptError::integration(
-                    "tarpc support requires 'live-clients' feature",
-                ));
+                Err(RhizoCryptError::integration("tarpc support requires 'live-clients' feature"))
             }
 
             #[cfg(feature = "live-clients")]
@@ -376,7 +372,7 @@ impl ProtocolAdapter for TarpcAdapter {
                     endpoint = %self.addr,
                     "tarpc adapter unhealthy: live-clients feature disabled"
                 );
-                return false;
+                false
             }
 
             #[cfg(feature = "live-clients")]

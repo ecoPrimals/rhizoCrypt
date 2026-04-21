@@ -73,6 +73,59 @@ pub async fn write_frame<W: AsyncWrite + Unpin>(writer: &mut W, payload: &[u8]) 
     Ok(())
 }
 
+/// Read a newline-delimited JSON frame (primalSpring wire format).
+///
+/// Reads byte-by-byte until `\n`, returning the line without the trailing
+/// newline. Avoids `BufReader` to prevent buffering issues in multi-step
+/// handshakes where the same stream is used for subsequent reads.
+///
+/// # Errors
+///
+/// - `UnexpectedEof` if the stream closes before a newline.
+/// - `InvalidData` if the line exceeds `MAX_FRAME_SIZE`.
+pub async fn read_json_line<R: AsyncRead + Unpin>(reader: &mut R) -> io::Result<Bytes> {
+    let mut buf = Vec::with_capacity(512);
+    let mut byte = [0u8; 1];
+    loop {
+        let n = reader.read(&mut byte).await?;
+        if n == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "BTSP JSON-line: connection closed before newline",
+            ));
+        }
+        if byte[0] == b'\n' {
+            break;
+        }
+        buf.push(byte[0]);
+        if buf.len() > MAX_FRAME_SIZE as usize {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("BTSP JSON-line too large: {} bytes (max {MAX_FRAME_SIZE})", buf.len()),
+            ));
+        }
+    }
+    if buf.last() == Some(&b'\r') {
+        buf.pop();
+    }
+    Ok(Bytes::from(buf))
+}
+
+/// Write a newline-delimited JSON frame (primalSpring wire format).
+///
+/// # Errors
+///
+/// - I/O errors from the underlying stream.
+pub async fn write_json_line<W: AsyncWrite + Unpin>(
+    writer: &mut W,
+    payload: &[u8],
+) -> io::Result<()> {
+    writer.write_all(payload).await?;
+    writer.write_all(b"\n").await?;
+    writer.flush().await?;
+    Ok(())
+}
+
 #[cfg(test)]
 #[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 mod tests {
@@ -115,5 +168,45 @@ mod tests {
         let mut cursor = io::Cursor::new(vec![0u8, 0, 0]);
         let err = read_frame(&mut cursor).await.unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof);
+    }
+
+    #[tokio::test]
+    async fn json_line_round_trip() {
+        let payload = br#"{"protocol":"btsp","version":1}"#;
+        let mut buf = Vec::new();
+        write_json_line(&mut buf, payload).await.expect("write");
+        assert_eq!(&buf[buf.len() - 1..], b"\n");
+
+        let mut cursor = io::Cursor::new(buf);
+        let read_back = read_json_line(&mut cursor).await.expect("read");
+        assert_eq!(read_back.as_ref(), payload);
+    }
+
+    #[tokio::test]
+    async fn json_line_strips_crlf() {
+        let data = b"hello\r\n";
+        let mut cursor = io::Cursor::new(data.to_vec());
+        let line = read_json_line(&mut cursor).await.expect("read");
+        assert_eq!(line.as_ref(), b"hello");
+    }
+
+    #[tokio::test]
+    async fn json_line_eof_returns_error() {
+        let mut cursor = io::Cursor::new(b"no newline".to_vec());
+        let err = read_json_line(&mut cursor).await.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof);
+    }
+
+    #[tokio::test]
+    async fn json_line_multi_step() {
+        let mut buf = Vec::new();
+        write_json_line(&mut buf, b"line1").await.expect("w1");
+        write_json_line(&mut buf, b"line2").await.expect("w2");
+        write_json_line(&mut buf, b"line3").await.expect("w3");
+
+        let mut cursor = io::Cursor::new(buf);
+        assert_eq!(read_json_line(&mut cursor).await.unwrap().as_ref(), b"line1");
+        assert_eq!(read_json_line(&mut cursor).await.unwrap().as_ref(), b"line2");
+        assert_eq!(read_json_line(&mut cursor).await.unwrap().as_ref(), b"line3");
     }
 }

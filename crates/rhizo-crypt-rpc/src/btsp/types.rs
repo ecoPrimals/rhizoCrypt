@@ -93,6 +93,106 @@ pub struct SessionKeys {
     pub decrypt_key: [u8; 32],
 }
 
+// ---------------------------------------------------------------------------
+// JSON-line wire types (primalSpring interop)
+//
+// Springs use newline-delimited JSON with base64-encoded byte fields and an
+// explicit `protocol` discriminator in ClientHello. These types provide
+// ser/de for that format; crypto logic converts to/from the internal types.
+// ---------------------------------------------------------------------------
+
+use base64::Engine;
+
+/// Base64 engine (standard alphabet, with padding).
+const fn b64() -> base64::engine::GeneralPurpose {
+    base64::engine::general_purpose::STANDARD
+}
+
+/// JSON-line `ClientHello` as sent by primalSpring.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClientHelloWire {
+    /// Always `"btsp"` — used for protocol detection on the first line.
+    pub protocol: String,
+    /// Protocol version (matches [`BTSP_VERSION`]).
+    pub version: u32,
+    /// X25519 ephemeral public key, base64-encoded.
+    pub client_ephemeral_pub: String,
+}
+
+impl ClientHelloWire {
+    /// Decode the base64 public key into 32 raw bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HandshakeError::KeyDerivation`] if the base64 is invalid or
+    /// the decoded length is not 32 bytes.
+    pub fn decode_pub(&self) -> Result<[u8; 32], HandshakeError> {
+        let bytes = b64()
+            .decode(&self.client_ephemeral_pub)
+            .map_err(|e| HandshakeError::KeyDerivation(format!("base64 decode: {e}")))?;
+        <[u8; 32]>::try_from(bytes.as_slice()).map_err(|_| {
+            HandshakeError::KeyDerivation(format!("expected 32 bytes, got {}", bytes.len()))
+        })
+    }
+}
+
+/// JSON-line `ServerHello` — includes `session_id` for primalSpring compat.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerHelloWire {
+    /// Protocol version.
+    pub version: u32,
+    /// X25519 ephemeral public key, base64-encoded.
+    pub server_ephemeral_pub: String,
+    /// 32-byte random challenge, base64-encoded.
+    pub challenge: String,
+    /// 16-byte session identifier (hex or opaque string).
+    pub session_id: String,
+}
+
+/// JSON-line `ChallengeResponse` from the client.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChallengeResponseWire {
+    /// HMAC-SHA256 response, base64-encoded.
+    pub response: String,
+    /// Client's preferred cipher suite.
+    pub preferred_cipher: String,
+}
+
+impl ChallengeResponseWire {
+    /// Decode the base64 HMAC response into 32 raw bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HandshakeError::KeyDerivation`] on invalid base64 or wrong length.
+    pub fn decode_response(&self) -> Result<[u8; 32], HandshakeError> {
+        let bytes = b64()
+            .decode(&self.response)
+            .map_err(|e| HandshakeError::KeyDerivation(format!("base64 decode: {e}")))?;
+        <[u8; 32]>::try_from(bytes.as_slice()).map_err(|_| {
+            HandshakeError::KeyDerivation(format!("expected 32 bytes, got {}", bytes.len()))
+        })
+    }
+}
+
+/// JSON-line `HandshakeComplete` sent by the server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HandshakeCompleteWire {
+    /// Negotiated cipher suite (string form).
+    pub cipher: String,
+    /// Session identifier (matches `ServerHelloWire::session_id`).
+    pub session_id: String,
+}
+
+/// JSON-line handshake error frame.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HandshakeErrorWire {
+    /// Error type.
+    pub error: String,
+    /// Human-readable reason.
+    #[serde(default)]
+    pub reason: String,
+}
+
 /// BTSP handshake errors.
 #[derive(Debug, thiserror::Error)]
 pub enum HandshakeError {
@@ -222,5 +322,83 @@ mod tests {
     fn test_hkdf_constants() {
         assert_eq!(HANDSHAKE_HKDF_SALT, b"btsp-v1");
         assert_eq!(HANDSHAKE_HKDF_INFO, b"handshake");
+    }
+
+    #[test]
+    fn test_client_hello_wire_serde() {
+        let hello = ClientHelloWire {
+            protocol: "btsp".to_owned(),
+            version: 1,
+            client_ephemeral_pub: b64().encode([0xAA; 32]),
+        };
+        let json = serde_json::to_string(&hello).unwrap();
+        assert!(json.contains("\"protocol\":\"btsp\""));
+        let back: ClientHelloWire = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.protocol, "btsp");
+        assert_eq!(back.decode_pub().unwrap(), [0xAA; 32]);
+    }
+
+    #[test]
+    fn test_client_hello_wire_bad_base64() {
+        let hello = ClientHelloWire {
+            protocol: "btsp".to_owned(),
+            version: 1,
+            client_ephemeral_pub: "not-valid-base64!!!".to_owned(),
+        };
+        assert!(hello.decode_pub().is_err());
+    }
+
+    #[test]
+    fn test_client_hello_wire_wrong_length() {
+        let hello = ClientHelloWire {
+            protocol: "btsp".to_owned(),
+            version: 1,
+            client_ephemeral_pub: b64().encode([0xBB; 16]),
+        };
+        assert!(hello.decode_pub().is_err());
+    }
+
+    #[test]
+    fn test_server_hello_wire_serde() {
+        let hello = ServerHelloWire {
+            version: 1,
+            server_ephemeral_pub: b64().encode([0xCC; 32]),
+            challenge: b64().encode([0xDD; 32]),
+            session_id: "deadbeef01020304".to_owned(),
+        };
+        let json = serde_json::to_string(&hello).unwrap();
+        let back: ServerHelloWire = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.session_id, "deadbeef01020304");
+    }
+
+    #[test]
+    fn test_challenge_response_wire_decode() {
+        let cr = ChallengeResponseWire {
+            response: b64().encode([0xEE; 32]),
+            preferred_cipher: "null".to_owned(),
+        };
+        assert_eq!(cr.decode_response().unwrap(), [0xEE; 32]);
+    }
+
+    #[test]
+    fn test_handshake_complete_wire_serde() {
+        let hc = HandshakeCompleteWire {
+            cipher: "chacha20_poly1305".to_owned(),
+            session_id: "abcdef0123456789".to_owned(),
+        };
+        let json = serde_json::to_string(&hc).unwrap();
+        let back: HandshakeCompleteWire = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.cipher, "chacha20_poly1305");
+    }
+
+    #[test]
+    fn test_handshake_error_wire_serde() {
+        let err = HandshakeErrorWire {
+            error: "handshake_failed".to_owned(),
+            reason: "family_verification".to_owned(),
+        };
+        let json = serde_json::to_string(&err).unwrap();
+        let back: HandshakeErrorWire = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.error, "handshake_failed");
     }
 }

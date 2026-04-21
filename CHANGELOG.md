@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S45.2: BTSP Wire-Format Alignment — JSON-Line Interop (primalSpring Phase 45b)
+
+- **JSON-line BTSP handshake** — `accept_handshake_jsonline` performs the same 4-step X25519 + HMAC-SHA256 handshake using newline-delimited JSON instead of length-prefixed binary frames, matching primalSpring's wire format
+- **Wire-compatible types** — `ClientHelloWire`, `ServerHelloWire`, `ChallengeResponseWire`, `HandshakeCompleteWire`, `HandshakeErrorWire` with base64-encoded byte fields and `protocol: "btsp"` discriminator
+- **Three-way UDS auto-detect** — `handle_uds_connection` now reads the full first line when first byte is `{`, then:
+  - `"protocol":"btsp"` → JSON-line BTSP handshake, then full JSON-RPC
+  - `"jsonrpc"` → liveness-only JSON-RPC (S45.1 path)
+  - Non-`{` first byte → length-prefixed BTSP handshake (internal path)
+- **JSON-line framing** — `read_json_line` / `write_json_line` in `btsp/framing.rs`; byte-by-byte reading avoids BufReader buffering issues in multi-step handshakes
+- **15 new tests** — JSON-line handshake round-trip, wrong-seed rejection, wire type serde, base64 decode edge cases, framing multi-step (test count: 1,527)
+- **Pre-existing clippy fixes** — removed 3 `needless_return` warnings in `tarpc.rs` (cfg-gated feature blocks)
+- **Resolves primalSpring Phase 45b BTSP escalation**: `{"protocol":"btsp",...}\n` is no longer misclassified as invalid JSON-RPC
+
 #### S45.1: BTSP Liveness Passthrough — First-Byte Auto-Detect (Phase 45 Item #3)
 
 - **First-byte auto-detect on UDS** — when BTSP is enforced, the UDS handler now peeks the first byte: `{`/`[` routes to liveness-only JSON-RPC, anything else proceeds with BTSP handshake. Matches the ecosystem pattern (BearDog/Squirrel PG-35, PG-30)

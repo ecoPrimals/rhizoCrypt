@@ -163,13 +163,17 @@ impl UdsJsonRpcServer {
 
 /// Handle a single UDS connection with optional BTSP handshake enforcement.
 ///
-/// When `btsp_required` is `true`, uses first-byte auto-detect:
-/// - `{` or `[` → plain JSON-RPC probe (liveness-only: `health.check`,
-///   `capability.list`, etc.) — no BTSP required
-/// - Anything else → BTSP length-prefixed handshake, then full JSON-RPC
+/// When `btsp_required` is `true`, uses first-byte auto-detect with three
+/// branches:
 ///
-/// This matches the ecosystem pattern (BearDog/Squirrel PG-35, PG-30) where
-/// `health.check` must work without authentication for discovery probes.
+/// 1. `{` → read the full first line, then:
+///    - `"protocol":"btsp"` → **JSON-line BTSP handshake** (primalSpring
+///      interop), then serve full JSON-RPC on the authenticated stream
+///    - `"jsonrpc"` → **liveness-only** (`health.check`, `capability.list`,
+///      etc.) — no BTSP required
+/// 2. `[` → batch JSON-RPC liveness probe (no BTSP)
+/// 3. Any other byte → **length-prefixed BTSP handshake** (internal), then
+///    serve full JSON-RPC
 ///
 /// When `btsp_required` is `false` (development mode), the connection serves
 /// raw newline-delimited JSON-RPC immediately with all methods.
@@ -188,43 +192,94 @@ async fn handle_uds_connection(
             return Err(std::io::Error::other("BTSP: no family seed"));
         };
 
-        // First-byte auto-detect: JSON-RPC starts with `{`/`[`, BTSP frames
-        // start with a 4-byte big-endian length (never 0x7B/0x5B for valid
-        // frame sizes). Read 1 byte, then chain it back for the chosen path.
         let mut first = [0u8; 1];
         let n = stream.read(&mut first).await?;
         if n == 0 {
             return Ok(());
         }
 
-        let (reader, writer) = stream.into_split();
+        if first[0] == b'{' {
+            // Read the rest of the first line to distinguish BTSP from JSON-RPC.
+            let mut first_line = vec![b'{'];
+            let mut byte = [0u8; 1];
+            loop {
+                let n = stream.read(&mut byte).await?;
+                if n == 0 {
+                    break;
+                }
+                first_line.push(byte[0]);
+                if byte[0] == b'\n' {
+                    break;
+                }
+            }
 
-        if first[0] == b'{' || first[0] == b'[' {
-            debug!("detected plain JSON-RPC on BTSP socket (liveness-only mode)");
+            let json_end =
+                first_line.iter().rposition(|&b| b != b'\n' && b != b'\r').map_or(0, |i| i + 1);
+            let json_bytes = &first_line[..json_end];
+
+            let is_btsp = serde_json::from_slice::<serde_json::Value>(json_bytes)
+                .ok()
+                .and_then(|v| v.get("protocol")?.as_str().map(|s| s == "btsp"))
+                .unwrap_or(false);
+
+            let (reader, writer) = stream.into_split();
+
+            if is_btsp {
+                debug!("detected BTSP JSON-line handshake (protocol:btsp)");
+                let mut rw = tokio::io::join(reader, writer);
+                match BtspServer::accept_handshake_jsonline(&mut rw, seed, json_bytes).await {
+                    Ok(session) => {
+                        debug!(
+                            cipher = session.cipher.as_str(),
+                            "BTSP JSON-line handshake complete, serving JSON-RPC"
+                        );
+                        super::newline::handle_newline_connection(rw, primal).await
+                    }
+                    Err(e) => {
+                        warn!(error = %e, "BTSP JSON-line handshake failed");
+                        let (_, mut writer) = rw.into_inner();
+                        if let Err(e2) =
+                            BtspServer::send_handshake_error_jsonline(&mut writer).await
+                        {
+                            debug!(error = %e2, "failed to send BTSP JSON-line error");
+                        }
+                        Err(std::io::Error::other(format!("BTSP JSON-line handshake failed: {e}")))
+                    }
+                }
+            } else {
+                debug!("detected plain JSON-RPC on BTSP socket (liveness-only mode)");
+                let chained_reader = first_line.as_slice().chain(reader);
+                let joined = tokio::io::join(chained_reader, writer);
+                super::newline::handle_liveness_connection(joined, primal).await
+            }
+        } else if first[0] == b'[' {
+            debug!("detected batch JSON-RPC on BTSP socket (liveness-only mode)");
+            let (reader, writer) = stream.into_split();
             let chained_reader = (&first[..]).chain(reader);
             let joined = tokio::io::join(chained_reader, writer);
-            return super::newline::handle_liveness_connection(joined, primal).await;
-        }
+            super::newline::handle_liveness_connection(joined, primal).await
+        } else {
+            // Length-prefixed BTSP handshake (internal binary framing).
+            let (reader, writer) = stream.into_split();
+            let chained_reader = (&first[..]).chain(reader);
+            let mut rw = tokio::io::join(chained_reader, writer);
 
-        // BTSP path: prepend consumed byte for length-prefix framing.
-        let chained_reader = (&first[..]).chain(reader);
-        let mut rw = tokio::io::join(chained_reader, writer);
-
-        match BtspServer::accept_handshake(&mut rw, seed).await {
-            Ok(session) => {
-                debug!(
-                    cipher = session.cipher.as_str(),
-                    "BTSP handshake complete, serving JSON-RPC"
-                );
-                super::newline::handle_newline_connection(rw, primal).await
-            }
-            Err(e) => {
-                warn!(error = %e, "BTSP handshake failed, dropping connection");
-                let (_, mut writer) = rw.into_inner();
-                if let Err(e) = BtspServer::send_handshake_error(&mut writer).await {
-                    debug!(error = %e, "failed to send BTSP handshake error to client");
+            match BtspServer::accept_handshake(&mut rw, seed).await {
+                Ok(session) => {
+                    debug!(
+                        cipher = session.cipher.as_str(),
+                        "BTSP handshake complete, serving JSON-RPC"
+                    );
+                    super::newline::handle_newline_connection(rw, primal).await
                 }
-                Err(std::io::Error::other(format!("BTSP handshake failed: {e}")))
+                Err(e) => {
+                    warn!(error = %e, "BTSP handshake failed, dropping connection");
+                    let (_, mut writer) = rw.into_inner();
+                    if let Err(e) = BtspServer::send_handshake_error(&mut writer).await {
+                        debug!(error = %e, "failed to send BTSP handshake error to client");
+                    }
+                    Err(std::io::Error::other(format!("BTSP handshake failed: {e}")))
+                }
             }
         }
     } else {
