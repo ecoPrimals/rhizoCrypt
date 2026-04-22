@@ -170,10 +170,10 @@ async fn handle_tcp_connection(
 ) -> std::io::Result<()> {
     stream.set_nodelay(true)?;
 
-    let mut peek = [0u8; 1];
-    let n = stream.peek(&mut peek).await?;
+    let mut probe = [0u8; 1];
+    let n = stream.peek(&mut probe).await?;
 
-    if n > 0 && (peek[0] == b'{' || peek[0] == b'[') {
+    if n > 0 && (probe[0] == b'{' || probe[0] == b'[') {
         debug!(peer = %peer, "detected newline JSON-RPC");
         newline::handle_newline_connection(stream, primal).await?;
     } else {

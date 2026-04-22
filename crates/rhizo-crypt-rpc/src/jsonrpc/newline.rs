@@ -29,8 +29,8 @@ use super::{process_single_request, serialize_response};
 /// When a plain JSON-RPC connection arrives on a BTSP-enforced UDS socket
 /// (first byte `{`/`[` instead of a length-prefix), these methods are served
 /// without authentication. All other methods return a "BTSP authentication
-/// required" error. This matches the BearDog/Squirrel first-byte auto-detect
-/// pattern (PG-35, PG-30).
+/// required" error. This follows the ecosystem first-byte auto-detect pattern
+/// (PG-35, PG-30).
 const UNAUTHENTICATED_METHODS: &[&str] = &[
     "health.check",
     "health.liveness",
