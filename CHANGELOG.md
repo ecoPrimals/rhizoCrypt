@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S47: FAMILY_SEED Encoding Alignment — Cross-Primal BTSP Compatibility
+
+- **Seed encoding normalization** — `read_family_seed` now matches primalSpring's `raw_family_seed_from_env` exactly: hex seed (len ≥ 32, even, all hex digits) → raw UTF-8 bytes; valid base64 → decoded bytes; otherwise → raw UTF-8 bytes. Previously always used raw UTF-8, causing key divergence when the harness generates base64-encoded seeds.
+- **Root cause**: BTSP handshake step 3→4 ("no HandshakeComplete") — primalSpring base64-decoded the seed while rhizoCrypt used the raw string, producing different HKDF inputs and mismatched HMACs
+- **6 new tests** — hex seed normalization, base64 seed decode, plain string passthrough, short-hex edge case, cross-primal HKDF compatibility (hex), cross-primal base64 seed compatibility (test count: 1,535)
+- HKDF parameters confirmed matching: `salt=b"btsp-v1"`, `info=b"handshake"`, HMAC order `challenge||client_pub||server_pub`
+
 #### S46b: Clippy Pedantic Clean + Hardcoded Primal Name Removal
 
 - **Clippy pedantic+nursery clean** — resolved sole `similar_names` warning (`peek` → `probe` in `handle_tcp_connection`)
