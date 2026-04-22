@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop Songbird Rendezvous
+# Stop Songbird
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
