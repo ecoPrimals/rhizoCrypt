@@ -184,7 +184,7 @@ async fn handle_uds_connection(
     family_seed: Option<&[u8]>,
 ) -> std::io::Result<()> {
     use crate::btsp::BtspServer;
-    use tokio::io::AsyncReadExt;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     if btsp_required {
         let Some(seed) = family_seed else {
@@ -238,11 +238,13 @@ async fn handle_uds_connection(
                     Err(e) => {
                         warn!(error = %e, "BTSP JSON-line handshake failed");
                         let (_, mut writer) = rw.into_inner();
+                        let reason = e.to_string();
                         if let Err(e2) =
-                            BtspServer::send_handshake_error_jsonline(&mut writer).await
+                            BtspServer::send_handshake_error_jsonline(&mut writer, &reason).await
                         {
                             debug!(error = %e2, "failed to send BTSP JSON-line error");
                         }
+                        let _ = writer.shutdown().await;
                         Err(std::io::Error::other(format!("BTSP JSON-line handshake failed: {e}")))
                     }
                 }
@@ -275,9 +277,10 @@ async fn handle_uds_connection(
                 Err(e) => {
                     warn!(error = %e, "BTSP handshake failed, dropping connection");
                     let (_, mut writer) = rw.into_inner();
-                    if let Err(e) = BtspServer::send_handshake_error(&mut writer).await {
-                        debug!(error = %e, "failed to send BTSP handshake error to client");
+                    if let Err(e2) = BtspServer::send_handshake_error(&mut writer).await {
+                        debug!(error = %e2, "failed to send BTSP handshake error to client");
                     }
+                    let _ = writer.shutdown().await;
                     Err(std::io::Error::other(format!("BTSP handshake failed: {e}")))
                 }
             }
@@ -325,7 +328,7 @@ pub fn default_socket_path() -> PathBuf {
 mod tests {
     use super::*;
     use rhizo_crypt_core::{PrimalLifecycle, RhizoCryptConfig};
-    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 
     async fn test_primal() -> Arc<RhizoCrypt> {
         let mut p = RhizoCrypt::new(RhizoCryptConfig::default());
@@ -487,5 +490,170 @@ mod tests {
 
         let _ = shutdown_tx.send(true);
         let _ = handle.await;
+    }
+
+    /// Full BTSP JSON-line handshake over a real UnixStream pair, testing the
+    /// routing in `handle_uds_connection` end-to-end:
+    /// ClientHello → ServerHello → ChallengeResponse → HandshakeComplete → JSON-RPC
+    #[tokio::test]
+    async fn test_btsp_jsonline_handshake_over_uds() {
+        use base64::Engine;
+        use hmac::{Hmac, Mac};
+        use sha2::Sha256;
+        use x25519_dalek::{EphemeralSecret, PublicKey};
+
+        type HmacSha256 = Hmac<Sha256>;
+
+        let family_seed = b"integration-test-family-seed-ok!";
+        let primal = test_primal().await;
+
+        let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
+        server_raw.set_nonblocking(true).unwrap();
+        client_raw.set_nonblocking(true).unwrap();
+        let server_stream = tokio::net::UnixStream::from_std(server_raw).unwrap();
+        let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
+
+        let server_handle = tokio::spawn(async move {
+            handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        });
+
+        // --- Client side: JSON-line BTSP handshake ---
+
+        let b64 = base64::engine::general_purpose::STANDARD;
+
+        // Step 1: Send ClientHello
+        let client_secret = EphemeralSecret::random_from_rng(rand::thread_rng());
+        let client_public = PublicKey::from(&client_secret);
+        let hello = serde_json::json!({
+            "protocol": "btsp",
+            "version": 1,
+            "client_ephemeral_pub": b64.encode(client_public.as_bytes())
+        });
+        let hello_line = format!("{hello}\n");
+        client.write_all(hello_line.as_bytes()).await.unwrap();
+
+        // Step 2: Read ServerHello
+        let mut buf = vec![0u8; 4096];
+        let mut total = 0;
+        loop {
+            let n = client.read(&mut buf[total..]).await.unwrap();
+            total += n;
+            if buf[..total].contains(&b'\n') || n == 0 {
+                break;
+            }
+        }
+        let server_hello_line = std::str::from_utf8(&buf[..total]).unwrap();
+        let sh: serde_json::Value = serde_json::from_str(server_hello_line.trim()).unwrap();
+
+        assert_eq!(sh["version"], 1);
+        assert!(sh["server_ephemeral_pub"].is_string());
+        assert!(sh["challenge"].is_string());
+        assert!(sh["session_id"].is_string());
+
+        let server_pub_bytes = b64.decode(sh["server_ephemeral_pub"].as_str().unwrap()).unwrap();
+        let challenge_bytes = b64.decode(sh["challenge"].as_str().unwrap()).unwrap();
+
+        // Step 3: Compute HMAC and send ChallengeResponse
+        let handshake_key = {
+            use hkdf::Hkdf;
+            let hk = Hkdf::<sha2::Sha256>::new(Some(b"btsp-v1"), family_seed);
+            let mut okm = [0u8; 32];
+            hk.expand(b"handshake", &mut okm).unwrap();
+            okm
+        };
+
+        let mut mac = HmacSha256::new_from_slice(&handshake_key).expect("HMAC init");
+        mac.update(&challenge_bytes);
+        mac.update(client_public.as_bytes());
+        mac.update(&server_pub_bytes);
+        let hmac_result = mac.finalize().into_bytes();
+
+        let cr = serde_json::json!({
+            "response": b64.encode(&hmac_result),
+            "preferred_cipher": "null"
+        });
+        let cr_line = format!("{cr}\n");
+        client.write_all(cr_line.as_bytes()).await.unwrap();
+
+        // Step 4: Read HandshakeComplete
+        total = 0;
+        loop {
+            let n = client.read(&mut buf[total..]).await.unwrap();
+            total += n;
+            if buf[..total].contains(&b'\n') || n == 0 {
+                break;
+            }
+        }
+        let complete_line = std::str::from_utf8(&buf[..total]).unwrap();
+        let hc: serde_json::Value = serde_json::from_str(complete_line.trim()).unwrap();
+        assert_eq!(hc["cipher"], "null");
+        assert!(hc["session_id"].is_string());
+
+        // Post-handshake: send a JSON-RPC request
+        let rpc_req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
+        client.write_all(format!("{rpc_req}\n").as_bytes()).await.unwrap();
+
+        total = 0;
+        loop {
+            let n = client.read(&mut buf[total..]).await.unwrap();
+            total += n;
+            if buf[..total].contains(&b'\n') || n == 0 {
+                break;
+            }
+        }
+        let rpc_resp_line = std::str::from_utf8(&buf[..total]).unwrap();
+        let resp: serde_json::Value = serde_json::from_str(rpc_resp_line.trim()).unwrap();
+        assert_eq!(resp["jsonrpc"], "2.0");
+        assert!(resp["result"].is_object());
+        assert_eq!(resp["id"], 1);
+
+        client.shutdown().await.unwrap();
+        let server_result = server_handle.await.unwrap();
+        assert!(server_result.is_ok(), "server should complete cleanly");
+    }
+
+    /// Verify that a partial/invalid ClientHello gets an error response, not
+    /// a silent connection reset.
+    #[tokio::test]
+    async fn test_btsp_jsonline_invalid_key_returns_error() {
+        let family_seed = b"integration-test-family-seed-ok!";
+        let primal = test_primal().await;
+
+        let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
+        server_raw.set_nonblocking(true).unwrap();
+        client_raw.set_nonblocking(true).unwrap();
+        let server_stream = tokio::net::UnixStream::from_std(server_raw).unwrap();
+        let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
+
+        let server_handle = tokio::spawn(async move {
+            handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        });
+
+        // Send ClientHello with invalid 4-byte key (the socat test from the audit)
+        let hello = r#"{"protocol":"btsp","version":1,"client_ephemeral_pub":"dGVzdA=="}"#;
+        client.write_all(format!("{hello}\n").as_bytes()).await.unwrap();
+
+        // Should receive an error JSON-line, NOT a connection reset
+        let mut buf = vec![0u8; 4096];
+        let mut total = 0;
+        loop {
+            let n = client.read(&mut buf[total..]).await.unwrap();
+            total += n;
+            if n == 0 || buf[..total].contains(&b'\n') {
+                break;
+            }
+        }
+        assert!(total > 0, "should receive error response, not connection reset");
+        let error_line = std::str::from_utf8(&buf[..total]).unwrap();
+        let err: serde_json::Value = serde_json::from_str(error_line.trim()).unwrap();
+        assert_eq!(err["error"], "handshake_failed");
+        assert!(
+            err["reason"].as_str().unwrap().contains("32 bytes"),
+            "reason should mention expected key length: {}",
+            err["reason"]
+        );
+
+        let server_result = server_handle.await.unwrap();
+        assert!(server_result.is_err(), "server should report handshake failure");
     }
 }

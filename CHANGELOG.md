@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `"jsonrpc"` → liveness-only JSON-RPC (S45.1 path)
   - Non-`{` first byte → length-prefixed BTSP handshake (internal path)
 - **JSON-line framing** — `read_json_line` / `write_json_line` in `btsp/framing.rs`; byte-by-byte reading avoids BufReader buffering issues in multi-step handshakes
-- **15 new tests** — JSON-line handshake round-trip, wrong-seed rejection, wire type serde, base64 decode edge cases, framing multi-step (test count: 1,527)
+- **15 new tests** — JSON-line handshake round-trip, wrong-seed rejection, wire type serde, base64 decode edge cases, framing multi-step (test count: 1,529)
 - **Pre-existing clippy fixes** — removed 3 `needless_return` warnings in `tarpc.rs` (cfg-gated feature blocks)
 - **Resolves primalSpring Phase 45b BTSP escalation**: `{"protocol":"btsp",...}\n` is no longer misclassified as invalid JSON-RPC
 

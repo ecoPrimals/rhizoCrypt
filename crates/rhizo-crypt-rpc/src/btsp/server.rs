@@ -292,19 +292,21 @@ impl BtspServer {
         framing::write_frame(stream, &error_msg).await
     }
 
-    /// Send a handshake failure as a JSON-line and close.
+    /// Send a handshake failure as a JSON-line with the actual error reason.
     ///
     /// # Errors
     ///
     /// Returns I/O errors from the underlying stream.
-    pub async fn send_handshake_error_jsonline<S>(stream: &mut S) -> std::io::Result<()>
+    pub async fn send_handshake_error_jsonline<S>(
+        stream: &mut S,
+        reason: &str,
+    ) -> std::io::Result<()>
     where
         S: AsyncWriteExt + Unpin,
     {
-        let error_msg = serde_json::to_vec(
-            &serde_json::json!({"error": "handshake_failed", "reason": "family_verification"}),
-        )
-        .unwrap_or_else(|_| br#"{"error":"handshake_failed"}"#.to_vec());
+        let error_msg =
+            serde_json::to_vec(&serde_json::json!({"error": "handshake_failed", "reason": reason}))
+                .unwrap_or_else(|_| br#"{"error":"handshake_failed"}"#.to_vec());
         framing::write_json_line(stream, &error_msg).await
     }
 }
@@ -613,7 +615,9 @@ mod tests {
     #[tokio::test]
     async fn send_handshake_error_jsonline_writes_line() {
         let mut buf = Vec::new();
-        BtspServer::send_handshake_error_jsonline(&mut buf).await.expect("send error");
+        BtspServer::send_handshake_error_jsonline(&mut buf, "bad_key_length")
+            .await
+            .expect("send error");
         assert!(!buf.is_empty());
         assert_eq!(buf.last(), Some(&b'\n'));
 
@@ -621,6 +625,7 @@ mod tests {
         let line = framing::read_json_line(&mut cursor).await.expect("read line");
         let val: serde_json::Value = serde_json::from_slice(&line).expect("parse json");
         assert_eq!(val["error"], "handshake_failed");
+        assert_eq!(val["reason"], "bad_key_length");
     }
 
     #[test]
