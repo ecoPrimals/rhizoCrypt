@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S46b: Clippy Pedantic Clean + Hardcoded Primal Name Removal
+
+- **Clippy pedantic+nursery clean** — resolved sole `similar_names` warning (`peek` → `probe` in `handle_tcp_connection`)
+- **Hardcoded primal name removal** — removed "BearDog/Squirrel" from `UNAUTHENTICATED_METHODS` doc comment, replaced with ecosystem-generic language
+- Full audit confirms: zero production files over 800 lines, zero hardcoded primal strings, zero unsafe blocks, zero TODO/FIXME markers
+- All clones audited (DashMap guards, Arc, HashMap keys, method retry) — all justified
+- Mock isolation verified: `#[cfg(any(test, feature = "test-utils"))]` on all `Mock*` types
+
+#### S46: BTSP Handshake Robustness — Error Reporting + UDS Integration Tests
+
+- **Descriptive error responses** — `send_handshake_error_jsonline` now accepts a `reason` parameter; the actual `HandshakeError` message flows to the client instead of the previous hardcoded "family_verification"
+- **Explicit writer shutdown** — both JSON-line and length-prefixed error paths now call `writer.shutdown()` after sending the error, preventing OS-level RST before the client receives the error JSON line
+- **2 new UDS integration tests** — `test_btsp_jsonline_handshake_over_uds` (full 4-step handshake over real `UnixStream::pair()` + post-handshake JSON-RPC round-trip) and `test_btsp_jsonline_invalid_key_returns_error` (socat-style invalid key returns structured error, not ECONNRESET) (test count: 1,529)
+- Root cause: primalSpring audit "relay to BearDog" does not apply — rhizoCrypt is self-sovereign (no BearDog delegation)
+
 #### S45.2: BTSP Wire-Format Alignment — JSON-Line Interop (primalSpring Phase 45b)
 
 - **JSON-line BTSP handshake** — `accept_handshake_jsonline` performs the same 4-step X25519 + HMAC-SHA256 handshake using newline-delimited JSON instead of length-prefixed binary frames, matching primalSpring's wire format
@@ -18,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `"jsonrpc"` → liveness-only JSON-RPC (S45.1 path)
   - Non-`{` first byte → length-prefixed BTSP handshake (internal path)
 - **JSON-line framing** — `read_json_line` / `write_json_line` in `btsp/framing.rs`; byte-by-byte reading avoids BufReader buffering issues in multi-step handshakes
-- **15 new tests** — JSON-line handshake round-trip, wrong-seed rejection, wire type serde, base64 decode edge cases, framing multi-step (test count: 1,529)
+- **15 new tests** — JSON-line handshake round-trip, wrong-seed rejection, wire type serde, base64 decode edge cases, framing multi-step (test count: 1,527)
 - **Pre-existing clippy fixes** — removed 3 `needless_return` warnings in `tarpc.rs` (cfg-gated feature blocks)
 - **Resolves primalSpring Phase 45b BTSP escalation**: `{"protocol":"btsp",...}\n` is no longer misclassified as invalid JSON-RPC
 
