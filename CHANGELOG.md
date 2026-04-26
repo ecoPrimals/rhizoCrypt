@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S48b: Deep Debt Audit — Clippy Clean + Agnostic Comment Fix
+
+- **9 clippy warnings resolved** — `map_or`→`is_some_and` (types.rs), borrowed expression deref (btsp/server.rs, uds.rs), `doc_markdown` backticks on BTSP handshake types (uds.rs)
+- **Hardcoded primal name removal** — "Squirrel AI coordination" → "AI coordination layer" in `niche.rs`
+- Full deep debt audit confirms: zero files >800L, zero unsafe, zero TODO/FIXME, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero `unwrap`/`expect` in production, all mocks behind `cfg(any(test, feature="test-utils"))`, all deps pure Rust
+
 #### S48: DID vs Raw Public Key Semantic Alignment
 
 - **`Did::is_well_formed()`** — new validation method checks `did:<method>:<id>` format
