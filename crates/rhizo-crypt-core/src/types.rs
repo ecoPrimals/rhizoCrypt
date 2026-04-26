@@ -226,12 +226,9 @@ impl Did {
     /// (starts with `did:<method>:`).
     #[must_use]
     pub fn is_well_formed(&self) -> bool {
-        let s = self.as_str();
-        if let Some(rest) = s.strip_prefix("did:") {
-            rest.contains(':') && !rest.starts_with(':')
-        } else {
-            false
-        }
+        self.as_str()
+            .strip_prefix("did:")
+            .is_some_and(|rest| rest.contains(':') && !rest.starts_with(':'))
     }
 
     /// Get the DID as a string.

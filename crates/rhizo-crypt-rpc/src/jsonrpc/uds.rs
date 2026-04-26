@@ -492,9 +492,9 @@ mod tests {
         let _ = handle.await;
     }
 
-    /// Full BTSP JSON-line handshake over a real UnixStream pair, testing the
+    /// Full BTSP JSON-line handshake over a real `UnixStream` pair, testing the
     /// routing in `handle_uds_connection` end-to-end:
-    /// ClientHello → ServerHello → ChallengeResponse → HandshakeComplete → JSON-RPC
+    /// `ClientHello` → `ServerHello` → `ChallengeResponse` → `HandshakeComplete` → JSON-RPC
     #[tokio::test]
     async fn test_btsp_jsonline_handshake_over_uds() {
         use base64::Engine;
@@ -569,7 +569,7 @@ mod tests {
         let hmac_result = mac.finalize().into_bytes();
 
         let cr = serde_json::json!({
-            "response": b64.encode(&hmac_result),
+            "response": b64.encode(hmac_result),
             "preferred_cipher": "null"
         });
         let cr_line = format!("{cr}\n");
@@ -612,7 +612,7 @@ mod tests {
         assert!(server_result.is_ok(), "server should complete cleanly");
     }
 
-    /// Verify that a partial/invalid ClientHello gets an error response, not
+    /// Verify that a partial/invalid `ClientHello` gets an error response, not
     /// a silent connection reset.
     #[tokio::test]
     async fn test_btsp_jsonline_invalid_key_returns_error() {

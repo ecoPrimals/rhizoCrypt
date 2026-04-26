@@ -317,7 +317,7 @@ pub const METHOD_CATALOG: &[MethodSpec] = &[
         external: false,
         deps: &[],
     },
-    // MCP tool exposure (Squirrel AI coordination)
+    // MCP tool exposure (AI coordination layer)
     MethodSpec {
         fqn: "tools.list",
         domain: "tools",

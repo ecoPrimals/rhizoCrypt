@@ -500,7 +500,7 @@ mod tests {
         let hmac_result = mac.finalize().into_bytes();
 
         let cr = ChallengeResponseWire {
-            response: b64.encode(&hmac_result),
+            response: b64.encode(hmac_result),
             preferred_cipher: "null".to_owned(),
         };
         let cr_bytes = serde_json::to_vec(&cr)?;
