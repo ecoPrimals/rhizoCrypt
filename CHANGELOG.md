@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S48: DID vs Raw Public Key Semantic Alignment
+
+- **`Did::is_well_formed()`** — new validation method checks `did:<method>:<id>` format
+- **`Did::new()` debug_assert** — catches non-DID strings in dev/test builds
+- **Wire DTO test cleanup** — `CryptoSignContractResponse` tests now use `did:key:` format instead of raw hex strings, aligning with documented semantics
+- **Trace diagnostics** — `request_attestation` now logs the `public_key` returned by the signing provider for operational visibility
+- **CRYPTO_MODEL.md** updated with type-level enforcement status
+- Lockfile audit confirms: no `ring`, `sled`, `aws-lc`, or `openssl` ghost stanzas (test count: 1,537)
+
 #### S47: FAMILY_SEED Encoding Alignment — Cross-Primal BTSP Compatibility
 
 - **Seed encoding normalization** — `read_family_seed` now matches primalSpring's `raw_family_seed_from_env` exactly: hex seed (len ≥ 32, even, all hex digits) → raw UTF-8 bytes; valid base64 → decoded bytes; otherwise → raw UTF-8 bytes. Previously always used raw UTF-8, causing key divergence when the harness generates base64-encoded seeds.

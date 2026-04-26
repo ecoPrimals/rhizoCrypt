@@ -155,7 +155,7 @@ fn test_crypto_sign_contract_response_serialization() {
     let response = CryptoSignContractResponse {
         terms_hash: "abcdef1234567890".to_string(),
         signature: "deadbeef".repeat(16),
-        public_key: "cafebabe".repeat(8),
+        public_key: "did:key:z6MkContractSigner".to_string(),
         signed_at: "2026-04-15T12:00:00Z".to_string(),
     };
 
@@ -492,7 +492,7 @@ async fn test_request_attestation_via_mock() {
             CryptoSignContractResponse {
                 terms_hash: hex::encode([0xABu8; 32]),
                 signature: hex::encode([0x01u8; 64]),
-                public_key: hex::encode([0x02u8; 32]),
+                public_key: "did:key:z6MkAttesterKey".to_string(),
                 signed_at: "2026-04-15T12:00:00Z".to_string(),
             },
         )

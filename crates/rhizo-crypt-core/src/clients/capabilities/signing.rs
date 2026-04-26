@@ -346,6 +346,12 @@ impl SigningClient {
         let response: CryptoSignContractResponse =
             self.adapter.call("crypto.sign_contract", request).await?;
 
+        tracing::trace!(
+            provider_public_key = %response.public_key,
+            terms_hash = %response.terms_hash,
+            "crypto.sign_contract response received"
+        );
+
         let sig_bytes = hex::decode(&response.signature).map_err(|e| {
             RhizoCryptError::integration(format!("Invalid hex signature from contract: {e}"))
         })?;

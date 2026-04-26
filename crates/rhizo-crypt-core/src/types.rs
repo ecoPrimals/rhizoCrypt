@@ -214,7 +214,24 @@ impl Did {
     /// Create a new DID from a string.
     #[must_use]
     pub fn new(did: impl AsRef<str>) -> Self {
-        Self(Arc::from(did.as_ref()))
+        let s = did.as_ref();
+        debug_assert!(
+            s.starts_with("did:"),
+            "Did::new called with non-DID string: {s:?} — use a `did:` URI",
+        );
+        Self(Arc::from(s))
+    }
+
+    /// Returns `true` if the inner string is a well-formed DID URI
+    /// (starts with `did:<method>:`).
+    #[must_use]
+    pub fn is_well_formed(&self) -> bool {
+        let s = self.as_str();
+        if let Some(rest) = s.strip_prefix("did:") {
+            rest.contains(':') && !rest.starts_with(':')
+        } else {
+            false
+        }
     }
 
     /// Get the DID as a string.

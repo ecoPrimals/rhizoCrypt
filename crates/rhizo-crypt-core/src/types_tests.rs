@@ -246,6 +246,23 @@ fn test_did_debug_display() {
 }
 
 #[test]
+fn test_did_is_well_formed() {
+    assert!(Did::new("did:key:z6MkTest").is_well_formed());
+    assert!(Did::new("did:eco:owner").is_well_formed());
+    assert!(Did::new("did:web:example.com").is_well_formed());
+    assert!(Did::new("did:key:anonymous").is_well_formed());
+    assert!(Did::default().is_well_formed());
+}
+
+#[test]
+fn test_did_is_well_formed_rejects_malformed() {
+    assert!(!Did(std::sync::Arc::from("not-a-did")).is_well_formed());
+    assert!(!Did(std::sync::Arc::from("did:")).is_well_formed());
+    assert!(!Did(std::sync::Arc::from("did::empty")).is_well_formed());
+    assert!(!Did(std::sync::Arc::from("")).is_well_formed());
+}
+
+#[test]
 fn test_slice_id_debug_display() {
     let uuid = uuid::Uuid::now_v7();
     let sid = SliceId::new(uuid);

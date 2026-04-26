@@ -175,6 +175,17 @@ This is preferable to sending raw key bytes because:
 rhizoCrypt sends DID strings in `key_id` (sign) and `public_key` (verify)
 fields consistently. This gap is formally closed.
 
+### Type-Level Enforcement (Session 48)
+
+The `Did` newtype now includes:
+- `debug_assert` in `Did::new()` that catches non-`did:` strings in dev/test
+- `Did::is_well_formed()` for runtime validation (`did:<method>:<id>`)
+
+Wire DTOs use `String` where the field must match an external service's
+schema (e.g. `CryptoSignContractResponse::public_key`). The `SigningClient`
+public API exclusively takes `&Did`, enforcing DID semantics at the
+application boundary.
+
 ### Remaining Evolution
 
 - **BTSP Phase 3**: Per-frame AEAD using derived session keys.
