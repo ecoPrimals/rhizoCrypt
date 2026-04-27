@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S51: FAMILY_SEED Documentation + EOF Wire Format Test
+
+- **`FAMILY_SEED` / `RHIZOCRYPT_FAMILY_SEED` documented in `docs/ENV_VARS.md`** — primalSpring convergence validation identified that downstream teams hit "no family seed" errors when launching with family-scoped sockets without this env var. Accepts hex, base64, or plain UTF-8.
+- **Wire format note** — `\n`-terminated request requirement documented in ENV_VARS.md UDS section with examples
+- **New test**: `test_newline_eof_without_trailing_newline` — confirms EOF-without-`\n` delivers response when write half is shut down (validates primalSpring trio integration guide finding)
+- Test count: 1,368 (default), 1,541 (all-features)
+
 #### S50: Deep Debt — UDS Test Extraction + Agnostic Service IDs
 
 - **`uds.rs` refactored** — test module (472 lines) extracted to `uds_tests.rs` via `#[path]`; production code now 330L (was 802L, below 800L threshold)

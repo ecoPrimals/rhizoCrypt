@@ -319,6 +319,19 @@ mod tests {
         assert_eq!(results[0]["error"]["code"], -32600);
     }
 
+    /// EOF without trailing newline still delivers the response when the
+    /// caller shuts down their write half. Validates the behavior reported
+    /// by primalSpring's trio integration guide (PG-52 validation).
+    #[tokio::test]
+    async fn test_newline_eof_without_trailing_newline() {
+        let primal = test_primal().await;
+        let input = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":99}";
+        let results = roundtrip(primal, input).await;
+        assert_eq!(results.len(), 1, "EOF after data should deliver the response");
+        assert_eq!(results[0]["id"], 99);
+        assert!(results[0]["result"].is_object());
+    }
+
     async fn liveness_roundtrip(primal: Arc<RhizoCrypt>, input: &[u8]) -> Vec<serde_json::Value> {
         let (mut client, server) = duplex(8192);
         let handle = tokio::spawn(handle_liveness_connection(server, primal));

@@ -1,6 +1,6 @@
 # 🔐 rhizoCrypt — Environment Variables
 
-**Last Updated**: April 12, 2026  
+**Last Updated**: April 27, 2026  
 **Version**: 0.14.0-dev  
 **Philosophy**: Capability-based, not primal-based
 
@@ -27,9 +27,11 @@ rhizoCrypt follows the **infant discovery** pattern: it starts with **zero knowl
 | `RHIZOCRYPT_JSONRPC_PORT` | u16 | tarpc port + 1 | **Opt-in TCP**: JSON-RPC TCP port (dual-mode: HTTP POST + newline). Setting this also triggers TCP. |
 | `RHIZOCRYPT_METRICS_PORT` | u16 | `9401` | Prometheus metrics port |
 | `XDG_RUNTIME_DIR` | path | `/run/user/$UID` | Base dir for UDS socket. Socket is always created at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` (or `rhizocrypt-{FAMILY_ID}.sock` when family-scoped). UDS is unconditional on Unix. |
-| `FAMILY_ID` | string | (unset) | BTSP Phase 1: Family scope for socket naming. When set (not `"default"`), socket becomes `rhizocrypt-{family_id}.sock`. Production mode — BTSP handshake will be mandatory in Phase 2+. |
+| `FAMILY_ID` | string | (unset) | BTSP Phase 1: Family scope for socket naming. When set (not `"default"`), socket becomes `rhizocrypt-{family_id}.sock` and BTSP Phase 2 handshake is enforced on incoming UDS connections. Requires `FAMILY_SEED` to be set. |
 | `RHIZOCRYPT_FAMILY_ID` | string | (unset) | Primal-specific override for `FAMILY_ID`. Takes precedence over the ecosystem-wide variable. |
-| `BIOMEOS_INSECURE` | boolean | (unset) | Development mode flag (`1`, `true`, `yes`). No BTSP handshake. **Cannot be set when `FAMILY_ID` is set** — primal refuses to start on conflict. |
+| `FAMILY_SEED` | string | (unset) | **Required when `FAMILY_ID` is set.** BTSP Phase 2 handshake key material. Used to derive HKDF-SHA256 handshake keys for HMAC verification. Accepts hex-encoded strings (>= 32 chars), base64, or plain UTF-8. Without this, BTSP will **reject all connections** with "no family seed." |
+| `RHIZOCRYPT_FAMILY_SEED` | string | (unset) | Primal-specific override for `FAMILY_SEED`. Takes precedence over the ecosystem-wide variable. |
+| `BIOMEOS_INSECURE` | boolean | (unset) | Development mode flag (`1`, `true`, `yes`). Disables BTSP handshake enforcement. **Cannot be set when `FAMILY_ID` is set** — primal refuses to start on conflict. |
 
 ### Unix Domain Socket (UDS)
 
@@ -51,6 +53,19 @@ The UDS listener serves newline-delimited JSON-RPC 2.0 (same wire format as
 `socat`, biomeOS pipeline coordinator, and other ecoPrimals tooling). TCP
 (when opted-in) also auto-detects raw newline clients vs HTTP POST clients on
 a per-connection basis.
+
+**Wire format requirement**: Requests **must** be terminated with `\n` (newline).
+A request sent without a trailing newline will hang until the caller closes
+its write half or sends the newline. This is inherent to the newline-delimited
+framing protocol. Example:
+
+```bash
+# Correct — \n terminated, immediate response:
+echo '{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}' | socat - UNIX-CONNECT:$SOCKET
+
+# Correct — explicit newline in programmatic clients:
+printf '{"jsonrpc":"2.0","method":"dag.session.create","params":{"description":"test","session_type":"General"},"id":1}\n' | socat - UNIX-CONNECT:$SOCKET
+```
 
 ### Capability Endpoints (Preferred ✅)
 
