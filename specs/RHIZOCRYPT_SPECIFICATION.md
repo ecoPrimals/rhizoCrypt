@@ -500,7 +500,7 @@ pub struct SliceConstraints {
 
 ## 3. Data Model
 
-### 2.1 Vertex Structure
+### 3.1 Vertex Structure
 
 ```rust
 /// A single event in the RhizoCrypt DAG
@@ -538,7 +538,7 @@ pub type VertexId = [u8; 32]; // Blake3 hash
 pub type PayloadRef = [u8; 32]; // Blake3 hash of payload
 ```
 
-### 2.2 Session Structure
+### 3.2 Session Structure
 
 ```rust
 /// A RhizoCrypt session (the complete DAG)
@@ -609,7 +609,7 @@ pub enum SessionState {
 }
 ```
 
-### 2.3 Event Types
+### 3.3 Event Types
 
 Event types are domain-specific and extensible:
 
@@ -659,9 +659,9 @@ pub enum EventType {
 
 ---
 
-## 3. Architecture
+## 4. Architecture
 
-### 3.1 Component Overview
+### 4.1 Component Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -699,7 +699,7 @@ pub enum EventType {
    └─────────┘         └──────────┘        └───────────┘
 ```
 
-### 3.2 Session Manager
+### 4.2 Session Manager
 
 The Session Manager handles the lifecycle of RhizoCrypt sessions:
 
@@ -732,7 +732,7 @@ pub trait SessionManager {
 }
 ```
 
-### 3.3 Event Ingester
+### 4.3 Event Ingester
 
 The Event Ingester provides the high-performance append path:
 
@@ -761,7 +761,7 @@ pub trait EventIngester {
 }
 ```
 
-### 3.4 Dehydration Engine
+### 4.4 Dehydration Engine
 
 The Dehydration Engine handles the transition from RhizoCrypt to LoamSpine:
 
@@ -820,9 +820,9 @@ pub struct DehydrationSummary {
 
 ---
 
-## 4. Storage Model
+## 5. Storage Model
 
-### 4.1 DAG Storage
+### 5.1 DAG Storage
 
 RhizoCrypt sessions are stored in a fast, ephemeral store optimized for:
 - High write throughput (thousands of events/second)
@@ -856,7 +856,7 @@ pub trait DagStore: Send + Sync {
 }
 ```
 
-### 4.2 Payload Storage
+### 5.2 Payload Storage
 
 Large payloads are stored separately and referenced by hash:
 
@@ -879,9 +879,9 @@ pub trait PayloadStore: Send + Sync {
 
 ---
 
-## 5. Merkle Tree Structure
+## 6. Merkle Tree Structure
 
-### 5.1 Tree Construction
+### 6.1 Tree Construction
 
 RhizoCrypt uses a **positional Merkle tree** for efficient proofs:
 
@@ -897,7 +897,7 @@ RhizoCrypt uses a **positional Merkle tree** for efficient proofs:
 
 The tree is constructed over vertices in **topological order** (parents before children).
 
-### 5.2 Merkle Proof Structure
+### 6.2 Merkle Proof Structure
 
 ```rust
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -940,9 +940,9 @@ impl MerkleProof {
 
 ---
 
-## 6. Integration Points
+## 7. Integration Points
 
-### 6.1 BearDog Integration
+### 7.1 Signing Provider Integration
 
 RhizoCrypt relies on BearDog for identity and signing:
 
@@ -969,7 +969,7 @@ pub trait SigningProvider {
 }
 ```
 
-### 6.2 LoamSpine Integration
+### 7.2 Permanent Storage Integration
 
 RhizoCrypt commits to LoamSpine via the Dehydration Engine:
 
@@ -988,7 +988,7 @@ pub trait PermanentStorageProvider {
 }
 ```
 
-### 6.3 ToadStool Integration
+### 7.3 Compute Provider Integration
 
 RhizoCrypt receives events from ToadStool compute tasks:
 
@@ -1010,9 +1010,9 @@ pub enum ComputeEvent {
 
 ---
 
-## 7. API Specification
+## 8. API Specification
 
-### 7.1 Pure Rust RPC (tarpc)
+### 8.1 Pure Rust RPC (tarpc)
 
 RhizoCrypt uses **tarpc** for RPC — no protobuf, no external code generation. The Rust compiler provides all type safety:
 
@@ -1062,7 +1062,7 @@ pub trait RhizoCryptRpc {
 
 See [API_SPECIFICATION.md](./API_SPECIFICATION.md) for full details.
 
-### 7.2 REST API (Optional, via Songbird UPA)
+### 8.2 REST API (Optional, via discovery UPA)
 
 ```yaml
 openapi: 3.0.0
@@ -1111,7 +1111,7 @@ paths:
 
 ---
 
-## 8. Performance Targets
+## 9. Performance Targets
 
 | Metric | Target | Notes |
 |--------|--------|-------|
@@ -1125,27 +1125,27 @@ paths:
 
 ---
 
-## 9. Security Considerations
+## 10. Security Considerations
 
-### 9.1 Tamper Evidence
+### 10.1 Tamper Evidence
 
 - All vertices are content-addressed (hash includes parents)
 - Modification of any vertex changes all descendant hashes
 - Merkle proofs allow verification without full DAG
 
-### 9.2 Optional Signing
+### 10.2 Optional Signing
 
 - Critical events can require BearDog signatures
 - Signature requirements are configurable per session type
 - Missing required signatures prevent session resolution
 
-### 9.3 Access Control
+### 10.3 Access Control
 
 - Sessions can be private (single agent) or collaborative (multiple agents)
 - BearDog policies govern who can append to which sessions
 - Read access can be more permissive than write access
 
-### 9.4 Denial of Service
+### 10.4 Denial of Service
 
 - Per-session vertex limits prevent unbounded growth
 - Per-agent rate limiting at the ingester
@@ -1153,7 +1153,7 @@ paths:
 
 ---
 
-## 10. Implementation Status
+## 11. Implementation Status
 
 ### Phase 1: Core Engine — Complete
 - [x] Vertex and Session data structures (`vertex.rs`, `session.rs`)
@@ -1205,12 +1205,12 @@ paths:
 - [x] `#[forbid(unsafe_code)]` (non-test), `#[deny(unwrap_used, expect_used)]`
 - [x] `cargo-deny` supply chain audit
 - [x] Achieve 90%+ line coverage (CI gated) — 93.88%
+- [x] Streaming/NDJSON for long-running operations (`StreamItem`, `event.append_batch`)
 - [ ] `Arc<str>` for hot-path identifiers (zero-copy evolution)
-- [ ] Streaming/NDJSON for long-running operations
 
 ---
 
-## 11. References
+## 12. References
 
 - [W3C PROV-DM](https://www.w3.org/TR/prov-dm/) — Provenance Data Model
 - [IPLD DAG-CBOR](https://ipld.io/specs/codecs/dag-cbor/) — Content-addressed data structures

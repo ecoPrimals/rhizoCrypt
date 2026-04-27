@@ -15,7 +15,7 @@
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all files under 1000 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 170 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 167 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
@@ -31,9 +31,9 @@
 
 ### Documentation
 - [x] **README.md** (current metrics — 1,540 tests)
-- [x] **CHANGELOG.md** (version history through session 43)
+- [x] **CHANGELOG.md** (version history through session 50)
 - [x] **showcase/** (65 demo scripts)
-- [x] **specs/** (10 complete + 1 experimental specification documents)
+- [x] **specs/** (12 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
 
 ---
@@ -250,5 +250,5 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: April 16, 2026
+**Last Updated**: April 27, 2026
 **Version**: rhizoCrypt 0.14.0-dev

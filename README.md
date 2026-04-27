@@ -22,7 +22,7 @@
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 166 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 167 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `capability_registry.toml` (28 methods, 5 domains incl. `tools.*` MCP, `identity.get`) |
@@ -163,7 +163,7 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 - [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) — Production deployment
 - [specs/](specs/) — Formal specifications (architecture, data model, protocols, experiments)
 - [showcase/](showcase/) — Progressive demo suite (65 demo scripts)
-- [specs/CRYPTO_MODEL.md](specs/CRYPTO_MODEL.md) — Canonical crypto delegation pattern (BearDog IPC)
+- [specs/CRYPTO_MODEL.md](specs/CRYPTO_MODEL.md) — Canonical crypto delegation pattern (signing provider IPC)
 - [CHANGELOG.md](CHANGELOG.md) — Version history
 - [deny.toml](deny.toml) — Dependency audit policy (`cargo-deny`)
 - [capability_registry.toml](capability_registry.toml) — Capability registry for biomeOS routing
