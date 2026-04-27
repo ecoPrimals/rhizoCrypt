@@ -553,7 +553,7 @@ pub fn normalize_method(method: &str) -> &str {
         .unwrap_or(method)
 }
 
-/// MCP tool definitions for Squirrel AI coordination.
+/// MCP tool definitions for AI coordination layer.
 #[must_use]
 pub fn mcp_tools() -> serde_json::Value {
     serde_json::json!([

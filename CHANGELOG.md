@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S50: Deep Debt — UDS Test Extraction + Agnostic Service IDs
+
+- **`uds.rs` refactored** — test module (472 lines) extracted to `uds_tests.rs` via `#[path]`; production code now 330L (was 802L, below 800L threshold)
+- **Hardcoded primal names cleaned** — test service IDs renamed: `bearDog1`/`bearDog2` → `signer-primary`/`signer-fallback` (resolution.rs), `beardog.sock` → `signing.sock` (adapters/mod.rs)
+- **Production log agnostic** — signing.rs tracing message no longer references specific primals
+- **Comment cleanup** — `niche.rs` "Squirrel AI" → "AI coordination layer", `loamspine_rpc.rs` comment made agnostic
+- 0 clippy warnings, 1,367 tests passing, ~49,700 source lines
+
 #### S49: PG-52 — UDS Data Methods Blocked by Liveness Gate (HIGH)
 
 - **Root cause**: S45.1 introduced first-byte auto-detect that routed ALL non-BTSP JSON-RPC on UDS to `handle_liveness_connection`, which only allows `health.check`, `capability.list`, and probes — all `dag.*` methods were rejected with FORBIDDEN (-32000). 4 springs (hotSpring, wetSpring, neuralSpring, healthSpring) reported `dag.session.create` returns empty/reset.

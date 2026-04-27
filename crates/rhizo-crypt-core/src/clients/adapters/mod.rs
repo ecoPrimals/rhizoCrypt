@@ -320,20 +320,20 @@ mod tests {
 
     #[test]
     fn test_factory_unix_with_protocol() {
-        let adapter = AdapterFactory::create("unix:///run/biomeos/beardog.sock").unwrap();
+        let adapter = AdapterFactory::create("unix:///run/biomeos/signing.sock").unwrap();
         assert_eq!(adapter.protocol(), "unix");
-        assert_eq!(adapter.endpoint(), "/run/biomeos/beardog.sock");
+        assert_eq!(adapter.endpoint(), "/run/biomeos/signing.sock");
     }
 
     #[test]
     fn test_factory_unix_bare_path() {
-        let adapter = AdapterFactory::create("/run/biomeos/beardog.sock").unwrap();
+        let adapter = AdapterFactory::create("/run/biomeos/signing.sock").unwrap();
         assert_eq!(adapter.protocol(), "unix");
     }
 
     #[test]
     fn test_factory_unix_relative_path() {
-        let adapter = AdapterFactory::create("./sockets/beardog.sock").unwrap();
+        let adapter = AdapterFactory::create("./sockets/signing.sock").unwrap();
         assert_eq!(adapter.protocol(), "unix");
     }
 

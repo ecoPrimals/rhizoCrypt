@@ -185,7 +185,7 @@ mod tests {
         assert!(!provider.has_did_verification().await);
         assert!(provider.signing_endpoint().await.is_err());
 
-        // Register a signing service (could be BearDog, YubiKey, CloudKMS, etc.)
+        // Register a signing service (discovered at runtime via capabilities)
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "signingService", // Deliberately generic name
@@ -249,14 +249,14 @@ mod tests {
         // Register multiple endpoints for signing (fallback candidates)
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "bearDog1",
+                "signer-primary",
                 "127.0.0.1:9000".parse().unwrap(),
                 vec![Capability::Signing],
             ))
             .await;
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "bearDog2",
+                "signer-fallback",
                 "127.0.0.1:9001".parse().unwrap(),
                 vec![Capability::Signing],
             ))
@@ -265,8 +265,8 @@ mod tests {
         // Resolution should succeed with one of the fallback endpoints
         let endpoint = provider.signing_endpoint().await.unwrap();
         assert!(
-            endpoint.service_id.as_ref() == "bearDog1"
-                || endpoint.service_id.as_ref() == "bearDog2"
+            endpoint.service_id.as_ref() == "signer-primary"
+                || endpoint.service_id.as_ref() == "signer-fallback"
         );
         assert!(provider.has_signing().await);
     }

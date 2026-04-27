@@ -14,7 +14,7 @@
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
-// tarpc Service Definition (mirrors LoamSpine's RPC interface)
+// tarpc Service Definition (mirrors the ledger primal's RPC interface)
 // ============================================================================
 
 /// tarpc service trait for `LoamSpine` commit operations.
