@@ -9,7 +9,7 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,537 tests passing** (all features), 0 failures
+- [x] **1,540 tests passing** (all features), 0 failures
 - [x] **`--fail-under-lines 90` CI gate** enforced
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
@@ -30,7 +30,7 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,537 tests)
+- [x] **README.md** (current metrics — 1,540 tests)
 - [x] **CHANGELOG.md** (version history through session 43)
 - [x] **showcase/** (65 demo scripts)
 - [x] **specs/** (10 complete + 1 experimental specification documents)

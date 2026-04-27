@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S49: PG-52 — UDS Data Methods Blocked by Liveness Gate (HIGH)
+
+- **Root cause**: S45.1 introduced first-byte auto-detect that routed ALL non-BTSP JSON-RPC on UDS to `handle_liveness_connection`, which only allows `health.check`, `capability.list`, and probes — all `dag.*` methods were rejected with FORBIDDEN (-32000). 4 springs (hotSpring, wetSpring, neuralSpring, healthSpring) reported `dag.session.create` returns empty/reset.
+- **Fix**: UDS now routes plain JSON-RPC to the full handler (`handle_newline_connection`). UDS is filesystem-authenticated and family-scoped (BTSP Phase 1), so BTSP Phase 2 handshake is not required for local IPC. BTSP handshake path remains intact for clients that perform it.
+- **3 new integration tests** — `test_plain_jsonrpc_data_methods_on_btsp_uds` (exact PG-52 repro), `test_dag_method_suite_on_btsp_uds` (create + health + caps), `test_batch_jsonrpc_on_btsp_uds` (batch with data methods) (test count: 1,540)
+- `handle_liveness_connection` retained for potential TCP-side use
+
 #### S48b: Deep Debt Audit — Clippy Clean + Agnostic Comment Fix
 
 - **9 clippy warnings resolved** — `map_or`→`is_some_and` (types.rs), borrowed expression deref (btsp/server.rs, uds.rs), `doc_markdown` backticks on BTSP handshake types (uds.rs)

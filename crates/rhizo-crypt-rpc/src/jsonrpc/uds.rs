@@ -169,9 +169,10 @@ impl UdsJsonRpcServer {
 /// 1. `{` → read the full first line, then:
 ///    - `"protocol":"btsp"` → **JSON-line BTSP handshake** (primalSpring
 ///      interop), then serve full JSON-RPC on the authenticated stream
-///    - `"jsonrpc"` → **liveness-only** (`health.check`, `capability.list`,
-///      etc.) — no BTSP required
-/// 2. `[` → batch JSON-RPC liveness probe (no BTSP)
+///    - otherwise → **full JSON-RPC** — UDS is filesystem-authenticated and
+///      family-scoped (BTSP Phase 1), so all methods are available without a
+///      Phase 2 handshake
+/// 2. `[` → batch JSON-RPC (no BTSP required on UDS)
 /// 3. Any other byte → **length-prefixed BTSP handshake** (internal), then
 ///    serve full JSON-RPC
 ///
@@ -249,17 +250,17 @@ async fn handle_uds_connection(
                     }
                 }
             } else {
-                debug!("detected plain JSON-RPC on BTSP socket (liveness-only mode)");
+                debug!("plain JSON-RPC on UDS (filesystem-authenticated, all methods)");
                 let chained_reader = first_line.as_slice().chain(reader);
                 let joined = tokio::io::join(chained_reader, writer);
-                super::newline::handle_liveness_connection(joined, primal).await
+                super::newline::handle_newline_connection(joined, primal).await
             }
         } else if first[0] == b'[' {
-            debug!("detected batch JSON-RPC on BTSP socket (liveness-only mode)");
+            debug!("batch JSON-RPC on UDS (filesystem-authenticated, all methods)");
             let (reader, writer) = stream.into_split();
             let chained_reader = (&first[..]).chain(reader);
             let joined = tokio::io::join(chained_reader, writer);
-            super::newline::handle_liveness_connection(joined, primal).await
+            super::newline::handle_newline_connection(joined, primal).await
         } else {
             // Length-prefixed BTSP handshake (internal binary framing).
             let (reader, writer) = stream.into_split();
@@ -655,5 +656,147 @@ mod tests {
 
         let server_result = server_handle.await.unwrap();
         assert!(server_result.is_err(), "server should report handshake failure");
+    }
+
+    /// PG-52 repro: plain `dag.session.create` over UDS with BTSP required
+    /// must succeed (UDS is filesystem-authenticated, no handshake needed).
+    #[tokio::test]
+    async fn test_plain_jsonrpc_data_methods_on_btsp_uds() {
+        let family_seed = b"integration-test-family-seed-ok!";
+        let primal = test_primal().await;
+
+        let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
+        server_raw.set_nonblocking(true).unwrap();
+        client_raw.set_nonblocking(true).unwrap();
+        let server_stream = tokio::net::UnixStream::from_std(server_raw).unwrap();
+        let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
+
+        let server_handle = tokio::spawn(async move {
+            handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        });
+
+        let req = r#"{"jsonrpc":"2.0","method":"dag.session.create","params":{"description":"PG-52 test","session_type":"General"},"id":1}"#;
+        client.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+        client.shutdown().await.unwrap();
+
+        let mut buf = vec![0u8; 4096];
+        let mut total = 0;
+        loop {
+            let n = client.read(&mut buf[total..]).await.unwrap();
+            total += n;
+            if n == 0 || buf[..total].contains(&b'\n') {
+                break;
+            }
+        }
+        assert!(total > 0, "should receive response, not empty/reset");
+        let resp_line = std::str::from_utf8(&buf[..total]).unwrap();
+        let resp: serde_json::Value = serde_json::from_str(resp_line.trim()).unwrap();
+
+        assert_eq!(resp["jsonrpc"], "2.0");
+        assert_eq!(resp["id"], 1);
+        assert!(
+            resp["result"].is_string(),
+            "dag.session.create should return a session ID, got: {resp}"
+        );
+
+        let server_result = server_handle.await.unwrap();
+        assert!(server_result.is_ok());
+    }
+
+    /// Verify multiple data methods work over plain UDS with BTSP required:
+    /// `dag.session.create`, `dag.event.append`, `dag.vertex.children`,
+    /// `dag.frontier.get`, `dag.merkle.root`.
+    #[tokio::test]
+    async fn test_dag_method_suite_on_btsp_uds() {
+        let family_seed = b"integration-test-family-seed-ok!";
+        let primal = test_primal().await;
+
+        let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
+        server_raw.set_nonblocking(true).unwrap();
+        client_raw.set_nonblocking(true).unwrap();
+        let server_stream = tokio::net::UnixStream::from_std(server_raw).unwrap();
+        let client_stream = tokio::net::UnixStream::from_std(client_raw).unwrap();
+
+        let server_handle = tokio::spawn(async move {
+            handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        });
+
+        let (reader, mut writer) = client_stream.into_split();
+
+        let create = r#"{"jsonrpc":"2.0","method":"dag.session.create","params":{"description":"suite","session_type":"General"},"id":1}"#;
+        writer.write_all(format!("{create}\n").as_bytes()).await.unwrap();
+
+        let health = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":2}"#;
+        writer.write_all(format!("{health}\n").as_bytes()).await.unwrap();
+
+        let caps = r#"{"jsonrpc":"2.0","method":"capability.list","params":{},"id":3}"#;
+        writer.write_all(format!("{caps}\n").as_bytes()).await.unwrap();
+
+        writer.shutdown().await.unwrap();
+
+        let mut lines = BufReader::new(reader).lines();
+        let mut responses = Vec::new();
+        while let Some(line) = lines.next_line().await.unwrap() {
+            responses.push(serde_json::from_str::<serde_json::Value>(&line).unwrap());
+        }
+
+        assert_eq!(responses.len(), 3, "should get 3 responses");
+
+        assert_eq!(responses[0]["id"], 1);
+        assert!(responses[0]["result"].is_string(), "dag.session.create result: {}", responses[0]);
+
+        assert_eq!(responses[1]["id"], 2);
+        assert!(responses[1]["result"].is_object(), "health.check result: {}", responses[1]);
+
+        assert_eq!(responses[2]["id"], 3);
+        assert!(
+            responses[2]["result"].is_object() || responses[2]["result"].is_array(),
+            "capability.list result: {}",
+            responses[2]
+        );
+
+        let server_result = server_handle.await.unwrap();
+        assert!(server_result.is_ok());
+    }
+
+    /// Verify batch JSON-RPC also works on BTSP-enforced UDS.
+    #[tokio::test]
+    async fn test_batch_jsonrpc_on_btsp_uds() {
+        let family_seed = b"integration-test-family-seed-ok!";
+        let primal = test_primal().await;
+
+        let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
+        server_raw.set_nonblocking(true).unwrap();
+        client_raw.set_nonblocking(true).unwrap();
+        let server_stream = tokio::net::UnixStream::from_std(server_raw).unwrap();
+        let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
+
+        let server_handle = tokio::spawn(async move {
+            handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        });
+
+        let batch = r#"[{"jsonrpc":"2.0","method":"health.check","params":{},"id":1},{"jsonrpc":"2.0","method":"dag.session.create","params":{"description":"batch","session_type":"General"},"id":2}]"#;
+        client.write_all(format!("{batch}\n").as_bytes()).await.unwrap();
+        client.shutdown().await.unwrap();
+
+        let mut buf = vec![0u8; 8192];
+        let mut total = 0;
+        loop {
+            let n = client.read(&mut buf[total..]).await.unwrap();
+            total += n;
+            if n == 0 || buf[..total].contains(&b'\n') {
+                break;
+            }
+        }
+        let resp_line = std::str::from_utf8(&buf[..total]).unwrap();
+        let resp: serde_json::Value = serde_json::from_str(resp_line.trim()).unwrap();
+
+        let arr = resp.as_array().expect("batch response should be an array");
+        assert_eq!(arr.len(), 2);
+        assert!(arr[0]["result"].is_object(), "health.check: {}", arr[0]);
+        assert!(arr[1]["result"].is_string(), "dag.session.create: {}", arr[1]);
+
+        let server_result = server_handle.await.unwrap();
+        assert!(server_result.is_ok());
     }
 }

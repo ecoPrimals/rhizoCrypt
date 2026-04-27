@@ -1198,7 +1198,7 @@ paths:
 - [x] `DispatchOutcome<T>` for structured error handling
 
 ### Phase 7: Quality & Hardening — Active
-- [x] 1,537+ tests, clippy-clean, fmt-clean, docs-clean
+- [x] 1,540+ tests, clippy-clean, fmt-clean, docs-clean
 - [x] 3 fuzz targets (merkle, session builder, vertex CBOR)
 - [x] 5 chaos test suites
 - [x] proptest for IPC protocol invariants
