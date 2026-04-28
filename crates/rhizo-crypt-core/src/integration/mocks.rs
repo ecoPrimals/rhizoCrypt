@@ -234,7 +234,7 @@ mod tests {
     use crate::vertex::VertexBuilder;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_mock_beardog_client() {
+    async fn test_mock_signing_client() {
         let client = MockSigningProvider::permissive();
 
         let did = Did::new("did:key:test");
@@ -247,7 +247,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_mock_beardog_strict() {
+    async fn test_mock_signing_strict() {
         let client = MockSigningProvider::strict();
 
         let did = Did::new("did:key:test");
@@ -276,7 +276,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_mock_nestgate_client() {
+    async fn test_mock_payload_storage_client() {
         let client = MockPayloadStorageProvider::new();
 
         let data = bytes::Bytes::from("test payload");
@@ -289,7 +289,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_mock_beardog_sign_vertex() {
+    async fn test_mock_signing_sign_vertex() {
         let client = MockSigningProvider::permissive();
         let did = Did::new("did:key:test");
 
@@ -300,7 +300,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_mock_beardog_verify_vertex_signature() {
+    async fn test_mock_signing_verify_vertex_signature() {
         let permissive_client = MockSigningProvider::permissive();
         let strict_client = MockSigningProvider::strict();
 
@@ -311,7 +311,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_mock_beardog_request_attestation() {
+    async fn test_mock_signing_request_attestation() {
         let client = MockSigningProvider::permissive();
         let attester = Did::new("did:key:attester");
 
@@ -329,7 +329,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_mock_loamspine_get_commit() {
+    async fn test_mock_permanent_storage_get_commit() {
         let client = MockPermanentStorageProvider::new();
 
         let commit_ref = CommitRef {
@@ -344,7 +344,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_mock_loamspine_checkout_resolve_slice() {
+    async fn test_mock_permanent_storage_checkout_resolve_slice() {
         let client = MockPermanentStorageProvider::new();
         let holder = Did::new("did:key:holder");
 
@@ -369,7 +369,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_mock_loamspine_clone() {
+    async fn test_mock_permanent_storage_clone() {
         let client1 = MockPermanentStorageProvider::new();
 
         let summary = DehydrationSummaryBuilder::new(
@@ -390,7 +390,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_mock_nestgate_payload_not_found() {
+    async fn test_mock_payload_storage_not_found() {
         let client = MockPayloadStorageProvider::new();
 
         // Query for non-existent payload

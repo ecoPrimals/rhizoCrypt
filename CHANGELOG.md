@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S52b: Deep Debt Audit — Agnostic Test Fixtures
+
+- **Comprehensive audit**: All 167 `.rs` files scanned across 8 deep debt categories — zero unsafe blocks, zero TODO/FIXME, zero `Box<dyn Error>` in production, zero `async-trait` macro, zero mocks in production, all deps pure Rust (blake3 confirmed `CARGO_FEATURE_PURE` via build output).
+- **Test fixture primal names cleaned** — replaced all vendor-specific service IDs in test code with capability-agnostic names:
+  - `registry_tests.rs`: "bearDog"→"crypto-provider", "nestGate"→"storage-provider", "toadStool"→"compute-provider", "sweetGrass"→"provenance-provider", "bearDog1/2"→"signer-alpha/beta"
+  - `mocks.rs`: test fn names `test_mock_beardog_*`→`test_mock_signing_*`, `test_mock_nestgate_*`→`test_mock_payload_storage_*`, `test_mock_loamspine_*`→`test_mock_permanent_storage_*`
+  - `signing_tests.rs`: "beardog-hsm"→"signing-hsm", comment "BearDog-aligned"→"signing-provider-aligned"
+  - `unix_socket.rs`: "beardog.sock"→"signing.sock"
+  - `discovery_failures.rs`: chaos test fixtures "bearDog"→"crypto-provider"/"signer-N"
+  - `songbird/tests_discovery.rs`: "beardog-*"→"crypto-*", "loamspine"→"ledger-provider", "nestgate"→"storage-provider"
+  - `permanent.rs`: "loamspine-*"→"ledger-*"
+  - `storage.rs`: "nestgate-*"→"storage-*"
+- **Only remaining primal-name references**: `niche_tests.rs` deny-list guardrail (intentional), vendor-specific HTTP client types/files (legitimate API surface)
+- Test count: 1,546 (all-features), 0 failures, 0 clippy warnings
+
 #### S52: Delegated Vertex Signing on Append
 
 - **`dag.event.append` now delegates signing to the discovered crypto provider** — when a signing provider (e.g. BearDog) is available and the vertex carries an `agent` DID, the vertex's canonical CBOR bytes are signed via `crypto.sign_ed25519` and the Ed25519 signature is attached before storage. This makes DAG integrity independently verifiable by any party holding the agent's public key.

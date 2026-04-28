@@ -52,8 +52,8 @@ async fn test_populate_registry() {
         .cache_discovery(
             "signing",
             vec![ServiceInfo {
-                id: "bd-1".to_string(),
-                name: "beardog-main".to_string(),
+                id: "crypto-1".to_string(),
+                name: "crypto-primary".to_string(),
                 endpoint: "127.0.0.1:9500".to_string(),
                 capabilities: vec!["signing".to_string()],
                 status: "healthy".to_string(),
@@ -78,8 +78,8 @@ async fn test_discover_specific_primal() {
         .cache_discovery(
             "signing",
             vec![ServiceInfo {
-                id: "beardog-1".to_string(),
-                name: "beardog-main".to_string(),
+                id: "crypto-1".to_string(),
+                name: "crypto-primary".to_string(),
                 endpoint: "127.0.0.1:9500".to_string(),
                 capabilities: vec!["signing".to_string(), "did-verification".to_string()],
                 status: "healthy".to_string(),
@@ -176,8 +176,8 @@ async fn test_populate_registry_with_services() {
         .cache_discovery(
             "signing",
             vec![ServiceInfo {
-                id: "beardog-1".to_string(),
-                name: "beardog".to_string(),
+                id: "crypto-1".to_string(),
+                name: "crypto-provider".to_string(),
                 endpoint: "127.0.0.1:9500".to_string(),
                 capabilities: vec!["signing".to_string()],
                 status: "healthy".to_string(),
@@ -190,8 +190,8 @@ async fn test_populate_registry_with_services() {
         .cache_discovery(
             "permanent-storage",
             vec![ServiceInfo {
-                id: "loamspine-1".to_string(),
-                name: "loamspine".to_string(),
+                id: "ledger-1".to_string(),
+                name: "ledger-provider".to_string(),
                 endpoint: "127.0.0.1:9600".to_string(),
                 capabilities: vec!["permanent-storage".to_string()],
                 status: "healthy".to_string(),
@@ -204,8 +204,8 @@ async fn test_populate_registry_with_services() {
         .cache_discovery(
             "payload-storage",
             vec![ServiceInfo {
-                id: "nestgate-1".to_string(),
-                name: "nestgate".to_string(),
+                id: "storage-1".to_string(),
+                name: "storage-provider".to_string(),
                 endpoint: "127.0.0.1:9700".to_string(),
                 capabilities: vec!["payload-storage".to_string()],
                 status: "healthy".to_string(),

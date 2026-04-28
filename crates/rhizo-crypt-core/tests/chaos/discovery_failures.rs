@@ -82,16 +82,16 @@ async fn test_partial_service_availability() {
     let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
     let factory = ClientFactory::new(Arc::clone(&registry));
 
-    // Register only BearDog
+    // Register only a signing provider
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "bearDog",
+            "crypto-provider",
             "127.0.0.1:9000".parse().unwrap(),
             vec![Capability::Signing, Capability::DidVerification],
         ))
         .await;
 
-    // BearDog should be available
+    // Signing should be available
     assert!(factory.has_signing_capability().await);
     assert!(factory.signing_endpoint().await.is_ok());
 
@@ -119,7 +119,7 @@ async fn test_service_lifecycle() {
     // Register services
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "bearDog",
+            "crypto-provider",
             "127.0.0.1:9000".parse().unwrap(),
             vec![Capability::Signing],
         ))
@@ -127,7 +127,7 @@ async fn test_service_lifecycle() {
 
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "nestGate",
+            "storage-provider",
             "127.0.0.1:9001".parse().unwrap(),
             vec![Capability::PayloadStorage],
         ))
@@ -151,7 +151,7 @@ async fn test_multiple_providers() {
     for i in 0..3 {
         registry
             .register_endpoint(ServiceEndpoint::new(
-                format!("bearDog-{i}"),
+                format!("signer-{i}"),
                 format!("127.0.0.1:900{i}").parse().unwrap(),
                 vec![Capability::Signing],
             ))

@@ -43,7 +43,7 @@ async fn test_registry_registration() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     let endpoint = ServiceEndpoint::new(
-        "bearDog",
+        "crypto-provider",
         "127.0.0.1:9000".parse().unwrap(),
         vec![Capability::DidVerification, Capability::Signing],
     );
@@ -93,7 +93,7 @@ async fn test_registry_discover() {
 
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "bearDog",
+            "crypto-provider",
             "127.0.0.1:9000".parse().unwrap(),
             vec![Capability::Signing],
         ))
@@ -112,7 +112,7 @@ async fn test_registry_get_endpoint() {
 
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "nestGate",
+            "storage-provider",
             "127.0.0.1:9001".parse().unwrap(),
             vec![Capability::PayloadStorage],
         ))
@@ -120,7 +120,7 @@ async fn test_registry_get_endpoint() {
 
     let endpoint = registry.get_endpoint(&Capability::PayloadStorage).await;
     assert!(endpoint.is_some());
-    assert_eq!(endpoint.unwrap().service_id.as_ref(), "nestGate");
+    assert_eq!(endpoint.unwrap().service_id.as_ref(), "storage-provider");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -153,14 +153,14 @@ async fn test_registry_all_endpoints() {
 
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "bearDog",
+            "crypto-provider",
             "127.0.0.1:9000".parse().unwrap(),
             vec![Capability::DidVerification, Capability::Signing],
         ))
         .await;
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "nestGate",
+            "storage-provider",
             "127.0.0.1:9001".parse().unwrap(),
             vec![Capability::PayloadStorage],
         ))
@@ -176,14 +176,14 @@ async fn test_registry_multiple_endpoints_for_capability() {
 
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "bearDog1",
+            "signer-alpha",
             "127.0.0.1:9000".parse().unwrap(),
             vec![Capability::Signing],
         ))
         .await;
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "bearDog2",
+            "signer-beta",
             "127.0.0.1:9001".parse().unwrap(),
             vec![Capability::Signing],
         ))
@@ -199,12 +199,12 @@ async fn test_registry_multiple_endpoints_for_capability() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn test_registry_toadstool() {
+async fn test_registry_compute_provider() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "toadStool",
+            "compute-provider",
             "127.0.0.1:9003".parse().unwrap(),
             vec![Capability::ComputeOrchestration, Capability::ComputeEvents],
         ))
@@ -215,16 +215,16 @@ async fn test_registry_toadstool() {
 
     let endpoint = registry.get_endpoint(&Capability::ComputeOrchestration).await;
     assert!(endpoint.is_some());
-    assert_eq!(endpoint.unwrap().service_id.as_ref(), "toadStool");
+    assert_eq!(endpoint.unwrap().service_id.as_ref(), "compute-provider");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn test_registry_sweetgrass() {
+async fn test_registry_provenance_provider() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "sweetGrass",
+            "provenance-provider",
             "127.0.0.1:9004".parse().unwrap(),
             vec![Capability::ProvenanceQuery, Capability::Attribution],
         ))
@@ -236,7 +236,7 @@ async fn test_registry_sweetgrass() {
     let endpoint = registry.get_endpoint(&Capability::ProvenanceQuery).await;
     assert!(endpoint.is_some());
     let ep = endpoint.unwrap();
-    assert_eq!(ep.service_id.as_ref(), "sweetGrass");
+    assert_eq!(ep.service_id.as_ref(), "provenance-provider");
     assert_eq!(ep.addr.port(), 9004);
 }
 
@@ -377,7 +377,7 @@ async fn test_discover_unhealthy_endpoints_filtered() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     let mut endpoint = ServiceEndpoint::new(
-        "bearDog",
+        "crypto-provider",
         "127.0.0.1:9000".parse().unwrap(),
         vec![Capability::Signing],
     );
@@ -415,14 +415,14 @@ async fn test_get_endpoint_with_multiple() {
 
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "bearDog1",
+            "signer-alpha",
             "127.0.0.1:9000".parse().unwrap(),
             vec![Capability::Signing],
         ))
         .await;
     registry
         .register_endpoint(ServiceEndpoint::new(
-            "bearDog2",
+            "signer-beta",
             "127.0.0.1:9001".parse().unwrap(),
             vec![Capability::Signing],
         ))

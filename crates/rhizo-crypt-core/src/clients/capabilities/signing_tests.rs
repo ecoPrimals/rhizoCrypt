@@ -50,7 +50,7 @@ async fn test_signing_client_discover_with_provider() {
 }
 
 // ============================================================================
-// Wire DTO serialization tests — BearDog-aligned shapes
+// Wire DTO serialization tests — signing-provider-aligned shapes
 // ============================================================================
 
 #[test]
@@ -271,11 +271,11 @@ async fn test_signing_client_service_name_tracking() {
     let registry = DiscoveryRegistry::new("test-rhizocrypt");
 
     let addr: SocketAddr = "127.0.0.1:9500".parse().unwrap();
-    let endpoint = ServiceEndpoint::new("beardog-hsm".to_string(), addr, vec![Capability::Signing]);
+    let endpoint = ServiceEndpoint::new("signing-hsm".to_string(), addr, vec![Capability::Signing]);
     registry.register_endpoint(endpoint).await;
 
     let client = SigningClient::discover(&registry).await.unwrap();
-    assert_eq!(client.service_name(), Some("beardog-hsm"));
+    assert_eq!(client.service_name(), Some("signing-hsm"));
     assert!(client.endpoint().contains("127.0.0.1:9500"));
 }
 
@@ -338,7 +338,7 @@ fn test_signing_client_endpoint_formats() {
 }
 
 // ============================================================================
-// Mock adapter tests — exercise sign/verify/attest via BearDog wire format
+// Mock adapter tests — exercise sign/verify/attest via signing-provider wire format
 // ============================================================================
 
 fn mock_client() -> SigningClient {

@@ -482,12 +482,12 @@ mod tests {
         // Register multiple providers
         let addr1: SocketAddr = "127.0.0.1:9700".parse().unwrap();
         let endpoint1 =
-            ServiceEndpoint::new("loamspine-1", addr1, vec![Capability::PermanentCommit]);
+            ServiceEndpoint::new("ledger-primary", addr1, vec![Capability::PermanentCommit]);
         registry.register_endpoint(endpoint1).await;
 
         let addr2: SocketAddr = "127.0.0.1:9701".parse().unwrap();
         let endpoint2 =
-            ServiceEndpoint::new("loamspine-2", addr2, vec![Capability::PermanentCommit]);
+            ServiceEndpoint::new("ledger-secondary", addr2, vec![Capability::PermanentCommit]);
         registry.register_endpoint(endpoint2).await;
 
         // Should discover one of them
@@ -523,7 +523,8 @@ mod tests {
 
         // Register provider
         let addr: SocketAddr = "127.0.0.1:9700".parse().unwrap();
-        let endpoint = ServiceEndpoint::new("loamspine", addr, vec![Capability::PermanentCommit]);
+        let endpoint =
+            ServiceEndpoint::new("ledger-provider", addr, vec![Capability::PermanentCommit]);
         registry.register_endpoint(endpoint).await;
 
         // Discover concurrently

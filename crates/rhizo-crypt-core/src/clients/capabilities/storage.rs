@@ -428,7 +428,7 @@ mod tests {
         let addr1: SocketAddr = "127.0.0.1:9600".parse().unwrap();
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "nestgate-1".to_string(),
+                "storage-primary".to_string(),
                 addr1,
                 vec![Capability::PayloadStorage],
             ))
@@ -437,7 +437,7 @@ mod tests {
         let addr2: SocketAddr = "127.0.0.1:9601".parse().unwrap();
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "nestgate-2".to_string(),
+                "storage-secondary".to_string(),
                 addr2,
                 vec![Capability::PayloadStorage],
             ))
@@ -459,15 +459,12 @@ mod tests {
         let registry = DiscoveryRegistry::new("test-rhizocrypt");
 
         let addr: SocketAddr = "127.0.0.1:9600".parse().unwrap();
-        let endpoint = ServiceEndpoint::new(
-            "nestgate-zfs".to_string(),
-            addr,
-            vec![Capability::PayloadStorage],
-        );
+        let endpoint =
+            ServiceEndpoint::new("storage-zfs".to_string(), addr, vec![Capability::PayloadStorage]);
         registry.register_endpoint(endpoint).await;
 
         let client = StorageClient::discover(&registry).await.unwrap();
-        assert_eq!(client.service_name(), Some("nestgate-zfs"));
+        assert_eq!(client.service_name(), Some("storage-zfs"));
         assert!(client.endpoint().contains("127.0.0.1:9600"));
     }
 
