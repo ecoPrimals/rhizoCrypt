@@ -43,6 +43,7 @@ are held, no signatures are produced.
 
 | Operation | BearDog Method | When |
 |-----------|----------------|------|
+| **Sign vertex on append** | `crypto.sign_ed25519` | Every `dag.event.append` when a signing provider is available and the vertex carries an `agent` DID |
 | Sign dehydration summary hash | `crypto.sign_contract` | During attestation collection (pre-commit) |
 | Verify attestation signatures | `crypto.verify_contract` | When validating witness attestations |
 | DID-based identity verification | `crypto.verify_ed25519` | Validating agent DIDs in session vertices |
@@ -76,6 +77,32 @@ implementation, but any service exposing `crypto.sign_*` / `crypto.verify_*`
 JSON-RPC methods satisfies the contract.
 
 ---
+
+## Vertex Signing Flow (Session 52)
+
+```
+dag.event.append (JSON-RPC)
+    │
+    ├─ VertexBuilder::build()          ← signature: None
+    │
+    ├─ sign_vertex_if_available()
+    │     ├─ vertex.agent present?     ← skip if None
+    │     ├─ primal.signing_client()   ← lazy discovery, cached
+    │     │
+    │     ├─ to_canonical_bytes()      ← CBOR (excludes signature)
+    │     ├─ crypto.sign_ed25519 ─────►│ signing provider (discovered)
+    │     │◄── { signature } ─────────┤
+    │     └─ vertex.signature = sig    ← attached before append
+    │
+    ├─ vertex.id()                     ← Blake3 of canonical bytes
+    ├─ dag_store.put_vertex()          ← stored with signature
+    │
+```
+
+The signing flow is wired at the RPC service layer (`service.rs`), keeping
+the core `append_vertex` method fast and pure (no IPC). The signing client
+is lazily resolved via `RhizoCrypt::signing_client()` (backed by
+`tokio::sync::OnceCell`) on first use, so standalone mode pays zero cost.
 
 ## Dehydration Attestation Flow
 
@@ -126,22 +153,32 @@ handshake read/write path yet.
 
 ## What This Means for Evolution
 
-1. **No signing keys in rhizoCrypt** — ever. Content hashes are sufficient
-   for DAG integrity; provenance signatures belong to BearDog.
+1. **No signing keys in rhizoCrypt** — ever. Content hashes provide
+   DAG integrity; cryptographic signatures for verifiability are delegated
+   to the signing provider (canonically BearDog). The signing client is
+   lazily resolved via capability discovery and cached for the primal's
+   lifetime.
 
-2. **Attestation requires a live signing provider** — dehydration with
+2. **Vertex signing on append** — when a signing provider is available
+   and the vertex carries an `agent` DID, `dag.event.append` delegates
+   to `crypto.sign_ed25519` before storage. This makes the DAG
+   independently verifiable by any party holding the agent's public key.
+   Vertices without an agent or without a provider remain unsigned
+   (graceful degradation for standalone mode).
+
+3. **Attestation requires a live signing provider** — dehydration with
    `required_attestations` fails gracefully when no `crypto.*` provider is
    discoverable (standalone mode).
 
-3. **Ionic bonds are BearDog's concern** — rhizoCrypt may *participate* in
+4. **Ionic bonds are BearDog's concern** — rhizoCrypt may *participate* in
    ionic bond verification (checking that a bond exists and is sealed) but
    does not *create* bonds. Bond creation flows through `crypto.ionic_bond.*`.
 
-4. **Wire format alignment** — `SigningClient` and `BearDogHttpClient`
+5. **Wire format alignment** — `SigningClient` and `BearDogHttpClient`
    converge on BearDog's semantic method names (`crypto.sign_contract`,
    `crypto.verify_contract`) rather than legacy REST paths.
 
-5. **BTSP Phase 3** is a natural next step that uses only the session keys
+6. **BTSP Phase 3** is a natural next step that uses only the session keys
    already derived — no new crypto primitives needed.
 
 ---
@@ -189,6 +226,9 @@ application boundary.
 ### Remaining Evolution
 
 - **BTSP Phase 3**: Per-frame AEAD using derived session keys.
+- **Vertex signature verification on retrieval**: Optional verification
+  of stored vertex signatures when retrieving from DAG or computing
+  Merkle roots.
 
 ---
 

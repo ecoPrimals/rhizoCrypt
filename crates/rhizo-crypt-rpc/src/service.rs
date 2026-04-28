@@ -178,6 +178,39 @@ impl RhizoCryptRpcServer {
     }
 }
 
+/// Attempt to cryptographically sign a vertex via the discovered signing provider.
+///
+/// When a signing provider (e.g. `BearDog`) is available and the vertex carries an
+/// `agent` DID, the vertex's canonical bytes are signed with Ed25519 and the
+/// resulting signature is attached. This makes DAG integrity independently
+/// verifiable by any party holding the agent's public key.
+///
+/// Gracefully degrades: if no provider is discovered or signing fails, the vertex
+/// remains unsigned (matching standalone / pre-composition behavior).
+async fn sign_vertex_if_available(primal: &rhizo_crypt_core::RhizoCrypt, vertex: &mut Vertex) {
+    let Some(agent) = vertex.agent.clone() else {
+        return;
+    };
+
+    let Some(client) = primal.signing_client().await else {
+        return;
+    };
+
+    match client.sign_vertex(vertex, &agent).await {
+        Ok(sig) => {
+            tracing::trace!(agent = %agent, "Vertex signed via delegated crypto provider");
+            vertex.signature = Some(sig);
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                agent = %agent,
+                "Failed to sign vertex — continuing unsigned"
+            );
+        }
+    }
+}
+
 impl RhizoCryptRpc for RhizoCryptRpcServer {
     async fn create_session(
         self,
@@ -243,7 +276,8 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
             builder = builder.with_metadata(key, value);
         }
 
-        let vertex = builder.build();
+        let mut vertex = builder.build();
+        sign_vertex_if_available(&self.primal, &mut vertex).await;
         self.primal.append_vertex(request.session_id, vertex).await.map_err(RpcError::from)
     }
 
@@ -264,7 +298,8 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
             for (key, value) in request.metadata {
                 builder = builder.with_metadata(key, value);
             }
-            let vertex = builder.build();
+            let mut vertex = builder.build();
+            sign_vertex_if_available(&self.primal, &mut vertex).await;
             let id = self
                 .primal
                 .append_vertex(request.session_id, vertex)

@@ -139,3 +139,103 @@ async fn test_resolve_slice_not_found() {
     let result = server.resolve_slice(tarpc::context::current(), nonexistent_id, session_id).await;
     assert!(result.is_err());
 }
+
+#[tokio::test]
+async fn test_append_event_unsigned_without_provider() {
+    use rhizo_crypt_core::Did;
+
+    let server = make_test_server().await;
+    let ctx = tarpc::context::current();
+
+    let session_id = server
+        .clone()
+        .create_session(
+            ctx,
+            CreateSessionRequest {
+                session_type: SessionType::default(),
+                description: Some("signing-test".to_string()),
+                parent_session: None,
+                max_vertices: None,
+                ttl_seconds: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    let vertex_id = server
+        .clone()
+        .append_event(
+            ctx,
+            AppendEventRequest {
+                session_id,
+                event_type: EventType::SessionStart,
+                agent: Some(Did::new("did:key:z6MkTestAgent")),
+                parents: vec![],
+                metadata: vec![],
+                payload_ref: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    let vertex = server.clone().get_vertex(ctx, session_id, vertex_id).await.unwrap();
+    assert!(vertex.agent.is_some(), "agent DID should be preserved");
+    // No signing provider registered → vertex remains unsigned (graceful degradation)
+    assert!(vertex.signature.is_none(), "vertex should be unsigned without a signing provider");
+}
+
+#[tokio::test]
+async fn test_append_batch_unsigned_without_provider() {
+    use rhizo_crypt_core::Did;
+
+    let server = make_test_server().await;
+    let ctx = tarpc::context::current();
+
+    let session_id = server
+        .clone()
+        .create_session(
+            ctx,
+            CreateSessionRequest {
+                session_type: SessionType::default(),
+                description: None,
+                parent_session: None,
+                max_vertices: None,
+                ttl_seconds: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    let requests = vec![
+        AppendEventRequest {
+            session_id,
+            event_type: EventType::SessionStart,
+            agent: Some(Did::new("did:key:z6MkBatchAgent")),
+            parents: vec![],
+            metadata: vec![],
+            payload_ref: None,
+        },
+        AppendEventRequest {
+            session_id,
+            event_type: EventType::DataCreate {
+                schema: None,
+            },
+            agent: None,
+            parents: vec![],
+            metadata: vec![],
+            payload_ref: None,
+        },
+    ];
+
+    let ids = server.clone().append_batch(ctx, requests).await.unwrap();
+    assert_eq!(ids.len(), 2);
+
+    let v0 = server.clone().get_vertex(ctx, session_id, ids[0]).await.unwrap();
+    let v1 = server.clone().get_vertex(ctx, session_id, ids[1]).await.unwrap();
+
+    assert!(v0.agent.is_some());
+    assert!(v0.signature.is_none(), "should be unsigned without provider");
+
+    assert!(v1.agent.is_none());
+    assert!(v1.signature.is_none(), "should be unsigned when no agent");
+}

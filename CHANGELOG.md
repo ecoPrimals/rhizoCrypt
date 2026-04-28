@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S52: Delegated Vertex Signing on Append
+
+- **`dag.event.append` now delegates signing to the discovered crypto provider** — when a signing provider (e.g. BearDog) is available and the vertex carries an `agent` DID, the vertex's canonical CBOR bytes are signed via `crypto.sign_ed25519` and the Ed25519 signature is attached before storage. This makes DAG integrity independently verifiable by any party holding the agent's public key.
+- **Lazy signing client** — `RhizoCrypt::signing_client()` resolves the `Capability::Signing` provider once (via `tokio::sync::OnceCell`) and caches it. Standalone mode pays zero discovery cost.
+- **Graceful degradation** — vertices without an agent, or without a signing provider, remain unsigned (matching pre-composition behavior).
+- **`sign_vertex_if_available` helper** — service-layer function wires signing into `append_event` and `append_batch` without modifying the core `append_vertex` hot path.
+- **`specs/CRYPTO_MODEL.md` updated** — vertex signing flow documented with architecture diagram; delegated operations table expanded.
+- **5 new tests**: `test_signing_client_none_without_provider`, `test_signing_client_cached_after_first_call`, `test_vertex_unsigned_without_signing_provider` (core); `test_append_event_unsigned_without_provider`, `test_append_batch_unsigned_without_provider` (RPC service)
+- Test count: 1,371 (default), 1,546 (all-features)
+
 #### S51: FAMILY_SEED Documentation + EOF Wire Format Test
 
 - **`FAMILY_SEED` / `RHIZOCRYPT_FAMILY_SEED` documented in `docs/ENV_VARS.md`** — primalSpring convergence validation identified that downstream teams hit "no family seed" errors when launching with family-scoped sockets without this env var. Accepts hex, base64, or plain UTF-8.

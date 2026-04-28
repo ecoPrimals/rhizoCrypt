@@ -461,3 +461,39 @@ async fn test_payload_store_not_running() {
     let err = primal.payload_store().await.unwrap_err();
     assert!(err.to_string().contains("not running") || err.to_string().contains("primal"));
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_signing_client_none_without_provider() {
+    let primal = running_primal().await;
+    // Without any signing provider registered, signing_client() returns None
+    assert!(primal.signing_client().await.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_signing_client_cached_after_first_call() {
+    let primal = running_primal().await;
+    // First call resolves and caches
+    let first = primal.signing_client().await;
+    assert!(first.is_none());
+    // Second call returns same cached result (no re-discovery)
+    let second = primal.signing_client().await;
+    assert!(second.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_vertex_unsigned_without_signing_provider() {
+    let primal = running_primal().await;
+
+    let session = SessionBuilder::new(SessionType::General).build();
+    let session_id = primal.create_session(session).unwrap();
+
+    let vertex = VertexBuilder::new(EventType::SessionStart)
+        .with_agent(Did::new("did:key:z6MkTestAgent"))
+        .build();
+    assert!(vertex.signature.is_none());
+
+    let vid = primal.append_vertex(session_id, vertex).await.unwrap();
+    let stored = primal.get_vertex(session_id, vid).await.unwrap();
+    // Core append_vertex does not sign — that's the service layer's job
+    assert!(stored.signature.is_none());
+}

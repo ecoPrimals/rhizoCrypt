@@ -29,7 +29,7 @@ use crate::vertex::Vertex;
 use dashmap::DashMap;
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::sync::RwLock;
+use tokio::sync::{OnceCell, RwLock};
 
 /// The `RhizoCrypt` primal - Core DAG Engine.
 ///
@@ -66,6 +66,8 @@ pub struct RhizoCrypt {
     metrics: Arc<PrimalMetrics>,
     // Capability-based discovery registry shared across dehydration & integration
     discovery_registry: Arc<DiscoveryRegistry>,
+    // Lazily-resolved signing client (discovered from registry on first use)
+    signing_client: OnceCell<Option<crate::clients::SigningClient>>,
     // Provenance notifier (optional, non-fatal)
     provenance_notifier: Arc<crate::types_ecosystem::provenance::ProvenanceNotifier>,
 }
@@ -90,6 +92,7 @@ impl RhizoCrypt {
             vertex_session_index: Arc::new(DashMap::new()),
             metrics: Arc::new(PrimalMetrics::new()),
             discovery_registry: Arc::clone(&registry),
+            signing_client: OnceCell::new(),
             provenance_notifier: Arc::new(ProvenanceNotifier::with_discovery(registry)),
         }
     }
@@ -114,6 +117,32 @@ impl RhizoCrypt {
     #[must_use]
     pub const fn discovery_registry(&self) -> &Arc<DiscoveryRegistry> {
         &self.discovery_registry
+    }
+
+    /// Get the lazily-resolved signing client.
+    ///
+    /// On first call, attempts to discover a signing provider via the
+    /// capability registry. Returns `None` if no provider is available
+    /// (standalone mode). The result is cached for subsequent calls.
+    pub async fn signing_client(&self) -> Option<&crate::clients::SigningClient> {
+        self.signing_client
+            .get_or_init(|| async {
+                match crate::clients::SigningClient::discover(&self.discovery_registry).await {
+                    Ok(client) => {
+                        tracing::info!("Signing provider discovered — vertices will be signed");
+                        Some(client)
+                    }
+                    Err(e) => {
+                        tracing::debug!(
+                            error = %e,
+                            "No signing provider available — vertices will be unsigned"
+                        );
+                        None
+                    }
+                }
+            })
+            .await
+            .as_ref()
     }
 
     /// Get the DAG store (if running).
