@@ -244,7 +244,7 @@ ls -la "${PRIMAL_BINS:-../../../primalBins}/"
 - **Conditional transfers** (escrow, consignment)
 
 ### 5. 🚀 Production Ready
-- **1,540 passing tests** (all features)
+- **1,546 passing tests** (all features)
 - **`--fail-under-lines 90` CI gate**
 - **Zero unsafe code** (`unsafe_code = "deny"`, zero `unsafe` in tests)
 - **Zero Clippy warnings** (pedantic + nursery, `unwrap_used`/`expect_used = "deny"`)
@@ -335,7 +335,7 @@ ls -la "${PRIMAL_BINS:-../../../primalBins}/"
 ### Common Questions:
 - **"Where do I start?"** → [00-local-primal/00_START_HERE.md](./00-local-primal/00_START_HERE.md)
 - **"What's unique about rhizoCrypt?"** → Slice semantics + Dehydration
-- **"Is it production-ready?"** → Yes! 1,540 tests, 93.88% coverage, `--fail-under-lines 90` CI gate, zero unsafe code
+- **"Is it production-ready?"** → Yes! 1,546 tests, 93.88% coverage, `--fail-under-lines 90` CI gate, zero unsafe code
 - **"How do I integrate?"** → See [01-inter-primal-live/](./01-inter-primal-live/)
 
 ---
@@ -388,7 +388,7 @@ ls -la "${PRIMAL_BINS:-../../../primalBins}/"
 
 ---
 
-**Updated**: April 27, 2026  
+**Updated**: April 28, 2026  
 **Version**: rhizoCrypt 0.14.0-dev  
 **Status**: Local 100% Complete, Inter-Primal 100% Complete
 

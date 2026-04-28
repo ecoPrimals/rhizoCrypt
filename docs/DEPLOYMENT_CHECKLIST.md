@@ -31,7 +31,7 @@
 
 ### Documentation
 - [x] **README.md** (current metrics — 1,546 tests)
-- [x] **CHANGELOG.md** (version history through session 52)
+- [x] **CHANGELOG.md** (version history through session 53)
 - [x] **showcase/** (65 demo scripts)
 - [x] **specs/** (12 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
@@ -250,5 +250,5 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: April 27, 2026
+**Last Updated**: April 28, 2026
 **Version**: rhizoCrypt 0.14.0-dev

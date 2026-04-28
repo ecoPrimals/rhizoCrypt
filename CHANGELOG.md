@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S53: Documentation Reconciliation + Debris Audit
+
+- **Root docs reconciled** — `CONTEXT.md` source line count updated (~49,700 → ~49,900), `showcase/README.md` test count corrected (1,540 → 1,546), `DEPLOYMENT_CHECKLIST.md` date and session references updated
+- **wateringHole handoffs reconciled**:
+  - `PRIMAL_REGISTRY.md` — rhizoCrypt test count 1,441 → 1,546, BTSP Phase 1 → Phase 2, delegated vertex signing (S52) noted
+  - `NUCLEUS_TWO_TIER_CRYPTO_MODEL.md` — rhizoCrypt section updated from "no delegation" to reflect S52 implementation (Ed25519 vertex signing via crypto provider, graceful degradation)
+  - `PRIMALSPRING_V0920_PHASE55_CRYPTO_COMPOSITION_HANDOFF_APR28_2026.md` — rhizoCrypt gap marked RESOLVED (S52)
+- **Debris audit** — no orphan files, no stale scripts, no empty files, no tracked build artifacts, no TODO/FIXME markers in docs. Showcase 65 demos intact, `specs/archive/` properly labeled. Clean.
+
 #### S52b: Deep Debt Audit — Agnostic Test Fixtures
 
 - **Comprehensive audit**: All 167 `.rs` files scanned across 8 deep debt categories — zero unsafe blocks, zero TODO/FIXME, zero `Box<dyn Error>` in production, zero `async-trait` macro, zero mocks in production, all deps pure Rust (blake3 confirmed `CARGO_FEATURE_PURE` via build output).
