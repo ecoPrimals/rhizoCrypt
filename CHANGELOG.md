@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S54: Phase 55b Audit Response — Signing Delegation Confirmed, Hash Delegation Declined
+
+- **primalSpring Phase 55b audit** requested delegating BLAKE3 hashing to `crypto.blake3_hash` via Tower IPC, claiming rhizoCrypt is "the last Nest primal without Tower crypto delegation."
+- **Response**: The signing delegation ask was **already shipped in S52** — `sign_vertex_if_available()` calls `crypto.sign_ed25519` on every `dag.event.append`. This is the same pattern loamSpine (v0.9.16) and sweetGrass (v0.7.28) use.
+- **Hash delegation declined** — BLAKE3 is deterministic (no key material), delegation adds zero cryptographic value while imposing 1000x+ IPC cost on the hot path (~80ns local → ~100-500μs UDS). The Ed25519 vertex signature already provides the audit trail.
+- Neither loamSpine nor sweetGrass delegates hashing — both delegate only signing. The audit conflated signing with hashing.
+- wateringHole handoffs updated: `UPSTREAM_EVOLUTION_BLURBS_PHASE55B`, `PRIMALSPRING_V0921_PHASE55B_UPSTREAM_GUIDANCE`, `NUCLEUS_TWO_TIER_CRYPTO_MODEL` (all three Nest primal sections reconciled to reflect current state).
+- **DAG payload encryption** noted as valid future roadmap item (low priority — ephemeral data, protected by UDS + BTSP).
+
 #### S53: Documentation Reconciliation + Debris Audit
 
 - **Root docs reconciled** — `CONTEXT.md` source line count updated (~49,700 → ~49,900), `showcase/README.md` test count corrected (1,540 → 1,546), `DEPLOYMENT_CHECKLIST.md` date and session references updated
