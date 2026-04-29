@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S55: Phase 56 GAP-22 Investigation — Capability Socket Symlinks
+
+- **primalSpring Phase 56** reported GAP-22: `dag.session.create` returns error on `dag-{family}.sock` (a symlink) but works on `rhizocrypt-{family}.sock` (direct).
+- **Investigation confirms rhizoCrypt has zero path-dependent behavior** — the UDS accept loop discards the peer address (`_addr`), the BTSP handshake carries no socket path, the three-way auto-detect branches on first byte only (not filename), and `FAMILY_ID` is used solely for bind-path construction and BTSP enforcement. No `readlink`, `canonicalize`, or socket-name validation exists anywhere.
+- **Root cause is external to rhizoCrypt** — most likely: (a) startup ordering (symlink created before rhizoCrypt binds, causing connection to stale/absent target), (b) `prepare_socket_path` removes the bind target before re-bind (symlink dangles briefly during restart), or (c) Neural API intercepting on the `dag-*` path and proxying with schema differences.
+- **Action needed from composition layer**: primalSpring should verify the symlink target is alive at connect time and check whether the exact JSON-RPC error is `-32000` FORBIDDEN (old liveness-gate bug, fixed in S49) which would indicate a stale binary.
+- No code changes to rhizoCrypt. Handoff updated in wateringHole.
+
 #### S54: Phase 55b Audit Response — Signing Delegation Confirmed, Hash Delegation Declined
 
 - **primalSpring Phase 55b audit** requested delegating BLAKE3 hashing to `crypto.blake3_hash` via Tower IPC, claiming rhizoCrypt is "the last Nest primal without Tower crypto delegation."
