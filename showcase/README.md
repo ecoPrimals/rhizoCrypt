@@ -11,8 +11,8 @@
 
 rhizoCrypt is the "memory that knows when to forget." This showcase demonstrates:
 
-1. **Local Primal** (36 demos) — What rhizoCrypt CAN DO in isolation
-2. **Inter-Primal** (29 demos) — How rhizoCrypt WORKS WITH others (real binaries!)
+1. **Local Primal** (38 demos) — What rhizoCrypt CAN DO in isolation
+2. **Inter-Primal** (34 demos) — How rhizoCrypt WORKS WITH others (real binaries!)
 3. **Federation** (future) — How rhizoCrypt SCALES across instances
 
 **Real-World Value**: *"Fast ephemeral workspace with cryptographic proofs → Commit to permanent storage when meaningful"*
@@ -43,7 +43,7 @@ This guide provides:
 
 ```
 showcase/
-├── 00-local-primal/              ✅ 100% COMPLETE (36 demos)
+├── 00-local-primal/              ✅ 100% COMPLETE (38 demos)
 │   ├── 00_START_HERE.md          ⭐ Entry point for all users
 │   ├── 01-hello-rhizocrypt/      ✅ Quick start (3 demos)
 │   ├── 02-dag-engine/            ✅ DAG operations (4 demos)
@@ -56,7 +56,7 @@ showcase/
 │   ├── 07-dehydration/           ✅ NEW! Complete workflow (1 demo)
 │   └── 08-production-features/   ✅ NEW! Service mode (1 demo)
 │
-├── 01-inter-primal-live/         ✅ 100% COMPLETE (29 demos)
+├── 01-inter-primal-live/         ✅ 100% COMPLETE (34 demos)
 │   ├── 01-songbird-discovery/    ✅ Real binary (7 demos)
 │   ├── 02-beardog-signing/       ✅ Real binary (8 demos)
 │   ├── 03-nestgate-storage/      ✅ Real binary (6 demos)
@@ -65,7 +65,7 @@ showcase/
 │   └── 05-squirrel-ai/          ✅ 1 demo
 ```
 
-**Total**: **65 demo scripts** (36 local + 29 inter-primal)
+**Total**: **72 demo scripts** (38 local + 34 inter-primal)
 
 ---
 
@@ -254,7 +254,7 @@ ls -la "${PRIMAL_BINS:-../../../primalBins}/"
 
 ## 📋 Demo Catalog
 
-### Local Primal (36 demos)
+### Local Primal (38 demos)
 
 | Category | Demos | Time | Status |
 |----------|-------|------|--------|
@@ -269,11 +269,11 @@ ls -la "${PRIMAL_BINS:-../../../primalBins}/"
 | **Dehydration** | 1 | 10 min | ✅ Complete |
 | **Production Features** | 1 | 10 min | ✅ Complete |
 
-**Total**: 36 local demos (ALL use real implementations, no mocks)
+**Total**: 38 local demos (ALL use real implementations, no mocks)
 
 ---
 
-### Inter-Primal (29 demos)
+### Inter-Primal (34 demos)
 
 | Integration | Demos | Time | Status |
 |------------|-------|------|--------|
@@ -284,7 +284,7 @@ ls -la "${PRIMAL_BINS:-../../../primalBins}/"
 | **Complete Workflows** | 4 | 15 min | ✅ Complete |
 | **Squirrel AI** | 1 | 5 min | ✅ Complete |
 
-**Total**: 29 inter-primal demos (ALL use real Phase 1 binaries!)
+**Total**: 34 inter-primal demos (ALL use real Phase 1 binaries!)
 
 ---
 
@@ -352,10 +352,10 @@ ls -la "${PRIMAL_BINS:-../../../primalBins}/"
 
 | Category | Status | Demos | Quality |
 |----------|--------|-------|---------|
-| **Local Primal** | ✅ 100% | 36 | Exceptional |
-| **Inter-Primal** | ✅ 100% | 29 | Excellent |
+| **Local Primal** | ✅ 100% | 38 | Exceptional |
+| **Inter-Primal** | ✅ 100% | 34 | Excellent |
 | **Federation** | ⏸️ Future | 0 | N/A |
-| **Overall** | ✅ **Production Ready** | **65** | **A+** |
+| **Overall** | ✅ **Production Ready** | **72** | **A+** |
 
 ---
 
@@ -363,12 +363,12 @@ ls -la "${PRIMAL_BINS:-../../../primalBins}/"
 
 ### "Show, Then Integrate" ✅
 
-1. **Show Local Capabilities** (36 demos)
+1. **Show Local Capabilities** (38 demos)
    - "This is what I CAN DO alone"
    - Complete functionality demonstrated
    - Production-ready features shown
 
-2. **Show Integration** (29 demos)
+2. **Show Integration** (34 demos)
    - "This is how I WORK WITH others"
    - Real Phase 1 binaries (no mocks!)
    - Capability-based discovery

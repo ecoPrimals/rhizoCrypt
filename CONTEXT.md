@@ -72,7 +72,7 @@ Three workspace crates:
 | Tests | 1,546 passing (all features) |
 | Coverage | 93.88% lines (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
-| Source files | 167 `.rs`, ~49,900 lines |
+| Source files | 167 `.rs`, ~49,920 lines |
 | Max file size | 724 lines (limit: 1000) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
@@ -89,7 +89,7 @@ Three workspace crates:
 - `capability_registry.toml` — Capability method registry (28 methods in `METHOD_CATALOG`, 5 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
 - `specs/` — 12 specification documents (incl. `CRYPTO_MODEL.md` — signing provider crypto delegation)
-- `showcase/` — 65 progressive demos
+- `showcase/` — 72 progressive demos
 
 ## Part of ecoPrimals
 

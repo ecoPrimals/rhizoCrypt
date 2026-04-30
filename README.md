@@ -162,7 +162,7 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — Environment variable reference
 - [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) — Production deployment
 - [specs/](specs/) — Formal specifications (architecture, data model, protocols, experiments)
-- [showcase/](showcase/) — Progressive demo suite (65 demo scripts)
+- [showcase/](showcase/) — Progressive demo suite (72 demo scripts)
 - [specs/CRYPTO_MODEL.md](specs/CRYPTO_MODEL.md) — Canonical crypto delegation pattern (signing provider IPC)
 - [CHANGELOG.md](CHANGELOG.md) — Version history
 - [deny.toml](deny.toml) — Dependency audit policy (`cargo-deny`)
