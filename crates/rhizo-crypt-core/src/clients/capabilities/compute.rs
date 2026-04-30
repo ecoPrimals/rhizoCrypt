@@ -167,7 +167,7 @@ mod tests {
         let addr1: SocketAddr = "127.0.0.1:9800".parse().unwrap();
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "toadstool-1".to_string(),
+                "compute-primary".to_string(),
                 addr1,
                 vec![Capability::ComputeOrchestration],
             ))
@@ -176,7 +176,7 @@ mod tests {
         let addr2: SocketAddr = "127.0.0.1:9801".parse().unwrap();
         registry
             .register_endpoint(ServiceEndpoint::new(
-                "toadstool-2".to_string(),
+                "compute-secondary".to_string(),
                 addr2,
                 vec![Capability::ComputeOrchestration],
             ))
@@ -198,14 +198,14 @@ mod tests {
 
         let addr: SocketAddr = "127.0.0.1:9800".parse().unwrap();
         let endpoint = ServiceEndpoint::new(
-            "toadstool-gpu".to_string(),
+            "compute-gpu".to_string(),
             addr,
             vec![Capability::ComputeOrchestration],
         );
         registry.register_endpoint(endpoint).await;
 
         let client = ComputeClient::discover(&registry).await.unwrap();
-        assert_eq!(client.service_name(), Some("toadstool-gpu"));
+        assert_eq!(client.service_name(), Some("compute-gpu"));
         assert!(client.endpoint().contains("127.0.0.1:9800"));
     }
 

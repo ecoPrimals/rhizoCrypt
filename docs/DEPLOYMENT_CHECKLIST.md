@@ -31,7 +31,7 @@
 
 ### Documentation
 - [x] **README.md** (current metrics — 1,546 tests)
-- [x] **CHANGELOG.md** (version history through session 56)
+- [x] **CHANGELOG.md** (version history through session 57)
 - [x] **showcase/** (65 demo scripts)
 - [x] **specs/** (12 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)

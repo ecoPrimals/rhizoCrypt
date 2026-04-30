@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S57: Deep Debt Audit — Final Cleanup
+
+- **Comprehensive 8-category deep debt audit** — all categories clean: no files >800L (max 724), zero `unsafe` blocks (`forbid(unsafe_code)` on all crates), zero TODO/FIXME/HACK, zero `async-trait` macro, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero dead code allows, zero mocks in production, all external dependencies pure Rust.
+- **Hardcoded primal names in test fixtures** — `compute.rs` test fixtures still used `"toadstool-1"`, `"toadstool-2"`, `"toadstool-gpu"` (missed in S52b cleanup). Replaced with capability-agnostic `"compute-primary"`, `"compute-secondary"`, `"compute-gpu"`.
+- **Stale BTSP module doc comment** — `btsp/mod.rs` claimed "every incoming UDS connection must complete the 4-step handshake" which has been inaccurate since S49's three-way auto-detect. Updated to reflect the actual behavior: first-byte auto-detection with health probes allowed without handshake.
+- **Stadial gate**: 1,546 tests (all-features, 0 failures), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`).
+
 #### S56: Stadial Gate Validation + CI Node 24 Migration
 
 - **Phase 56c stadial convergence**: primalSpring confirms rhizoCrypt is **clean** — not listed in remaining items. All 13 primals building standalone via plasmidBin. Zero HIGH blockers ecosystem-wide.
