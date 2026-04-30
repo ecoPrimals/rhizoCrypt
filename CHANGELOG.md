@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S56: Stadial Gate Validation + CI Node 24 Migration
+
+- **Phase 56c stadial convergence**: primalSpring confirms rhizoCrypt is **clean** — not listed in remaining items. All 13 primals building standalone via plasmidBin. Zero HIGH blockers ecosystem-wide.
+- **Stadial gate validation**: 1,546 tests (all-features, 0 failures), 0 clippy warnings, 0 fmt diffs, cargo deny clean (advisories/bans/licenses/sources ok), cargo doc clean (with `-D warnings`), 167 `.rs` files, ~49,900 lines.
+- **Rustdoc fix**: `handle_liveness_connection` doc comment linked to private `UNAUTHENTICATED_METHODS` const — replaced with prose reference. Doc build now passes under `-D warnings`.
+- **CI Actions Node 24 migration** (June 2, 2026 deadline): `actions/checkout` v4→v5, `actions/cache` v4→v5, `codecov/codecov-action` v4→v6, `rustsec/audit-check` v1→v2. All use Node 24 runtime.
+- **Proactive debt scan**: zero `async-trait` macro, all `unwrap`/`expect` sanctioned by workspace `deny`, zero TODO/FIXME, zero production mocks outside `cfg(test)`.
+
 #### S55: Phase 56 GAP-22 Investigation — Capability Socket Symlinks
 
 - **primalSpring Phase 56** reported GAP-22: `dag.session.create` returns error on `dag-{family}.sock` (a symlink) but works on `rhizocrypt-{family}.sock` (direct).

@@ -135,7 +135,7 @@ where
 /// Handle a liveness-only JSON-RPC connection (no BTSP authentication).
 ///
 /// Identical to [`handle_newline_connection`] but rejects any method not in
-/// [`UNAUTHENTICATED_METHODS`] with a JSON-RPC error. Used when a plain
+/// the unauthenticated allowlist with a JSON-RPC error. Used when a plain
 /// JSON-RPC probe arrives on a BTSP-enforced UDS socket (first-byte `{`/`[`
 /// auto-detect). This allows `health.check` probes to succeed without
 /// requiring the full BTSP handshake.
