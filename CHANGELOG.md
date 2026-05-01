@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S58: Phase 56 PG-45/GAP-06 Response — Already Resolved (S49), Doc Accuracy Fix
+
+- **primalSpring Phase 56** re-raised PG-45/GAP-06: "UDS socket accepts connections but returns no JSON-RPC response." This is the **same issue as PG-52**, which was resolved in S49.
+- **Investigation confirms S49 fix is fully in place**: the UDS accept loop in `uds.rs` routes all plain JSON-RPC (`{`/`[` first byte) to `handle_newline_connection` (full handler) — never to `handle_liveness_connection`. Test `test_plain_jsonrpc_data_methods_on_btsp_uds` locks this in.
+- **Root cause is a stale plasmidBin binary**: primalSpring's own `PRIMAL_GAPS.md` PG-52 resolution (line 1998) explicitly states "This also resolves PG-06 and PG-45" and recommends "Pull all three, rebuild plasmidBin binaries, reharvest."
+- **Doc accuracy fix**: `btsp/mod.rs` module doc and `newline.rs` `handle_liveness_connection` doc both described the **pre-S49** behavior (plain JSON-RPC → liveness-only). Updated to accurately reflect the post-S49 design: all UDS paths → full handler via filesystem-authenticated trust.
+- **No code changes to UDS routing.** All 1,546 tests pass. Clippy clean. Doc clean.
+
 #### S57: Deep Debt Audit + Documentation Reconciliation
 
 - **Comprehensive 8-category deep debt audit** — all categories clean: no files >800L (max 724), zero `unsafe` blocks (`forbid(unsafe_code)` on all crates), zero TODO/FIXME/HACK, zero `async-trait` macro, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero dead code allows, zero mocks in production, all external dependencies pure Rust.

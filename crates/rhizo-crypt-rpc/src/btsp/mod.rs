@@ -6,10 +6,13 @@
 //! Implements the server-side X25519 + HMAC-SHA256 handshake per
 //! `BTSP_PROTOCOL_STANDARD.md`. When `FAMILY_ID` is set (production mode),
 //! incoming UDS connections are auto-detected by first byte:
-//! - JSON-line (`{`/`[`): health/liveness probes allowed without handshake;
-//!   all other methods rejected with FORBIDDEN.
-//! - Length-prefixed: BTSP framed handshake.
-//! - Otherwise: JSON-line BTSP `ClientHello`.
+//! - `{`: read first line — if `"protocol":"btsp"` → JSON-line BTSP handshake,
+//!   otherwise plain JSON-RPC routed to full handler (filesystem-authenticated).
+//! - `[`: batch JSON-RPC routed to full handler (filesystem-authenticated).
+//! - Other: length-prefixed BTSP handshake.
+//!
+//! All successful paths (handshake or filesystem-authenticated) serve the full
+//! JSON-RPC method set via `handle_newline_connection`.
 //!
 //! Development mode (`BIOMEOS_INSECURE=1`, no `FAMILY_ID`) bypasses the
 //! handshake and serves raw newline-delimited JSON-RPC.
