@@ -245,10 +245,10 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 - [CHANGELOG.md](../CHANGELOG.md) — Version history
 - [ENV_VARS.md](./ENV_VARS.md) — Environment variable reference
 - [specs/](../specs/) — Formal specifications
-- [showcase/](../showcase/) — 65 demo scripts
+- [showcase/](../showcase/) — 72 demo scripts
 
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: April 30, 2026
+**Last Updated**: May 1, 2026
 **Version**: rhizoCrypt 0.14.0-dev
