@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`BtspSession` extended**: Added `handshake_key: [u8; 32]` field (HKDF-derived from family seed) preserved from Phase 1/2 for Phase 3 key derivation.
 - **New dependency**: `chacha20poly1305 = "0.10"` (pure Rust, RustCrypto, ecoBin-compliant — no C, no `ring`).
 - **16 new tests**: Phase 3 cipher serde, key derivation determinism, client/server key mirroring, encrypt/decrypt round-trip, tamper detection, negotiate handler (chacha, unsupported cipher, session mismatch), full negotiate → encrypted round-trip.
-- **Stadial gate**: 1,402 tests (all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`).
+- **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
+- **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
 #### S58: Phase 56 PG-45/GAP-06 Response — Already Resolved (S49), Doc Accuracy Fix
 

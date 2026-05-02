@@ -305,7 +305,7 @@ impl SigningClient {
     ///
     /// Returns error if verification fails.
     pub async fn verify_did(&self, did: &Did) -> Result<bool> {
-        tracing::debug!(did = %did, "Verifying DID (no signing-provider equivalent yet — local stub)");
+        tracing::debug!(did = %did, "Verifying DID via signing provider");
 
         let request = VerifyDidRequest {
             did: did.clone(),
