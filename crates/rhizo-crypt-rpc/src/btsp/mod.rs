@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! BTSP Phase 2 — `BiomeOS` Transport Security Protocol.
+//! BTSP — `BiomeOS` Transport Security Protocol.
 //!
 //! Implements the server-side X25519 + HMAC-SHA256 handshake per
 //! `BTSP_PROTOCOL_STANDARD.md`. When `FAMILY_ID` is set (production mode),
@@ -14,13 +14,24 @@
 //! All successful paths (handshake or filesystem-authenticated) serve the full
 //! JSON-RPC method set via `handle_newline_connection`.
 //!
+//! ## Phase 3 — Encrypted Channel
+//!
+//! After a successful Phase 2 handshake, the client may send a
+//! `btsp.negotiate` JSON-RPC request to upgrade the connection to
+//! ChaCha20-Poly1305 encrypted framing. If negotiation succeeds, all
+//! subsequent traffic uses length-prefixed encrypted frames. If the client
+//! doesn't negotiate or the server returns `{"cipher":"null"}`, the
+//! connection stays on cleartext newline-delimited JSON-RPC.
+//!
 //! Development mode (`BIOMEOS_INSECURE=1`, no `FAMILY_ID`) bypasses the
 //! handshake and serves raw newline-delimited JSON-RPC.
 
 pub mod framing;
+pub mod phase3;
 pub mod server;
 pub mod types;
 
+pub use phase3::Phase3Keys;
 pub use server::{BtspServer, BtspSession};
 pub use types::{BtspCipher, HandshakeError};
 

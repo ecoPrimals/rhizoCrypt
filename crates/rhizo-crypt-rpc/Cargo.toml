@@ -52,6 +52,9 @@ hkdf = { workspace = true }
 rand = { workspace = true }
 zeroize = { workspace = true }
 
+# BTSP Phase 3 — encrypted channel (ChaCha20-Poly1305 AEAD, Pure Rust)
+chacha20poly1305 = "0.10"
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 tracing-subscriber.workspace = true

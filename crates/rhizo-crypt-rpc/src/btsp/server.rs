@@ -71,6 +71,8 @@ pub struct BtspSession {
     pub session_id: [u8; 16],
     /// Directional session keys.
     pub keys: SessionKeys,
+    /// Handshake key preserved for Phase 3 negotiation (HKDF IKM).
+    pub handshake_key: [u8; 32],
 }
 
 /// BTSP server — accepts and verifies handshakes on incoming connections.
@@ -160,6 +162,7 @@ impl BtspServer {
             cipher,
             session_id,
             keys,
+            handshake_key,
         })
     }
 
@@ -273,6 +276,7 @@ impl BtspServer {
             cipher,
             session_id,
             keys,
+            handshake_key,
         })
     }
 
@@ -379,6 +383,7 @@ mod tests {
                 encrypt_key,
                 decrypt_key,
             },
+            handshake_key,
         })
     }
 
@@ -542,6 +547,7 @@ mod tests {
                 encrypt_key,
                 decrypt_key,
             },
+            handshake_key,
         })
     }
 

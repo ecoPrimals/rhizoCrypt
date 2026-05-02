@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S59: BTSP Phase 3 — Encrypted Channel (`btsp.negotiate` Server Handler)
+
+- **BTSP Phase 3 implementation**: Added `btsp.negotiate` JSON-RPC server handler per primalSpring v0.9.24+ spec. After a successful Phase 1/2 handshake, the client can negotiate a ChaCha20-Poly1305 encrypted channel. If the client doesn't negotiate or the server returns `{"cipher":"null"}`, the connection stays plaintext (backward-compatible).
+- **New module `btsp/phase3.rs`**: `Phase3Keys` struct with HKDF-SHA256 key derivation (labels `btsp-session-v1-c2s` / `btsp-session-v1-s2c` matching primalSpring), ChaCha20-Poly1305 encrypt/decrypt (12-byte random nonce per frame), `Phase3Cipher` enum with hyphenated wire names (`chacha20-poly1305`, `null`), `NegotiateParams`/`NegotiateResult` types, and `handle_negotiate` async handler.
+- **Post-handshake flow redesign**: UDS accept path now calls `serve_after_handshake` after Phase 1/2 completes (both JSON-line and length-prefixed paths). This reads the first JSON-RPC line: if `btsp.negotiate` → negotiate → enter `handle_encrypted_connection`; otherwise → chain the line back → enter standard `handle_newline_connection`. No disruption to existing plaintext clients.
+- **Encrypted connection handler**: `handle_encrypted_connection` reads length-prefixed frames (`[4B BE u32 len][encrypted payload]`), decrypts via `Phase3Keys`, dispatches through the standard `process_single_request` handler, encrypts the response, and writes it back as a length-prefixed frame.
+- **`BtspSession` extended**: Added `handshake_key: [u8; 32]` field (HKDF-derived from family seed) preserved from Phase 1/2 for Phase 3 key derivation.
+- **New dependency**: `chacha20poly1305 = "0.10"` (pure Rust, RustCrypto, ecoBin-compliant — no C, no `ring`).
+- **16 new tests**: Phase 3 cipher serde, key derivation determinism, client/server key mirroring, encrypt/decrypt round-trip, tamper detection, negotiate handler (chacha, unsupported cipher, session mismatch), full negotiate → encrypted round-trip.
+- **Stadial gate**: 1,402 tests (all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`).
+
 #### S58: Phase 56 PG-45/GAP-06 Response — Already Resolved (S49), Doc Accuracy Fix
 
 - **primalSpring Phase 56** re-raised PG-45/GAP-06: "UDS socket accepts connections but returns no JSON-RPC response." This is the **same issue as PG-52**, which was resolved in S49.

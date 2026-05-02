@@ -232,9 +232,9 @@ async fn handle_uds_connection(
                     Ok(session) => {
                         debug!(
                             cipher = session.cipher.as_str(),
-                            "BTSP JSON-line handshake complete, serving JSON-RPC"
+                            "BTSP JSON-line handshake complete"
                         );
-                        super::newline::handle_newline_connection(rw, primal).await
+                        serve_after_handshake(rw, primal, session).await
                     }
                     Err(e) => {
                         warn!(error = %e, "BTSP JSON-line handshake failed");
@@ -269,11 +269,8 @@ async fn handle_uds_connection(
 
             match BtspServer::accept_handshake(&mut rw, seed).await {
                 Ok(session) => {
-                    debug!(
-                        cipher = session.cipher.as_str(),
-                        "BTSP handshake complete, serving JSON-RPC"
-                    );
-                    super::newline::handle_newline_connection(rw, primal).await
+                    debug!(cipher = session.cipher.as_str(), "BTSP handshake complete");
+                    serve_after_handshake(rw, primal, session).await
                 }
                 Err(e) => {
                     warn!(error = %e, "BTSP handshake failed, dropping connection");
@@ -288,6 +285,146 @@ async fn handle_uds_connection(
         }
     } else {
         super::newline::handle_newline_connection(stream, primal).await
+    }
+}
+
+/// After a successful BTSP handshake, attempt Phase 3 negotiation.
+///
+/// Reads the first JSON-RPC line from the client. If it's a `btsp.negotiate`
+/// request, handles cipher negotiation and (on success) serves subsequent
+/// traffic through encrypted framing. If the first request is anything else,
+/// chains it back and falls through to the standard newline handler.
+async fn serve_after_handshake<S>(
+    mut stream: S,
+    primal: Arc<RhizoCrypt>,
+    session: crate::btsp::BtspSession,
+) -> std::io::Result<()>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    use crate::btsp::framing;
+
+    let session_id_hex = hex::encode(session.session_id);
+
+    let first_line = match framing::read_json_line(&mut stream).await {
+        Ok(line) => line,
+        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(()),
+        Err(e) => return Err(e),
+    };
+
+    let first_json: serde_json::Value = match serde_json::from_slice(&first_line) {
+        Ok(v) => v,
+        Err(_) => {
+            return chain_and_serve(first_line.to_vec(), stream, primal).await;
+        }
+    };
+
+    let is_negotiate =
+        first_json.get("method").and_then(|m| m.as_str()).is_some_and(|m| m == "btsp.negotiate");
+
+    if is_negotiate {
+        match crate::btsp::phase3::handle_negotiate(
+            &mut stream,
+            &session.handshake_key,
+            &session_id_hex,
+            &first_json,
+        )
+        .await
+        {
+            Ok(Some(keys)) => {
+                debug!("BTSP Phase 3 active, serving encrypted JSON-RPC");
+                handle_encrypted_connection(stream, primal, keys).await
+            }
+            Ok(None) => {
+                debug!("BTSP Phase 3 declined (null cipher), serving plaintext JSON-RPC");
+                super::newline::handle_newline_connection(stream, primal).await
+            }
+            Err(e) => {
+                warn!(error = %e, "BTSP Phase 3 negotiate failed");
+                super::newline::handle_newline_connection(stream, primal).await
+            }
+        }
+    } else {
+        debug!("no Phase 3 negotiate, serving plaintext JSON-RPC");
+        chain_and_serve(first_line.to_vec(), stream, primal).await
+    }
+}
+
+/// Prepend a consumed first line back onto the stream and serve plaintext.
+async fn chain_and_serve<S>(
+    first_line: Vec<u8>,
+    stream: S,
+    primal: Arc<RhizoCrypt>,
+) -> std::io::Result<()>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    let mut prepend = first_line;
+    prepend.push(b'\n');
+    let (reader, writer) = tokio::io::split(stream);
+    let cursor = std::io::Cursor::new(prepend);
+    let chained = tokio::io::AsyncReadExt::chain(cursor, reader);
+    let joined = tokio::io::join(chained, writer);
+    super::newline::handle_newline_connection(joined, primal).await
+}
+
+/// Serve JSON-RPC over a BTSP Phase 3 encrypted channel.
+///
+/// Each message is framed as `[4B length BE u32][encrypted payload]` where
+/// the encrypted payload is `[12B nonce][ciphertext + Poly1305 tag]`.
+async fn handle_encrypted_connection<S>(
+    mut stream: S,
+    primal: Arc<RhizoCrypt>,
+    keys: crate::btsp::Phase3Keys,
+) -> std::io::Result<()>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    use crate::btsp::framing;
+    use tokio::io::AsyncWriteExt;
+
+    loop {
+        let frame = match framing::read_frame(&mut stream).await {
+            Ok(f) => f,
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(()),
+            Err(e) => return Err(e),
+        };
+
+        let plaintext = keys
+            .decrypt(&frame)
+            .map_err(|e| std::io::Error::other(format!("Phase 3 decrypt: {e}")))?;
+
+        let request_str = String::from_utf8(plaintext)
+            .map_err(|e| std::io::Error::other(format!("Phase 3: not UTF-8: {e}")))?;
+
+        let value: serde_json::Value = match serde_json::from_str(&request_str) {
+            Ok(v) => v,
+            Err(e) => {
+                warn!(error = %e, "Phase 3 encrypted JSON-RPC parse error");
+                let resp = super::serialize_response(&super::types::error_response(
+                    None,
+                    super::types::codes::PARSE_ERROR,
+                    "Parse error",
+                    Some(serde_json::json!(e.to_string())),
+                ));
+                let resp_bytes = serde_json::to_vec(&resp)
+                    .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
+                let encrypted = keys
+                    .encrypt(&resp_bytes)
+                    .map_err(|e| std::io::Error::other(format!("Phase 3 encrypt: {e}")))?;
+                framing::write_frame(&mut stream, &encrypted).await?;
+                continue;
+            }
+        };
+
+        let response = super::process_single_request(Arc::clone(&primal), value).await;
+        let resp_bytes = serde_json::to_vec(&response)
+            .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
+        let encrypted = keys
+            .encrypt(&resp_bytes)
+            .map_err(|e| std::io::Error::other(format!("Phase 3 encrypt: {e}")))?;
+        framing::write_frame(&mut stream, &encrypted).await?;
+        stream.flush().await?;
     }
 }
 

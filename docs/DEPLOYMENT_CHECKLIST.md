@@ -9,13 +9,13 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,546 tests passing** (all features), 0 failures
+- [x] **1,562 tests passing** (all features), 0 failures
 - [x] **`--fail-under-lines 90` CI gate** enforced
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all files under 1000 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 167 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 168 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
@@ -30,7 +30,7 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,546 tests)
+- [x] **README.md** (current metrics — 1,562 tests)
 - [x] **CHANGELOG.md** (version history through session 58)
 - [x] **showcase/** (72 demo scripts)
 - [x] **specs/** (12 specification documents)
@@ -250,5 +250,5 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: May 1, 2026
+**Last Updated**: May 2, 2026
 **Version**: rhizoCrypt 0.14.0-dev
