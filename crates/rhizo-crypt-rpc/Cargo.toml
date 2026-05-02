@@ -44,7 +44,7 @@ base64 = "0.22"
 uuid = { workspace = true }
 dashmap = { workspace = true }
 
-# BTSP Phase 2 — handshake crypto (Pure Rust, ecoBin-compliant)
+# BTSP — handshake + session crypto (Pure Rust, ecoBin-compliant)
 x25519-dalek = { workspace = true }
 hmac = { workspace = true }
 sha2 = { workspace = true }

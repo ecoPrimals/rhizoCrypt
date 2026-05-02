@@ -137,17 +137,14 @@ stored `(terms_hash, signature, public_key)` triplet.
 |-------|--------|------|
 | Phase 1 | Complete | Family-scoped socket naming (`rhizocrypt-{family_id}.sock`) |
 | Phase 2 | Complete | X25519 handshake + HKDF session keys + HMAC family proof |
-| Phase 3 | Planned | Per-frame ChaCha20-Poly1305 AEAD using derived session keys |
+| Phase 3 | Complete | `btsp.negotiate` → ChaCha20-Poly1305 AEAD encrypted channel (Session 59) |
 
-BTSP crypto (X25519, HKDF, HMAC) lives in `rhizo-crypt-rpc` because it is
-**transport-layer** authentication, not application-level signing. The
-primitives are used only during connection establishment — no long-term
-keys are generated or stored.
-
-Phase 3 will encrypt JSON-RPC frames after the handshake using the session
-keys already derived in Phase 2. The cipher infrastructure
-(`BtspCipher::Chacha20Poly1305`) is defined but not wired to the post-
-handshake read/write path yet.
+BTSP crypto (X25519, HKDF, HMAC, ChaCha20-Poly1305) lives in `rhizo-crypt-rpc`
+because it is **transport-layer** authentication and encryption, not
+application-level signing. Phase 2 primitives handle connection establishment;
+Phase 3 encrypts all subsequent JSON-RPC traffic using HKDF-derived session
+keys (`btsp-session-v1-c2s` / `btsp-session-v1-s2c`). No long-term keys are
+generated or stored.
 
 ---
 
@@ -178,8 +175,9 @@ handshake read/write path yet.
    converge on BearDog's semantic method names (`crypto.sign_contract`,
    `crypto.verify_contract`) rather than legacy REST paths.
 
-6. **BTSP Phase 3** is a natural next step that uses only the session keys
-   already derived — no new crypto primitives needed.
+6. **BTSP Phase 3** (Session 59) encrypts all post-handshake traffic using
+   ChaCha20-Poly1305 AEAD with HKDF-derived session keys — no new long-term
+   crypto primitives needed beyond the `chacha20poly1305` crate.
 
 ---
 
@@ -193,7 +191,7 @@ translation (public API unchanged, wire format matches BearDog):
 | `sign` / `sign_owned` | `crypto.sign_ed25519` | **RESOLVED** — `message` (base64), `key_id` (DID string) |
 | `verify` / `verify_owned` | `crypto.verify_ed25519` | **RESOLVED** — `message`, `signature` (base64), `public_key` (DID string) |
 | `request_attestation` | `crypto.sign_contract` | **RESOLVED** — `signer` (DID), `terms` (JSON), response mapped to `Attestation` |
-| `verify_did` | (no equivalent yet) | Forward-compat stub — BearDog DID types present but not wired |
+| `verify_did` | (no equivalent yet) | Delegates via capability adapter — BearDog DID types present |
 
 ### DID as Public Key Identifier — RESOLVED
 
@@ -225,7 +223,6 @@ application boundary.
 
 ### Remaining Evolution
 
-- **BTSP Phase 3**: Per-frame AEAD using derived session keys.
 - **Vertex signature verification on retrieval**: Optional verification
   of stored vertex signatures when retrieving from DAG or computing
   Merkle roots.

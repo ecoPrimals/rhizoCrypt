@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.14.0-dev |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,546 passing (`--all-features`) |
+| Tests | 1,562 passing (`--all-features`) |
 | Coverage | 93.88% lines (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -18,11 +18,11 @@
 | Error Model | Structured `IpcErrorPhase` + `DispatchOutcome` (protocol vs application) |
 | Discovery | Capability-based + manifest-based (`$XDG_RUNTIME_DIR/biomeos/{primal}.json`) |
 | Chaos | `ChaosEngine` framework with 7 fault classes |
-| Transport | UDS unconditional (Unix), TCP opt-in (`--port` / env), BTSP Phase 2 handshake on UDS |
+| Transport | UDS unconditional (Unix), TCP opt-in (`--port` / env), BTSP Phase 3 (ChaCha20-Poly1305 encrypted channel) on UDS |
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 167 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 168 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `capability_registry.toml` (28 methods, 5 domains incl. `tools.*` MCP, `identity.get`) |

@@ -49,7 +49,7 @@ Three workspace crates:
 - **TCP opt-in** via `--port` or `RHIZOCRYPT_PORT` env var (tarpc + JSON-RPC dual-mode)
 - **JSON-RPC 2.0** — dual-mode TCP (auto-detects HTTP POST vs newline-delimited) + UDS
 - **tarpc 0.37** with bincode — optional, high-performance typed RPC
-- **BTSP Phase 2** — X25519 + HMAC-SHA256 handshake enforced on UDS accept when `FAMILY_ID` is set; dev mode (`BIOMEOS_INSECURE=1`) bypasses
+- **BTSP Phase 3** — X25519 + HMAC-SHA256 handshake + ChaCha20-Poly1305 encrypted channel on UDS; `btsp.negotiate` upgrades to AEAD framing after handshake; dev mode (`BIOMEOS_INSECURE=1`) bypasses
 - Method names follow `domain.verb` semantic naming (`dag.session.create`, `health.check`)
 
 ## Compliance
@@ -60,10 +60,10 @@ Three workspace crates:
 | ecoBin v3.0 | Zero application C deps, zero reqwest, cross-compile (musl, RISC-V) |
 | genomeBin | Multi-stage Dockerfile (musl-static + Alpine), OCI labels, healthcheck |
 | Universal IPC v3 | JSON-RPC + tarpc, semantic naming |
-| BTSP Phase 2 | Server-side handshake enforcement on UDS accept |
+| BTSP Phase 3 | Server-side handshake + ChaCha20-Poly1305 encrypted channel via `btsp.negotiate` |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 167 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 168 `.rs` files |
 
 ## Metrics
 
