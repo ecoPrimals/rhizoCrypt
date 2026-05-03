@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S59b: Guidestone 157/170 — Phase 3 Transport Switch Integration Test
+
+- **primalSpring NUCLEUS validation** identified interop gap (guidestone 157/170): no integration test verified that after `btsp.negotiate` returns `cipher: "chacha20-poly1305"`, subsequent frames use encrypted framing (not cleartext JSON-RPC).
+- **Code audit confirmed logic is correct**: `serve_after_handshake` moves the stream into `handle_encrypted_connection` on `Ok(Some(keys))` — no path back to cleartext exists. The negotiate response itself is sent cleartext (per protocol), then framing switches to length-prefixed encrypted.
+- **New integration test `test_btsp_phase3_encrypted_transport_over_uds`**: exercises the complete path over a real `UnixStream` pair — Phase 2 handshake → `btsp.negotiate(chacha20-poly1305)` → two encrypted JSON-RPC round-trips (`health.check` + `dag.session.create`). Extracted `client_phase2_handshake`, `encrypted_roundtrip`, and `read_json_line_raw` helpers.
+- **Stadial gate**: 1,563 tests, 0 clippy warnings, 0 fmt diffs.
+
 #### S58: Phase 56 PG-45/GAP-06 Response — Already Resolved (S49), Doc Accuracy Fix
 
 - **primalSpring Phase 56** re-raised PG-45/GAP-06: "UDS socket accepts connections but returns no JSON-RPC response." This is the **same issue as PG-52**, which was resolved in S49.

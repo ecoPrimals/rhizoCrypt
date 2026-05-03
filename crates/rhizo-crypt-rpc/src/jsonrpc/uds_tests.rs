@@ -272,6 +272,192 @@ async fn test_btsp_jsonline_handshake_over_uds() {
     assert!(server_result.is_ok(), "server should complete cleanly");
 }
 
+/// Read one newline-terminated JSON message from a raw async stream.
+async fn read_json_line_raw(
+    client: &mut tokio::net::UnixStream,
+    buf: &mut Vec<u8>,
+) -> serde_json::Value {
+    buf.clear();
+    buf.resize(4096, 0);
+    let mut total = 0;
+    loop {
+        let n = client.read(&mut buf[total..]).await.unwrap();
+        total += n;
+        if buf[..total].contains(&b'\n') || n == 0 {
+            break;
+        }
+    }
+    serde_json::from_str(std::str::from_utf8(&buf[..total]).unwrap().trim()).unwrap()
+}
+
+/// Send an encrypted JSON-RPC request and read the encrypted response.
+async fn encrypted_roundtrip(
+    client: &mut tokio::net::UnixStream,
+    keys: &crate::btsp::phase3::Phase3Keys,
+    request: &[u8],
+) -> serde_json::Value {
+    let encrypted = keys.encrypt(request).unwrap();
+    let len: u32 = encrypted.len().try_into().unwrap();
+    client.write_all(&len.to_be_bytes()).await.unwrap();
+    client.write_all(&encrypted).await.unwrap();
+    client.flush().await.unwrap();
+
+    let mut len_buf = [0u8; 4];
+    client.read_exact(&mut len_buf).await.unwrap();
+    let resp_len = u32::from_be_bytes(len_buf) as usize;
+    assert!(resp_len > 28, "encrypted frame must include nonce + tag: {resp_len}");
+
+    let mut resp_frame = vec![0u8; resp_len];
+    client.read_exact(&mut resp_frame).await.unwrap();
+
+    let decrypted = keys.decrypt(&resp_frame).unwrap();
+    serde_json::from_str(std::str::from_utf8(&decrypted).unwrap()).unwrap()
+}
+
+/// Complete the Phase 2 JSON-line BTSP handshake on the client side.
+/// Returns `(session_id, handshake_key)`.
+async fn client_phase2_handshake(
+    client: &mut tokio::net::UnixStream,
+    family_seed: &[u8],
+) -> (String, [u8; 32]) {
+    use base64::Engine;
+    use hmac::{Hmac, Mac};
+    use x25519_dalek::{EphemeralSecret, PublicKey};
+
+    type HmacSha256 = Hmac<sha2::Sha256>;
+    let b64 = base64::engine::general_purpose::STANDARD;
+
+    let client_secret = EphemeralSecret::random_from_rng(rand::thread_rng());
+    let client_public = PublicKey::from(&client_secret);
+    let hello = serde_json::json!({
+        "protocol": "btsp", "version": 1,
+        "client_ephemeral_pub": b64.encode(client_public.as_bytes())
+    });
+    client.write_all(format!("{hello}\n").as_bytes()).await.unwrap();
+
+    let mut buf = vec![0u8; 4096];
+    let sh = read_json_line_raw(client, &mut buf).await;
+    assert_eq!(sh["version"], 1);
+
+    let server_pub = b64.decode(sh["server_ephemeral_pub"].as_str().unwrap()).unwrap();
+    let challenge = b64.decode(sh["challenge"].as_str().unwrap()).unwrap();
+    let session_id = sh["session_id"].as_str().unwrap().to_owned();
+
+    let handshake_key = {
+        use hkdf::Hkdf;
+        let hk = Hkdf::<sha2::Sha256>::new(Some(b"btsp-v1"), family_seed);
+        let mut okm = [0u8; 32];
+        hk.expand(b"handshake", &mut okm).unwrap();
+        okm
+    };
+
+    let mut mac = HmacSha256::new_from_slice(&handshake_key).expect("HMAC init");
+    mac.update(&challenge);
+    mac.update(client_public.as_bytes());
+    mac.update(&server_pub);
+    let hmac_result = mac.finalize().into_bytes();
+
+    let cr = serde_json::json!({
+        "response": b64.encode(hmac_result),
+        "preferred_cipher": "null"
+    });
+    client.write_all(format!("{cr}\n").as_bytes()).await.unwrap();
+
+    let hc = read_json_line_raw(client, &mut buf).await;
+    assert_eq!(hc["cipher"], "null");
+
+    (session_id, handshake_key)
+}
+
+/// Guidestone 157/170: Full BTSP Phase 3 encrypted transport integration test.
+///
+/// Exercises the complete path: handshake → `btsp.negotiate(chacha20-poly1305)` →
+/// encrypted `health.check` + `dag.session.create` round-trips over a real
+/// `UnixStream` pair, verifying that `serve_after_handshake` switches to
+/// `handle_encrypted_connection` and all subsequent frames are encrypted.
+#[tokio::test]
+async fn test_btsp_phase3_encrypted_transport_over_uds() {
+    use base64::Engine;
+
+    let family_seed = b"integration-test-family-seed-ok!";
+    let primal = test_primal().await;
+
+    let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
+    server_raw.set_nonblocking(true).unwrap();
+    client_raw.set_nonblocking(true).unwrap();
+    let server_stream = tokio::net::UnixStream::from_std(server_raw).unwrap();
+    let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
+
+    let server_handle = tokio::spawn(async move {
+        handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+    });
+
+    let (session_id, handshake_key) =
+        client_phase2_handshake(&mut client, family_seed).await;
+
+    // --- Phase 3: btsp.negotiate → chacha20-poly1305 ---
+
+    let b64 = base64::engine::general_purpose::STANDARD;
+    let client_nonce = {
+        let mut n = [0u8; 32];
+        rand::RngCore::fill_bytes(&mut rand::thread_rng(), &mut n);
+        n
+    };
+
+    let negotiate_req = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "btsp.negotiate",
+        "params": {
+            "session_id": session_id,
+            "ciphers": ["chacha20-poly1305"],
+            "client_nonce": b64.encode(client_nonce),
+        },
+        "id": 1
+    });
+    client.write_all(format!("{negotiate_req}\n").as_bytes()).await.unwrap();
+
+    let mut buf = vec![0u8; 4096];
+    let negotiate_resp = read_json_line_raw(&mut client, &mut buf).await;
+
+    assert_eq!(
+        negotiate_resp["result"]["cipher"], "chacha20-poly1305",
+        "server should select chacha20-poly1305: {negotiate_resp}"
+    );
+    let server_nonce = b64
+        .decode(negotiate_resp["result"]["server_nonce"].as_str().unwrap())
+        .unwrap();
+
+    let client_keys =
+        crate::btsp::phase3::Phase3Keys::derive(&handshake_key, &client_nonce, &server_nonce, true)
+            .unwrap();
+
+    // --- Encrypted transport: verify multiple requests go through encrypted path ---
+
+    let resp1 = encrypted_roundtrip(
+        &mut client,
+        &client_keys,
+        br#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":2}"#,
+    )
+    .await;
+    assert_eq!(resp1["jsonrpc"], "2.0");
+    assert_eq!(resp1["id"], 2);
+    assert!(resp1["result"].is_object(), "health.check: {resp1}");
+
+    let resp2 = encrypted_roundtrip(
+        &mut client,
+        &client_keys,
+        br#"{"jsonrpc":"2.0","method":"dag.session.create","params":{"description":"Phase 3 test","session_type":"General"},"id":3}"#,
+    )
+    .await;
+    assert_eq!(resp2["jsonrpc"], "2.0");
+    assert_eq!(resp2["id"], 3);
+    assert!(resp2["result"].is_string(), "dag.session.create: {resp2}");
+
+    client.shutdown().await.unwrap();
+    let server_result = server_handle.await.unwrap();
+    assert!(server_result.is_ok(), "server should complete cleanly");
+}
+
 /// Verify that a partial/invalid `ClientHello` gets an error response, not
 /// a silent connection reset.
 #[tokio::test]
