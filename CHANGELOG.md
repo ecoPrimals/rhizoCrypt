@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S59c: Deep Debt Audit — CI Gate Alignment
+
+- **Comprehensive 8-category deep debt audit**: all categories clean. Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero `.unwrap()`/`.expect()` in production, zero TODO/FIXME/HACK, zero mocks in production, zero dead code in production, all deps pure Rust.
+- **CI gap fixed**: `ci.yml` now matches documented stadial gate — added `cargo deny check bans` step and `--all-features` to both clippy and test. Previously CI ran clippy/test without `--all-features` (feature-gated code went unchecked) and didn't enforce `cargo-deny` (despite README/CHANGELOG documenting it as enforced). Test scope broadened from `--lib` to full workspace.
+- **Stadial gate**: 1,563 tests, 0 clippy warnings, 0 fmt diffs, cargo deny clean.
+
 #### S59b: Guidestone 157/170 — Phase 3 Transport Switch Integration Test
 
 - **primalSpring NUCLEUS validation** identified interop gap (guidestone 157/170): no integration test verified that after `btsp.negotiate` returns `cipher: "chacha20-poly1305"`, subsequent frames use encrypted framing (not cleartext JSON-RPC).

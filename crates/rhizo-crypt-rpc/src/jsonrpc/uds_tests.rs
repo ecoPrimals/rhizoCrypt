@@ -392,8 +392,7 @@ async fn test_btsp_phase3_encrypted_transport_over_uds() {
         handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
     });
 
-    let (session_id, handshake_key) =
-        client_phase2_handshake(&mut client, family_seed).await;
+    let (session_id, handshake_key) = client_phase2_handshake(&mut client, family_seed).await;
 
     // --- Phase 3: btsp.negotiate → chacha20-poly1305 ---
 
@@ -423,9 +422,8 @@ async fn test_btsp_phase3_encrypted_transport_over_uds() {
         negotiate_resp["result"]["cipher"], "chacha20-poly1305",
         "server should select chacha20-poly1305: {negotiate_resp}"
     );
-    let server_nonce = b64
-        .decode(negotiate_resp["result"]["server_nonce"].as_str().unwrap())
-        .unwrap();
+    let server_nonce =
+        b64.decode(negotiate_resp["result"]["server_nonce"].as_str().unwrap()).unwrap();
 
     let client_keys =
         crate::btsp::phase3::Phase3Keys::derive(&handshake_key, &client_nonce, &server_nonce, true)

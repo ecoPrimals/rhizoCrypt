@@ -40,7 +40,12 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Deny
+        run: |
+          cargo install --locked cargo-deny@0.16 || true
+          cargo deny check bans
 
       - name: Test
-        run: cargo test --workspace --lib
+        run: cargo test --workspace --all-features
