@@ -36,8 +36,8 @@ pub struct VertexRef {
 pub struct ProvenanceChain {
     /// Vertices in the chain (ordered by causality).
     pub vertices: Vec<VertexRef>,
-    /// Agents involved.
-    pub agents: HashSet<String>,
+    /// Agent DIDs involved (typed for semantic correctness).
+    pub agents: HashSet<Did>,
     /// Data hashes referenced.
     pub data_hashes: HashSet<[u8; 32]>,
 }
@@ -52,7 +52,7 @@ impl ProvenanceChain {
     /// Add a vertex to the chain.
     pub fn add_vertex(&mut self, vertex: VertexRef) {
         if let Some(ref agent) = vertex.agent {
-            self.agents.insert(agent.as_str().to_string());
+            self.agents.insert(agent.clone());
         }
         if let Some(ref payload) = vertex.payload_ref {
             self.data_hashes.insert(payload.hash);

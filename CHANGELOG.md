@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S59d: DID Semantic Tightening — `ProvenanceChain.agents` (`HashSet<String>` → `HashSet<Did>`)
+
+- **primalSpring Phase 58 audit** raised DID vs raw `public_key` semantic gap (LOW). Investigation confirmed the gap was **already resolved** in S48 (`CRYPTO_MODEL.md` "DID as Public Key Identifier — RESOLVED"). The `Did` newtype is used consistently at the API boundary; wire DTOs use `String` intentionally for cross-primal compatibility.
+- **One type-looseness fix**: `ProvenanceChain.agents` was `HashSet<String>` despite all values being DIDs from `VertexRef.agent: Option<Did>`. Changed to `HashSet<Did>` with `agent.clone()` instead of `agent.as_str().to_string()`. Wire-level types (`dehydration_wire.rs`) intentionally remain `String` for cross-primal serde compatibility.
+- **Phase 3 transport encryption (HIGH)** from the same audit was a **stale finding** — fully implemented in S59, integration-tested in S59b (guidestone 157/170), CI-hardened in S59c.
+- **Stadial gate**: 1,563 tests, 0 clippy warnings, 0 fmt diffs.
+
 #### S59c: Deep Debt Audit — CI Gate Alignment
 
 - **Comprehensive 8-category deep debt audit**: all categories clean. Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero `.unwrap()`/`.expect()` in production, zero TODO/FIXME/HACK, zero mocks in production, zero dead code in production, all deps pure Rust.

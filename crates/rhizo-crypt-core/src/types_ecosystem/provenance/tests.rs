@@ -37,7 +37,7 @@ fn test_provenance_chain() {
     });
 
     assert_eq!(chain.len(), 1);
-    assert!(chain.agents.contains("did:key:test"));
+    assert!(chain.agents.contains(&Did::new("did:key:test")));
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn test_provenance_chain_add_vertex_with_agent() {
 
     assert_eq!(chain.len(), 1);
     assert_eq!(chain.agents.len(), 1);
-    assert!(chain.agents.contains("did:key:agent1"));
+    assert!(chain.agents.contains(&Did::new("did:key:agent1")));
 }
 
 #[test]
@@ -161,8 +161,8 @@ fn test_provenance_chain_multiple_vertices() {
 
     assert_eq!(chain.len(), 2);
     assert_eq!(chain.agents.len(), 2);
-    assert!(chain.agents.contains("did:key:agent1"));
-    assert!(chain.agents.contains("did:key:agent2"));
+    assert!(chain.agents.contains(&Did::new("did:key:agent1")));
+    assert!(chain.agents.contains(&Did::new("did:key:agent2")));
 }
 
 #[test]
