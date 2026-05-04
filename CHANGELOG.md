@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S59e: Deep Debt Audit — Idiomatic Rust Pass
+
+- **Comprehensive deep debt audit** (8 categories): all clean — zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero `.unwrap()`/`.expect()` in production, zero TODO/FIXME/HACK, zero production mocks. `BoxFuture` pattern confirmed correct for dyn-safe `ProtocolAdapter` trait (RPITIT cannot replace it). Feature matrix clean. All error types use `thiserror`.
+- **Idiom fix**: `start_uds_listener` parameter changed from `Option<&String>` to `Option<&str>` (caller updated from `.as_ref()` to `.as_deref()`). Only non-idiomatic Rust pattern found in production code.
+- **Stadial gate**: 1,563 tests, 0 clippy warnings, 0 fmt diffs. 168 `.rs` files, ~50,790 lines.
+
 #### S59d: DID Semantic Tightening — `ProvenanceChain.agents` (`HashSet<String>` → `HashSet<Did>`)
 
 - **primalSpring Phase 58 audit** raised DID vs raw `public_key` semantic gap (LOW). Investigation confirmed the gap was **already resolved** in S48 (`CRYPTO_MODEL.md` "DID as Public Key Identifier — RESOLVED"). The `Did` newtype is used consistently at the API boundary; wire DTOs use `String` intentionally for cross-primal compatibility.

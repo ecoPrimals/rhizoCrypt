@@ -1,7 +1,7 @@
 # RhizoCrypt — Integration Specification
 
 **Version**: 0.2.0  
-**Status**: Draft  
+**Status**: Archived (superseded by V2 — see `specs/00_SPECIFICATIONS_INDEX.md`)  
 **Last Updated**: December 22, 2025
 
 ---
