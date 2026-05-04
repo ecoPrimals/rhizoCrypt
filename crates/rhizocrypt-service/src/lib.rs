@@ -256,7 +256,7 @@ pub async fn run_server_with_ready(
     // UDS is unconditional on Unix (Provenance Trio standard — LD-06).
     // None = no UDS (test backward-compat), Some("") = default, Some(path) = custom.
     #[cfg(unix)]
-    let (uds_shutdown_tx, uds_socket_path) = start_uds_listener(unix_socket.as_ref(), &primal);
+    let (uds_shutdown_tx, uds_socket_path) = start_uds_listener(unix_socket.as_deref(), &primal);
 
     let tcp_requested =
         port_override.is_some() || host_override.is_some() || has_explicit_tcp_config();
@@ -457,7 +457,7 @@ fn resolve_uds_path(raw: &str) -> PathBuf {
 /// used for manifest publication so springs can discover this primal.
 #[cfg(unix)]
 fn start_uds_listener(
-    unix_socket: Option<&String>,
+    unix_socket: Option<&str>,
     primal: &Arc<RhizoCrypt>,
 ) -> (tokio::sync::watch::Sender<bool>, Option<PathBuf>) {
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
