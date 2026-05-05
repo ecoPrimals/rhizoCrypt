@@ -6,7 +6,7 @@
 use super::HandlerError;
 use super::params::{
     get_obj, get_opt_deserialized, get_opt_str, get_str, parse_did, parse_session_id,
-    parse_slice_id, parse_vertex_id, slice_id_to_value, to_json,
+    parse_slice_id, parse_vertex_id_value, slice_id_to_value, to_json,
 };
 use crate::service::{RhizoCryptRpc, RhizoCryptRpcServer};
 use crate::service_types::CheckoutSliceRequest;
@@ -31,7 +31,10 @@ pub async fn dispatch_slice_checkout(
     let owner = parse_did(get_str(obj, "owner")?);
     let holder = parse_did(get_str(obj, "holder")?);
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let checkout_vertex = parse_vertex_id(get_str(obj, "checkout_vertex")?)?;
+    let cv_val = obj
+        .get("checkout_vertex")
+        .ok_or(HandlerError::InvalidParams(Cow::Borrowed("missing 'checkout_vertex'")))?;
+    let checkout_vertex = parse_vertex_id_value(cv_val)?;
     let certificate_id = get_opt_str(obj, "certificate_id").map(String::from);
     let duration_seconds = obj.get("duration_seconds").and_then(Value::as_u64);
 

@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S60: Gap 9 — Dual-Format Hash Acceptance (Hex String + Byte Array)
+
+- **primalSpring audit (Gap 9)**: `dag.merkle.root` returns hex strings, but loamSpine/sweetGrass may send `[u8; 32]` byte arrays. All JSON-RPC hash input points now accept **both** hex strings (`"a1b2c3..."`) and JSON byte arrays (`[161, 178, 195, ...]`).
+- **New `parse_hash32` helper** in `params.rs`: branches on `Value::String` (hex decode) or `Value::Array` (collect u8 elements). Validates 32-byte length, 0-255 range per element.
+- **Updated handlers**: `dispatch_merkle_verify` (`root`), `dispatch_vertex_get`/`dispatch_vertex_children`/`dispatch_merkle_proof` (`vertex_id`), `dispatch_slice_checkout` (`checkout_vertex`), `parse_vertex_id_array` (`parents`). All accept either format.
+- **Backward-compatible**: existing hex-string callers work unchanged. New byte-array callers (loamSpine, sweetGrass) now interoperate.
+- **Port confirmation**: 9601/9600 on ironGate is operator config — rhizoCrypt defaults to 9400 (tarpc) / 9401 (JSON-RPC) and allows override via `RHIZOCRYPT_PORT`.
+- **Discovery escalation**: rhizoCrypt supports UDS filesystem convention (tier 3), manifests (tier 4), and TCP probing (tier 5) natively. Songbird registration (tier 1) active when TCP is enabled.
+- **10 new tests**: `parse_hash32` hex, byte array, equivalence, short hex rejection, wrong-length array, out-of-range byte, non-string/non-array rejection; `parse_vertex_id_value` hex and byte array; `parse_vertex_id_array` mixed formats.
+- **Stadial gate**: 1,573 tests, 0 clippy warnings, 0 fmt diffs. 168 `.rs` files, ~50,920 lines.
+
 #### S59e: Deep Debt Audit — Idiomatic Rust Pass
 
 - **Comprehensive deep debt audit** (8 categories): all clean — zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero `.unwrap()`/`.expect()` in production, zero TODO/FIXME/HACK, zero production mocks. `BoxFuture` pattern confirmed correct for dyn-safe `ProtocolAdapter` trait (RPITIT cannot replace it). Feature matrix clean. All error types use `thiserror`.

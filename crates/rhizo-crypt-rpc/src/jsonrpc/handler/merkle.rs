@@ -5,7 +5,8 @@
 
 use super::HandlerError;
 use super::params::{
-    get_deserialized, get_obj, get_str, parse_session_id, parse_vertex_id, to_json,
+    get_deserialized, get_obj, get_str, parse_hash32, parse_session_id, parse_vertex_id_value,
+    to_json,
 };
 use crate::service::{RhizoCryptRpc, RhizoCryptRpcServer};
 use rhizo_crypt_core::MerkleRoot;
@@ -28,7 +29,10 @@ pub async fn dispatch_merkle_proof(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let vertex_id = parse_vertex_id(get_str(obj, "vertex_id")?)?;
+    let vid_val = obj
+        .get("vertex_id")
+        .ok_or(HandlerError::InvalidParams(Cow::Borrowed("missing 'vertex_id'")))?;
+    let vertex_id = parse_vertex_id_value(vid_val)?;
     let proof =
         server.clone().get_merkle_proof(tarpc::context::current(), session_id, vertex_id).await?;
     to_json(&proof)
@@ -39,15 +43,9 @@ pub async fn dispatch_merkle_verify(
     params: Value,
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
-    let root_hex = get_str(obj, "root")?;
-    let root_bytes = hex::decode(root_hex)
-        .map_err(|e| HandlerError::InvalidParams(format!("root: {e}").into()))?;
-    if root_bytes.len() != 32 {
-        return Err(HandlerError::InvalidParams(Cow::Borrowed("root must be 32 bytes hex")));
-    }
-    let mut root_arr = [0u8; 32];
-    root_arr.copy_from_slice(&root_bytes);
-    let root = MerkleRoot(root_arr);
+    let root_value =
+        obj.get("root").ok_or(HandlerError::InvalidParams(Cow::Borrowed("missing 'root'")))?;
+    let root = MerkleRoot(parse_hash32(root_value, "root")?);
     let proof = get_deserialized(obj, "proof")?;
     let ok = server.clone().verify_proof(tarpc::context::current(), root, proof).await?;
     Ok(json!(ok))

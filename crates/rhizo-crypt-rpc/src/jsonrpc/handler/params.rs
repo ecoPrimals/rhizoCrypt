@@ -58,15 +58,50 @@ pub(super) fn parse_session_id(s: &str) -> Result<SessionId, HandlerError> {
         .map_err(|e| HandlerError::InvalidParams(format!("invalid session_id: {e}").into()))
 }
 
-pub(super) fn parse_vertex_id(s: &str) -> Result<VertexId, HandlerError> {
-    let bytes = hex::decode(s)
-        .map_err(|e| HandlerError::InvalidParams(format!("invalid vertex_id hex: {e}").into()))?;
-    if bytes.len() != 32 {
-        return Err(HandlerError::InvalidParams(Cow::Borrowed("vertex_id must be 32 bytes hex")));
+/// Parse a 32-byte hash from either a hex string (`"a1b2..."`) or a JSON
+/// byte array (`[161, 178, ...]`).  Provenance trio interop: loamSpine and
+/// sweetGrass may send `[u8; 32]` arrays where rhizoCrypt historically
+/// expected hex strings.
+pub(super) fn parse_hash32(value: &Value, field: &str) -> Result<[u8; 32], HandlerError> {
+    match value {
+        Value::String(s) => {
+            let bytes = hex::decode(s).map_err(|e| {
+                HandlerError::InvalidParams(format!("invalid {field} hex: {e}").into())
+            })?;
+            if bytes.len() != 32 {
+                return Err(HandlerError::InvalidParams(
+                    format!("{field} hex must decode to 32 bytes").into(),
+                ));
+            }
+            let mut arr = [0u8; 32];
+            arr.copy_from_slice(&bytes);
+            Ok(arr)
+        }
+        Value::Array(arr) => {
+            if arr.len() != 32 {
+                return Err(HandlerError::InvalidParams(
+                    format!("{field} byte array must have exactly 32 elements").into(),
+                ));
+            }
+            let mut out = [0u8; 32];
+            for (i, v) in arr.iter().enumerate() {
+                out[i] = v.as_u64().and_then(|n| u8::try_from(n).ok()).ok_or_else(|| {
+                    HandlerError::InvalidParams(
+                        format!("{field}[{i}]: expected integer 0-255").into(),
+                    )
+                })?;
+            }
+            Ok(out)
+        }
+        _ => Err(HandlerError::InvalidParams(
+            format!("{field} must be a hex string or byte array").into(),
+        )),
     }
-    let mut arr = [0u8; 32];
-    arr.copy_from_slice(&bytes);
-    Ok(VertexId(arr))
+}
+
+/// Parse a vertex ID from a `Value` — accepts hex string or byte array.
+pub(super) fn parse_vertex_id_value(value: &Value) -> Result<VertexId, HandlerError> {
+    parse_hash32(value, "vertex_id").map(VertexId)
 }
 
 pub(super) fn parse_slice_id(s: &str) -> Result<SliceId, HandlerError> {
@@ -87,8 +122,7 @@ pub(super) fn parse_vertex_id_array(
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .filter_map(|v| v.as_str())
-        .map(parse_vertex_id)
+        .map(parse_vertex_id_value)
         .collect()
 }
 
@@ -124,4 +158,90 @@ pub(super) fn session_id_to_value(id: SessionId) -> Value {
 
 pub(super) fn slice_id_to_value(id: SliceId) -> Value {
     json!(id.0.to_string())
+}
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, clippy::cast_possible_truncation, reason = "test code")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_hash32_hex_string() {
+        let hex = hex::encode([42u8; 32]);
+        let val = Value::String(hex);
+        let arr = parse_hash32(&val, "test").unwrap();
+        assert_eq!(arr, [42u8; 32]);
+    }
+
+    #[test]
+    fn parse_hash32_byte_array() {
+        let bytes: Vec<Value> = (0u8..32).map(|b| Value::Number(b.into())).collect();
+        let val = Value::Array(bytes);
+        let arr = parse_hash32(&val, "test").unwrap();
+        assert_eq!(arr, core::array::from_fn::<u8, 32, _>(|i| i as u8));
+    }
+
+    #[test]
+    fn parse_hash32_hex_and_bytes_equivalent() {
+        let raw = [7u8; 32];
+        let from_hex = parse_hash32(&Value::String(hex::encode(raw)), "t").unwrap();
+        let from_arr = parse_hash32(
+            &Value::Array(raw.iter().map(|&b| Value::Number(b.into())).collect()),
+            "t",
+        )
+        .unwrap();
+        assert_eq!(from_hex, from_arr);
+    }
+
+    #[test]
+    fn parse_hash32_rejects_short_hex() {
+        let val = Value::String("abcd".to_string());
+        assert!(parse_hash32(&val, "test").is_err());
+    }
+
+    #[test]
+    fn parse_hash32_rejects_wrong_length_array() {
+        let bytes: Vec<Value> = (0u8..16).map(|b| Value::Number(b.into())).collect();
+        assert!(parse_hash32(&Value::Array(bytes), "test").is_err());
+    }
+
+    #[test]
+    fn parse_hash32_rejects_out_of_range_byte() {
+        let mut bytes: Vec<Value> = (0u8..32).map(|b| Value::Number(b.into())).collect();
+        bytes[5] = Value::Number(256.into());
+        assert!(parse_hash32(&Value::Array(bytes), "test").is_err());
+    }
+
+    #[test]
+    fn parse_hash32_rejects_non_string_non_array() {
+        assert!(parse_hash32(&Value::Bool(true), "test").is_err());
+        assert!(parse_hash32(&Value::Null, "test").is_err());
+    }
+
+    #[test]
+    fn parse_vertex_id_value_hex() {
+        let raw = [99u8; 32];
+        let vid = parse_vertex_id_value(&Value::String(hex::encode(raw))).unwrap();
+        assert_eq!(vid.0, raw);
+    }
+
+    #[test]
+    fn parse_vertex_id_value_byte_array() {
+        let raw = [13u8; 32];
+        let bytes: Vec<Value> = raw.iter().map(|&b| Value::Number(b.into())).collect();
+        let vid = parse_vertex_id_value(&Value::Array(bytes)).unwrap();
+        assert_eq!(vid.0, raw);
+    }
+
+    #[test]
+    fn parse_vertex_id_array_mixed() {
+        let hex_id = Value::String(hex::encode([1u8; 32]));
+        let byte_id = Value::Array((0u8..32).map(|b| Value::Number(b.into())).collect());
+        let mut map = serde_json::Map::new();
+        map.insert("parents".to_string(), Value::Array(vec![hex_id, byte_id]));
+        let ids = parse_vertex_id_array(&map, "parents").unwrap();
+        assert_eq!(ids.len(), 2);
+        assert_eq!(ids[0].0, [1u8; 32]);
+        assert_eq!(ids[1].0, core::array::from_fn::<u8, 32, _>(|i| i as u8));
+    }
 }

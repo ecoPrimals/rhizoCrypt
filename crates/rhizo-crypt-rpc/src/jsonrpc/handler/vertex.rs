@@ -6,11 +6,12 @@
 use super::HandlerError;
 use super::params::{
     get_obj, get_opt_deserialized, get_opt_str, get_str, parse_did, parse_session_id,
-    parse_vertex_id, to_json, vertex_ids_to_value,
+    parse_vertex_id_value, to_json, vertex_ids_to_value,
 };
 use crate::service::{RhizoCryptRpc, RhizoCryptRpcServer};
 use crate::service_types::QueryRequest;
 use serde_json::Value;
+use std::borrow::Cow;
 
 pub async fn dispatch_vertex_get(
     server: &RhizoCryptRpcServer,
@@ -18,7 +19,10 @@ pub async fn dispatch_vertex_get(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let vertex_id = parse_vertex_id(get_str(obj, "vertex_id")?)?;
+    let vid_val = obj
+        .get("vertex_id")
+        .ok_or(HandlerError::InvalidParams(Cow::Borrowed("missing 'vertex_id'")))?;
+    let vertex_id = parse_vertex_id_value(vid_val)?;
     let vertex =
         server.clone().get_vertex(tarpc::context::current(), session_id, vertex_id).await?;
     to_json(&vertex)
@@ -74,7 +78,10 @@ pub async fn dispatch_vertex_children(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let vertex_id = parse_vertex_id(get_str(obj, "vertex_id")?)?;
+    let vid_val = obj
+        .get("vertex_id")
+        .ok_or(HandlerError::InvalidParams(Cow::Borrowed("missing 'vertex_id'")))?;
+    let vertex_id = parse_vertex_id_value(vid_val)?;
     let children =
         server.clone().get_children(tarpc::context::current(), session_id, vertex_id).await?;
     vertex_ids_to_value(&children)
