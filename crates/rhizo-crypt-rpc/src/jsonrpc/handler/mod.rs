@@ -19,11 +19,12 @@ mod vertex;
 use crate::error::RpcError;
 use crate::jsonrpc::types::JsonRpcRequest;
 use crate::service::RhizoCryptRpcServer;
+use rhizo_crypt_core::PrimalLifecycle;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::sync::Arc;
 use thiserror::Error;
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// Handler error for JSON-RPC.
 #[derive(Debug, Error)]
@@ -39,18 +40,53 @@ pub enum HandlerError {
     /// RPC error from service.
     #[error("rpc error: {0}")]
     Rpc(#[from] RpcError),
+
+    /// Primal subsystem not ready to serve requests.
+    #[error("not ready")]
+    NotReady,
+}
+
+/// Methods that are allowed even when the primal isn't fully ready.
+fn is_always_allowed(method: &str) -> bool {
+    matches!(
+        method,
+        "health.liveness"
+            | "ping"
+            | "health"
+            | "health.check"
+            | "status"
+            | "check"
+            | "health.readiness"
+            | "health.metrics"
+            | "identity.get"
+            | "capabilities.list"
+            | "capability.list"
+            | "primal.capabilities"
+            | "tools.list"
+            | "mcp.tools.list"
+    )
 }
 
 /// Handle a single JSON-RPC request.
+///
+/// Methods that require the DAG subsystem are gated behind a readiness
+/// check — if the primal isn't running, they return a `-32002 NOT_READY`
+/// error immediately instead of hanging or returning an opaque internal
+/// error. Health and identity probes are always allowed.
 pub async fn handle_request(
     primal: Arc<rhizo_crypt_core::RhizoCrypt>,
     request: JsonRpcRequest,
 ) -> Result<Value, HandlerError> {
-    let server = RhizoCryptRpcServer::new(primal);
+    let server = RhizoCryptRpcServer::new(Arc::clone(&primal));
     let normalized = rhizo_crypt_core::niche::normalize_method(&request.method);
     let params = request.params.unwrap_or(Value::Null);
 
     debug!(method = %normalized, "JSON-RPC request");
+
+    if !is_always_allowed(normalized) && !primal.state().is_running() {
+        warn!(method = %normalized, state = %primal.state(), "rejected: primal not ready");
+        return Err(HandlerError::NotReady);
+    }
 
     match normalized {
         "dag.session.create" => session::dispatch_session_create(&server, params).await,

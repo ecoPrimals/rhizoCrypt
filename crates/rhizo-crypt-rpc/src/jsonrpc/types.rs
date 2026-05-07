@@ -107,6 +107,9 @@ pub mod codes {
 
     /// Authentication required (BTSP handshake not performed).
     pub const FORBIDDEN: i32 = -32000;
+
+    /// Server not ready (primal subsystem still initializing).
+    pub const NOT_READY: i32 = -32002;
 }
 
 /// Create a success response.

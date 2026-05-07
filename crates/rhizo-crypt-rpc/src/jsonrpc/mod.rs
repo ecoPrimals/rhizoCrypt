@@ -294,6 +294,7 @@ async fn process_single_request(
                 handler::HandlerError::Rpc(rpc_err) => {
                     (codes::INTERNAL_ERROR, rpc_err.to_string().into())
                 }
+                handler::HandlerError::NotReady => (codes::NOT_READY, Cow::Borrowed("not ready")),
             };
             serialize_response(&error_response(Some(id), code, &message, Some(detail)))
         }

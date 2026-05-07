@@ -21,6 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S61: PG-60 — Readiness Gate on JSON-RPC Accept Path
+
+- **primalSpring audit (PG-60)**: Silent timeout on UDS connect — when rhizoCrypt's DAG subsystem isn't ready, the server accepts the socket connection but requests hang or return opaque internal errors. Downstream callers (hotSpring, primalSpring exp107) stall without feedback.
+- **Readiness gate**: All JSON-RPC methods that require the DAG subsystem are now gated behind `primal.state().is_running()`. If the primal isn't in `Running` state, the handler returns `{"error": {"code": -32002, "message": "not ready"}}` immediately. No socket hang, no opaque error.
+- **Always-allowed methods**: Health probes (`health.liveness`, `health.check`, `health.readiness`, `ping`, `health`, `health.metrics`), `identity.get`, `capabilities.list`, and `tools.list` bypass the gate — callers can always introspect liveness and capabilities even during startup.
+- **New error code**: `NOT_READY = -32002` added to `types::codes` (JSON-RPC server error range). `HandlerError::NotReady` variant maps to this code.
+- **Operator visibility**: Rejected requests emit a `warn!` log with the method name and current state.
+- **5 new tests**: handler-level readiness gate (DAG rejection, health allowlist, pass-through when running) + JSON-RPC response-level (`-32002` code verification, liveness bypass).
+- **Stadial gate**: 1,578 tests, 0 clippy warnings, 0 fmt diffs. 172 `.rs` files, ~51,620 lines.
+
 #### S60: Gap 9 — Dual-Format Hash Acceptance (Hex String + Byte Array)
 
 - **primalSpring audit (Gap 9)**: `dag.merkle.root` returns hex strings, but loamSpine/sweetGrass may send `[u8; 32]` byte arrays. All JSON-RPC hash input points now accept **both** hex strings (`"a1b2c3..."`) and JSON byte arrays (`[161, 178, 195, ...]`).

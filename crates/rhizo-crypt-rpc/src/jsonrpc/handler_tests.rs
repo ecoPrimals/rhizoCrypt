@@ -721,3 +721,74 @@ async fn test_handler_rpc_error_session_not_found() {
     let err = handle_request(primal.clone(), req).await.unwrap_err();
     assert!(matches!(err, HandlerError::Rpc(_)));
 }
+
+// ============================================================================
+// Readiness gate (PG-60)
+// ============================================================================
+
+fn create_unstarted_primal() -> Arc<rhizo_crypt_core::RhizoCrypt> {
+    Arc::new(rhizo_crypt_core::RhizoCrypt::new(RhizoCryptConfig::default()))
+}
+
+#[tokio::test]
+async fn test_readiness_gate_rejects_dag_methods_when_not_running() {
+    let primal = create_unstarted_primal();
+    assert!(!primal.state().is_running());
+
+    let dag_methods = [
+        "dag.session.create",
+        "dag.session.get",
+        "dag.session.list",
+        "dag.event.append",
+        "dag.vertex.get",
+        "dag.merkle.root",
+        "dag.slice.checkout",
+        "dag.dehydration.trigger",
+    ];
+
+    for method in dag_methods {
+        let req = make_request(method, None);
+        let err = handle_request(primal.clone(), req).await.unwrap_err();
+        assert!(
+            matches!(err, HandlerError::NotReady),
+            "{method} should return NotReady when primal is not running"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_readiness_gate_allows_health_probes_when_not_running() {
+    let primal = create_unstarted_primal();
+
+    let allowed_methods = [
+        "health.liveness",
+        "ping",
+        "health",
+        "health.check",
+        "health.readiness",
+        "identity.get",
+        "capabilities.list",
+        "tools.list",
+    ];
+
+    for method in allowed_methods {
+        let result = handle_request(primal.clone(), make_request(method, None)).await;
+        assert!(
+            result.is_ok(),
+            "{method} should succeed even when primal is not running, got: {result:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_readiness_gate_passes_when_running() {
+    let primal = create_test_primal().await;
+    assert!(primal.state().is_running());
+
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({"session_type": "General", "description": "readiness test"})),
+    );
+    let result = handle_request(primal.clone(), req).await;
+    assert!(result.is_ok(), "DAG methods should work when primal is running");
+}

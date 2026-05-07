@@ -420,3 +420,71 @@ async fn test_dual_mode_http_client() {
     assert_eq!(json["jsonrpc"], "2.0");
     assert!(json["result"].is_object(), "expected result, got: {json}");
 }
+
+// ============================================================================
+// Readiness gate — full JSON-RPC error response (PG-60)
+// ============================================================================
+
+#[tokio::test]
+async fn test_not_ready_returns_32002_error_code() {
+    let primal = Arc::new(RhizoCrypt::new(RhizoCryptConfig::default()));
+    let app = JsonRpcServer::router(primal);
+
+    let request_body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "dag.session.create",
+        "params": {"session_type": "General", "description": "cold"},
+        "id": 42
+    });
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/rpc")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request_body).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let bytes = to_bytes(response.into_body(), 8192).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+
+    assert_eq!(json["jsonrpc"], "2.0");
+    assert_eq!(json["id"], 42);
+    assert_eq!(json["error"]["code"], -32002);
+    assert_eq!(json["error"]["message"], "not ready");
+}
+
+#[tokio::test]
+async fn test_health_liveness_works_when_not_ready() {
+    let primal = Arc::new(RhizoCrypt::new(RhizoCryptConfig::default()));
+    let app = JsonRpcServer::router(primal);
+
+    let request_body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "health.liveness",
+        "id": 1
+    });
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/rpc")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request_body).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let bytes = to_bytes(response.into_body(), 8192).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+
+    assert_eq!(json["jsonrpc"], "2.0");
+    assert!(json["result"].is_object(), "liveness should succeed: {json}");
+    assert_eq!(json["result"]["status"], "alive");
+}
