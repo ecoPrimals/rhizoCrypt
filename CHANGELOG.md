@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New error code**: `NOT_READY = -32002` added to `types::codes` (JSON-RPC server error range). `HandlerError::NotReady` variant maps to this code.
 - **Operator visibility**: Rejected requests emit a `warn!` log with the method name and current state.
 - **5 new tests**: handler-level readiness gate (DAG rejection, health allowlist, pass-through when running) + JSON-RPC response-level (`-32002` code verification, liveness bypass).
+- **Deep debt audit**: comprehensive scan across all categories — all clean. Zero files >800L (max 794, test file), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero `.unwrap()`/`.expect()` in production, zero `todo!()`/`unimplemented!()`/`unreachable!()`, zero TODO/FIXME/HACK, zero `&Vec<`/`&String` params, zero production mocks (all cfg-gated), zero `#[allow(dead_code)]` in production, all deps pure Rust (blake3 `pure` feature, no ring/openssl). `BoxFuture` justified for dyn-safe `ProtocolAdapter`. Feature flags clean. Clippy pedantic+nursery with `unwrap_used`/`expect_used` deny.
 - **Stadial gate**: 1,578 tests, 0 clippy warnings, 0 fmt diffs. 172 `.rs` files, ~51,620 lines.
 
 #### S60: Gap 9 — Dual-Format Hash Acceptance (Hex String + Byte Array)

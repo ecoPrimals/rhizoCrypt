@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Batch Polish Script for Local Showcase
-# Updates all demos to use validated API patterns from rhizoCrypt showcase
+# Batch Test Runner for Local Showcase
+# Runs all demos with a 60s timeout per demo and reports pass/fail counts
 
 set -euo pipefail
 
@@ -10,7 +10,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║    🔧 Local Showcase Polish — Batch Update          ║${NC}"
+echo -e "${BLUE}║    🔧 Local Showcase — Batch Test Runner             ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
 
