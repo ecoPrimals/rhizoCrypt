@@ -105,8 +105,13 @@ pub mod codes {
     /// Internal error.
     pub const INTERNAL_ERROR: i32 = -32603;
 
-    /// Authentication required (BTSP handshake not performed).
-    pub const FORBIDDEN: i32 = -32000;
+    /// Caller identity could not be established (BTSP handshake not performed,
+    /// missing or malformed credentials).
+    pub const UNAUTHORIZED: i32 = -32000;
+
+    /// Caller lacks a valid capability token or the token does not grant
+    /// access to the requested method.
+    pub const PERMISSION_DENIED: i32 = -32001;
 
     /// Server not ready (primal subsystem still initializing).
     pub const NOT_READY: i32 = -32002;

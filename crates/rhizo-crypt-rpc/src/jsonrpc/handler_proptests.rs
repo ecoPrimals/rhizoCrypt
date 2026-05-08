@@ -6,6 +6,7 @@
 #![expect(clippy::unwrap_used, reason = "test code")]
 
 use super::{HandlerError, handle_request};
+use crate::jsonrpc::method_gate::{CallerContext, EnforcementMode, MethodGate};
 use crate::jsonrpc::types::{JsonRpcId, JsonRpcRequest};
 use proptest::prelude::*;
 use rhizo_crypt_core::PrimalLifecycle;
@@ -13,6 +14,14 @@ use rhizo_crypt_core::RhizoCryptConfig;
 use rhizo_crypt_core::niche::{self, CAPABILITIES, SEMANTIC_MAPPINGS};
 use serde_json::{Value, json};
 use std::sync::Arc;
+
+fn test_gate() -> MethodGate {
+    MethodGate::new(EnforcementMode::Permissive)
+}
+
+fn test_caller() -> CallerContext {
+    CallerContext::unix()
+}
 
 fn capability_index() -> impl Strategy<Value = usize> {
     prop::sample::select((0..CAPABILITIES.len()).collect::<Vec<_>>())
@@ -66,7 +75,7 @@ proptest! {
         let cap = CAPABILITIES[idx];
         let primal = rt.block_on(create_test_primal());
         let req = make_request(cap, Some(json!({})));
-        let result = rt.block_on(handle_request(primal, req));
+        let result = rt.block_on(handle_request(primal, req, &test_gate(), &test_caller()));
         prop_assert!(
             !matches!(result, Err(HandlerError::MethodNotFound(_))),
             "capability {cap} must not produce MethodNotFound, got {result:?}"
@@ -83,7 +92,7 @@ proptest! {
         let method = format!("dag.__proptest_unknown.{salt}");
         let primal = rt.block_on(create_test_primal());
         let req = make_request(&method, Some(json!({})));
-        let result = rt.block_on(handle_request(primal, req));
+        let result = rt.block_on(handle_request(primal, req, &test_gate(), &test_caller()));
         prop_assert!(
             matches!(result, Err(HandlerError::MethodNotFound(_))),
             "expected MethodNotFound for {method}, got {result:?}"
@@ -122,7 +131,7 @@ proptest! {
             .unwrap();
         let primal = rt.block_on(create_test_primal());
         let req = make_request(method, params);
-        let got = rt.block_on(handle_request(primal, req)).unwrap();
+        let got = rt.block_on(handle_request(primal, req, &test_gate(), &test_caller())).unwrap();
         prop_assert_eq!(got, niche::health_liveness());
     }
 }

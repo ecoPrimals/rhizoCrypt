@@ -9,7 +9,7 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,578 tests passing** (all features), 0 failures
+- [x] **1,602 tests passing** (all features), 0 failures
 - [x] **`--fail-under-lines 90` CI gate** enforced
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)

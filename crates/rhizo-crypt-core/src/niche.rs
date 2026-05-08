@@ -336,6 +336,34 @@ pub const METHOD_CATALOG: &[MethodSpec] = &[
         external: false,
         deps: &[],
     },
+    // Auth introspection — JH-0 method gate (public, always allowed)
+    MethodSpec {
+        fqn: "auth.check",
+        domain: "auth",
+        short_name: "check",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "auth.mode",
+        domain: "auth",
+        short_name: "mode",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
+    MethodSpec {
+        fqn: "auth.peer_info",
+        domain: "auth",
+        short_name: "peer_info",
+        estimated_ms: 1,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
 ];
 
 /// Flat list of all capability FQN strings this primal exposes.
@@ -424,6 +452,7 @@ const DOMAIN_DESCRIPTIONS: &[(&str, &str)] = &[
     ("capabilities", "Capability introspection"),
     ("identity", "Primal identity for biomeOS discovery"),
     ("tools", "MCP tool exposure for AI coordination"),
+    ("auth", "Method gate introspection and authorization (JH-0)"),
 ];
 
 // ============================================================================

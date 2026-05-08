@@ -21,6 +21,7 @@ use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::{debug, warn};
 
+use super::method_gate::{CallerContext, MethodGate};
 use super::types::{JsonRpcId, codes, error_response};
 use super::{process_single_request, serialize_response};
 
@@ -60,7 +61,12 @@ const UNAUTHENTICATED_METHODS: &[&str] = &[
 /// # Errors
 ///
 /// Returns `std::io::Error` on stream read/write failures.
-pub async fn handle_newline_connection<S>(stream: S, primal: Arc<RhizoCrypt>) -> std::io::Result<()>
+pub async fn handle_newline_connection<S>(
+    stream: S,
+    primal: Arc<RhizoCrypt>,
+    gate: &MethodGate,
+    caller: &CallerContext,
+) -> std::io::Result<()>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
@@ -117,13 +123,16 @@ where
                 }
                 let mut results = Vec::with_capacity(arr.len());
                 for item in arr {
-                    results.push(process_single_request(Arc::clone(&primal), item).await);
+                    results.push(
+                        process_single_request(Arc::clone(&primal), item, gate, caller).await,
+                    );
                 }
                 let batch = serde_json::json!(results);
                 write_response(&mut writer, &batch).await?;
             }
             value => {
-                let response = process_single_request(Arc::clone(&primal), value).await;
+                let response =
+                    process_single_request(Arc::clone(&primal), value, gate, caller).await;
                 write_response(&mut writer, &response).await?;
             }
         }
@@ -191,12 +200,14 @@ where
                     map.get("id").and_then(|v| serde_json::from_value::<JsonRpcId>(v.clone()).ok());
                 if let Some(m) = method {
                     if UNAUTHENTICATED_METHODS.contains(&m) {
-                        process_single_request(Arc::clone(&primal), value).await
+                        let gate = MethodGate::from_env();
+                        let caller = CallerContext::loopback();
+                        process_single_request(Arc::clone(&primal), value, &gate, &caller).await
                     } else {
                         debug!(method = m, "rejected unauthenticated method (BTSP required)");
                         serialize_response(&error_response(
                             id,
-                            codes::FORBIDDEN,
+                            codes::UNAUTHORIZED,
                             "BTSP authentication required for this method",
                             Some(serde_json::json!({
                                 "method": m,
@@ -242,6 +253,7 @@ async fn write_response<W: tokio::io::AsyncWrite + Unpin>(
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
+    use crate::jsonrpc::method_gate::EnforcementMode;
     use rhizo_crypt_core::{PrimalLifecycle, RhizoCryptConfig};
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, duplex};
 
@@ -255,7 +267,12 @@ mod tests {
     /// all response lines from the read half.
     async fn roundtrip(primal: Arc<RhizoCrypt>, input: &[u8]) -> Vec<serde_json::Value> {
         let (mut client, server) = duplex(8192);
-        let handle = tokio::spawn(handle_newline_connection(server, primal));
+        let gate = MethodGate::new(EnforcementMode::Permissive);
+        let caller = CallerContext::unix();
+        let handle =
+            tokio::spawn(
+                async move { handle_newline_connection(server, primal, &gate, &caller).await },
+            );
 
         AsyncWriteExt::write_all(&mut client, input).await.unwrap();
         AsyncWriteExt::shutdown(&mut client).await.unwrap();
@@ -377,7 +394,7 @@ mod tests {
         assert_eq!(results.len(), 1);
         assert_eq!(
             results[0]["error"]["code"], -32000,
-            "data methods should be rejected with FORBIDDEN"
+            "data methods should be rejected with UNAUTHORIZED"
         );
         let data = &results[0]["error"]["data"];
         assert_eq!(data["method"], "dag.session.create");

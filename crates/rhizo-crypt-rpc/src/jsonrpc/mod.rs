@@ -7,6 +7,7 @@
 //! with semantic method naming: `{domain}.{operation}[.{variant}]`.
 
 mod handler;
+pub mod method_gate;
 pub mod newline;
 mod types;
 
@@ -38,6 +39,7 @@ fn serialize_response(value: &impl serde::Serialize) -> serde_json::Value {
 #[derive(Clone)]
 struct JsonRpcState {
     primal: Arc<RhizoCrypt>,
+    gate: Arc<method_gate::MethodGate>,
 }
 
 /// JSON-RPC 2.0 server.
@@ -143,6 +145,7 @@ impl JsonRpcServer {
     pub fn router(primal: Arc<RhizoCrypt>) -> Router {
         let state = JsonRpcState {
             primal,
+            gate: Arc::new(method_gate::MethodGate::from_env()),
         };
         let cors = CorsLayer::new()
             .allow_origin(Any)
@@ -175,7 +178,9 @@ async fn handle_tcp_connection(
 
     if n > 0 && (probe[0] == b'{' || probe[0] == b'[') {
         debug!(peer = %peer, "detected newline JSON-RPC");
-        newline::handle_newline_connection(stream, primal).await?;
+        let gate = method_gate::MethodGate::from_env();
+        let caller = method_gate::CallerContext::loopback();
+        newline::handle_newline_connection(stream, primal, &gate, &caller).await?;
     } else {
         debug!(peer = %peer, "detected HTTP");
         let io = hyper_util::rt::TokioIo::new(stream);
@@ -198,6 +203,7 @@ async fn handle_jsonrpc(
     State(state): State<JsonRpcState>,
     body: axum::body::Bytes,
 ) -> impl IntoResponse {
+    let caller = method_gate::CallerContext::loopback();
     let parsed: Result<serde_json::Value, _> = serde_json::from_slice(&body);
     let value = match parsed {
         Ok(v) => v,
@@ -232,13 +238,15 @@ async fn handle_jsonrpc(
             }
             let mut results = Vec::with_capacity(arr.len());
             for item in arr {
-                let response = process_single_request(Arc::clone(&state.primal), item).await;
+                let response =
+                    process_single_request(Arc::clone(&state.primal), item, &state.gate, &caller)
+                        .await;
                 results.push(response);
             }
             (StatusCode::OK, Json(serde_json::json!(results))).into_response()
         }
         value => {
-            let response = process_single_request(state.primal, value).await;
+            let response = process_single_request(state.primal, value, &state.gate, &caller).await;
             (StatusCode::OK, Json(response)).into_response()
         }
     }
@@ -248,6 +256,8 @@ async fn handle_jsonrpc(
 async fn process_single_request(
     primal: Arc<RhizoCrypt>,
     value: serde_json::Value,
+    gate: &method_gate::MethodGate,
+    caller: &method_gate::CallerContext,
 ) -> serde_json::Value {
     let request: JsonRpcRequest = match serde_json::from_value(value) {
         Ok(r) => r,
@@ -282,7 +292,7 @@ async fn process_single_request(
         }
     };
 
-    match handler::handle_request(primal, request).await {
+    match handler::handle_request(primal, request, gate, caller).await {
         Ok(result) => serialize_response(&success(id, result)),
         Err(e) => {
             let detail = serde_json::json!(e.to_string());
@@ -295,6 +305,11 @@ async fn process_single_request(
                     (codes::INTERNAL_ERROR, rpc_err.to_string().into())
                 }
                 handler::HandlerError::NotReady => (codes::NOT_READY, Cow::Borrowed("not ready")),
+                handler::HandlerError::PermissionDenied(ref method) => (
+                    codes::PERMISSION_DENIED,
+                    format!("permission denied: method '{method}' requires a capability token")
+                        .into(),
+                ),
             };
             serialize_response(&error_response(Some(id), code, &message, Some(detail)))
         }

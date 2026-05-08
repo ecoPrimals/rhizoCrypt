@@ -17,6 +17,7 @@ mod tools;
 mod vertex;
 
 use crate::error::RpcError;
+use crate::jsonrpc::method_gate::{CallerContext, MethodAccessLevel, MethodGate, classify_method};
 use crate::jsonrpc::types::JsonRpcRequest;
 use crate::service::RhizoCryptRpcServer;
 use rhizo_crypt_core::PrimalLifecycle;
@@ -44,38 +45,27 @@ pub enum HandlerError {
     /// Primal subsystem not ready to serve requests.
     #[error("not ready")]
     NotReady,
-}
 
-/// Methods that are allowed even when the primal isn't fully ready.
-fn is_always_allowed(method: &str) -> bool {
-    matches!(
-        method,
-        "health.liveness"
-            | "ping"
-            | "health"
-            | "health.check"
-            | "status"
-            | "check"
-            | "health.readiness"
-            | "health.metrics"
-            | "identity.get"
-            | "capabilities.list"
-            | "capability.list"
-            | "primal.capabilities"
-            | "tools.list"
-            | "mcp.tools.list"
-    )
+    /// Caller lacks permission to invoke a protected method.
+    #[error("permission denied: method '{0}' requires a capability token")]
+    PermissionDenied(String),
 }
 
 /// Handle a single JSON-RPC request.
 ///
-/// Methods that require the DAG subsystem are gated behind a readiness
-/// check — if the primal isn't running, they return a `-32002 NOT_READY`
-/// error immediately instead of hanging or returning an opaque internal
-/// error. Health and identity probes are always allowed.
+/// Two pre-dispatch gates run before the method dispatch table:
+///
+/// 1. **Readiness gate** (S61 / PG-60): public methods are always allowed;
+///    protected methods return `-32002 NOT_READY` if the primal isn't running.
+///
+/// 2. **Method gate** (S62 / JH-0): public methods are always allowed;
+///    protected methods without a capability token are logged (permissive)
+///    or rejected with `-32001 PERMISSION_DENIED` (enforced).
 pub async fn handle_request(
     primal: Arc<rhizo_crypt_core::RhizoCrypt>,
     request: JsonRpcRequest,
+    gate: &MethodGate,
+    caller: &CallerContext,
 ) -> Result<Value, HandlerError> {
     let server = RhizoCryptRpcServer::new(Arc::clone(&primal));
     let normalized = rhizo_crypt_core::niche::normalize_method(&request.method);
@@ -83,12 +73,24 @@ pub async fn handle_request(
 
     debug!(method = %normalized, "JSON-RPC request");
 
-    if !is_always_allowed(normalized) && !primal.state().is_running() {
+    let is_public = classify_method(normalized) == MethodAccessLevel::Public;
+
+    // Gate 1: readiness — public methods bypass
+    if !is_public && !primal.state().is_running() {
         warn!(method = %normalized, state = %primal.state(), "rejected: primal not ready");
         return Err(HandlerError::NotReady);
     }
 
+    // Gate 2: method authorization — public methods bypass
+    if let Err(rejection) = gate.check(normalized, caller) {
+        return Err(HandlerError::PermissionDenied(rejection.method));
+    }
+
     match normalized {
+        // Auth introspection (always public, handled by the gate)
+        "auth.check" => Ok(gate.auth_check_response(caller)),
+        "auth.mode" => Ok(gate.auth_mode_response()),
+        "auth.peer_info" => Ok(gate.auth_peer_info_response(caller)),
         "dag.session.create" => session::dispatch_session_create(&server, params).await,
         "dag.session.get" => session::dispatch_session_get(&server, params).await,
         "dag.session.list" => session::dispatch_session_list(&server).await,

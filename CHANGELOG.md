@@ -21,6 +21,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S62: JH-0 — Method Gate Pre-Dispatch Authorization
+
+- **primalSpring audit (JH-0)**: projectNUCLEUS multi-user hardening pentest revealed that all primals accept unauthenticated calls to any method from any localhost process. primalSpring v0.9.25 shipped the reference implementation; rhizoCrypt now adopts the ecosystem-standard `MethodGate` pattern.
+- **New module `method_gate.rs`**: `MethodGate` struct with `check()` pre-dispatch method, `CallerContext` (bearer token + `ConnectionOrigin`), `EnforcementMode` (Permissive / Enforced), `classify_method()` returning `Public` / `Protected`.
+- **Method classification**: Public (always allowed without token): `health.*`, `ping`, `status`, `check`, `identity.get`, `capabilities.list`, `capability.list`, `primal.capabilities`, `lifecycle.status`, `auth.check`, `auth.mode`, `auth.peer_info`, `tools.list`, `mcp.tools.list`. Protected (require token when enforced): all `dag.*`, `tools.call`, and any unknown method.
+- **Two-gate architecture**: `handle_request` now runs Gate 1 (readiness, `-32002 NOT_READY`) then Gate 2 (authorization, `-32001 PERMISSION_DENIED`) before dispatch. Both gates bypass for public methods.
+- **Three new `auth.*` methods**: `auth.check` (returns authenticated/enforcement), `auth.mode` (returns current mode), `auth.peer_info` (returns origin/has_token). Registered in `METHOD_CATALOG` and `CAPABILITIES`.
+- **Error codes**: `PERMISSION_DENIED = -32001` (new), `UNAUTHORIZED = -32000` (renamed from `FORBIDDEN`, same numeric value). `NOT_READY = -32002` (unchanged from S61).
+- **Environment**: `RHIZOCRYPT_AUTH_MODE=enforced` activates enforcement. Default: `permissive` (logs violations but allows, backward-compatible). Accepts `enforced`/`enforce`/`strict`.
+- **Transport wiring**: gate and caller context threaded through all transport paths — Axum HTTP handler, UDS newline handler, BTSP encrypted handler, TCP auto-detect. UDS connections use `CallerContext::unix()`, TCP/HTTP use `CallerContext::loopback()`.
+- **23 new tests**: 15 unit tests in `method_gate.rs` (classification, enforcement modes, gate check, auth responses) + 8 handler integration tests (auth method responses, enforced rejection, public bypass, token pass-through, auth during cold start).
+- **Stadial gate**: 1,602 tests, 0 clippy warnings, 0 fmt diffs.
+
 #### S61: PG-60 — Readiness Gate on JSON-RPC Accept Path
 
 - **primalSpring audit (PG-60)**: Silent timeout on UDS connect — when rhizoCrypt's DAG subsystem isn't ready, the server accepts the socket connection but requests hang or return opaque internal errors. Downstream callers (hotSpring, primalSpring exp107) stall without feedback.

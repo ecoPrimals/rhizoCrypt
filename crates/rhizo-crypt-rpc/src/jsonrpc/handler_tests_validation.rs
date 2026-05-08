@@ -6,10 +6,19 @@
 #![allow(clippy::unwrap_used)]
 
 use super::*;
+use crate::jsonrpc::method_gate::{CallerContext, EnforcementMode, MethodGate};
 use crate::jsonrpc::types::JsonRpcId;
 use crate::jsonrpc::types::JsonRpcRequest;
 use rhizo_crypt_core::{PrimalLifecycle, RhizoCryptConfig};
 use serde_json::json;
+
+fn test_gate() -> MethodGate {
+    MethodGate::new(EnforcementMode::Permissive)
+}
+
+fn test_caller() -> CallerContext {
+    CallerContext::unix()
+}
 
 async fn create_test_primal() -> Arc<rhizo_crypt_core::RhizoCrypt> {
     let mut primal = rhizo_crypt_core::RhizoCrypt::new(RhizoCryptConfig::default());
@@ -35,7 +44,7 @@ async fn test_method_not_found() {
     let primal = create_test_primal().await;
 
     let req = make_request("unknown.method", Some(json!({})));
-    let err = handle_request(primal.clone(), req).await.unwrap_err();
+    let err = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::MethodNotFound(_)));
 }
 
@@ -44,7 +53,7 @@ async fn test_invalid_params() {
     let primal = create_test_primal().await;
 
     let req = make_request("dag.session.get", Some(json!({})));
-    let err = handle_request(primal.clone(), req).await.unwrap_err();
+    let err = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -52,7 +61,7 @@ async fn test_invalid_params() {
 async fn test_params_not_object() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.get", Some(json!([1, 2, 3])));
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -60,7 +69,7 @@ async fn test_params_not_object() {
 async fn test_params_null() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.get", None);
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -72,7 +81,7 @@ async fn test_params_null() {
 async fn test_invalid_session_id() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.get", Some(json!({"session_id": "not-a-uuid"})));
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -87,7 +96,7 @@ async fn test_session_create_with_invalid_parent_session() {
             "parent_session": "not-a-uuid",
         })),
     );
-    let result = handle_request(primal.clone(), req).await;
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
     assert!(result.is_err());
 }
 
@@ -99,14 +108,14 @@ async fn test_session_create_with_invalid_parent_session() {
 async fn test_invalid_vertex_id_hex() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
         "dag.vertex.get",
         Some(json!({"session_id": session_id, "vertex_id": "not-hex"})),
     );
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -114,14 +123,14 @@ async fn test_invalid_vertex_id_hex() {
 async fn test_invalid_vertex_id_length() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
         "dag.vertex.get",
         Some(json!({"session_id": session_id, "vertex_id": "aabb"})),
     );
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -129,14 +138,14 @@ async fn test_invalid_vertex_id_length() {
 async fn test_vertex_children_invalid_vertex_id() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
         "dag.vertex.children",
         Some(json!({"session_id": session_id, "vertex_id": "zzzz"})),
     );
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -147,7 +156,7 @@ async fn test_vertex_children_empty() {
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -157,14 +166,14 @@ async fn test_vertex_children_empty() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let vertex_id = result.as_str().unwrap();
 
     let req = make_request(
         "dag.vertex.children",
         Some(json!({"session_id": session_id, "vertex_id": vertex_id})),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let children = result.as_array().unwrap();
     assert!(children.is_empty());
 }
@@ -178,7 +187,8 @@ async fn test_event_append_invalid_event_type() {
     let primal = create_test_primal().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id = handle_request(primal.clone(), req).await.unwrap();
+    let session_id =
+        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -188,7 +198,7 @@ async fn test_event_append_invalid_event_type() {
             "event_type": {"CompletelyInvalidType": {}},
         })),
     );
-    let result = handle_request(primal.clone(), req).await;
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
     assert!(result.is_err());
 }
 
@@ -197,11 +207,12 @@ async fn test_event_append_missing_event_type() {
     let primal = create_test_primal().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id = handle_request(primal.clone(), req).await.unwrap();
+    let session_id =
+        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request("dag.event.append", Some(json!({"session_id": session_id})));
-    let result = handle_request(primal.clone(), req).await;
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
     assert!(result.is_err());
 }
 
@@ -216,10 +227,10 @@ async fn test_event_append_batch_empty_array() {
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let _ = handle_request(primal.clone(), req).await.unwrap();
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request("dag.event.append_batch", Some(json!({"requests": []})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let ids = result.as_array().unwrap();
     assert!(ids.is_empty());
 }
@@ -231,7 +242,7 @@ async fn test_event_append_batch_single_with_metadata() {
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -245,7 +256,7 @@ async fn test_event_append_batch_single_with_metadata() {
             }]
         })),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let ids = result.as_array().unwrap();
     assert_eq!(ids.len(), 1);
     assert!(ids[0].as_str().unwrap().len() == 64);
@@ -255,7 +266,7 @@ async fn test_event_append_batch_single_with_metadata() {
 async fn test_event_append_batch_missing_requests() {
     let primal = create_test_primal().await;
     let req = make_request("dag.event.append_batch", Some(json!({})));
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -263,7 +274,7 @@ async fn test_event_append_batch_missing_requests() {
 async fn test_event_append_batch_requests_not_array() {
     let primal = create_test_primal().await;
     let req = make_request("dag.event.append_batch", Some(json!({"requests": "not-array"})));
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -271,7 +282,7 @@ async fn test_event_append_batch_requests_not_array() {
 async fn test_event_append_batch_request_not_object() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -280,7 +291,7 @@ async fn test_event_append_batch_request_not_object() {
             "requests": [session_id]
         })),
     );
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -293,7 +304,7 @@ async fn test_event_append_batch_invalid_session_id() {
             "requests": [{"session_id": "not-a-uuid", "event_type": {"SessionStart": null}}]
         })),
     );
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -301,7 +312,7 @@ async fn test_event_append_batch_invalid_session_id() {
 async fn test_event_append_batch_invalid_parents_hex() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -314,7 +325,7 @@ async fn test_event_append_batch_invalid_parents_hex() {
             }]
         })),
     );
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -322,7 +333,7 @@ async fn test_event_append_batch_invalid_parents_hex() {
 async fn test_event_append_batch_params_not_object() {
     let primal = create_test_primal().await;
     let req = make_request("dag.event.append_batch", Some(json!([1, 2, 3])));
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -340,7 +351,7 @@ async fn test_merkle_verify_invalid_root() {
             "proof": {"vertex_id": "0000000000000000000000000000000000000000000000000000000000000000", "proof": [], "root": "aabb"}
         })),
     );
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -352,7 +363,7 @@ async fn test_merkle_verify_invalid_root() {
 async fn test_slice_checkout_missing_required_fields() {
     let primal = create_test_primal().await;
     let req = make_request("dag.slice.checkout", Some(json!({})));
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -360,7 +371,7 @@ async fn test_slice_checkout_missing_required_fields() {
 async fn test_slice_get_invalid_slice_id() {
     let primal = create_test_primal().await;
     let req = make_request("dag.slice.get", Some(json!({"slice_id": "not-a-uuid"})));
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -368,7 +379,7 @@ async fn test_slice_get_invalid_slice_id() {
 async fn test_slice_get_missing_slice_id() {
     let primal = create_test_primal().await;
     let req = make_request("dag.slice.get", Some(json!({})));
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -376,14 +387,14 @@ async fn test_slice_get_missing_slice_id() {
 async fn test_slice_resolve_invalid_slice_id() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
         "dag.slice.resolve",
         Some(json!({"slice_id": "bad-uuid", "session_id": session_id})),
     );
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -391,7 +402,7 @@ async fn test_slice_resolve_invalid_slice_id() {
 async fn test_slice_resolve_invalid_session_id() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -401,10 +412,10 @@ async fn test_slice_resolve_invalid_session_id() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let _ = handle_request(primal.clone(), req).await.unwrap();
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
-    let _ = handle_request(primal.clone(), req).await.unwrap();
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
 
     let zero_vertex = "0".repeat(64);
     let req = make_request(
@@ -419,14 +430,14 @@ async fn test_slice_resolve_invalid_session_id() {
             "checkout_vertex": zero_vertex,
         })),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let slice_id = result.as_str().unwrap();
 
     let req = make_request(
         "dag.slice.resolve",
         Some(json!({"slice_id": slice_id, "session_id": "not-a-uuid"})),
     );
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -434,7 +445,7 @@ async fn test_slice_resolve_invalid_session_id() {
 async fn test_slice_list_with_null_params() {
     let primal = create_test_primal().await;
     let req = make_request("dag.slice.list", None);
-    let result = handle_request(primal, req).await.unwrap();
+    let result = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap();
     let list = result.as_array().unwrap();
     assert!(list.is_empty());
 }
@@ -443,7 +454,7 @@ async fn test_slice_list_with_null_params() {
 async fn test_slice_checkout_with_lender_borrower() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -453,10 +464,10 @@ async fn test_slice_checkout_with_lender_borrower() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let _ = handle_request(primal.clone(), req).await.unwrap();
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
-    let _ = handle_request(primal.clone(), req).await.unwrap();
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
 
     let zero_vertex = "0".repeat(64);
     let req = make_request(
@@ -471,12 +482,12 @@ async fn test_slice_checkout_with_lender_borrower() {
             "checkout_vertex": zero_vertex,
         })),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let slice_id = result.as_str().unwrap();
     assert!(uuid::Uuid::parse_str(slice_id).is_ok());
 
     let req = make_request("dag.slice.list", None);
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let slices = result.as_array().unwrap();
     assert!(!slices.is_empty());
 
@@ -487,7 +498,7 @@ async fn test_slice_checkout_with_lender_borrower() {
             "session_id": session_id
         })),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.is_null());
 }
 
@@ -495,7 +506,7 @@ async fn test_slice_checkout_with_lender_borrower() {
 async fn test_slice_checkout_with_mode_and_duration() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -505,10 +516,10 @@ async fn test_slice_checkout_with_mode_and_duration() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let _ = handle_request(primal.clone(), req).await.unwrap();
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
-    let _ = handle_request(primal.clone(), req).await.unwrap();
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
 
     let zero_vertex = "0".repeat(64);
     let req = make_request(
@@ -525,7 +536,7 @@ async fn test_slice_checkout_with_mode_and_duration() {
             "duration_seconds": 3600
         })),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     assert!(uuid::Uuid::parse_str(result.as_str().unwrap()).is_ok());
 }
 
@@ -534,7 +545,8 @@ async fn test_slice_checkout_missing_entry_index() {
     let primal = create_test_primal().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id = handle_request(primal.clone(), req).await.unwrap();
+    let session_id =
+        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -544,7 +556,7 @@ async fn test_slice_checkout_missing_entry_index() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let _ = handle_request(primal.clone(), req).await.unwrap();
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request(
         "dag.slice.checkout",
@@ -559,7 +571,7 @@ async fn test_slice_checkout_missing_entry_index() {
             "duration_seconds": 3600
         })),
     );
-    let result = handle_request(primal.clone(), req).await;
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
     assert!(result.is_err(), "should fail without entry_index");
 }
 
@@ -571,7 +583,7 @@ async fn test_slice_checkout_missing_entry_index() {
 async fn test_dehydration_status_invalid_session_id() {
     let primal = create_test_primal().await;
     let req = make_request("dag.dehydration.status", Some(json!({"session_id": "bad-uuid"})));
-    let err = handle_request(primal, req).await.unwrap_err();
+    let err = handle_request(primal, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::InvalidParams(_)));
 }
 
@@ -587,7 +599,7 @@ async fn test_vertex_query() {
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -597,7 +609,7 @@ async fn test_vertex_query() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let _ = handle_request(primal.clone(), req).await.unwrap();
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request(
         "dag.vertex.query",
@@ -606,7 +618,7 @@ async fn test_vertex_query() {
             "event_types": [{"SessionStart": null}]
         })),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let vertices = result.as_array().unwrap();
     assert_eq!(vertices.len(), 1);
 }
@@ -615,7 +627,7 @@ async fn test_vertex_query() {
 async fn test_vertex_query_with_params() {
     let primal = create_test_primal().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -625,7 +637,7 @@ async fn test_vertex_query_with_params() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let _ = handle_request(primal.clone(), req).await.unwrap();
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request(
         "dag.vertex.query",
@@ -634,7 +646,7 @@ async fn test_vertex_query_with_params() {
             "limit": 10
         })),
     );
-    let result = handle_request(primal.clone(), req).await.unwrap();
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     let vertices = result.as_array().unwrap();
     assert_eq!(vertices.len(), 1);
 }

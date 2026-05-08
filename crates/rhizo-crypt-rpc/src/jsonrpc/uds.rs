@@ -187,6 +187,9 @@ async fn handle_uds_connection(
     use crate::btsp::BtspServer;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+    let gate = super::method_gate::MethodGate::from_env();
+    let caller = super::method_gate::CallerContext::unix();
+
     if btsp_required {
         let Some(seed) = family_seed else {
             warn!("BTSP required but no FAMILY_SEED — rejecting connection");
@@ -253,14 +256,14 @@ async fn handle_uds_connection(
                 debug!("plain JSON-RPC on UDS (filesystem-authenticated, all methods)");
                 let chained_reader = first_line.as_slice().chain(reader);
                 let joined = tokio::io::join(chained_reader, writer);
-                super::newline::handle_newline_connection(joined, primal).await
+                super::newline::handle_newline_connection(joined, primal, &gate, &caller).await
             }
         } else if first[0] == b'[' {
             debug!("batch JSON-RPC on UDS (filesystem-authenticated, all methods)");
             let (reader, writer) = stream.into_split();
             let chained_reader = (&first[..]).chain(reader);
             let joined = tokio::io::join(chained_reader, writer);
-            super::newline::handle_newline_connection(joined, primal).await
+            super::newline::handle_newline_connection(joined, primal, &gate, &caller).await
         } else {
             // Length-prefixed BTSP handshake (internal binary framing).
             let (reader, writer) = stream.into_split();
@@ -284,7 +287,7 @@ async fn handle_uds_connection(
             }
         }
     } else {
-        super::newline::handle_newline_connection(stream, primal).await
+        super::newline::handle_newline_connection(stream, primal, &gate, &caller).await
     }
 }
 
@@ -337,11 +340,15 @@ where
             }
             Ok(None) => {
                 debug!("BTSP Phase 3 declined (null cipher), serving plaintext JSON-RPC");
-                super::newline::handle_newline_connection(stream, primal).await
+                let gate = super::method_gate::MethodGate::from_env();
+                let caller = super::method_gate::CallerContext::unix();
+                super::newline::handle_newline_connection(stream, primal, &gate, &caller).await
             }
             Err(e) => {
                 warn!(error = %e, "BTSP Phase 3 negotiate failed");
-                super::newline::handle_newline_connection(stream, primal).await
+                let gate = super::method_gate::MethodGate::from_env();
+                let caller = super::method_gate::CallerContext::unix();
+                super::newline::handle_newline_connection(stream, primal, &gate, &caller).await
             }
         }
     } else {
@@ -359,13 +366,15 @@ async fn chain_and_serve<S>(
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
+    let gate = super::method_gate::MethodGate::from_env();
+    let caller = super::method_gate::CallerContext::unix();
     let mut prepend = first_line;
     prepend.push(b'\n');
     let (reader, writer) = tokio::io::split(stream);
     let cursor = std::io::Cursor::new(prepend);
     let chained = tokio::io::AsyncReadExt::chain(cursor, reader);
     let joined = tokio::io::join(chained, writer);
-    super::newline::handle_newline_connection(joined, primal).await
+    super::newline::handle_newline_connection(joined, primal, &gate, &caller).await
 }
 
 /// Serve JSON-RPC over a BTSP Phase 3 encrypted channel.
@@ -417,7 +426,10 @@ where
             }
         };
 
-        let response = super::process_single_request(Arc::clone(&primal), value).await;
+        let gate = super::method_gate::MethodGate::from_env();
+        let caller = super::method_gate::CallerContext::unix();
+        let response =
+            super::process_single_request(Arc::clone(&primal), value, &gate, &caller).await;
         let resp_bytes = serde_json::to_vec(&response)
             .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
         let encrypted = keys
