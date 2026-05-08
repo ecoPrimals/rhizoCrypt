@@ -22,10 +22,10 @@
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 168 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 169 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
-| Registry | `capability_registry.toml` (28 methods, 5 domains incl. `tools.*` MCP, `identity.get`) |
+| Registry | `capability_registry.toml` (28 methods + 3 `auth.*`, 6 domains incl. `tools.*` MCP, `identity.get`, `auth.*` JH-0) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
 | Cross-compile | CI: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
 
@@ -37,6 +37,11 @@ rhizoCrypt is the **ephemeral working memory** of the ecoPrimals ecosystem.
 It manages content-addressed directed acyclic graphs (DAGs) scoped to sessions.
 Data is temporary by default — only explicit **dehydration** commits results to
 permanent storage.
+
+**Canonical capability domain: `dag`** — deploy graphs and capability routing
+should use `by_capability = "dag"` when targeting rhizoCrypt. The `"provenance"`
+domain belongs to sweetGrass; rhizoCrypt *consumes* provenance capabilities but
+does not *provide* them.
 
 **Core primitives:**
 

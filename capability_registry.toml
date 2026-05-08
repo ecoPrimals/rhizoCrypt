@@ -169,3 +169,20 @@ method = "tools.call"
 aliases = ["mcp.tools.call"]
 domain = "tools"
 description = "Execute an MCP tool call dispatched by AI agents"
+
+# ── Auth introspection (JH-0 method gate) ────────────────────────
+
+[capabilities.auth_check]
+method = "auth.check"
+domain = "auth"
+description = "Check caller authentication status and enforcement mode"
+
+[capabilities.auth_mode]
+method = "auth.mode"
+domain = "auth"
+description = "Current method gate enforcement mode (permissive/enforced)"
+
+[capabilities.auth_peer_info]
+method = "auth.peer_info"
+domain = "auth"
+description = "Connection origin and token status for the current caller"

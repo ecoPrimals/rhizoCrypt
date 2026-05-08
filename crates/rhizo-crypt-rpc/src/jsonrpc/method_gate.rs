@@ -255,7 +255,7 @@ pub struct GateRejection {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
+#[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
 

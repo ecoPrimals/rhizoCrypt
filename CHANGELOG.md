@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S64: Capability Naming Clarification (U4) + Registry Update
+
+- **primalSpring audit (U4, informational)**: rhizoCrypt was referenced as both `by_capability = "dag"` and `"provenance"` in external deploy graphs. Confirmed that rhizoCrypt's canonical capability domain is `"dag"` (`DOMAIN = "dag"` in `niche.rs`). The `"provenance"` domain belongs to sweetGrass; rhizoCrypt *consumes* provenance capabilities but does not *provide* them.
+- **README updated**: Added explicit canonical capability documentation — deploy graphs should use `by_capability = "dag"` when targeting rhizoCrypt.
+- **`capability_registry.toml` updated**: Added 3 `auth.*` methods from S62 JH-0 (auth.check, auth.mode, auth.peer_info). Registry now has 31 methods across 6 domains.
+
 #### S63: DID Semantic Alignment + Deep Debt Audit
 
 - **primalSpring audit (Low)**: DID vs raw `public_key` semantic gap — some wire type fields used `public_key` as a Rust field name while semantically carrying DID strings. Investigated entire codebase: rhizoCrypt's DAG model (`Vertex.agent`) is already fully DID-typed (`Did` newtype), signing uses DID strings throughout, no raw Ed25519 public keys are stored on DAG nodes.
