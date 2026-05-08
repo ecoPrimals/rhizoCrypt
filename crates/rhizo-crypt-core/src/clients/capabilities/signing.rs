@@ -253,7 +253,7 @@ impl SigningClient {
         let request = CryptoVerifyRequest {
             message: B64.encode(&data),
             signature: B64.encode(signature.as_bytes()),
-            public_key: signer.to_string(),
+            signer_did: signer.to_string(),
         };
 
         let response: CryptoVerifyResponse =
@@ -347,7 +347,7 @@ impl SigningClient {
             self.adapter.call("crypto.sign_contract", request).await?;
 
         tracing::trace!(
-            provider_public_key = %response.public_key,
+            provider_did = %response.attester_did,
             terms_hash = %response.terms_hash,
             "crypto.sign_contract response received"
         );
@@ -424,15 +424,18 @@ struct CryptoSignResponse {
 
 /// `crypto.verify_ed25519` request: all fields as encoded strings.
 ///
-/// The `public_key` field accepts a `did:key:` string (e.g. `did:key:z6Mk...`).
-/// `BearDog` resolves `did:key:` DIDs to raw Ed25519 public keys internally,
-/// so the DID format is the canonical wire representation for identity-aware
-/// verification. See `CRYPTO_MODEL.md` §Wire Format Alignment.
+/// The `signer_did` field is serialized as `"public_key"` for `BearDog` wire
+/// compatibility, but semantically carries a `did:key:` DID string (e.g.
+/// `did:key:z6Mk...`). `BearDog` resolves `did:key:` DIDs to raw Ed25519
+/// public keys internally, so the DID format is the canonical wire
+/// representation for identity-aware verification.
+/// See `CRYPTO_MODEL.md` §Wire Format Alignment.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CryptoVerifyRequest {
     message: String,
     signature: String,
-    public_key: String,
+    #[serde(rename = "public_key")]
+    signer_did: String,
 }
 
 /// `crypto.verify_ed25519` response.
@@ -452,12 +455,17 @@ struct CryptoSignContractRequest {
     context: Option<String>,
 }
 
-/// `crypto.sign_contract` response: hex-encoded signature and public key.
+/// `crypto.sign_contract` response: hex-encoded signature and attester DID.
+///
+/// The `attester_did` field is serialized as `"public_key"` for `BearDog` wire
+/// compatibility, but semantically carries a DID string identifying the
+/// signing entity.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CryptoSignContractResponse {
     terms_hash: String,
     signature: String,
-    public_key: String,
+    #[serde(rename = "public_key")]
+    attester_did: String,
     signed_at: String,
 }
 

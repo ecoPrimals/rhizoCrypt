@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S63: DID Semantic Alignment + Deep Debt Audit
+
+- **primalSpring audit (Low)**: DID vs raw `public_key` semantic gap — some wire type fields used `public_key` as a Rust field name while semantically carrying DID strings. Investigated entire codebase: rhizoCrypt's DAG model (`Vertex.agent`) is already fully DID-typed (`Did` newtype), signing uses DID strings throughout, no raw Ed25519 public keys are stored on DAG nodes.
+- **Field rename with wire compatibility**: `CryptoVerifyRequest.public_key` renamed to `signer_did` with `#[serde(rename = "public_key")]` — JSON wire format unchanged, Rust semantics aligned. `CryptoSignContractResponse.public_key` renamed to `attester_did` with same serde rename. Doc comments updated to clarify the DID-first posture.
+- **Deep debt audit**: comprehensive 12-category scan — all clean. Zero `unsafe` (compile-time `forbid(unsafe_code)`), zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero `.unwrap()`/`.expect()` in production (clippy deny), zero `todo!()`/`unimplemented!()`/`unreachable!()`, zero TODO/FIXME/HACK, zero `&Vec<`/`&String` params, zero `#[allow(dead_code)]` in `src/`, all deps pure Rust, all mocks cfg-gated. Max production file 675 lines (only test file exceeds 800 at 931 lines).
+- **Stadial gate**: 1,602 tests, 0 clippy warnings, 0 fmt diffs.
+
 #### S62: JH-0 — Method Gate Pre-Dispatch Authorization
 
 - **primalSpring audit (JH-0)**: projectNUCLEUS multi-user hardening pentest revealed that all primals accept unauthenticated calls to any method from any localhost process. primalSpring v0.9.25 shipped the reference implementation; rhizoCrypt now adopts the ecosystem-standard `MethodGate` pattern.

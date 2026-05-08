@@ -108,14 +108,18 @@ fn test_crypto_verify_request_serialization() {
     let request = CryptoVerifyRequest {
         message: "BQYH".to_string(),
         signature: "CAkK".to_string(),
-        public_key: "did:key:verifier".to_string(),
+        signer_did: "did:key:verifier".to_string(),
     };
 
     let serialized = serde_json::to_string(&request).unwrap();
+    assert!(
+        serialized.contains("\"public_key\""),
+        "serde rename should produce 'public_key' on wire"
+    );
     let deserialized: CryptoVerifyRequest = serde_json::from_str(&serialized).unwrap();
     assert_eq!(deserialized.message, "BQYH");
     assert_eq!(deserialized.signature, "CAkK");
-    assert_eq!(deserialized.public_key, "did:key:verifier");
+    assert_eq!(deserialized.signer_did, "did:key:verifier");
 }
 
 #[test]
@@ -155,7 +159,7 @@ fn test_crypto_sign_contract_response_serialization() {
     let response = CryptoSignContractResponse {
         terms_hash: "abcdef1234567890".to_string(),
         signature: "deadbeef".repeat(16),
-        public_key: "did:key:z6MkContractSigner".to_string(),
+        attester_did: "did:key:z6MkContractSigner".to_string(),
         signed_at: "2026-04-15T12:00:00Z".to_string(),
     };
 
@@ -492,7 +496,7 @@ async fn test_request_attestation_via_mock() {
             CryptoSignContractResponse {
                 terms_hash: hex::encode([0xABu8; 32]),
                 signature: hex::encode([0x01u8; 64]),
-                public_key: "did:key:z6MkAttesterKey".to_string(),
+                attester_did: "did:key:z6MkAttesterKey".to_string(),
                 signed_at: "2026-04-15T12:00:00Z".to_string(),
             },
         )
