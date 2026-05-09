@@ -264,6 +264,16 @@ export CARGO_TARGET_DIR="$HOME/.cargo-build/rhizoCrypt/target"
 
 ---
 
+## Method Gate (JH-0 / JH-1)
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `RHIZOCRYPT_AUTH_MODE` | string | `permissive` | Method gate enforcement mode. `permissive` logs violations but allows all calls (backward-compatible). `enforced` rejects unauthenticated calls to protected methods with `-32001 PERMISSION_DENIED`. |
+
+Callers pass `_bearer_token` inside the JSON-RPC `params` object (ecoPrimals convention). The gate extracts it per-request, verifies via the `TokenVerifier`, and enforces scope matching against the requested method.
+
+---
+
 ## Related Documentation
 
 - [specs/ARCHITECTURE.md](../specs/ARCHITECTURE.md) — Primal-agnostic design

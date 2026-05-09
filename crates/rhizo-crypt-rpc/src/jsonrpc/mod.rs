@@ -253,13 +253,17 @@ async fn handle_jsonrpc(
 }
 
 /// Process a single JSON-RPC request.
+///
+/// Extracts `_bearer_token` from `params` per-request (ecoPrimals convention),
+/// verifies it via the gate's [`method_gate::TokenVerifier`], and builds
+/// a per-request [`method_gate::CallerContext`] enriched with verified claims.
 async fn process_single_request(
     primal: Arc<RhizoCrypt>,
     value: serde_json::Value,
     gate: &method_gate::MethodGate,
-    caller: &method_gate::CallerContext,
+    connection_caller: &method_gate::CallerContext,
 ) -> serde_json::Value {
-    let request: JsonRpcRequest = match serde_json::from_value(value) {
+    let mut request: JsonRpcRequest = match serde_json::from_value(value) {
         Ok(r) => r,
         Err(e) => {
             return serialize_response(&error_response(
@@ -292,7 +296,12 @@ async fn process_single_request(
         }
     };
 
-    match handler::handle_request(primal, request, gate, caller).await {
+    let token = request.params.as_mut().and_then(method_gate::extract_bearer_token);
+
+    let mut caller = method_gate::CallerContext::with_bearer_token(token, connection_caller.origin);
+    caller.verify_token(gate.verifier());
+
+    match handler::handle_request(primal, request, gate, &caller).await {
         Ok(result) => serialize_response(&success(id, result)),
         Err(e) => {
             let detail = serde_json::json!(e.to_string());

@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S65: JH-1 Token Verification Framework + Scope Enforcement
+
+- **`TokenVerifier` trait**: Abstraction over token validation. `NoopVerifier` for tests (wildcard scope), `BearDogVerifier` for production (presence-only until JH-11 key distribution ships). Any future provider (e.g., local Ed25519 verification) plugs in via this trait.
+- **`_bearer_token` per-request extraction**: `process_single_request` now extracts `_bearer_token` from JSON-RPC `params` per the ecoPrimals convention, verifies it via the gate's `TokenVerifier`, and builds a per-request `CallerContext` enriched with `VerifiedClaims`. The `_bearer_token` field is stripped from params before method dispatch.
+- **`scope_permits_method()` function**: Glob-style scope matching (`*`, `domain.*`, exact match). When a verified token has scopes, the method gate enforces them — a token with `crypto.*` scope will be rejected for `dag.session.create`.
+- **Three-tier gate check**: (1) Public methods bypass, (2) verified token with matching scope proceeds, (3) unverified token or scope mismatch is rejected. In permissive mode, no-token calls are warned but allowed.
+- **Enriched `auth.check` response**: Now returns `{ authenticated, verified, enforcement, scopes?, subject?, expires_in? }` per primalSpring JH-1 spec. Fields `scopes`, `subject`, and `expires_in` are present only when a verified token provides them.
+- **20 new tests**: scope matching (wildcard, domain, exact, boundary, empty), token verifiers (noop, beardog, empty rejection), bearer extraction (present, missing, null, non-string), caller context verification, gate scope enforcement (covers, doesn't cover, unverified token), enriched auth.check responses (unauthenticated, verified with claims, expires_in).
+- **Deep debt audit**: 12-category scan clean. Zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero unwrap/expect in production, zero TODO/FIXME/HACK, zero `&Vec<`/`&String`, all deps pure Rust, all mocks cfg-gated.
+- **Stadial gate**: 1,622 tests, 0 clippy warnings, 0 fmt diffs. 169 `.rs` files, ~52,186 lines.
+
 #### S64: Capability Naming Clarification (U4) + Registry Update
 
 - **primalSpring audit (U4, informational)**: rhizoCrypt was referenced as both `by_capability = "dag"` and `"provenance"` in external deploy graphs. Confirmed that rhizoCrypt's canonical capability domain is `"dag"` (`DOMAIN = "dag"` in `niche.rs`). The `"provenance"` domain belongs to sweetGrass; rhizoCrypt *consumes* provenance capabilities but does not *provide* them.

@@ -267,7 +267,7 @@ mod tests {
     /// all response lines from the read half.
     async fn roundtrip(primal: Arc<RhizoCrypt>, input: &[u8]) -> Vec<serde_json::Value> {
         let (mut client, server) = duplex(8192);
-        let gate = MethodGate::new(EnforcementMode::Permissive);
+        let gate = MethodGate::with_noop(EnforcementMode::Permissive);
         let caller = CallerContext::unix();
         let handle =
             tokio::spawn(

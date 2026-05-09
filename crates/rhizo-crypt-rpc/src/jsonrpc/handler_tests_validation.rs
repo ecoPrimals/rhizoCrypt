@@ -13,7 +13,7 @@ use rhizo_crypt_core::{PrimalLifecycle, RhizoCryptConfig};
 use serde_json::json;
 
 fn test_gate() -> MethodGate {
-    MethodGate::new(EnforcementMode::Permissive)
+    MethodGate::with_noop(EnforcementMode::Permissive)
 }
 
 fn test_caller() -> CallerContext {

@@ -11,7 +11,7 @@ use rhizo_crypt_core::{PrimalLifecycle, RhizoCryptConfig};
 use serde_json::json;
 
 fn test_gate() -> MethodGate {
-    MethodGate::new(EnforcementMode::Permissive)
+    MethodGate::with_noop(EnforcementMode::Permissive)
 }
 
 fn test_caller() -> CallerContext {
@@ -822,7 +822,7 @@ async fn test_readiness_gate_passes_when_running() {
 #[tokio::test]
 async fn test_auth_check_returns_unauthenticated_permissive() {
     let primal = create_test_primal().await;
-    let gate = MethodGate::new(EnforcementMode::Permissive);
+    let gate = MethodGate::with_noop(EnforcementMode::Permissive);
     let caller = CallerContext::unix();
 
     let req = make_request("auth.check", None);
@@ -834,7 +834,7 @@ async fn test_auth_check_returns_unauthenticated_permissive() {
 #[tokio::test]
 async fn test_auth_mode_returns_current_mode() {
     let primal = create_test_primal().await;
-    let gate = MethodGate::new(EnforcementMode::Enforced);
+    let gate = MethodGate::with_noop(EnforcementMode::Enforced);
     let caller = CallerContext::unix();
 
     let req = make_request("auth.mode", None);
@@ -857,7 +857,7 @@ async fn test_auth_peer_info_returns_origin() {
 #[tokio::test]
 async fn test_enforced_gate_rejects_protected_without_token() {
     let primal = create_test_primal().await;
-    let gate = MethodGate::new(EnforcementMode::Enforced);
+    let gate = MethodGate::with_noop(EnforcementMode::Enforced);
     let caller = CallerContext::unix();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
@@ -871,7 +871,7 @@ async fn test_enforced_gate_rejects_protected_without_token() {
 #[tokio::test]
 async fn test_enforced_gate_allows_public_without_token() {
     let primal = create_test_primal().await;
-    let gate = MethodGate::new(EnforcementMode::Enforced);
+    let gate = MethodGate::with_noop(EnforcementMode::Enforced);
     let caller = CallerContext::unix();
 
     let public_methods = [
@@ -895,11 +895,12 @@ async fn test_enforced_gate_allows_public_without_token() {
 #[tokio::test]
 async fn test_enforced_gate_allows_protected_with_token() {
     let primal = create_test_primal().await;
-    let gate = MethodGate::new(EnforcementMode::Enforced);
-    let caller = CallerContext {
-        bearer_token: Some("test-ionic-token".to_owned()),
-        origin: crate::jsonrpc::method_gate::ConnectionOrigin::Unix,
-    };
+    let gate = MethodGate::with_noop(EnforcementMode::Enforced);
+    let mut caller = CallerContext::with_bearer_token(
+        Some("test-ionic-token".to_owned()),
+        crate::jsonrpc::method_gate::ConnectionOrigin::Unix,
+    );
+    caller.verify_token(gate.verifier());
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
     let result = handle_request(primal, req, &gate, &caller).await;
@@ -909,7 +910,7 @@ async fn test_enforced_gate_allows_protected_with_token() {
 #[tokio::test]
 async fn test_permissive_gate_allows_protected_without_token() {
     let primal = create_test_primal().await;
-    let gate = MethodGate::new(EnforcementMode::Permissive);
+    let gate = MethodGate::with_noop(EnforcementMode::Permissive);
     let caller = CallerContext::unix();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
@@ -920,7 +921,7 @@ async fn test_permissive_gate_allows_protected_without_token() {
 #[tokio::test]
 async fn test_auth_methods_work_when_primal_not_running() {
     let primal = create_unstarted_primal();
-    let gate = MethodGate::new(EnforcementMode::Enforced);
+    let gate = MethodGate::with_noop(EnforcementMode::Enforced);
     let caller = CallerContext::unix();
 
     for method in ["auth.check", "auth.mode", "auth.peer_info"] {

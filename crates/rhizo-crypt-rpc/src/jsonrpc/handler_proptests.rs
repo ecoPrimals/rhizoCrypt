@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 use std::sync::Arc;
 
 fn test_gate() -> MethodGate {
-    MethodGate::new(EnforcementMode::Permissive)
+    MethodGate::with_noop(EnforcementMode::Permissive)
 }
 
 fn test_caller() -> CallerContext {
