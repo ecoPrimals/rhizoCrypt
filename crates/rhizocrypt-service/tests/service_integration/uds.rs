@@ -262,6 +262,77 @@ async fn test_uds_graceful_shutdown_under_load() {
     assert!(!sock.exists(), "socket should be cleaned up");
 }
 
+/// Provenance trio validation: `dag.session.create` + `dag.event.append`
+/// over UDS, confirming the workflow ludoSpring uses for game move DAG
+/// recording. This is the specific integration pattern that GAP-06 blocked.
+#[tokio::test]
+async fn test_uds_provenance_trio_dag_workflow() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("provenance-trio.sock");
+
+    let config = RhizoCryptConfig::default();
+    let mut primal = RhizoCrypt::new(config);
+    primal.start().await.expect("primal should start");
+    let primal = Arc::new(primal);
+
+    let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    let ready = Arc::new(tokio::sync::Notify::new());
+    let ready_rx = Arc::clone(&ready);
+
+    let handle = tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
+    ready.notified().await;
+
+    let stream = UnixStream::connect(&sock).await.expect("connect");
+    let (reader, mut writer) = stream.into_split();
+    let mut lines = BufReader::new(reader);
+
+    let create_req = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "dag.session.create",
+        "params": {"session_type": "General", "description": "provenance-trio-test"},
+        "id": 1
+    });
+    writer.write_all(format!("{}\n", create_req).as_bytes()).await.unwrap();
+
+    let mut line = String::new();
+    lines.read_line(&mut line).await.unwrap();
+    let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+    assert_eq!(resp["jsonrpc"], "2.0");
+    let session_id = resp["result"].as_str().expect("session_id");
+
+    let append_req = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "dag.event.append",
+        "params": {
+            "session_id": session_id,
+            "event_type": {"GameEvent": {"game_type": "chess", "event_name": "move"}},
+            "data": {"move": "e2e4", "player": "white"}
+        },
+        "id": 2
+    });
+    line.clear();
+    writer.write_all(format!("{}\n", append_req).as_bytes()).await.unwrap();
+
+    lines.read_line(&mut line).await.unwrap();
+    let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+    assert_eq!(resp["jsonrpc"], "2.0");
+    assert!(resp.get("result").is_some(), "dag.event.append should return a result, got: {resp}");
+    let result = &resp["result"];
+    let vertex_id = result.as_str().unwrap_or_else(|| {
+        result
+            .as_object()
+            .and_then(|o| o.get("vertex_id"))
+            .and_then(|v| v.as_str())
+            .expect("result should contain vertex_id")
+    });
+    assert_eq!(vertex_id.len(), 64, "vertex_id should be 64-char hex");
+
+    writer.shutdown().await.unwrap();
+    let _ = shutdown_tx.send(true);
+    let _ = handle.await;
+}
+
 /// Verify that `PrimalManifest` round-trips correctly with rhizoCrypt's
 /// canonical capabilities, validating the PG-32 discovery contract.
 ///

@@ -22,7 +22,7 @@
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 169 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 173 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `capability_registry.toml` (28 methods + 3 `auth.*`, 6 domains incl. `tools.*` MCP, `identity.get`, `auth.*` JH-0) |
@@ -127,6 +127,30 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 # Coverage
 cargo llvm-cov --workspace --html
 ```
+
+---
+
+## Transport Model (GAP-06 resolved)
+
+UDS is **unconditional** on Unix — no flags needed. TCP is **opt-in** via
+`--port` or `RHIZOCRYPT_PORT`. This is the Provenance Trio standard (LD-06).
+
+```
+rhizocrypt server                           # UDS-only (default)
+rhizocrypt server --port 9400               # UDS + TCP (opt-in)
+rhizocrypt server --unix /tmp/rc.sock       # UDS at custom path
+rhizocrypt doctor                           # Verify transport (shows socket path)
+```
+
+**Verify from downstream** (socat-style):
+```bash
+echo '{"jsonrpc":"2.0","method":"health.liveness","id":1}' | \
+  socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock
+# → {"jsonrpc":"2.0","result":{"status":"alive",...},"id":1}
+```
+
+Socket path: `$XDG_RUNTIME_DIR/biomeos/rhizocrypt[-{family_id}].sock`.
+Family-scoped when `FAMILY_ID` is set (composition standard).
 
 ---
 

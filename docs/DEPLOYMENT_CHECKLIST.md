@@ -9,7 +9,7 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,622 tests passing** (all features), 0 failures
+- [x] **1,623 tests passing** (all features), 0 failures
 - [x] **`--fail-under-lines 90` CI gate** enforced
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
@@ -250,5 +250,5 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: May 9, 2026
+**Last Updated**: May 10, 2026
 **Version**: rhizoCrypt 0.14.0-dev

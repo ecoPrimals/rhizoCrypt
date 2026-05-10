@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep debt audit**: comprehensive 8-category scan — all clean. Single fix: stale "local stub" trace message in `signing.rs` `verify_did()` corrected (function delegates through capability adapter, not a stub). Zero files >800L (max 724), zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>`, zero TODO/FIXME/HACK, zero production mocks, all deps pure Rust.
 - **Stadial gate**: 1,562 tests (all-features, all pass), 0 clippy warnings, 0 fmt diffs, cargo deny clean, cargo doc clean (`-D warnings`). 168 `.rs` files, ~50,610 lines.
 
+#### S66: GAP-06 UDS Transport — Confirmed Resolved + Provenance Trio Test
+
+- **primalSpring audit (GAP-06, MEDIUM)**: "UDS is the canonical local transport. Blocks the provenance trio in 4 ludoSpring experiments." Investigation confirms this gap has been resolved since S23 (March 31) — UDS has been unconditional on Unix across all subsequent sessions. The gap was re-raised from stale tracker state (original ludoSpring V46 audit). Previous resolutions documented in S43.5 (transport diagnostics added to `doctor.rs`) and S58 (PG-45/GAP-06 re-confirmed resolved via PG-52).
+- **New provenance trio integration test**: `test_uds_provenance_trio_dag_workflow` — validates the exact ludoSpring workflow: `dag.session.create` → `dag.event.append` (GameEvent with chess move data) over UDS. This is the specific `dag.event.append` local call pattern that GAP-06 reported as blocked.
+- **README transport model section**: Added "Transport Model (GAP-06 resolved)" section with socat-style verification command for downstream springs. Documents the unconditional UDS posture, socket path, and family-scoped naming.
+- **Deep debt audit**: 12-category scan clean. Zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero unwrap/expect in production, zero TODO/FIXME/HACK, zero `&Vec<`/`&String`, all deps pure Rust, all mocks cfg-gated.
+- **Stadial gate**: 1,623 tests, 0 clippy warnings, 0 fmt diffs. 173 `.rs` files, ~52,774 lines.
+
 #### S65: JH-1 Token Verification Framework + Scope Enforcement
 
 - **`TokenVerifier` trait**: Abstraction over token validation. `NoopVerifier` for tests (wildcard scope), `BearDogVerifier` for production (presence-only until JH-11 key distribution ships). Any future provider (e.g., local Ed25519 verification) plugs in via this trait.
