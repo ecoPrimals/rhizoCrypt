@@ -13,8 +13,8 @@ use crate::service_types::{
     HealthStatus, QueryRequest, ServiceMetrics, SessionInfo, cached_capability_descriptors,
 };
 use rhizo_crypt_core::{
-    DagStore, MerkleProof, MerkleRoot, Session, SessionBuilder, SessionId, SliceId, Vertex,
-    VertexBuilder, VertexId,
+    DagStore, MerkleProof, MerkleRoot, PayloadRef, Session, SessionBuilder, SessionId, SliceId,
+    Vertex, VertexBuilder, VertexId,
 };
 use std::sync::Arc;
 
@@ -185,6 +185,24 @@ impl RhizoCryptRpcServer {
 /// resulting signature is attached. This makes DAG integrity independently
 /// verifiable by any party holding the agent's public key.
 ///
+/// Parse a `payload_ref` string into a [`PayloadRef`].
+///
+/// If the string is a 64-char hex hash, it is decoded as a content hash
+/// (size unknown = 0). Otherwise the reference string itself is hashed
+/// (Blake3) so the vertex carries a deterministic content-addressed
+/// reference regardless of the URI scheme.
+fn parse_payload_ref(s: &str) -> Option<PayloadRef> {
+    if s.is_empty() {
+        return None;
+    }
+    if s.len() == 64
+        && let Ok(bytes) = hex::decode(s)
+    {
+        return Some(PayloadRef::from_hash(&bytes));
+    }
+    Some(PayloadRef::from_bytes(s.as_bytes()))
+}
+
 /// Gracefully degrades: if no provider is discovered or signing fails, the vertex
 /// remains unsigned (matching standalone / pre-composition behavior).
 async fn sign_vertex_if_available(primal: &rhizo_crypt_core::RhizoCrypt, vertex: &mut Vertex) {
@@ -276,6 +294,10 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
             builder = builder.with_metadata(key, value);
         }
 
+        if let Some(payload) = request.payload_ref.and_then(|r| parse_payload_ref(&r)) {
+            builder = builder.with_payload(payload);
+        }
+
         let mut vertex = builder.build();
         sign_vertex_if_available(&self.primal, &mut vertex).await;
         self.primal.append_vertex(request.session_id, vertex).await.map_err(RpcError::from)
@@ -297,6 +319,9 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
             }
             for (key, value) in request.metadata {
                 builder = builder.with_metadata(key, value);
+            }
+            if let Some(payload) = request.payload_ref.and_then(|r| parse_payload_ref(&r)) {
+                builder = builder.with_payload(payload);
             }
             let mut vertex = builder.build();
             sign_vertex_if_available(&self.primal, &mut vertex).await;

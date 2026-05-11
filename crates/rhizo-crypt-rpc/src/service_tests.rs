@@ -239,3 +239,130 @@ async fn test_append_batch_unsigned_without_provider() {
     assert!(v1.agent.is_none());
     assert!(v1.signature.is_none(), "should be unsigned when no agent");
 }
+
+#[tokio::test]
+async fn test_append_event_with_payload_ref_uri() {
+    let server = make_test_server().await;
+    let session_id = server
+        .clone()
+        .create_session(
+            tarpc::context::current(),
+            CreateSessionRequest {
+                session_type: SessionType::default(),
+                description: None,
+                parent_session: None,
+                max_vertices: None,
+                ttl_seconds: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    let req = AppendEventRequest {
+        session_id,
+        event_type: EventType::DataCreate {
+            schema: Some("test".into()),
+        },
+        agent: None,
+        parents: vec![],
+        metadata: vec![],
+        payload_ref: Some("ipfs://QmTest123".into()),
+    };
+
+    let vertex_id = server.clone().append_event(tarpc::context::current(), req).await.unwrap();
+    let vertex =
+        server.clone().get_vertex(tarpc::context::current(), session_id, vertex_id).await.unwrap();
+    assert!(vertex.payload.is_some(), "payload_ref should be applied to vertex");
+    let payload = vertex.payload.unwrap();
+    assert!(payload.size > 0, "URI payload_ref should have non-zero size (hashed reference)");
+}
+
+#[tokio::test]
+async fn test_append_event_with_payload_ref_hex_hash() {
+    let server = make_test_server().await;
+    let session_id = server
+        .clone()
+        .create_session(
+            tarpc::context::current(),
+            CreateSessionRequest {
+                session_type: SessionType::default(),
+                description: None,
+                parent_session: None,
+                max_vertices: None,
+                ttl_seconds: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    let hex_hash = "ab".repeat(32);
+    let req = AppendEventRequest {
+        session_id,
+        event_type: EventType::DataCreate {
+            schema: None,
+        },
+        agent: None,
+        parents: vec![],
+        metadata: vec![],
+        payload_ref: Some(hex_hash),
+    };
+
+    let vertex_id = server.clone().append_event(tarpc::context::current(), req).await.unwrap();
+    let vertex =
+        server.clone().get_vertex(tarpc::context::current(), session_id, vertex_id).await.unwrap();
+    assert!(vertex.payload.is_some(), "hex payload_ref should be applied to vertex");
+    let payload = vertex.payload.unwrap();
+    assert_eq!(payload.size, 0, "hex-decoded payload_ref has unknown size");
+    assert_eq!(payload.as_bytes()[0], 0xab);
+}
+
+#[tokio::test]
+async fn test_append_batch_with_payload_ref() {
+    let server = make_test_server().await;
+    let session_id = server
+        .clone()
+        .create_session(
+            tarpc::context::current(),
+            CreateSessionRequest {
+                session_type: SessionType::default(),
+                description: None,
+                parent_session: None,
+                max_vertices: None,
+                ttl_seconds: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    let requests = vec![
+        AppendEventRequest {
+            session_id,
+            event_type: EventType::DataCreate {
+                schema: None,
+            },
+            agent: None,
+            parents: vec![],
+            metadata: vec![],
+            payload_ref: Some("ref://batch-item-0".into()),
+        },
+        AppendEventRequest {
+            session_id,
+            event_type: EventType::DataCreate {
+                schema: None,
+            },
+            agent: None,
+            parents: vec![],
+            metadata: vec![],
+            payload_ref: None,
+        },
+    ];
+
+    let ids = server.clone().append_batch(tarpc::context::current(), requests).await.unwrap();
+    let v0 =
+        server.clone().get_vertex(tarpc::context::current(), session_id, ids[0]).await.unwrap();
+    let v1 =
+        server.clone().get_vertex(tarpc::context::current(), session_id, ids[1]).await.unwrap();
+
+    assert!(v0.payload.is_some(), "first vertex should have payload");
+    assert!(v1.payload.is_none(), "second vertex should have no payload");
+}
