@@ -155,6 +155,9 @@ fn session_to_info(session: &Session) -> SessionInfo {
         vertex_count: session.vertex_count,
         created_at: session.created_at,
         description: session.name.clone(),
+        agents: session.agents.iter().cloned().collect(),
+        genesis: session.genesis.iter().copied().collect(),
+        frontier: session.frontier.iter().copied().collect(),
     }
 }
 

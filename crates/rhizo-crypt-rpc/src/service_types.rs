@@ -32,7 +32,10 @@ pub struct CreateSessionRequest {
     pub ttl_seconds: Option<u64>,
 }
 
-/// Session info response.
+/// Session info response — serves as the DAG session summary.
+///
+/// Covers the `dag_summary` use case (event count, participants, timeline)
+/// requested by projectNUCLEUS for lithoSpore provenance chains.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionInfo {
     /// Session ID.
@@ -41,12 +44,21 @@ pub struct SessionInfo {
     pub session_type: SessionType,
     /// Current state.
     pub state: SessionState,
-    /// Vertex count.
+    /// Total vertex (event) count.
     pub vertex_count: u64,
     /// Creation time.
     pub created_at: Timestamp,
     /// Description.
     pub description: Option<String>,
+    /// DIDs of all agents that have appended events to this session.
+    #[serde(default)]
+    pub agents: Vec<Did>,
+    /// Genesis vertex IDs (DAG roots with no parents).
+    #[serde(default)]
+    pub genesis: Vec<VertexId>,
+    /// Frontier vertex IDs (DAG tips with no children).
+    #[serde(default)]
+    pub frontier: Vec<VertexId>,
 }
 
 /// Event append request.

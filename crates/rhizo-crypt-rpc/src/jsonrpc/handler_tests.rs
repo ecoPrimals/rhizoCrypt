@@ -1252,3 +1252,58 @@ async fn test_provenance_full_pipeline_via_aliases() {
     let list = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
     assert!(!list.as_array().unwrap().is_empty());
 }
+
+#[tokio::test]
+async fn test_session_get_returns_summary_fields() {
+    let primal = create_test_primal().await;
+
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({"session_type": "General", "description": "summary-test"})),
+    );
+    let session_id =
+        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"DataCreate": {"schema": "cathedral"}},
+            "agent": "did:key:z6MkCATHEDRAL"
+        })),
+    );
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"DataCreate": {"schema": "litho"}},
+            "agent": "did:key:z6MkLithoSpore"
+        })),
+    );
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+
+    let req = make_request("dag.session.get", Some(json!({"session_id": session_id})));
+    let info = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+
+    assert_eq!(info["vertex_count"], 2);
+    assert_eq!(info["description"], "summary-test");
+
+    let agents = info["agents"].as_array().unwrap();
+    assert!(
+        agents.iter().any(|a| a.as_str() == Some("did:key:z6MkCATHEDRAL")),
+        "agents should include did:key:z6MkCATHEDRAL, got: {agents:?}"
+    );
+    assert!(
+        agents.iter().any(|a| a.as_str() == Some("did:key:z6MkLithoSpore")),
+        "agents should include did:key:z6MkLithoSpore, got: {agents:?}"
+    );
+
+    let genesis = info["genesis"].as_array().unwrap();
+    assert!(!genesis.is_empty(), "genesis should have at least one root vertex");
+
+    let frontier = info["frontier"].as_array().unwrap();
+    assert!(!frontier.is_empty(), "frontier should have tip vertices");
+}

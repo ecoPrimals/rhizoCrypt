@@ -305,6 +305,9 @@ fn test_session_info_serialization() {
         vertex_count: 42,
         created_at: Timestamp::now(),
         description: Some("test".to_string()),
+        agents: Vec::new(),
+        genesis: Vec::new(),
+        frontier: Vec::new(),
     };
     let bytes = bincode::serialize(&info).unwrap();
     let parsed: SessionInfo = bincode::deserialize(&bytes).unwrap();
