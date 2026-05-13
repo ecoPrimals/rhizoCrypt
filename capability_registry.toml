@@ -186,3 +186,33 @@ description = "Current method gate enforcement mode (permissive/enforced)"
 method = "auth.peer_info"
 domain = "auth"
 description = "Connection origin and token status for the current caller"
+
+# ── Wire-name aliases (GAP-36 resolution) ────────────────────────
+#
+# Downstream springs (primalSpring domain_contract_sweep, healthSpring
+# Nest atomic) call `provenance.*` methods. rhizoCrypt's canonical
+# domain is `dag`, but `provenance.*` is accepted as a wire-name alias
+# and normalized to `dag.*` at dispatch time. Both are valid on the wire.
+#
+# Full alias table (provenance.* → dag.*):
+#   provenance.session.create      → dag.session.create
+#   provenance.session.get         → dag.session.get
+#   provenance.session.list        → dag.session.list
+#   provenance.session.discard     → dag.session.discard
+#   provenance.event.append        → dag.event.append
+#   provenance.event.append_batch  → dag.event.append_batch
+#   provenance.vertex.get          → dag.vertex.get
+#   provenance.vertex.query        → dag.vertex.query
+#   provenance.vertex.children     → dag.vertex.children
+#   provenance.frontier.get        → dag.frontier.get
+#   provenance.genesis.get         → dag.genesis.get
+#   provenance.merkle.root         → dag.merkle.root
+#   provenance.merkle.proof        → dag.merkle.proof
+#   provenance.merkle.verify       → dag.merkle.verify
+#   provenance.slice.checkout      → dag.slice.checkout
+#   provenance.slice.get           → dag.slice.get
+#   provenance.slice.list          → dag.slice.list
+#   provenance.slice.resolve       → dag.slice.resolve
+#   provenance.dehydration.trigger → dag.dehydration.trigger
+#   provenance.dehydration.status  → dag.dehydration.status
+#   provenance.dehydrate           → dag.dehydrate (legacy)

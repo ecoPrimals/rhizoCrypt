@@ -1154,3 +1154,101 @@ async fn test_composition_dehydrate_produces_loamspine_compatible_root() {
         "dehydration root should equal Merkle root"
     );
 }
+
+// ==========================================================================
+// GAP-36: provenance.* wire-name alias tests
+// ==========================================================================
+
+#[tokio::test]
+async fn test_provenance_session_create_alias() {
+    let primal = create_test_primal().await;
+
+    let req = make_request(
+        "provenance.session.create",
+        Some(json!({"session_type": "General", "description": "alias-test"})),
+    );
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
+    assert!(result.is_ok(), "provenance.session.create should route to dag.session.create");
+    let session_id = result.unwrap();
+    assert!(session_id.as_str().is_some(), "should return session_id string");
+}
+
+#[tokio::test]
+async fn test_provenance_event_append_alias() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("provenance.session.create", Some(json!({"session_type": "General"})));
+    let session_id =
+        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request(
+        "provenance.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"Custom": {"domain": "security", "event_name": "audit"}},
+            "agent": "did:key:z6MkTest"
+        })),
+    );
+    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
+    assert!(result.is_ok(), "provenance.event.append should route to dag.event.append");
+    let vertex_id = result.unwrap();
+    assert_eq!(vertex_id.as_str().unwrap().len(), 64);
+}
+
+#[tokio::test]
+async fn test_provenance_dehydrate_alias() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("provenance.session.create", Some(json!({"session_type": "General"})));
+    let session_id =
+        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request(
+        "provenance.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"SessionStart": null}
+        })),
+    );
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+
+    let req =
+        make_request("provenance.dehydration.trigger", Some(json!({"session_id": session_id})));
+    let root = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
+    assert!(root.is_ok(), "provenance.dehydration.trigger should route to dag.dehydration.trigger");
+    assert_eq!(root.unwrap().as_str().unwrap().len(), 64);
+}
+
+#[tokio::test]
+async fn test_provenance_full_pipeline_via_aliases() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("provenance.session.create", Some(json!({"session_type": "General"})));
+    let session_id =
+        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request(
+        "provenance.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"DataCreate": {"schema": "clinical-data"}},
+            "agent": "did:key:z6MkHealthSpring"
+        })),
+    );
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+
+    let req = make_request("provenance.merkle.root", Some(json!({"session_id": session_id})));
+    let root = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    assert_eq!(root.as_str().unwrap().len(), 64);
+
+    let req = make_request("provenance.session.get", Some(json!({"session_id": session_id})));
+    let info = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    assert_eq!(info["vertex_count"], 1);
+
+    let req = make_request("provenance.session.list", None);
+    let list = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    assert!(!list.as_array().unwrap().is_empty());
+}

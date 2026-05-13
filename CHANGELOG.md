@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S68: GAP-36 Resolution — `provenance.*` Wire-Name Aliases
+
+- **GAP-36 root cause**: Downstream springs (primalSpring `domain_contract_sweep`, healthSpring Nest atomic) call `provenance.session.create` / `provenance.event.append` — rhizoCrypt previously only dispatched `dag.*` methods, returning `MethodNotFound` (-32601) for `provenance.*` calls. This was incorrectly reported as "UDS handlers accept connections but return no JSON-RPC payloads" — the handlers did respond, but with error payloads that downstream interpreted as non-functional.
+- **Wire-name alias layer**: `normalize_method()` in `niche.rs` now maps all 21 `provenance.*` methods to their `dag.*` canonical equivalents at the normalization layer, transparent to dispatch, readiness gate, and method gate. `SEMANTIC_ALIASES` updated for biomeOS capability routing.
+- **GAP-34/35 reconciliation**: Confirmed `dag.*` is canonical for rhizoCrypt; `provenance.*` is the downstream wire name used by springs exercising the DAG surface through the provenance trio lens. Both are now valid. Documented the full alias table in `capability_registry.toml`.
+- **6 new tests**: `normalize_method_maps_provenance_to_dag` (17 alias assertions), `normalize_method_preserves_non_aliased` (3 assertions), `test_provenance_session_create_alias`, `test_provenance_event_append_alias`, `test_provenance_dehydrate_alias`, `test_provenance_full_pipeline_via_aliases` (session create → event append → merkle root → session get → session list, all via `provenance.*` wire names).
+- **Deep debt audit**: 12-category scan clean. Zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero unwrap/expect in production, zero TODO/FIXME/HACK, zero `&Vec<`/`&String`, all deps pure Rust, all mocks cfg-gated.
+- **Stadial gate**: 1,637 tests, 0 clippy warnings, 0 fmt diffs. 173 `.rs` files, ~53,496 lines.
+
 #### S59: BTSP Phase 3 — Encrypted Channel (`btsp.negotiate` Server Handler)
 
 - **BTSP Phase 3 implementation**: Added `btsp.negotiate` JSON-RPC server handler per primalSpring v0.9.24+ spec. After a successful Phase 1/2 handshake, the client can negotiate a ChaCha20-Poly1305 encrypted channel. If the client doesn't negotiate or the server returns `{"cipher":"null"}`, the connection stays plaintext (backward-compatible).

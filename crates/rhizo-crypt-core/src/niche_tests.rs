@@ -203,6 +203,34 @@ fn normalize_method_strips_rhizocrypt_prefix() {
 }
 
 #[test]
+fn normalize_method_maps_provenance_to_dag() {
+    assert_eq!(normalize_method("provenance.session.create"), "dag.session.create");
+    assert_eq!(normalize_method("provenance.session.get"), "dag.session.get");
+    assert_eq!(normalize_method("provenance.session.list"), "dag.session.list");
+    assert_eq!(normalize_method("provenance.session.discard"), "dag.session.discard");
+    assert_eq!(normalize_method("provenance.event.append"), "dag.event.append");
+    assert_eq!(normalize_method("provenance.event.append_batch"), "dag.event.append_batch");
+    assert_eq!(normalize_method("provenance.vertex.get"), "dag.vertex.get");
+    assert_eq!(normalize_method("provenance.frontier.get"), "dag.frontier.get");
+    assert_eq!(normalize_method("provenance.genesis.get"), "dag.genesis.get");
+    assert_eq!(normalize_method("provenance.vertex.query"), "dag.vertex.query");
+    assert_eq!(normalize_method("provenance.vertex.children"), "dag.vertex.children");
+    assert_eq!(normalize_method("provenance.merkle.root"), "dag.merkle.root");
+    assert_eq!(normalize_method("provenance.merkle.proof"), "dag.merkle.proof");
+    assert_eq!(normalize_method("provenance.merkle.verify"), "dag.merkle.verify");
+    assert_eq!(normalize_method("provenance.dehydrate"), "dag.dehydrate");
+    assert_eq!(normalize_method("provenance.dehydration.trigger"), "dag.dehydration.trigger");
+    assert_eq!(normalize_method("provenance.dehydration.status"), "dag.dehydration.status");
+}
+
+#[test]
+fn normalize_method_preserves_non_aliased() {
+    assert_eq!(normalize_method("health.liveness"), "health.liveness");
+    assert_eq!(normalize_method("unknown.method"), "unknown.method");
+    assert_eq!(normalize_method("provenance.unknown"), "provenance.unknown");
+}
+
+#[test]
 fn mcp_tools_has_expected_structure() {
     let tools = mcp_tools();
     let arr = tools.as_array().expect("tools should be an array");

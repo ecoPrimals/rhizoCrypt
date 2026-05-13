@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.14.0-dev |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,563 passing (`--all-features`) |
+| Tests | 1,637 passing (`--all-features`) |
 | Coverage | 93.88% lines (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -25,7 +25,7 @@
 | SPDX | `AGPL-3.0-or-later` header on all 173 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
-| Registry | `capability_registry.toml` (28 methods + 3 `auth.*`, 6 domains incl. `tools.*` MCP, `identity.get`, `auth.*` JH-0) |
+| Registry | `capability_registry.toml` (28 methods + 3 `auth.*`, 6 domains, `provenance.*` → `dag.*` wire aliases) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
 | Cross-compile | CI: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
 
@@ -42,6 +42,11 @@ permanent storage.
 should use `by_capability = "dag"` when targeting rhizoCrypt. The `"provenance"`
 domain belongs to sweetGrass; rhizoCrypt *consumes* provenance capabilities but
 does not *provide* them.
+
+**Wire-name aliases (GAP-36)**: Downstream springs may call `provenance.*`
+methods (e.g. `provenance.session.create`, `provenance.event.append`).
+rhizoCrypt normalizes these to `dag.*` at dispatch time — both names are
+valid on the wire. See `capability_registry.toml` for the full alias table.
 
 **Core primitives:**
 

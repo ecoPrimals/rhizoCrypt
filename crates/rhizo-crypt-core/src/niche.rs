@@ -394,6 +394,11 @@ const SEMANTIC_ALIASES: &[(&str, &str)] = &[
     ("tools", "tools.list"),
     ("mcp.tools.list", "tools.list"),
     ("mcp.tools.call", "tools.call"),
+    // provenance.* aliases for biomeOS capability routing (GAP-36)
+    ("provenance.session.create", "dag.session.create"),
+    ("provenance.event.append", "dag.event.append"),
+    ("provenance.event.append_batch", "dag.event.append_batch"),
+    ("provenance.dehydration.trigger", "dag.dehydration.trigger"),
 ];
 
 /// All semantic mappings: standard (`short_name` → `fqn`) + aliases.
@@ -573,14 +578,56 @@ pub fn health_readiness(is_running: bool) -> serde_json::Value {
     })
 }
 
-/// Normalize a JSON-RPC method name, handling legacy prefixes.
+/// Normalize a JSON-RPC method name, handling legacy and alias prefixes.
+///
+/// Strips `rhizocrypt.` / `rhizo_crypt.` legacy prefixes. Also maps
+/// `provenance.*` wire names to `dag.*` — downstream springs
+/// (primalSpring domain contract sweep, healthSpring Nest atomic) use
+/// `provenance.session.create` / `provenance.event.append` as aliases
+/// for `dag.session.create` / `dag.event.append`. Both are valid wire
+/// names; `dag.*` is canonical.
 #[must_use]
 pub fn normalize_method(method: &str) -> &str {
-    method
-        .strip_prefix("rhizocrypt.")
-        .or_else(|| method.strip_prefix("rhizo_crypt."))
-        .unwrap_or(method)
+    if let Some(stripped) =
+        method.strip_prefix("rhizocrypt.").or_else(|| method.strip_prefix("rhizo_crypt."))
+    {
+        return stripped;
+    }
+
+    PROVENANCE_ALIASES
+        .iter()
+        .find(|(alias, _)| *alias == method)
+        .map_or(method, |(_, canonical)| canonical)
 }
+
+/// `provenance.*` → `dag.*` wire-name aliases (GAP-36 resolution).
+///
+/// primalSpring's domain contract sweep, healthSpring's Nest atomic, and
+/// the broader ecosystem use `provenance.*` as the external wire name
+/// for rhizoCrypt's DAG surface. `dag.*` is canonical internally.
+const PROVENANCE_ALIASES: &[(&str, &str)] = &[
+    ("provenance.session.create", "dag.session.create"),
+    ("provenance.session.get", "dag.session.get"),
+    ("provenance.session.list", "dag.session.list"),
+    ("provenance.session.discard", "dag.session.discard"),
+    ("provenance.event.append", "dag.event.append"),
+    ("provenance.event.append_batch", "dag.event.append_batch"),
+    ("provenance.vertex.get", "dag.vertex.get"),
+    ("provenance.frontier.get", "dag.frontier.get"),
+    ("provenance.genesis.get", "dag.genesis.get"),
+    ("provenance.vertex.query", "dag.vertex.query"),
+    ("provenance.vertex.children", "dag.vertex.children"),
+    ("provenance.merkle.root", "dag.merkle.root"),
+    ("provenance.merkle.proof", "dag.merkle.proof"),
+    ("provenance.merkle.verify", "dag.merkle.verify"),
+    ("provenance.slice.checkout", "dag.slice.checkout"),
+    ("provenance.slice.get", "dag.slice.get"),
+    ("provenance.slice.list", "dag.slice.list"),
+    ("provenance.slice.resolve", "dag.slice.resolve"),
+    ("provenance.dehydration.trigger", "dag.dehydration.trigger"),
+    ("provenance.dehydrate", "dag.dehydrate"),
+    ("provenance.dehydration.status", "dag.dehydration.status"),
+];
 
 /// MCP tool definitions for AI coordination layer.
 #[must_use]
