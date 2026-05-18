@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.14.0-dev |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,638 passing (`--all-features`) |
+| Tests | 1,642 passing (`--all-features`) |
 | Coverage | 93.88% lines (CI gate: 90%) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -25,7 +25,7 @@
 | SPDX | `AGPL-3.0-or-later` header on all 173 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
-| Registry | `capability_registry.toml` (28 methods + 3 `auth.*`, 6 domains, `provenance.*` → `dag.*` wire aliases) |
+| Registry | `capability_registry.toml` (32 methods + 1 evolving, 6 domains, stability tiers, `provenance.*` → `dag.*` wire aliases) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
 | Cross-compile | CI: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
 
@@ -156,6 +156,37 @@ echo '{"jsonrpc":"2.0","method":"health.liveness","id":1}' | \
 
 Socket path: `$XDG_RUNTIME_DIR/biomeos/rhizocrypt[-{family_id}].sock`.
 Family-scoped when `FAMILY_ID` is set (composition standard).
+
+---
+
+## Composition Readiness (Stadial)
+
+### Downstream Pairing
+
+| Partner | Role | Key Methods |
+|---------|------|-------------|
+| wetSpring | DAG checkpointing for 264-clone LTEE pipelines | `dag.session.create`, `dag.event.append`, `dag.partial_dehydrate` |
+| lithoSpore | Provenance DAG verification substrate | `dag.merkle.root`, `dag.merkle.proof`, `dag.dehydration.trigger` |
+| projectFOUNDATION | Thread lineage — DAG sessions anchor evidence | `dag.session.get` (summary), `dag.vertex.query` |
+| healthSpring | Nest atomic clinical data pipeline | `provenance.session.create`, `provenance.event.append` (aliases) |
+
+### Degradation Behavior
+
+When rhizoCrypt is **unavailable**, downstream consumers degrade as follows:
+
+- **wetSpring**: Emits partial braids with `dag_merkle_root: ""` and
+  `"status": "partial"`. Per-clone BLAKE3 hashes remain verifiable. Science
+  is never gated behind provenance.
+- **lithoSpore**: Falls back to per-vertex BLAKE3 hashes for verification
+  instead of full Merkle proofs. Individual event integrity is preserved.
+- **biomeOS graph execution**: DAG-dependent phases skip with
+  `"dag capability not available"`. Other composition phases proceed.
+
+### Stability Tiers
+
+All 32 `dag.*`, `health.*`, `auth.*`, `tools.*`, `identity.*`, and
+`capabilities.*` methods are **stable**. `dag.partial_dehydrate` is
+**evolving** (wetSpring upstream ask, May 2026).
 
 ---
 

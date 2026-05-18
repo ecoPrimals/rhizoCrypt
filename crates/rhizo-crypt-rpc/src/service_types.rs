@@ -61,6 +61,22 @@ pub struct SessionInfo {
     pub frontier: Vec<VertexId>,
 }
 
+/// Partial dehydration response — Merkle root of current vertices
+/// without closing the session. Enables cryptographically valid partial
+/// braids for long-running computations (wetSpring aglet pattern).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartialDehydrateResponse {
+    /// BLAKE3 Merkle root of all (or specified) vertices.
+    pub merkle_root: String,
+    /// Number of vertices included in the Merkle root.
+    pub sealed_count: u64,
+    /// Number of additional vertices in the session not included
+    /// (zero when no `vertex_ids` filter was provided).
+    pub open_count: u64,
+    /// Whether the session remains open after this operation.
+    pub session_open: bool,
+}
+
 /// Event append request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppendEventRequest {

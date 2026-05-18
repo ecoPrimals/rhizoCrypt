@@ -120,6 +120,13 @@ pub trait RhizoCryptRpc {
     // Dehydration Operations
     // ========================================================================
 
+    /// Compute a Merkle root of current vertices without closing the session.
+    /// Accepts optional `vertex_ids` filter for subset roots.
+    async fn partial_dehydrate(
+        session_id: SessionId,
+        vertex_ids: Vec<VertexId>,
+    ) -> Result<PartialDehydrateResponse, RpcError>;
+
     /// Trigger dehydration of a session to LoamSpine.
     async fn dehydrate(session_id: SessionId) -> Result<MerkleRoot, RpcError>;
 

@@ -109,6 +109,7 @@ pub async fn handle_request(
         "dag.slice.get" => slice::dispatch_slice_get(&server, params).await,
         "dag.slice.list" => slice::dispatch_slice_list(&server).await,
         "dag.slice.resolve" => slice::dispatch_slice_resolve(&server, params).await,
+        "dag.partial_dehydrate" => dehydration::dispatch_partial_dehydrate(&server, params).await,
         "dag.dehydration.trigger" | "dag.dehydrate" => {
             dehydration::dispatch_dehydrate(&server, params).await
         }

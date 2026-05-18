@@ -9,6 +9,7 @@
 name = "rhizocrypt"
 version = "0.14.0-dev"
 domain = "dag"
+stability = "stable"
 license = "AGPL-3.0-or-later"
 description = "Ephemeral content-addressed DAG engine for session-scoped working memory"
 
@@ -17,21 +18,25 @@ description = "Ephemeral content-addressed DAG engine for session-scoped working
 [capabilities.session_create]
 method = "dag.session.create"
 domain = "dag.session"
+stability = "stable"
 description = "Create a scoped DAG session with lifecycle management"
 
 [capabilities.session_get]
 method = "dag.session.get"
 domain = "dag.session"
+stability = "stable"
 description = "Retrieve session metadata by ID"
 
 [capabilities.session_list]
 method = "dag.session.list"
 domain = "dag.session"
+stability = "stable"
 description = "List all active sessions"
 
 [capabilities.session_discard]
 method = "dag.session.discard"
 domain = "dag.session"
+stability = "stable"
 description = "Discard and clean up a session"
 
 # ── Vertex operations ──────────────────────────────────────────────
@@ -39,36 +44,43 @@ description = "Discard and clean up a session"
 [capabilities.event_append]
 method = "dag.event.append"
 domain = "dag.event"
+stability = "stable"
 description = "Append a content-addressed vertex to a session DAG"
 
 [capabilities.event_append_batch]
 method = "dag.event.append_batch"
 domain = "dag.event"
+stability = "stable"
 description = "Append multiple vertices in a single batch operation"
 
 [capabilities.vertex_get]
 method = "dag.vertex.get"
 domain = "dag.vertex"
+stability = "stable"
 description = "Retrieve a vertex by session and vertex ID"
 
 [capabilities.vertex_query]
 method = "dag.vertex.query"
 domain = "dag.vertex"
+stability = "stable"
 description = "Query vertices with optional type, agent, and limit filters"
 
 [capabilities.vertex_children]
 method = "dag.vertex.children"
 domain = "dag.vertex"
+stability = "stable"
 description = "Get child vertices of a given vertex"
 
 [capabilities.frontier_get]
 method = "dag.frontier.get"
 domain = "dag.frontier"
+stability = "stable"
 description = "Get the frontier (leaf vertices) of a session DAG"
 
 [capabilities.genesis_get]
 method = "dag.genesis.get"
 domain = "dag.genesis"
+stability = "stable"
 description = "Get the genesis (root) vertices of a session DAG"
 
 # ── Merkle integrity ──────────────────────────────────────────────
@@ -76,16 +88,19 @@ description = "Get the genesis (root) vertices of a session DAG"
 [capabilities.merkle_root]
 method = "dag.merkle.root"
 domain = "dag.merkle"
+stability = "stable"
 description = "Compute the Merkle root of a session's vertex set"
 
 [capabilities.merkle_proof]
 method = "dag.merkle.proof"
 domain = "dag.merkle"
+stability = "stable"
 description = "Generate an inclusion proof for a vertex"
 
 [capabilities.merkle_verify]
 method = "dag.merkle.verify"
 domain = "dag.merkle"
+stability = "stable"
 description = "Verify a Merkle inclusion proof"
 
 # ── Slice operations ──────────────────────────────────────────────
@@ -93,33 +108,48 @@ description = "Verify a Merkle inclusion proof"
 [capabilities.slice_checkout]
 method = "dag.slice.checkout"
 domain = "dag.slice"
+stability = "stable"
 description = "Checkout an immutable slice from permanent storage"
 
 [capabilities.slice_get]
 method = "dag.slice.get"
 domain = "dag.slice"
+stability = "stable"
 description = "Retrieve slice metadata by ID"
 
 [capabilities.slice_list]
 method = "dag.slice.list"
 domain = "dag.slice"
+stability = "stable"
 description = "List all active slices"
 
 [capabilities.slice_resolve]
 method = "dag.slice.resolve"
 domain = "dag.slice"
+stability = "stable"
 description = "Resolve a slice to its underlying session data"
+
+# ── Partial dehydration (read-only Merkle root, session stays open) ──
+
+[capabilities.partial_dehydrate]
+method = "dag.partial_dehydrate"
+domain = "dag.dehydration"
+stability = "stable"
+description = "Compute Merkle root of current (or specified) vertices without closing the session"
+stability = "evolving"
 
 # ── Dehydration (commit to permanent storage) ─────────────────────
 
 [capabilities.dehydration_trigger]
 method = "dag.dehydration.trigger"
 domain = "dag.dehydration"
+stability = "stable"
 description = "Trigger dehydration of a session to permanent storage"
 
 [capabilities.dehydration_status]
 method = "dag.dehydration.status"
 domain = "dag.dehydration"
+stability = "stable"
 description = "Check the status of a dehydration operation"
 
 # ── Health and introspection ──────────────────────────────────────
@@ -127,33 +157,39 @@ description = "Check the status of a dehydration operation"
 [capabilities.health_check]
 method = "health.check"
 domain = "health"
+stability = "stable"
 description = "Service health check with status, version, and uptime"
 
 [capabilities.health_liveness]
 method = "health.liveness"
 aliases = ["ping", "health"]
 domain = "health"
+stability = "stable"
 description = "Zero-cost liveness probe (Kubernetes-compatible)"
 
 [capabilities.health_readiness]
 method = "health.readiness"
 domain = "health"
+stability = "stable"
 description = "Readiness probe verifying store initialization and request acceptance"
 
 [capabilities.health_metrics]
 method = "health.metrics"
 domain = "health"
+stability = "stable"
 description = "Operational metrics (sessions, vertices, latency, errors)"
 
 [capabilities.identity_get]
 method = "identity.get"
 domain = "identity"
+stability = "stable"
 description = "Primal identity for biomeOS discovery (name, version, domain)"
 
 [capabilities.capabilities_list]
 method = "capabilities.list"
 aliases = ["capability.list", "primal.capabilities"]
 domain = "capabilities"
+stability = "stable"
 description = "List all capabilities this primal provides (biomeOS Format E)"
 
 # ── MCP tool exposure (Squirrel AI coordination) ─────────────────
@@ -162,12 +198,14 @@ description = "List all capabilities this primal provides (biomeOS Format E)"
 method = "tools.list"
 aliases = ["mcp.tools.list"]
 domain = "tools"
+stability = "stable"
 description = "List MCP tool definitions for AI agent coordination"
 
 [capabilities.tools_call]
 method = "tools.call"
 aliases = ["mcp.tools.call"]
 domain = "tools"
+stability = "stable"
 description = "Execute an MCP tool call dispatched by AI agents"
 
 # ── Auth introspection (JH-0 method gate) ────────────────────────
@@ -175,16 +213,19 @@ description = "Execute an MCP tool call dispatched by AI agents"
 [capabilities.auth_check]
 method = "auth.check"
 domain = "auth"
+stability = "stable"
 description = "Check caller authentication status and enforcement mode"
 
 [capabilities.auth_mode]
 method = "auth.mode"
 domain = "auth"
+stability = "stable"
 description = "Current method gate enforcement mode (permissive/enforced)"
 
 [capabilities.auth_peer_info]
 method = "auth.peer_info"
 domain = "auth"
+stability = "stable"
 description = "Connection origin and token status for the current caller"
 
 # ── Wire-name aliases (GAP-36 resolution) ────────────────────────
@@ -216,3 +257,4 @@ description = "Connection origin and token status for the current caller"
 #   provenance.dehydration.trigger → dag.dehydration.trigger
 #   provenance.dehydration.status  → dag.dehydration.status
 #   provenance.dehydrate           → dag.dehydrate (legacy)
+#   provenance.partial_dehydrate   → dag.partial_dehydrate

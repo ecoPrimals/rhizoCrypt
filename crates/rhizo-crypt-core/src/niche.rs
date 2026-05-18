@@ -242,6 +242,16 @@ pub const METHOD_CATALOG: &[MethodSpec] = &[
         external: false,
         deps: &["dag.slice.checkout"],
     },
+    // Partial dehydration — read-only Merkle root without closing session
+    MethodSpec {
+        fqn: "dag.partial_dehydrate",
+        domain: "dag",
+        short_name: "partial_dehydrate",
+        estimated_ms: 10,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create", "dag.event.append"],
+    },
     // Dehydration — multi-step I/O to permanent storage
     MethodSpec {
         fqn: "dag.dehydration.trigger",
@@ -627,6 +637,7 @@ const PROVENANCE_ALIASES: &[(&str, &str)] = &[
     ("provenance.dehydration.trigger", "dag.dehydration.trigger"),
     ("provenance.dehydrate", "dag.dehydrate"),
     ("provenance.dehydration.status", "dag.dehydration.status"),
+    ("provenance.partial_dehydrate", "dag.partial_dehydrate"),
 ];
 
 /// MCP tool definitions for AI coordination layer.

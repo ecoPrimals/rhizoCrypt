@@ -10,7 +10,8 @@
 use crate::error::RpcError;
 use crate::service_types::{
     AppendEventRequest, CapabilityDescriptor, CheckoutSliceRequest, CreateSessionRequest,
-    HealthStatus, QueryRequest, ServiceMetrics, SessionInfo, cached_capability_descriptors,
+    HealthStatus, PartialDehydrateResponse, QueryRequest, ServiceMetrics, SessionInfo,
+    cached_capability_descriptors,
 };
 use rhizo_crypt_core::{
     DagStore, MerkleProof, MerkleRoot, PayloadRef, Session, SessionBuilder, SessionId, SliceId,
@@ -115,6 +116,16 @@ pub trait RhizoCryptRpc {
     // ========================================================================
     // Dehydration Operations
     // ========================================================================
+
+    /// Compute a Merkle root of current vertices without closing the session.
+    ///
+    /// If `vertex_ids` is non-empty, only those vertices are included;
+    /// otherwise all vertices in the session are covered. The session
+    /// remains open — this is a read-only operation.
+    async fn partial_dehydrate(
+        session_id: SessionId,
+        vertex_ids: Vec<VertexId>,
+    ) -> Result<PartialDehydrateResponse, RpcError>;
 
     /// Trigger dehydration of a session to permanent storage.
     async fn dehydrate(session_id: SessionId) -> Result<MerkleRoot, RpcError>;
@@ -487,6 +498,39 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         self.primal
             .resolve_slice(slice_id, ResolutionOutcome::ReturnedUnchanged)
             .map_err(RpcError::from)
+    }
+
+    async fn partial_dehydrate(
+        self,
+        _: tarpc::context::Context,
+        session_id: SessionId,
+        vertex_ids: Vec<VertexId>,
+    ) -> Result<PartialDehydrateResponse, RpcError> {
+        let session = self.primal.get_session(session_id).map_err(RpcError::from)?;
+        let dag_store = self.primal.dag_store().await.map_err(RpcError::from)?;
+        let all_vertices = dag_store.get_all_vertices(session_id).await.map_err(RpcError::from)?;
+
+        let total = all_vertices.len() as u64;
+
+        let (selected, sealed_count) = if vertex_ids.is_empty() {
+            let root = MerkleRoot::compute(&all_vertices).map_err(RpcError::from)?;
+            (root, total)
+        } else {
+            let subset: Vec<_> = all_vertices
+                .into_iter()
+                .filter(|v| v.cached_id().is_some_and(|id| vertex_ids.contains(&id)))
+                .collect();
+            let count = subset.len() as u64;
+            let root = MerkleRoot::compute(&subset).map_err(RpcError::from)?;
+            (root, count)
+        };
+
+        Ok(PartialDehydrateResponse {
+            merkle_root: hex::encode(selected.0),
+            sealed_count,
+            open_count: total.saturating_sub(sealed_count),
+            session_open: session.state.is_active(),
+        })
     }
 
     async fn dehydrate(

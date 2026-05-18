@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### S69: Wave 22 Stadial Gate — `dag.partial_dehydrate` + Composition Readiness
+
+- **UPSTREAM ASK: `dag.partial_dehydrate`** (wetSpring sovereign pipeline): Computes a Merkle root over current (or specified subset of) vertices without closing the session. Enables cryptographically valid partial braids as LTEE clones complete in long-running computations (Tenaillon 2016, 264 clones). Response: `{ merkle_root, sealed_count, open_count, session_open }`. Accepts optional `vertex_ids` filter for subset roots. `provenance.partial_dehydrate` wire-name alias included.
+- **`capabilities.list` format compliance**: Response now includes `capabilities` (array) and `count` (integer) fields per `CAPABILITY_WIRE_STANDARD.md`, alongside existing `methods` for backward compatibility.
+- **Stability tier annotations**: All 32 registered capabilities in `capability_registry.toml` now have `stability = "stable"` or `stability = "evolving"` (`dag.partial_dehydrate` only). Addresses stadial checklist requirement.
+- **Composition readiness documentation**: README now includes downstream pairing table (wetSpring, lithoSpore, projectFOUNDATION, healthSpring), degradation behavior when rhizoCrypt is unavailable, and stability tier summary.
+- **Hex string acceptance (composition gap #6)**: Verified closed — `parse_hash32` in `params.rs` accepts both hex strings and `[u8; 32]` byte arrays with 7 unit tests, resolving the shared gap with loamSpine.
+- **4 new tests**: `test_partial_dehydrate_all_vertices` (validates match with `merkle_root`), `test_partial_dehydrate_subset` (vertex filter), `test_partial_dehydrate_does_not_close_session` (session remains open), `test_partial_dehydrate_via_provenance_alias`.
+- **Universal standards checklist**: Self-audited against Wave 22 checklist. 15/20 PASS (runtime, security, build all green), 3 PARTIAL (BTSP enforcement, method naming aliases, degradation docs — now addressed), 2 FAIL (primal.announce and btsp.capabilities — ecosystem-wide patterns not yet adopted by any primal).
+- **Deep debt audit**: 12-category scan clean. Zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero unwrap/expect in production, zero TODO/FIXME/HACK.
+- **Stadial gate**: 1,642 tests, 0 clippy warnings, 0 fmt diffs. 173 `.rs` files, ~53,623 lines.
+
 #### S68: GAP-36 Resolution — Wire-Name Aliases + Enriched Session Summary
 
 - **GAP-36 root cause**: Downstream springs (primalSpring `domain_contract_sweep`, healthSpring Nest atomic) call `provenance.session.create` / `provenance.event.append` — rhizoCrypt previously only dispatched `dag.*` methods, returning `MethodNotFound` (-32601) for `provenance.*` calls. This was incorrectly reported as "UDS handlers accept connections but return no JSON-RPC payloads" — the handlers did respond, but with error payloads that downstream interpreted as non-functional.

@@ -37,10 +37,14 @@ pub async fn dispatch_capability_list(server: &RhizoCryptRpcServer) -> Result<Va
         })
         .collect();
 
+    let capabilities = &*niche::CAPABILITIES;
+
     Ok(json!({
         "primal": niche::PRIMAL_ID,
         "version": niche::PRIMAL_VERSION,
-        "methods": *niche::CAPABILITIES,
+        "capabilities": capabilities,
+        "count": capabilities.len(),
+        "methods": capabilities,
         "provided_capabilities": provided_capabilities,
         "consumed_capabilities": niche::CONSUMED_CAPABILITIES,
         "cost_estimates": cost_estimates,
