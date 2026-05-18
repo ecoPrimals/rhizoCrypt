@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Stale Socket Cleanup Audit (May 18, 2026) — ALREADY COMPLIANT
+
+- **primalSpring stale socket audit**: wetSpring observed 50+ stale sockets on southGate causing 21 failed connections per Barrick clone run. All primals asked to implement `unlink()` before `bind()` and cleanup on shutdown.
+- **rhizoCrypt status**: Already fully compliant since S23. `prepare_socket_path()` removes any pre-existing socket before `UnixListener::bind()`. `cleanup()` removes the socket on shutdown signal. Existing tests: `test_uds_stale_socket_removed`, `test_uds_cleanup_removes_file`, `test_uds_cleanup_nonexistent_noop`, `test_uds_server_cleanup_idempotent`.
+- **No code changes required**.
+
 #### S69: Wave 22 Stadial Gate — `dag.partial_dehydrate` + Composition Readiness
 
 - **UPSTREAM ASK: `dag.partial_dehydrate`** (wetSpring sovereign pipeline): Computes a Merkle root over current (or specified subset of) vertices without closing the session. Enables cryptographically valid partial braids as LTEE clones complete in long-running computations (Tenaillon 2016, 264 clones). Response: `{ merkle_root, sealed_count, open_count, session_open }`. Accepts optional `vertex_ids` filter for subset roots. `provenance.partial_dehydrate` wire-name alias included.
