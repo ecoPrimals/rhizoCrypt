@@ -16,7 +16,7 @@
 | Streaming | NDJSON pipeline coordination for `event.append_batch` |
 | Resilience | Lock-free CircuitBreaker (atomics) + RetryPolicy for IPC clients |
 | Error Model | Structured `IpcErrorPhase` + `DispatchOutcome` (protocol vs application) |
-| Discovery | Capability-based + manifest-based (`$XDG_RUNTIME_DIR/biomeos/{primal}.json`) |
+| Discovery | Capability-based + manifest (PG-32) + Neural API `primal.announce` (Wave 43) |
 | Chaos | `ChaosEngine` framework with 7 fault classes |
 | Transport | UDS unconditional (Unix), TCP opt-in (`--port` / env), BTSP Phase 3 (ChaCha20-Poly1305 encrypted channel) on UDS |
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
@@ -181,6 +181,15 @@ When rhizoCrypt is **unavailable**, downstream consumers degrade as follows:
   instead of full Merkle proofs. Individual event integrity is preserved.
 - **biomeOS graph execution**: DAG-dependent phases skip with
   `"dag capability not available"`. Other composition phases proceed.
+
+### Neural API Registration (Wave 43)
+
+On startup after UDS bind, rhizoCrypt sends `primal.announce` to biomeOS's
+Neural API socket. This registers `dag`, `integrity`, `merkle` capabilities
+with cost hints and latency estimates so the Neural API can route
+`capability.call` dispatches with informed affinity. Discovery uses tiered
+lookup: `$NEURAL_API_SOCKET` → `$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.sock`
+→ `/tmp/biomeos/neural-api-{family}.sock`. Non-fatal if biomeOS is unavailable.
 
 ### Stability Tiers
 

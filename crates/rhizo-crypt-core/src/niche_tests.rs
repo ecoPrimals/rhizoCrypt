@@ -251,3 +251,62 @@ fn mcp_tool_names_are_valid_capabilities() {
         assert!(CAPABILITIES.contains(&name), "MCP tool {name} not in CAPABILITIES");
     }
 }
+
+#[test]
+fn announce_payload_has_required_fields() {
+    let payload = announce_payload("/run/user/1000/biomeos/rhizocrypt.sock", Some(12345));
+
+    assert_eq!(payload["primal"], "rhizocrypt");
+    assert_eq!(payload["socket"], "/run/user/1000/biomeos/rhizocrypt.sock");
+    assert_eq!(payload["pid"], 12345);
+    assert_eq!(payload["version"], env!("CARGO_PKG_VERSION"));
+
+    let caps = payload["capabilities"].as_array().expect("capabilities array");
+    assert!(caps.iter().any(|c| c == "dag"));
+    assert!(caps.iter().any(|c| c == "integrity"));
+    assert!(caps.iter().any(|c| c == "merkle"));
+
+    let tiers = payload["signal_tiers"].as_array().expect("signal_tiers");
+    assert!(tiers.iter().any(|t| t == "nest"));
+
+    let methods = payload["methods"].as_array().expect("methods array");
+    assert!(methods.iter().any(|m| m == "dag.session.create"));
+    assert!(methods.iter().any(|m| m == "dag.partial_dehydrate"));
+    assert!(methods.iter().any(|m| m == "health.liveness"));
+}
+
+#[test]
+fn announce_payload_has_cost_and_latency_hints() {
+    let payload = announce_payload("/tmp/test.sock", None);
+
+    let costs = payload["cost_hints"].as_object().expect("cost_hints object");
+    assert!(costs.contains_key("dag"));
+    assert!(costs.contains_key("integrity"));
+    assert!(costs.contains_key("merkle"));
+
+    let latency = payload["latency_estimates"].as_object().expect("latency object");
+    assert!(latency.contains_key("dag"));
+    assert!(latency.contains_key("integrity"));
+    assert!(latency.contains_key("merkle"));
+}
+
+#[test]
+fn announce_payload_includes_semantic_mappings() {
+    let payload = announce_payload("/tmp/test.sock", None);
+
+    let mappings = payload["semantic_mappings"].as_object().expect("semantic_mappings");
+    assert_eq!(
+        mappings.get("provenance.session.create").and_then(|v| v.as_str()),
+        Some("dag.session.create")
+    );
+    assert_eq!(
+        mappings.get("provenance.event.append").and_then(|v| v.as_str()),
+        Some("dag.event.append")
+    );
+}
+
+#[test]
+fn announce_payload_pid_optional() {
+    let payload = announce_payload("/tmp/test.sock", None);
+    assert!(payload["pid"].is_null());
+}

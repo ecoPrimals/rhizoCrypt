@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Wave 43: Neural API `primal.announce` Adoption (May 23, 2026)
+
+- **`primal.announce` outbound handler**: On startup after UDS bind, rhizoCrypt now sends a `primal.announce` JSON-RPC call to biomeOS's Neural API socket, registering capabilities (`dag`, `integrity`, `merkle`), all 32+ methods, `provenance.*` semantic mappings, cost hints, latency estimates, and signal tier (`nest`).
+- **Socket discovery**: Tiered lookup for biomeOS neural-api socket — `$NEURAL_API_SOCKET` override, `$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.sock`, `/tmp/biomeos/neural-api-{family}.sock`. Non-fatal if biomeOS is unavailable (standalone mode).
+- **`announce_payload()` in niche.rs**: Builds the full Wire Schema payload per `WAVE42_NEURAL_API_DEPLOYMENT_GUIDE.md`, including `primal`, `socket`, `pid`, `capabilities`, `methods`, `semantic_mappings`, `signal_tiers`, `cost_hints`, `latency_estimates`, `version`.
+- **4 new tests**: `announce_payload_has_required_fields`, `announce_payload_has_cost_and_latency_hints`, `announce_payload_includes_semantic_mappings`, `announce_payload_pid_optional`.
+- **Wave 22 checklist item resolved**: `primal.announce` was one of 2 remaining FAIL items in the stadial checklist — now PASS.
+- **Deep debt audit**: 12-category scan clean. Zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero unwrap/expect in production, zero TODO/FIXME/HACK.
+- **Stadial gate**: 1,646 tests, 0 clippy warnings, 0 fmt diffs. 173 `.rs` files, ~53,839 lines.
+
 #### Stale Socket Cleanup Audit (May 18, 2026) — ALREADY COMPLIANT
 
 - **primalSpring stale socket audit**: wetSpring observed 50+ stale sockets on southGate causing 21 failed connections per Barrick clone run. All primals asked to implement `unlink()` before `bind()` and cleanup on shutdown.

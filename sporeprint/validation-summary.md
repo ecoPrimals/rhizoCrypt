@@ -1,7 +1,7 @@
 +++
 title = "rhizoCrypt Validation Summary"
-description = "Ephemeral DAG engine — 1,642 tests, 32 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
-date = 2026-05-17
+description = "Ephemeral DAG engine — 1,646 tests, 32 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
+date = 2026-05-23
 
 [taxonomies]
 primals = ["rhizocrypt"]
@@ -10,8 +10,8 @@ springs = []
 
 ## Status
 
-- **1,642 tests** passing (unit + integration + property + doc, `--all-features`)
-- **173 `.rs` files**, ~53,600 lines
+- **1,646 tests** passing (unit + integration + property + doc, `--all-features`)
+- **173 `.rs` files**, ~53,839 lines
 - **32 registered methods** across 6 domains (31 stable, 1 evolving)
 - **93.88% line coverage** (CI gate: 90%)
 - **Zero `unsafe` blocks** — `unsafe_code = "deny"` workspace-wide
@@ -68,6 +68,7 @@ and sweetGrass braids.
 - **TCP**: Opt-in (`--port` / `RHIZOCRYPT_PORT`)
 - **BTSP**: Mandatory when `FAMILY_ID` is set (Phase 1/2/3)
 - **Stale socket cleanup**: `unlink()` before `bind()` + shutdown cleanup
+- **Neural API**: `primal.announce` on startup (Wave 43) — registers with biomeOS for routing
 
 ## Deep Debt Posture
 

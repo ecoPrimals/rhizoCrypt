@@ -273,6 +273,7 @@ pub async fn run_server_with_ready(
     #[cfg(unix)]
     if let Some(ref socket_path) = uds_socket_path {
         publish_capability_manifest(socket_path, tcp_addr).await;
+        announce_to_biomeos(socket_path).await;
     }
 
     let result = if let Some(addr) = tcp_addr {
@@ -499,6 +500,119 @@ async fn publish_capability_manifest(socket_path: &std::path::Path, tcp_addr: Op
         Ok(path) => info!(path = %path.display(), "Capability manifest published"),
         Err(e) => warn!(error = %e, "Failed to publish capability manifest (discovery degraded)"),
     }
+}
+
+/// Announce this primal to biomeOS Neural API for routing weight registration.
+///
+/// Discovers biomeOS's neural-api socket via tiered lookup, then sends a
+/// `primal.announce` JSON-RPC call with capabilities, cost hints, and
+/// latency estimates. Non-fatal on failure — the primal runs without
+/// Neural API routing, falling back to manifest-based discovery.
+#[cfg(unix)]
+async fn announce_to_biomeos(socket_path: &std::path::Path) {
+    let neural_socket = discover_neural_api_socket();
+    let Some(neural_socket) = neural_socket else {
+        debug!("biomeOS neural-api socket not found (standalone mode)");
+        return;
+    };
+
+    let params = rhizo_crypt_core::niche::announce_payload(
+        &socket_path.display().to_string(),
+        Some(std::process::id()),
+    );
+
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "primal.announce",
+        "params": params,
+        "id": 1,
+    });
+
+    match send_jsonrpc_uds(&neural_socket, &request).await {
+        Ok(resp) => {
+            if let Some(result) = resp.get("result") {
+                let caps = result
+                    .get("capabilities_registered")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0);
+                let methods = result
+                    .get("methods_registered")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0);
+                info!(capabilities = caps, methods = methods, "Announced to biomeOS Neural API");
+            } else if let Some(err) = resp.get("error") {
+                warn!(error = %err, "biomeOS Neural API rejected announce");
+            }
+        }
+        Err(e) => {
+            debug!(error = %e, socket = %neural_socket.display(), "biomeOS Neural API announce failed (non-fatal)");
+        }
+    }
+}
+
+/// Discover the biomeOS neural-api UDS socket via tiered lookup.
+///
+/// 1. `$NEURAL_API_SOCKET` env override
+/// 2. `$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.sock`
+/// 3. `/tmp/biomeos/neural-api-{family}.sock`
+#[cfg(unix)]
+fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
+    use std::path::PathBuf;
+
+    if let Ok(path) = std::env::var("NEURAL_API_SOCKET") {
+        let p = PathBuf::from(&path);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+
+    let family = std::env::var("ECOPRIMALS_FAMILY_ID").unwrap_or_else(|_| "ecoPrimal".to_owned());
+    let socket_name = format!("neural-api-{family}.sock");
+
+    if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
+        let p = PathBuf::from(xdg).join("biomeos").join(&socket_name);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+
+    let p = std::path::PathBuf::from("/tmp/biomeos").join(&socket_name);
+    if p.exists() {
+        return Some(p);
+    }
+
+    None
+}
+
+/// Send a single JSON-RPC request over a UDS and read the response.
+#[cfg(unix)]
+async fn send_jsonrpc_uds(
+    socket_path: &std::path::Path,
+    request: &serde_json::Value,
+) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+    use tokio::net::UnixStream;
+
+    let mut stream =
+        tokio::time::timeout(std::time::Duration::from_secs(2), UnixStream::connect(socket_path))
+            .await
+            .map_err(|_| "connect timeout")?
+            .map_err(|e| format!("connect: {e}"))?;
+
+    let mut payload = serde_json::to_string(request)?;
+    payload.push('\n');
+    stream.write_all(payload.as_bytes()).await?;
+    stream.flush().await?;
+
+    let mut reader = tokio::io::BufReader::new(&mut stream);
+    let mut line = String::new();
+    tokio::time::timeout(std::time::Duration::from_secs(5), reader.read_line(&mut line))
+        .await
+        .map_err(|_| "read timeout")?
+        .map_err(|e| format!("read: {e}"))?;
+
+    let resp: serde_json::Value = serde_json::from_str(line.trim())?;
+    Ok(resp)
 }
 
 /// Register this primal with the configured discovery adapter.

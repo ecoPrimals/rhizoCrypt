@@ -258,3 +258,15 @@ description = "Connection origin and token status for the current caller"
 #   provenance.dehydration.status  → dag.dehydration.status
 #   provenance.dehydrate           → dag.dehydrate (legacy)
 #   provenance.partial_dehydrate   → dag.partial_dehydrate
+
+# ===========================================================================
+# Neural API Announce (outbound, Wave 43)
+# ===========================================================================
+# rhizoCrypt sends `primal.announce` to biomeOS on startup.
+# This is NOT a served method — it is an outbound registration call.
+#
+# announce.capabilities    = ["dag", "integrity", "merkle"]
+# announce.signal_tiers    = ["nest"]
+# announce.cost_hints      = { dag = 10.0, integrity = 5.0, merkle = 8.0 }
+# announce.latency_estimates = { dag = 15, integrity = 5, merkle = 10 }
+# announce.semantic_mappings = <PROVENANCE_ALIASES from niche.rs>

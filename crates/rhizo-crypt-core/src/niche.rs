@@ -572,6 +572,49 @@ pub fn identity_get() -> serde_json::Value {
     })
 }
 
+/// Build the `primal.announce` JSON-RPC params for biomeOS Neural API
+/// registration. Called once on startup after the UDS socket is bound.
+#[must_use]
+pub fn announce_payload(socket_path: &str, pid: Option<u32>) -> serde_json::Value {
+    let methods: Vec<&str> = CAPABILITIES.iter().copied().collect();
+
+    serde_json::json!({
+        "primal": PRIMAL_ID,
+        "socket": socket_path,
+        "pid": pid,
+        "capabilities": ["dag", "integrity", "merkle"],
+        "methods": methods,
+        "semantic_mappings": semantic_mapping_object(),
+        "signal_tiers": ["nest"],
+        "cost_hints": {
+            "dag": 10.0,
+            "integrity": 5.0,
+            "merkle": 8.0,
+        },
+        "latency_estimates": {
+            "dag": 15,
+            "integrity": 5,
+            "merkle": 10,
+        },
+        "version": PRIMAL_VERSION,
+        "attestation": null,
+    })
+}
+
+/// Build the semantic mappings object for `primal.announce`.
+///
+/// Maps `provenance.*` aliases to their canonical `dag.*` methods
+/// so biomeOS can translate consumer names.
+fn semantic_mapping_object() -> serde_json::Value {
+    let map: serde_json::Map<String, serde_json::Value> = PROVENANCE_ALIASES
+        .iter()
+        .map(|(alias, canonical)| {
+            ((*alias).to_owned(), serde_json::Value::String((*canonical).to_owned()))
+        })
+        .collect();
+    serde_json::Value::Object(map)
+}
+
 /// Zero-cost liveness probe.
 #[must_use]
 pub fn health_liveness() -> serde_json::Value {
