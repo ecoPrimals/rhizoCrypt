@@ -134,9 +134,8 @@ description = "Resolve a slice to its underlying session data"
 [capabilities.partial_dehydrate]
 method = "dag.partial_dehydrate"
 domain = "dag.dehydration"
-stability = "stable"
-description = "Compute Merkle root of current (or specified) vertices without closing the session"
 stability = "evolving"
+description = "Compute Merkle root of current (or specified) vertices without closing the session"
 
 # ── Dehydration (commit to permanent storage) ─────────────────────
 

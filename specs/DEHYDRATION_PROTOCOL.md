@@ -1,8 +1,8 @@
 # RhizoCrypt — Dehydration Protocol Specification
 
 **Version**: 0.2.0  
-**Status**: Draft  
-**Last Updated**: December 22, 2025
+**Status**: Implemented  
+**Last Updated**: May 2026
 
 ---
 

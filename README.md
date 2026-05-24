@@ -6,8 +6,8 @@
 |--------|-------|
 | Version | 0.14.0-dev |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,642 passing (`--all-features`) |
-| Coverage | 93.88% lines (CI gate: 90%) |
+| Tests | 1,646 passing (`--all-features`) |
+| Coverage | 93.88% lines (last measured) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
 | Unsafe | `unsafe_code = "deny"` workspace-wide, `#![forbid(unsafe_code)]` in non-test, zero `unsafe` blocks |
@@ -22,10 +22,10 @@
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 173 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 175 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
-| Registry | `capability_registry.toml` (32 methods + 1 evolving, 6 domains, stability tiers, `provenance.*` → `dag.*` wire aliases) |
+| Registry | `capability_registry.toml` (32 methods, 6 domains, stability tiers, `provenance.*` → `dag.*` wire aliases) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
 | Cross-compile | CI: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
 
@@ -99,7 +99,7 @@ fallback) for forward/backward compatibility.
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc 0.37 service (24 ops), JSON-RPC 2.0 handler (28 methods incl. `identity.get`, `tools.list`, `tools.call`), NDJSON streaming, rate limiting, metrics |
+| `rhizo-crypt-rpc` | tarpc 0.37 service (24 ops), JSON-RPC 2.0 handler (32 methods across 6 domains), NDJSON streaming, rate limiting, metrics |
 | `rhizocrypt-service` | UniBin binary and library (`server`, `client`, `status`, `version`, `doctor`) |
 
 ---

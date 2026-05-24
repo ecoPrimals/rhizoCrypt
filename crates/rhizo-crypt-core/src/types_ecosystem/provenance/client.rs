@@ -210,7 +210,7 @@ impl ProvenanceNotifier {
     ///
     /// Sends a `contribution.record_provenance` JSON-RPC call with the chain's
     /// vertex references. Non-fatal on failure (graceful degradation per
-    /// `SPRING_PROVENANCE_PATTERN.md` Section 7).
+    /// the Provenance Trio graceful degradation pattern).
     ///
     /// # Errors
     ///

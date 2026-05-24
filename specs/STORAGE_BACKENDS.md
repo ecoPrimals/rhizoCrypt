@@ -1,8 +1,8 @@
 # RhizoCrypt — Storage Backends Specification
 
 **Version**: 0.2.0  
-**Status**: Draft  
-**Last Updated**: April 2026
+**Status**: Implemented  
+**Last Updated**: May 2026
 
 ---
 

@@ -9,13 +9,13 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,642 tests passing** (all features), 0 failures
-- [x] **`--fail-under-lines 90` CI gate** enforced
+- [x] **1,646 tests passing** (all features), 0 failures
+- [x] **93.88% line coverage** (last measured)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
-- [x] **100% file size compliance** (all files under 1000 lines)
+- [x] **100% file size compliance** (all production files under 800 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 172 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 175 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
@@ -30,9 +30,9 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,573 tests)
-- [x] **CHANGELOG.md** (version history through session 61)
-- [x] **showcase/** (72 demo scripts)
+- [x] **README.md** (current metrics — 1,646 tests)
+- [x] **CHANGELOG.md** (version history through S70 / Wave 47)
+- [x] **showcase/** (61 demo scripts + 11 utility scripts)
 - [x] **specs/** (12 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
 
