@@ -5,35 +5,9 @@
 
 #![allow(clippy::unwrap_used)]
 
+use super::test_support::{create_test_primal, make_request, test_caller, test_gate};
 use super::*;
-use crate::jsonrpc::method_gate::{CallerContext, EnforcementMode, MethodGate};
-use crate::jsonrpc::types::JsonRpcId;
-use crate::jsonrpc::types::JsonRpcRequest;
-use rhizo_crypt_core::{PrimalLifecycle, RhizoCryptConfig};
 use serde_json::json;
-
-fn test_gate() -> MethodGate {
-    MethodGate::with_noop(EnforcementMode::Permissive)
-}
-
-fn test_caller() -> CallerContext {
-    CallerContext::unix()
-}
-
-async fn create_test_primal() -> Arc<rhizo_crypt_core::RhizoCrypt> {
-    let mut primal = rhizo_crypt_core::RhizoCrypt::new(RhizoCryptConfig::default());
-    primal.start().await.unwrap();
-    Arc::new(primal)
-}
-
-fn make_request(method: &str, params: Option<Value>) -> JsonRpcRequest {
-    JsonRpcRequest {
-        jsonrpc: "2.0".to_string(),
-        method: method.to_string(),
-        params,
-        id: Some(JsonRpcId::Number(1)),
-    }
-}
 
 // ============================================================================
 // Method dispatch errors

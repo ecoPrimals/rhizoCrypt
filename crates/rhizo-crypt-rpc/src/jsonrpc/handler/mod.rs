@@ -129,6 +129,10 @@ pub async fn handle_request(
 }
 
 #[cfg(test)]
+#[path = "../handler_test_support.rs"]
+mod test_support;
+
+#[cfg(test)]
 #[path = "../handler_tests.rs"]
 mod tests;
 

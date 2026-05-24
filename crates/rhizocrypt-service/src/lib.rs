@@ -589,30 +589,39 @@ fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
 async fn send_jsonrpc_uds(
     socket_path: &std::path::Path,
     request: &serde_json::Value,
-) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<serde_json::Value, ServiceError> {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
     use tokio::net::UnixStream;
 
-    let mut stream =
-        tokio::time::timeout(std::time::Duration::from_secs(2), UnixStream::connect(socket_path))
-            .await
-            .map_err(|_| "connect timeout")?
-            .map_err(|e| format!("connect: {e}"))?;
+    let mut stream = tokio::time::timeout(
+        std::time::Duration::from_secs(constants::NEURAL_API_CONNECT_TIMEOUT_SECS),
+        UnixStream::connect(socket_path),
+    )
+    .await
+    .map_err(|_| ServiceError::Discovery("neural-api connect timeout".to_owned()))?
+    .map_err(|e| ServiceError::Discovery(format!("neural-api connect: {e}")))?;
 
-    let mut payload = serde_json::to_string(request)?;
+    let mut payload = serde_json::to_string(request)
+        .map_err(|e| ServiceError::Discovery(format!("neural-api serialize: {e}")))?;
     payload.push('\n');
-    stream.write_all(payload.as_bytes()).await?;
-    stream.flush().await?;
+    stream
+        .write_all(payload.as_bytes())
+        .await
+        .map_err(|e| ServiceError::Discovery(format!("neural-api write: {e}")))?;
+    stream.flush().await.map_err(|e| ServiceError::Discovery(format!("neural-api flush: {e}")))?;
 
     let mut reader = tokio::io::BufReader::new(&mut stream);
     let mut line = String::new();
-    tokio::time::timeout(std::time::Duration::from_secs(5), reader.read_line(&mut line))
-        .await
-        .map_err(|_| "read timeout")?
-        .map_err(|e| format!("read: {e}"))?;
+    tokio::time::timeout(
+        std::time::Duration::from_secs(constants::NEURAL_API_READ_TIMEOUT_SECS),
+        reader.read_line(&mut line),
+    )
+    .await
+    .map_err(|_| ServiceError::Discovery("neural-api read timeout".to_owned()))?
+    .map_err(|e| ServiceError::Discovery(format!("neural-api read: {e}")))?;
 
-    let resp: serde_json::Value = serde_json::from_str(line.trim())?;
-    Ok(resp)
+    serde_json::from_str(line.trim())
+        .map_err(|e| ServiceError::Discovery(format!("neural-api parse: {e}")))
 }
 
 /// Register this primal with the configured discovery adapter.

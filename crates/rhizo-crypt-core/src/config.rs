@@ -11,8 +11,7 @@
 //! - **Zero-knowledge initialization** — Works with no external configuration
 //! - **Environment-aware** — Can be customized via environment variables
 
-use crate::constants;
-use crate::session::SessionConfig;
+use crate::{constants, session::SessionConfig};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::net::{IpAddr, Ipv4Addr};
@@ -121,7 +120,7 @@ impl Default for StorageConfig {
         Self {
             backend: StorageBackend::Memory,
             path: None,
-            max_memory_bytes: Some(1024 * 1024 * 1024), // 1 GB
+            max_memory_bytes: Some(constants::DEFAULT_MAX_MEMORY_BYTES),
         }
     }
 }

@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Deep Debt Audit — S70 (May 24, 2026)
+
+- **`Box<dyn Error>` eliminated**: `send_jsonrpc_uds` return type changed from `Box<dyn std::error::Error + Send + Sync>` to `ServiceError`. Zero `Box<dyn Error>` in production code.
+- **Songbird scaffolded registration honesty**: `register()` with `live-clients` disabled now returns `success: false` with a clear message instead of faking `success: true` with a synthetic service ID. Discovery `discover()` was already honest (returns empty Vec).
+- **Method gate tests extracted**: `method_gate.rs` dropped from 825 to 489 production lines — tests moved to `method_gate_tests.rs` via `#[path]`.
+- **Handler test harness deduplicated**: Shared helpers (`test_gate`, `test_caller`, `create_test_primal`, `make_request`) extracted to `handler_test_support.rs`, eliminating duplication between `handler_tests.rs` and `handler_tests_validation.rs`.
+- **Magic numbers to constants**: Inline timeouts (2s connect, 5s read) → `NEURAL_API_CONNECT_TIMEOUT_SECS`/`NEURAL_API_READ_TIMEOUT_SECS` in `constants.rs`. Storage cap (1 GiB) → `DEFAULT_MAX_MEMORY_BYTES`.
+- **Workspace dependency hygiene**: `base64` and `hex` hoisted to `[workspace.dependencies]` (resolves `0.4` vs `0.4.3` pin inconsistency). Unused `serde` `rc` feature removed.
+- **Deep debt audit (12-category)**: Zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero unwrap/expect in production, zero TODO/FIXME/HACK/XXX, zero `&Vec`/`&String` params, zero `#[allow(dead_code)]` in production.
+- **Files >800L**: Only test files exceed the threshold. All production files under 755 lines.
+- **Stadial gate**: 1,646 tests, 0 clippy warnings, 0 fmt diffs. 175 `.rs` files, ~53,852 lines.
+
 #### Wave 47: Deployment Behavior Convergence (May 24, 2026)
 
 - **`--socket` CLI alias**: Added `visible_alias = "socket"` on the `--unix` clap flag so `rhizocrypt server --socket /path/to/sock` works identically to `--unix /path/to/sock`. Lets `plasmidBin/start_primal.sh` pass `--socket` uniformly across all primals without per-primal workaround blocks. Compliance matrix: `--socket` PASS.

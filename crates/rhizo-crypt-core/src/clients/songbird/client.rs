@@ -198,15 +198,15 @@ impl SongbirdClient {
 
         #[cfg(not(feature = "live-clients"))]
         let result = {
-            tracing::debug!(
+            tracing::warn!(
                 service = %self.config.service_name,
                 endpoint = %our_endpoint,
-                "Scaffolded registration (live-clients feature disabled)"
+                "Discovery registration unavailable (live-clients feature disabled)"
             );
             RegistrationResult {
-                success: true,
-                message: "Registration pending live integration".to_string(),
-                service_id: Some(format!("rhizocrypt-{}", uuid::Uuid::now_v7())),
+                success: false,
+                message: "Discovery unavailable: live-clients feature not enabled".to_string(),
+                service_id: None,
             }
         };
 

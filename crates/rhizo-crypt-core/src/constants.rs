@@ -417,6 +417,15 @@ pub const DEFAULT_SOCKET_DIR: &str = "/run/biomeos";
 /// File extension for Unix domain sockets.
 pub const SOCKET_FILE_EXTENSION: &str = ".sock";
 
+/// Default in-memory storage cap (1 GiB).
+pub const DEFAULT_MAX_MEMORY_BYTES: u64 = 1024 * 1024 * 1024;
+
+/// Connect timeout for outbound Neural API UDS calls (seconds).
+pub const NEURAL_API_CONNECT_TIMEOUT_SECS: u64 = 2;
+
+/// Read timeout for outbound Neural API UDS responses (seconds).
+pub const NEURAL_API_READ_TIMEOUT_SECS: u64 = 5;
+
 // ============================================================================
 // API PATH CONSTANTS
 // ============================================================================
