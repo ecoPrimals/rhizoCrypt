@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Wave 47: Deployment Behavior Convergence (May 24, 2026)
+
+- **`--socket` CLI alias**: Added `visible_alias = "socket"` on the `--unix` clap flag so `rhizocrypt server --socket /path/to/sock` works identically to `--unix /path/to/sock`. Lets `plasmidBin/start_primal.sh` pass `--socket` uniformly across all primals without per-primal workaround blocks. Compliance matrix: `--socket` PASS.
+- **No other action required**: `health.liveness` already returns `{"status":"alive"}`, `lifecycle.status` already exists, `primal.announce` ships since Wave 43, socket cleanup compliant since S23, SIGTERM/SIGINT handled.
+
 #### Wave 43: Neural API `primal.announce` Adoption (May 23, 2026)
 
 - **`primal.announce` outbound handler**: On startup after UDS bind, rhizoCrypt now sends a `primal.announce` JSON-RPC call to biomeOS's Neural API socket, registering capabilities (`dag`, `integrity`, `merkle`), all 32+ methods, `provenance.*` semantic mappings, cost hints, latency estimates, and signal tier (`nest`).

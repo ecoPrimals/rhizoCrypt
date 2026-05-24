@@ -81,7 +81,7 @@ enum Commands {
         ///
         /// UDS is always active on Unix. Use this to override the default
         /// `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` path.
-        #[arg(long, value_name = "PATH", num_args = 0..=1, default_missing_value = "")]
+        #[arg(long, visible_alias = "socket", value_name = "PATH", num_args = 0..=1, default_missing_value = "")]
         unix: Option<String>,
     },
 
