@@ -14,7 +14,7 @@
 //! ```json
 //! {
 //!     "primal": "rhizocrypt",
-//!     "version": "0.14.0-dev",
+//!     "version": "0.14.0",
 //!     "socket": "/run/user/1000/biomeos/rhizocrypt.sock",
 //!     "capabilities": ["dag.session.create", "dag.event.append", "health.check"]
 //! }
@@ -150,7 +150,7 @@ mod tests {
     fn manifest_has_capability() {
         let manifest = PrimalManifest {
             primal: "rhizocrypt".into(),
-            version: "0.14.0-dev".into(),
+            version: "0.14.0".into(),
             socket: "/tmp/test.sock".into(),
             address: None,
             capabilities: vec!["dag.session.create".into(), "health.check".into()],

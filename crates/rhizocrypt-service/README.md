@@ -1,6 +1,6 @@
 # 🚀 Standalone Service Mode
 
-rhizoCrypt v0.14.0-dev supports **dual-mode operation**:
+rhizoCrypt v0.14.0 supports **dual-mode operation**:
 1. **Library Mode** - Embed directly into other primals
 2. **Service Mode** - Standalone RPC service for BiomeOS coordination
 
@@ -256,13 +256,12 @@ COPY crates/ ./crates/
 RUN cargo build --release --target x86_64-unknown-linux-musl -p rhizocrypt-service \
     && strip /build/target/x86_64-unknown-linux-musl/release/rhizocrypt
 
-FROM alpine:3.20
-RUN adduser -D -u 1000 rhizocrypt
-WORKDIR /app
-COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/rhizocrypt /app/rhizocrypt
-USER rhizocrypt
+FROM scratch
+COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/rhizocrypt /rhizocrypt
+USER 1000:1000
 EXPOSE 9400
-CMD ["./rhizocrypt", "server"]
+ENTRYPOINT ["/rhizocrypt"]
+CMD ["server"]
 ```
 
 Build and run:
@@ -275,7 +274,7 @@ docker run -p 9400:9400 -e RHIZOCRYPT_DISCOVERY_ADAPTER=songbird:7500 rhizocrypt
 
 ## 🎊 Summary
 
-rhizoCrypt v0.14.0-dev is now:
+rhizoCrypt v0.14.0 is now:
 - ✅ **Library** - Embed directly for tight integration
 - ✅ **Service** - Deploy standalone for BiomeOS coordination
 - ✅ **Discoverable** - Registers with capability-based discovery

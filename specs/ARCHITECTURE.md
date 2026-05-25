@@ -336,8 +336,8 @@ rhizoCrypt/
 │       │   └── doctor.rs         # Diagnostic health checks
 │       └── Cargo.toml
 │
-├── specs/                        # Specifications (9 complete + 1 experimental)
-├── showcase/                     # Progressive demo suite (70+ demos)
+├── specs/                        # 12 specification documents
+├── showcase/                     # Fossilized (Wave 49) — archived to fossilRecord
 ├── docs/                         # Operational docs (ENV_VARS, DEPLOYMENT_CHECKLIST)
 └── graphs/                       # biomeOS deploy graph
 ```

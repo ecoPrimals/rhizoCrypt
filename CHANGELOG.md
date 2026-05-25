@@ -5,9 +5,17 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.14.0-dev] - 2026-04-15 (session 43)
+## [0.14.0] - 2026-05-25
 
 ### Changed
+
+#### Root Docs & Version Reconciliation (May 25, 2026)
+
+- **Version `-dev` suffix dropped**: `0.14.0-dev` → `0.14.0` across workspace Cargo.toml, docs, capability_registry, deploy graph, Dockerfile, manifest.rs. Resolves Wave 22 version hygiene item.
+- **Metrics reconciled**: 175 → 171 `.rs` files, ~53,852 → ~53,341 lines (post-showcase fossilization). Updated across README, CONTEXT, DEPLOYMENT_CHECKLIST, sporeprint, specs.
+- **DEPLOYMENT_CHECKLIST Docker section**: Aligned with root `Dockerfile` (`FROM scratch`, `/rhizocrypt` path). Fixed duplicate "Option 2/3" numbering. Updated date and CHANGELOG reference.
+- **Service README Docker example**: Aligned with root `Dockerfile` (`FROM scratch` instead of Alpine).
+- **ARCHITECTURE.md**: Updated showcase and specs descriptions for Wave 49.
 
 #### Wave 49: Ecosystem Tightening (May 25, 2026)
 

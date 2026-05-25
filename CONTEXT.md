@@ -1,6 +1,6 @@
 # rhizoCrypt — AI Context Block
 
-**Version**: 0.14.0-dev
+**Version**: 0.14.0
 **Role**: Ephemeral DAG Engine — working memory for the ecoPrimals ecosystem
 **License**: AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 (scyBorg Triple-Copyleft)
 **Language**: Rust 2024, edition 2024, MSRV 1.87 (dev toolchain 1.94.1)
@@ -58,12 +58,12 @@ Three workspace crates:
 |----------|--------|
 | UniBin | Single binary, clap subcommands |
 | ecoBin v3.0 | Zero application C deps, zero reqwest, cross-compile (musl, RISC-V) |
-| genomeBin | Multi-stage Dockerfile (musl-static + Alpine), OCI labels, healthcheck |
+| genomeBin | Multi-stage Dockerfile (musl-static + scratch), OCI labels, healthcheck |
 | Universal IPC v3 | JSON-RPC + tarpc, semantic naming |
 | BTSP Phase 3 | Server-side handshake + ChaCha20-Poly1305 encrypted channel via `btsp.negotiate` |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 175 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 171 `.rs` files |
 
 ## Metrics
 
@@ -72,7 +72,7 @@ Three workspace crates:
 | Tests | 1,646 passing (all features) |
 | Coverage | 93.88% lines (last measured) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
-| Source files | 175 `.rs`, ~53,852 lines |
+| Source files | 171 `.rs`, ~53,341 lines |
 | Max file size | 755 lines production (limit: 1000) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |

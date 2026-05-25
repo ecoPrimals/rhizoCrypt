@@ -1,7 +1,7 @@
-# DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.0-dev
+# DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.0
 
-**Date**: May 7, 2026
-**Version**: 0.14.0-dev
+**Date**: May 25, 2026
+**Version**: 0.14.0
 **Status**: PRODUCTION READY
 
 ---
@@ -15,7 +15,7 @@
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all production files under 800 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 175 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 171 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
@@ -31,7 +31,7 @@
 
 ### Documentation
 - [x] **README.md** (current metrics — 1,646 tests)
-- [x] **CHANGELOG.md** (version history through S70 / Wave 47)
+- [x] **CHANGELOG.md** (version history through Wave 49)
 - [x] **showcase/** — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`
 - [x] **specs/** (12 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
@@ -75,10 +75,11 @@ export RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500  # Optional: for registr
 
 ---
 
-### Option 2: Docker Container (musl-static + Alpine)
+### Option 3: Docker Container (musl-static + scratch)
 
-The Dockerfile produces a musl-static binary in a multi-stage build (ecoBin compliant).
-Runtime image is Alpine 3.20 with a non-root user (UID 1000).
+The root `Dockerfile` produces a musl-static binary in a multi-stage build
+(ecoBin compliant). Runtime image is `FROM scratch` — fully static binary,
+non-root user (UID 1000).
 
 ```bash
 # Build Docker image (multi-stage musl-static)
@@ -91,8 +92,8 @@ docker run -d \
   -e RHIZOCRYPT_ENV=production \
   rhizocrypt:0.14.0
 
-# Health check via rhizocrypt status subcommand
-docker exec rhizocrypt /app/rhizocrypt status
+# Health check (built-in HEALTHCHECK in Dockerfile)
+docker inspect --format='{{.State.Health.Status}}' rhizocrypt
 ```
 
 **Docker Compose**:
@@ -106,16 +107,11 @@ services:
     environment:
       - RHIZOCRYPT_ENV=production
       - RHIZOCRYPT_LOG_LEVEL=info
-    healthcheck:
-      test: ["CMD", "/app/rhizocrypt", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 ```
 
 ---
 
-### Option 3: Kubernetes Deployment
+### Option 4: Kubernetes Deployment
 
 ```yaml
 apiVersion: apps/v1
@@ -147,7 +143,7 @@ spec:
                   key: discovery_adapter
           livenessProbe:
             exec:
-              command: ["/app/rhizocrypt", "status"]
+              command: ["/rhizocrypt", "status"]
             initialDelaySeconds: 5
             periodSeconds: 30
 ```
@@ -261,4 +257,4 @@ rhizocrypt doctor --comprehensive
 
 **Created**: December 27, 2025
 **Last Updated**: May 17, 2026
-**Version**: rhizoCrypt 0.14.0-dev
+**Version**: rhizoCrypt 0.14.0

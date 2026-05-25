@@ -1,7 +1,7 @@
 # 🔐 rhizoCrypt — Environment Variables
 
 **Last Updated**: April 27, 2026  
-**Version**: 0.14.0-dev  
+**Version**: 0.14.0  
 **Philosophy**: Capability-based, not primal-based
 
 ---
@@ -103,7 +103,7 @@ These are the **new, capability-based** environment variables. Use these for all
 ## Legacy Environment Variables (Removed)
 
 Legacy vendor-specific env vars (`BEARDOG_ADDRESS`, `NESTGATE_ADDRESS`, `LOAMSPINE_ADDRESS`) were
-removed in v0.14.0-dev. A primal only has self-knowledge and discovers capabilities at
+removed in v0.14.0. A primal only has self-knowledge and discovers capabilities at
 runtime. Use the capability-based variables above or discovery via `RHIZOCRYPT_DISCOVERY_ADAPTER`.
 
 `SONGBIRD_ADDRESS` is still accepted as a discovery fallback (Songbird is the universal adapter).
