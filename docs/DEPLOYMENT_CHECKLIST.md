@@ -32,7 +32,7 @@
 ### Documentation
 - [x] **README.md** (current metrics — 1,646 tests)
 - [x] **CHANGELOG.md** (version history through S70 / Wave 47)
-- [x] **showcase/** (61 demo scripts + 11 utility scripts)
+- [x] **showcase/** — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`
 - [x] **specs/** (12 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
 
@@ -40,14 +40,24 @@
 
 ## DEPLOYMENT OPTIONS
 
-### Option 1: Standalone Binary
+### Option 1: plasmidBin (production)
+
+All NUCLEUS deployments use `plasmidBin`-built binaries. The binary is
+auto-built on push to `main` via `notify-plasmidbin.yml`.
 
 ```bash
-# Build release binary
-cargo build --release -p rhizocrypt-service
+# Run from plasmidBin depot
+rhizocrypt server --socket /run/biomeos/rhizocrypt.sock
 
-# Run service (production port)
-./target/release/rhizocrypt server --port 9400
+# Health check via UDS
+echo '{"jsonrpc":"2.0","method":"health.liveness","params":{},"id":1}' | \
+  socat - UNIX-CONNECT:/run/biomeos/rhizocrypt.sock
+```
+
+### Option 2: Local Development
+
+```bash
+cargo run -p rhizocrypt-service -- server --port 9400
 
 # Health check via JSON-RPC
 curl -s -X POST http://localhost:9400/rpc \
@@ -166,10 +176,10 @@ curl -s -X POST http://localhost:9400/rpc \
 
 ```bash
 # Basic diagnostics
-./target/release/rhizocrypt doctor
+rhizocrypt doctor
 
 # Comprehensive (includes connectivity probes)
-./target/release/rhizocrypt doctor --comprehensive
+rhizocrypt doctor --comprehensive
 ```
 
 ---
@@ -234,7 +244,7 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 
 **3. Doctor Diagnostics**
 ```bash
-./target/release/rhizocrypt doctor --comprehensive
+rhizocrypt doctor --comprehensive
 ```
 
 ---
@@ -245,7 +255,7 @@ unset RHIZOCRYPT_DISCOVERY_ADAPTER
 - [CHANGELOG.md](../CHANGELOG.md) — Version history
 - [ENV_VARS.md](./ENV_VARS.md) — Environment variable reference
 - [specs/](../specs/) — Formal specifications
-- [showcase/](../showcase/) — 72 demo scripts
+- [showcase/](../showcase/) — Fossilized (Wave 49)
 
 ---
 

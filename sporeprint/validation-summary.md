@@ -1,7 +1,7 @@
 +++
 title = "rhizoCrypt Validation Summary"
 description = "Ephemeral DAG engine — 1,646 tests, 32 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
-date = 2026-05-23
+date = 2026-05-25
 
 [taxonomies]
 primals = ["rhizocrypt"]
@@ -68,7 +68,7 @@ and sweetGrass braids.
 - **TCP**: Opt-in (`--port` / `RHIZOCRYPT_PORT`)
 - **BTSP**: Mandatory when `FAMILY_ID` is set (Phase 1/2/3)
 - **Stale socket cleanup**: `unlink()` before `bind()` + shutdown cleanup
-- **Neural API**: `primal.announce` on startup (Wave 43) — registers with biomeOS for routing
+- **Neural API**: `primal.announce` on startup (Wave 43) — registers with biomeOS for routing (background, non-blocking since Wave 49)
 
 ## Deep Debt Posture
 

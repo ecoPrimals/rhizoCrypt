@@ -273,7 +273,14 @@ pub async fn run_server_with_ready(
     #[cfg(unix)]
     if let Some(ref socket_path) = uds_socket_path {
         publish_capability_manifest(socket_path, tcp_addr).await;
-        announce_to_biomeos(socket_path).await;
+
+        // Neural API announce runs in background — non-blocking so the service
+        // is ready for health probes immediately. Announce is best-effort and
+        // non-fatal; no reason to delay readiness by up to 7s of UDS timeouts.
+        let announce_path = socket_path.clone();
+        tokio::spawn(async move {
+            announce_to_biomeos(&announce_path).await;
+        });
     }
 
     let result = if let Some(addr) = tcp_addr {

@@ -89,7 +89,7 @@ Three workspace crates:
 - `capability_registry.toml` — Capability method registry (32 methods in `METHOD_CATALOG`, 6 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
 - `specs/` — 12 specification documents (incl. `CRYPTO_MODEL.md` — signing provider crypto delegation)
-- `showcase/` — 72 progressive demos
+- `showcase/` — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`
 
 ## Part of ecoPrimals
 

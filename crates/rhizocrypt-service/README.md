@@ -11,14 +11,11 @@ rhizoCrypt v0.14.0-dev supports **dual-mode operation**:
 ### Building
 
 ```bash
-# Development build
-cargo build -p rhizocrypt-service
+# Development run
+cargo run -p rhizocrypt-service -- server
 
-# Release build (optimized)
-cargo build --release -p rhizocrypt-service
-
-# Binary location
-./target/release/rhizocrypt
+# Production: use plasmidBin-built binary
+rhizocrypt server --socket /run/biomeos/rhizocrypt.sock
 ```
 
 ### Running

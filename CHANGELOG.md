@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Wave 49: Ecosystem Tightening (May 25, 2026)
+
+- **Showcase fossilized**: `showcase/` (72 demo scripts, crypto primitive showcases, key rotation demos) archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`. Replaced with README pointer.
+- **Startup latency fixed**: `announce_to_biomeos()` moved from blocking critical path to `tokio::spawn()` background task. Eliminates up to 7s of UDS timeout on startup when biomeOS is unavailable. Service reports ready after `primal.start()` + UDS bind + manifest publish — announce continues in background.
+- **Stale deployment patterns removed**: `target/release/rhizocrypt` references replaced with `plasmidBin` depot pattern (`rhizocrypt` via PATH) in `DEPLOYMENT_CHECKLIST.md` and `rhizocrypt-service/README.md`. No `which rhizocrypt` references found.
+- **`notify-plasmidbin.yml` verified active**: Workflow dispatches rebuild to `ecoPrimals/plasmidBin` on every push to `main`.
+
 #### Deep Debt Audit — S70 (May 24, 2026)
 
 - **`Box<dyn Error>` eliminated**: `send_jsonrpc_uds` return type changed from `Box<dyn std::error::Error + Send + Sync>` to `ServiceError`. Zero `Box<dyn Error>` in production code.
