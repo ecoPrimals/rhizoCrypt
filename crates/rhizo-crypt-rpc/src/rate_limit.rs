@@ -8,6 +8,7 @@
 
 use dashmap::DashMap;
 use rhizo_crypt_core::constants;
+use rhizo_crypt_core::safe_env::SafeEnv;
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -76,19 +77,19 @@ impl RateLimitConfig {
     pub fn from_env() -> Self {
         let mut config = Self::default();
 
-        if let Ok(val) = std::env::var("RHIZOCRYPT_RATE_LIMIT_READ_RPS")
+        if let Some(val) = SafeEnv::get_optional(SafeEnv::RHIZOCRYPT_RATE_LIMIT_READ_RPS)
             && let Ok(rps) = val.parse()
         {
             config.read_rps = rps;
         }
 
-        if let Ok(val) = std::env::var("RHIZOCRYPT_RATE_LIMIT_WRITE_RPS")
+        if let Some(val) = SafeEnv::get_optional(SafeEnv::RHIZOCRYPT_RATE_LIMIT_WRITE_RPS)
             && let Ok(rps) = val.parse()
         {
             config.write_rps = rps;
         }
 
-        if let Ok(val) = std::env::var("RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS")
+        if let Some(val) = SafeEnv::get_optional(SafeEnv::RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS)
             && let Ok(rps) = val.parse()
         {
             config.expensive_rps = rps;

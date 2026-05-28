@@ -114,12 +114,11 @@ impl CapabilityEnv {
     /// must bootstrap through other means (multicast, DHT, etc.).
     #[must_use]
     pub fn discovery_endpoint() -> Option<String> {
-        std::env::var("RHIZOCRYPT_DISCOVERY_ADAPTER")
-            .ok()
+        SafeEnv::get_optional(SafeEnv::RHIZOCRYPT_DISCOVERY_ADAPTER)
             .or_else(|| SafeEnv::get_endpoint("DISCOVERY_SERVICE"))
             .or_else(|| SafeEnv::get_endpoint("DISCOVERY"))
             .or_else(|| {
-                std::env::var("SONGBIRD_ADDRESS").ok().inspect(|_| {
+                SafeEnv::get_optional(SafeEnv::SONGBIRD_ADDRESS).inspect(|_| {
                     tracing::info!(
                         "Using SONGBIRD_ADDRESS for discovery. \
                          Consider migrating to RHIZOCRYPT_DISCOVERY_ADAPTER for consistency."

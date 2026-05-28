@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 use crate::constants::{
     BIOMEOS_SOCKET_SUBDIR, DEFAULT_RPC_HOST, DEFAULT_SOCKET_DIR, SOCKET_FILE_EXTENSION,
 };
+use crate::safe_env::SafeEnv;
 
 /// Platform bucket for transport selection (used to keep negotiation logic testable on any host).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -91,7 +92,7 @@ pub fn socket_dir() -> Option<PathBuf> {
         return None;
     }
 
-    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Some(runtime_dir) = SafeEnv::get_optional(SafeEnv::XDG_RUNTIME_DIR) {
         let path = Path::new(&runtime_dir).join(BIOMEOS_SOCKET_SUBDIR);
         return Some(path);
     }
@@ -136,7 +137,8 @@ pub fn family_scoped_socket_path(name: &str, primal_env_prefix: &str) -> Option<
 #[must_use]
 pub fn read_family_id(primal_env_prefix: &str) -> Option<String> {
     let primal_key = format!("{primal_env_prefix}_FAMILY_ID");
-    let val = std::env::var(&primal_key).or_else(|_| std::env::var("FAMILY_ID")).ok()?;
+    let val = SafeEnv::get_optional(&primal_key)
+        .or_else(|| SafeEnv::get_optional(SafeEnv::FAMILY_ID))?;
     let val = val.trim().to_string();
     if val.is_empty() || val == "default" {
         None
@@ -148,7 +150,8 @@ pub fn read_family_id(primal_env_prefix: &str) -> Option<String> {
 /// Returns `true` when `BIOMEOS_INSECURE` is set to a truthy value (`1`, `true`, `yes`).
 #[must_use]
 pub fn is_biomeos_insecure() -> bool {
-    std::env::var("BIOMEOS_INSECURE").ok().is_some_and(|v| matches!(v.trim(), "1" | "true" | "yes"))
+    SafeEnv::get_optional(SafeEnv::BIOMEOS_INSECURE)
+        .is_some_and(|v| matches!(v.trim(), "1" | "true" | "yes"))
 }
 
 /// BTSP Phase 1 environment guard.

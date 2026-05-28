@@ -32,6 +32,8 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
+use crate::safe_env::SafeEnv;
+
 /// A primal's capability manifest published to the filesystem.
 ///
 /// Each primal writes this to `$XDG_RUNTIME_DIR/biomeos/{primal}.json`
@@ -68,8 +70,7 @@ impl PrimalManifest {
 /// Returns `$XDG_RUNTIME_DIR/biomeos/` if the env var is set, otherwise `None`.
 #[must_use]
 pub fn manifest_dir() -> Option<PathBuf> {
-    std::env::var("XDG_RUNTIME_DIR")
-        .ok()
+    SafeEnv::get_optional(SafeEnv::XDG_RUNTIME_DIR)
         .map(|xdg| PathBuf::from(xdg).join(crate::constants::BIOMEOS_SOCKET_SUBDIR))
 }
 

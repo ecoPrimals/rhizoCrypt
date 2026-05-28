@@ -437,9 +437,9 @@ async fn serve_with_tcp(
 /// socket is started (Provenance Trio standard).
 #[must_use]
 pub fn has_explicit_tcp_config() -> bool {
-    std::env::var("RHIZOCRYPT_PORT").is_ok()
-        || std::env::var("RHIZOCRYPT_RPC_PORT").is_ok()
-        || std::env::var("RHIZOCRYPT_JSONRPC_PORT").is_ok()
+    SafeEnv::get_optional(SafeEnv::RHIZOCRYPT_PORT).is_some()
+        || SafeEnv::get_optional(SafeEnv::RHIZOCRYPT_RPC_PORT).is_some()
+        || SafeEnv::get_optional(SafeEnv::RHIZOCRYPT_JSONRPC_PORT).is_some()
 }
 
 /// Resolve UDS path from the CLI value.
@@ -566,17 +566,17 @@ async fn announce_to_biomeos(socket_path: &std::path::Path) {
 fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
     use std::path::PathBuf;
 
-    if let Ok(path) = std::env::var("NEURAL_API_SOCKET") {
+    if let Some(path) = SafeEnv::get_optional(SafeEnv::NEURAL_API_SOCKET) {
         let p = PathBuf::from(&path);
         if p.exists() {
             return Some(p);
         }
     }
 
-    let family = std::env::var("ECOPRIMALS_FAMILY_ID").unwrap_or_else(|_| "ecoPrimal".to_owned());
+    let family = SafeEnv::get_or_default(SafeEnv::ECOPRIMALS_FAMILY_ID, "ecoPrimal");
     let socket_name = format!("neural-api-{family}.sock");
 
-    if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Some(xdg) = SafeEnv::get_optional(SafeEnv::XDG_RUNTIME_DIR) {
         let p = PathBuf::from(xdg).join("biomeos").join(&socket_name);
         if p.exists() {
             return Some(p);

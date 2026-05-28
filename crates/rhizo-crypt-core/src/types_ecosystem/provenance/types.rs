@@ -144,14 +144,14 @@ impl ProvenanceProviderConfig {
     /// - `PROVENANCE_TIMEOUT_MS`: Query timeout in milliseconds
     #[must_use]
     pub fn from_env() -> Self {
-        use crate::safe_env::CapabilityEnv;
+        use crate::safe_env::{CapabilityEnv, SafeEnv};
         let mut config = Self::default();
 
         if let Some(addr) = CapabilityEnv::provenance_endpoint() {
             config.push_address = Some(Cow::Owned(addr));
         }
 
-        if let Ok(timeout) = std::env::var("PROVENANCE_TIMEOUT_MS")
+        if let Some(timeout) = SafeEnv::get_optional(SafeEnv::PROVENANCE_TIMEOUT_MS)
             && let Ok(ms) = timeout.parse()
         {
             config.timeout_ms = ms;

@@ -87,14 +87,15 @@ impl SongbirdConfig {
     /// `connect()` will fail with a clear error. No hardcoded fallbacks.
     #[must_use]
     pub fn from_env() -> Self {
-        use crate::safe_env::CapabilityEnv;
+        use crate::safe_env::{CapabilityEnv, SafeEnv};
         let mut config = Self::new();
 
         if let Some(addr) = CapabilityEnv::discovery_endpoint() {
             config.address = Cow::Owned(addr);
-        } else if let (Ok(host), Ok(port)) =
-            (std::env::var("SONGBIRD_HOST"), std::env::var("SONGBIRD_PORT"))
-        {
+        } else if let (Some(host), Some(port)) = (
+            SafeEnv::get_optional(SafeEnv::SONGBIRD_HOST),
+            SafeEnv::get_optional(SafeEnv::SONGBIRD_PORT),
+        ) {
             config.address = Cow::Owned(format!("{host}:{port}"));
         } else {
             warn!(
@@ -103,7 +104,7 @@ impl SongbirdConfig {
             );
         }
 
-        if let Ok(name) = std::env::var("RHIZOCRYPT_SERVICE_NAME") {
+        if let Some(name) = SafeEnv::get_optional(SafeEnv::RHIZOCRYPT_SERVICE_NAME) {
             config.service_name = Cow::Owned(name);
         }
 

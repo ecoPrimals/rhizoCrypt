@@ -44,10 +44,77 @@ pub struct SafeEnv;
 
 impl SafeEnv {
     /// Environment variable for environment mode.
-    const ENV_MODE: &'static str = "RHIZOCRYPT_ENV";
+    pub const ENV_MODE: &'static str = "RHIZOCRYPT_ENV";
 
     /// Development mode value.
     const DEV_MODE: &'static str = "development";
+
+    /// XDG runtime directory (Linux/macOS/BSD socket and manifest paths).
+    pub const XDG_RUNTIME_DIR: &'static str = "XDG_RUNTIME_DIR";
+
+    /// Legacy RPC port override.
+    pub const RHIZOCRYPT_PORT: &'static str = "RHIZOCRYPT_PORT";
+
+    /// Preferred RPC port override.
+    pub const RHIZOCRYPT_RPC_PORT: &'static str = "RHIZOCRYPT_RPC_PORT";
+
+    /// JSON-RPC port override.
+    pub const RHIZOCRYPT_JSONRPC_PORT: &'static str = "RHIZOCRYPT_JSONRPC_PORT";
+
+    /// Preferred RPC host override.
+    pub const RHIZOCRYPT_RPC_HOST: &'static str = "RHIZOCRYPT_RPC_HOST";
+
+    /// Legacy RPC host override.
+    pub const RHIZOCRYPT_HOST: &'static str = "RHIZOCRYPT_HOST";
+
+    /// Metrics port override.
+    pub const RHIZOCRYPT_METRICS_PORT: &'static str = "RHIZOCRYPT_METRICS_PORT";
+
+    /// Universal discovery adapter address.
+    pub const RHIZOCRYPT_DISCOVERY_ADAPTER: &'static str = "RHIZOCRYPT_DISCOVERY_ADAPTER";
+
+    /// Service name for discovery registration.
+    pub const RHIZOCRYPT_SERVICE_NAME: &'static str = "RHIZOCRYPT_SERVICE_NAME";
+
+    /// Rate limit: read operations per second.
+    pub const RHIZOCRYPT_RATE_LIMIT_READ_RPS: &'static str = "RHIZOCRYPT_RATE_LIMIT_READ_RPS";
+
+    /// Rate limit: write operations per second.
+    pub const RHIZOCRYPT_RATE_LIMIT_WRITE_RPS: &'static str = "RHIZOCRYPT_RATE_LIMIT_WRITE_RPS";
+
+    /// Rate limit: expensive operations per second.
+    pub const RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS: &'static str =
+        "RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS";
+
+    /// Ecosystem-wide family identifier (BTSP Phase 1 socket scoping).
+    pub const FAMILY_ID: &'static str = "FAMILY_ID";
+
+    /// Ecosystem-wide family seed (BTSP handshake).
+    pub const FAMILY_SEED: &'static str = "FAMILY_SEED";
+
+    /// biomeOS family identifier for neural-api socket discovery.
+    pub const ECOPRIMALS_FAMILY_ID: &'static str = "ECOPRIMALS_FAMILY_ID";
+
+    /// biomeOS neural-api UDS socket override.
+    pub const NEURAL_API_SOCKET: &'static str = "NEURAL_API_SOCKET";
+
+    /// Disable transport security checks (development only).
+    pub const BIOMEOS_INSECURE: &'static str = "BIOMEOS_INSECURE";
+
+    /// Legacy Songbird orchestrator address.
+    pub const SONGBIRD_ADDRESS: &'static str = "SONGBIRD_ADDRESS";
+
+    /// Legacy Songbird host (paired with [`Self::SONGBIRD_PORT`]).
+    pub const SONGBIRD_HOST: &'static str = "SONGBIRD_HOST";
+
+    /// Legacy Songbird port (paired with [`Self::SONGBIRD_HOST`]).
+    pub const SONGBIRD_PORT: &'static str = "SONGBIRD_PORT";
+
+    /// Compute provider connection timeout in milliseconds.
+    pub const COMPUTE_TIMEOUT_MS: &'static str = "COMPUTE_TIMEOUT_MS";
+
+    /// Provenance provider query timeout in milliseconds.
+    pub const PROVENANCE_TIMEOUT_MS: &'static str = "PROVENANCE_TIMEOUT_MS";
 
     /// Get an environment variable or return the default.
     #[inline]
@@ -148,8 +215,7 @@ impl SafeEnv {
     /// 4. None (infant discovery: primal starts with zero knowledge)
     #[must_use]
     pub fn get_discovery_address() -> Option<String> {
-        std::env::var("RHIZOCRYPT_DISCOVERY_ADAPTER")
-            .ok()
+        Self::get_optional(Self::RHIZOCRYPT_DISCOVERY_ADAPTER)
             .or_else(|| Self::get_endpoint("DISCOVERY"))
     }
 
@@ -161,8 +227,8 @@ impl SafeEnv {
     /// 3. `default` parameter
     #[must_use]
     pub fn get_rpc_port(default: u16) -> u16 {
-        Self::parse_optional::<u16>("RHIZOCRYPT_RPC_PORT")
-            .or_else(|| Self::parse_optional::<u16>("RHIZOCRYPT_PORT"))
+        Self::parse_optional::<u16>(Self::RHIZOCRYPT_RPC_PORT)
+            .or_else(|| Self::parse_optional::<u16>(Self::RHIZOCRYPT_PORT))
             .unwrap_or(default)
     }
 
@@ -176,7 +242,7 @@ impl SafeEnv {
     /// assigns the JSON-RPC port independently.
     #[must_use]
     pub fn get_jsonrpc_port(tarpc_port: u16) -> u16 {
-        Self::parse_optional::<u16>("RHIZOCRYPT_JSONRPC_PORT").unwrap_or_else(|| {
+        Self::parse_optional::<u16>(Self::RHIZOCRYPT_JSONRPC_PORT).unwrap_or_else(|| {
             if tarpc_port == 0 {
                 0
             } else {
@@ -193,15 +259,15 @@ impl SafeEnv {
     /// 3. Production bind address (all interfaces)
     #[must_use]
     pub fn get_rpc_host() -> String {
-        Self::get_optional("RHIZOCRYPT_RPC_HOST")
-            .or_else(|| Self::get_optional("RHIZOCRYPT_HOST"))
+        Self::get_optional(Self::RHIZOCRYPT_RPC_HOST)
+            .or_else(|| Self::get_optional(Self::RHIZOCRYPT_HOST))
             .unwrap_or_else(|| crate::constants::PRODUCTION_BIND_ADDRESS.to_string())
     }
 
     /// Get the metrics port, with environment override.
     #[must_use]
     pub fn get_metrics_port(default: u16) -> u16 {
-        Self::parse("RHIZOCRYPT_METRICS_PORT", default)
+        Self::parse(Self::RHIZOCRYPT_METRICS_PORT, default)
     }
 
     /// Construct the canonical socket env var name for any service identity.
@@ -249,7 +315,7 @@ impl SafeEnv {
         }
 
         // XDG fallback
-        std::env::var("XDG_RUNTIME_DIR").ok().map(|xdg| {
+        Self::get_optional(Self::XDG_RUNTIME_DIR).map(|xdg| {
             std::path::PathBuf::from(xdg)
                 .join(crate::constants::BIOMEOS_SOCKET_SUBDIR)
                 .join(format!("{primal_name}.sock"))
