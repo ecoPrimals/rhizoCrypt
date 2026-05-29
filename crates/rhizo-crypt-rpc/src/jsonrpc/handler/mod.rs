@@ -146,5 +146,9 @@ mod tests;
 mod tests_validation;
 
 #[cfg(test)]
+#[path = "../handler_tests_branching.rs"]
+mod tests_branching;
+
+#[cfg(test)]
 #[path = "../handler_proptests.rs"]
 mod handler_proptests;

@@ -577,13 +577,17 @@ fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
     let socket_name = format!("neural-api-{family}.sock");
 
     if let Some(xdg) = SafeEnv::get_optional(SafeEnv::XDG_RUNTIME_DIR) {
-        let p = PathBuf::from(xdg).join("biomeos").join(&socket_name);
+        let p = PathBuf::from(xdg)
+            .join(constants::BIOMEOS_SOCKET_SUBDIR)
+            .join(&socket_name);
         if p.exists() {
             return Some(p);
         }
     }
 
-    let p = std::path::PathBuf::from("/tmp/biomeos").join(&socket_name);
+    let p = PathBuf::from("/tmp")
+        .join(constants::BIOMEOS_SOCKET_SUBDIR)
+        .join(&socket_name);
     if p.exists() {
         return Some(p);
     }
@@ -651,8 +655,16 @@ pub async fn register_with_discovery(
     config.address = std::borrow::Cow::Owned(discovery_addr.to_owned());
     let client = DiscoveryClient::new(config);
 
+    client.connect().await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
+
     let our_endpoint = format!("{}://{our_addr}", constants::DISCOVERY_ENDPOINT_SCHEME);
-    client.register(&our_endpoint).await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
+    let result =
+        client.register(&our_endpoint).await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
+
+    if !result.success {
+        return Err(ServiceError::Discovery(result.message));
+    }
+
     client.start_heartbeat().await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
 
     Ok(())

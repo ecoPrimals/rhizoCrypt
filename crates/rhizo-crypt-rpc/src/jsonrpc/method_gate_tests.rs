@@ -131,15 +131,15 @@ fn noop_verifier_rejects_empty() {
 }
 
 #[test]
-fn beardog_verifier_accepts_nonempty() {
-    let v = BearDogVerifier;
+fn presence_verifier_accepts_nonempty() {
+    let v = PresenceVerifier;
     let claims = v.verify("ionic-tok").unwrap();
     assert_eq!(claims.subject, "unverified");
 }
 
 #[test]
-fn beardog_verifier_rejects_empty() {
-    let v = BearDogVerifier;
+fn presence_verifier_rejects_empty() {
+    let v = PresenceVerifier;
     assert!(v.verify("").is_none());
 }
 

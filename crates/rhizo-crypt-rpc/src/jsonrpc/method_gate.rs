@@ -19,9 +19,9 @@
 //! ## Token verification (JH-1 ready)
 //!
 //! The [`TokenVerifier`] trait abstracts token validation. The default
-//! [`NoopVerifier`] accepts any token (presence-only check), while
-//! [`BearDogVerifier`] validates `BearDog` ionic tokens via IPC once key
-//! distribution is available (JH-11).
+//! [`NoopVerifier`] accepts any token (presence-only check); the production
+//! [`PresenceVerifier`] provides the same semantics until JH-11 key
+//! distribution ships a real cryptographic verifier.
 //!
 //! ## Bearer token extraction
 //!
@@ -128,7 +128,7 @@ pub struct VerifiedClaims {
 }
 
 /// Abstraction over token verification so tests can use [`NoopVerifier`]
-/// and production uses [`BearDogVerifier`] (or any future provider).
+/// and production uses [`PresenceVerifier`] (or any future provider).
 pub trait TokenVerifier: Send + Sync + std::fmt::Debug {
     /// Verify a bearer token string and return the embedded claims.
     ///
@@ -138,8 +138,7 @@ pub trait TokenVerifier: Send + Sync + std::fmt::Debug {
 
 /// Accepts any non-empty token as valid with wildcard scope.
 ///
-/// Used as the default verifier until `BearDog` key distribution (JH-11)
-/// is available. Equivalent to the "presence-only" check from JH-0.
+/// Test-only verifier equivalent to the "presence-only" check from JH-0.
 #[derive(Debug)]
 pub struct NoopVerifier;
 
@@ -156,21 +155,20 @@ impl TokenVerifier for NoopVerifier {
     }
 }
 
-/// Verifies `BearDog` ionic tokens via IPC (`auth.verify_ionic`).
+/// Presence-only token verifier (pre-JH-11 placeholder).
 ///
-/// Currently a placeholder that delegates to [`NoopVerifier`] semantics.
-/// When `BearDog` ships key distribution (JH-11), this will perform
-/// Ed25519 signature verification and scope extraction locally or via
-/// a single `auth.verify_ionic` IPC call.
+/// Accepts any non-empty token and grants `scopes: ["*"]`. When ecosystem
+/// key distribution (JH-11) ships, this will be replaced by a verifier
+/// that performs Ed25519 signature verification and scope extraction
+/// via `auth.verify_ionic` IPC (capability-discovered, not primal-named).
 #[derive(Debug)]
-pub struct BearDogVerifier;
+pub struct PresenceVerifier;
 
-impl TokenVerifier for BearDogVerifier {
+impl TokenVerifier for PresenceVerifier {
     fn verify(&self, token: &str) -> Option<VerifiedClaims> {
         if token.is_empty() {
             return None;
         }
-        // Presence-only until JH-11 key distribution ships (see BearDogVerifier doc).
         Some(VerifiedClaims {
             subject: "unverified".to_owned(),
             scopes: vec!["*".to_owned()],
@@ -344,11 +342,11 @@ impl MethodGate {
 
     /// Create a gate from the environment (`RHIZOCRYPT_AUTH_MODE`).
     ///
-    /// Uses [`BearDogVerifier`] as the default verifier (falls back to
-    /// presence-only until JH-11 key distribution is available).
+    /// Uses [`PresenceVerifier`] as the default verifier (presence-only
+    /// until JH-11 key distribution is available).
     #[must_use]
     pub fn from_env() -> Self {
-        Self::new(EnforcementMode::from_env(), Box::new(BearDogVerifier))
+        Self::new(EnforcementMode::from_env(), Box::new(PresenceVerifier))
     }
 
     /// Create a gate with a specific verifier (useful for testing).

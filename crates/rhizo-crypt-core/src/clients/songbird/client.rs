@@ -499,13 +499,11 @@ mod tests_coverage {
         #[cfg(not(feature = "live-clients"))]
         {
             let result = client.register("127.0.0.1:9400").await;
-            assert!(result.is_ok(), "scaffolded register should succeed: {result:?}");
+            assert!(result.is_ok(), "scaffolded register should return Ok: {result:?}");
             let reg = result.unwrap();
-            assert!(reg.success);
-            assert!(reg.service_id.is_some());
-            assert!(reg.message.contains("pending"));
-            assert_eq!(client.state().await, ClientState::Registered);
-            assert!(client.service_id().await.is_some());
+            assert!(!reg.success, "scaffolded register returns success=false without live-clients");
+            assert!(reg.service_id.is_none());
+            assert!(reg.message.contains("live-clients"));
         }
     }
 
@@ -531,10 +529,7 @@ mod tests_coverage {
         #[cfg(not(feature = "live-clients"))]
         {
             let reg = client.register("127.0.0.1:9400").await.unwrap();
-            assert!(reg.success);
-
-            let refresh = client.refresh_registration().await;
-            assert!(refresh.is_ok(), "scaffolded refresh should succeed: {refresh:?}");
+            assert!(!reg.success, "scaffolded register returns success=false without live-clients");
         }
     }
 

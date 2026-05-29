@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Deep Debt S70: Structural Refactoring (May 29, 2026)
+
+- **`rhizocrypt/mod.rs` refactored (858→676 lines)**: Branch/diff/merge/federate ops extracted to `branch_ops.rs` submodule. All production files now under 700 lines.
+- **`niche.rs` refactored (800→435 lines)**: PROVENANCE_ALIASES, derived accessors, response builders, MCP tools, and normalize_method extracted to `niche_derived.rs`. METHOD_CATALOG remains the SSOT in `niche.rs`.
+- **`BearDogVerifier` → `PresenceVerifier`**: Decoupled primal name from method gate security path. Verifier is now generically named per its actual behavior (presence-only check until JH-11).
+- **biomeOS path centralized**: `/tmp/biomeos` hardcoded string in `lib.rs` replaced with `constants::BIOMEOS_SOCKET_SUBDIR` helper.
+- **`register_with_discovery` fixed**: Added `connect()` before `register()` and `RegistrationResult.success` check. Registration was always hitting "Not connected" error.
+- **Handler tests refactored (1731→1419 lines)**: Wave 60 branching tests extracted to `handler_tests_branching.rs`.
+- **Stale test fix**: Songbird scaffolded registration tests updated to match actual `success: false` behavior without `live-clients` feature.
+- **`serde` `rc` feature restored**: Required by `Did(Arc<str>)` serialization.
+- **Stadial gate**: 1,654 tests, 0 clippy warnings, 175 `.rs` files, ~54,294 lines.
+
 #### Wave 60: DAG Evolution — Branch/Diff/Merge/Federate (May 29, 2026)
 
 - **4 new DAG methods** for rootPulse signal graphs (version control over graph composition):
@@ -20,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Vertex::clone_for_branch()**: Clones a vertex with cleared cached ID for use in branched sessions.
 - **8 new handler tests**: Branch lifecycle, invalid vertex rejection, diff between sessions, merge frontier collapse, merge single-parent rejection, federate import, federate duplicate skip, provenance.branch alias.
 - **Niche test coverage**: `normalize_method` tests for `provenance.branch/diff/merge/federate` aliases.
-- **Stadial gate**: 1,654 tests, 0 clippy warnings, 0 fmt diffs. 172 `.rs` files, ~54,251 lines.
+- **Stadial gate**: 1,654 tests, 0 clippy warnings, 0 fmt diffs. 175 `.rs` files, ~54,294 lines.
 
 ### Changed
 
@@ -46,9 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Method gate tests extracted**: `method_gate.rs` dropped from 825 to 489 production lines — tests moved to `method_gate_tests.rs` via `#[path]`.
 - **Handler test harness deduplicated**: Shared helpers (`test_gate`, `test_caller`, `create_test_primal`, `make_request`) extracted to `handler_test_support.rs`, eliminating duplication between `handler_tests.rs` and `handler_tests_validation.rs`.
 - **Magic numbers to constants**: Inline timeouts (2s connect, 5s read) → `NEURAL_API_CONNECT_TIMEOUT_SECS`/`NEURAL_API_READ_TIMEOUT_SECS` in `constants.rs`. Storage cap (1 GiB) → `DEFAULT_MAX_MEMORY_BYTES`.
-- **Workspace dependency hygiene**: `base64` and `hex` hoisted to `[workspace.dependencies]` (resolves `0.4` vs `0.4.3` pin inconsistency). Unused `serde` `rc` feature removed.
+- **Workspace dependency hygiene**: `base64` and `hex` hoisted to `[workspace.dependencies]` (resolves `0.4` vs `0.4.3` pin inconsistency).
 - **Deep debt audit (12-category)**: Zero `unsafe`, zero `async-trait`, zero `Arc<Mutex>`, zero `Box<dyn Error>` in production, zero unwrap/expect in production, zero TODO/FIXME/HACK/XXX, zero `&Vec`/`&String` params, zero `#[allow(dead_code)]` in production.
-- **Files >800L**: Only test files exceed the threshold. All production files under 755 lines.
+- **Files >800L**: Only test files exceed the threshold. All production files under 700 lines.
 - **Stadial gate**: 1,646 tests, 0 clippy warnings, 0 fmt diffs. 175 `.rs` files, ~53,852 lines.
 
 #### Wave 47: Deployment Behavior Convergence (May 24, 2026)
