@@ -94,6 +94,88 @@ pub struct AppendEventRequest {
     pub payload_ref: Option<String>,
 }
 
+/// Branch (fork) request — create a new session from a parent session
+/// at a specific checkout vertex.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BranchRequest {
+    /// Source session to branch from.
+    pub session_id: SessionId,
+    /// Vertex at which to create the branch point. All ancestors of this
+    /// vertex (up to and including genesis) are copied into the new session.
+    pub checkout_vertex: VertexId,
+    /// Optional name for the new branched session.
+    pub name: Option<String>,
+    /// Optional description.
+    pub description: Option<String>,
+}
+
+/// Branch response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BranchResponse {
+    /// The newly created session ID.
+    pub session_id: SessionId,
+    /// Number of vertices copied from the parent session.
+    pub vertex_count: u64,
+    /// Parent session ID (for provenance tracking).
+    pub parent_session_id: SessionId,
+}
+
+/// Diff request — compute structural diff between two DAG sessions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiffRequest {
+    /// Base session (left side of diff).
+    pub base_session_id: SessionId,
+    /// Other session (right side of diff).
+    pub other_session_id: SessionId,
+}
+
+/// Diff response — vertex-level difference between two sessions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiffResponse {
+    /// Vertex IDs present only in the base session.
+    pub only_in_base: Vec<VertexId>,
+    /// Vertex IDs present only in the other session.
+    pub only_in_other: Vec<VertexId>,
+    /// Number of vertices present in both sessions.
+    pub common_count: u64,
+}
+
+/// Merge request — create a merge vertex joining multiple DAG branches.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MergeRequest {
+    /// Session containing the branches to merge.
+    pub session_id: SessionId,
+    /// Parent vertex IDs to merge (must be current frontier tips).
+    pub parents: Vec<VertexId>,
+    /// Event type for the merge vertex.
+    pub event_type: EventType,
+    /// Agent performing the merge.
+    pub agent: Option<Did>,
+    /// Optional metadata on the merge vertex.
+    pub metadata: Vec<(String, String)>,
+}
+
+/// Federate request — import vertices from a remote peer into a local session.
+/// Diff-based: vertices already present are skipped.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FederateRequest {
+    /// Target local session to import into.
+    pub session_id: SessionId,
+    /// Vertices from the remote peer.
+    pub vertices: Vec<rhizo_crypt_core::Vertex>,
+}
+
+/// Federate response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FederateResponse {
+    /// Number of vertices successfully imported.
+    pub imported: u64,
+    /// Number of vertices skipped (already present).
+    pub skipped: u64,
+    /// Updated frontier of the local session after federation.
+    pub frontier: Vec<VertexId>,
+}
+
 /// Query request for vertices.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryRequest {

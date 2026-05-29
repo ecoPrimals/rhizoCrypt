@@ -9,9 +9,10 @@
 
 use crate::error::RpcError;
 use crate::service_types::{
-    AppendEventRequest, CapabilityDescriptor, CheckoutSliceRequest, CreateSessionRequest,
-    HealthStatus, PartialDehydrateResponse, QueryRequest, ServiceMetrics, SessionInfo,
-    cached_capability_descriptors,
+    AppendEventRequest, BranchRequest, BranchResponse, CapabilityDescriptor, CheckoutSliceRequest,
+    CreateSessionRequest, DiffRequest, DiffResponse, FederateRequest, FederateResponse,
+    HealthStatus, MergeRequest, PartialDehydrateResponse, QueryRequest, ServiceMetrics,
+    SessionInfo, cached_capability_descriptors,
 };
 use rhizo_crypt_core::{
     DagStore, MerkleProof, MerkleRoot, PayloadRef, Session, SessionBuilder, SessionId, SliceId,
@@ -112,6 +113,22 @@ pub trait RhizoCryptRpc {
 
     /// Resolve a slice (commit back to permanent storage).
     async fn resolve_slice(slice_id: SliceId, session_id: SessionId) -> Result<(), RpcError>;
+
+    // ========================================================================
+    // Branch / Diff / Merge / Federate (Wave 60)
+    // ========================================================================
+
+    /// Create a new session branched from a parent at a checkout vertex.
+    async fn branch_session(request: BranchRequest) -> Result<BranchResponse, RpcError>;
+
+    /// Compute the structural diff between two sessions.
+    async fn diff_sessions(request: DiffRequest) -> Result<DiffResponse, RpcError>;
+
+    /// Create a merge vertex joining multiple frontier tips.
+    async fn merge_branches(request: MergeRequest) -> Result<VertexId, RpcError>;
+
+    /// Import vertices from a remote peer (diff-based federation).
+    async fn federate(request: FederateRequest) -> Result<FederateResponse, RpcError>;
 
     // ========================================================================
     // Dehydration Operations
@@ -498,6 +515,83 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         self.primal
             .resolve_slice(slice_id, ResolutionOutcome::ReturnedUnchanged)
             .map_err(RpcError::from)
+    }
+
+    async fn branch_session(
+        self,
+        _: tarpc::context::Context,
+        request: BranchRequest,
+    ) -> Result<BranchResponse, RpcError> {
+        let parent_session_id = request.session_id;
+        let (session_id, vertex_count) = self
+            .primal
+            .branch_session(parent_session_id, request.checkout_vertex, request.name)
+            .await
+            .map_err(RpcError::from)?;
+
+        Ok(BranchResponse {
+            session_id,
+            vertex_count,
+            parent_session_id,
+        })
+    }
+
+    async fn diff_sessions(
+        self,
+        _: tarpc::context::Context,
+        request: DiffRequest,
+    ) -> Result<DiffResponse, RpcError> {
+        let (only_in_base, only_in_other, common_count) = self
+            .primal
+            .diff_sessions(request.base_session_id, request.other_session_id)
+            .await
+            .map_err(RpcError::from)?;
+
+        Ok(DiffResponse {
+            only_in_base,
+            only_in_other,
+            common_count,
+        })
+    }
+
+    async fn merge_branches(
+        self,
+        _: tarpc::context::Context,
+        request: MergeRequest,
+    ) -> Result<VertexId, RpcError> {
+        let mut builder =
+            VertexBuilder::new(request.event_type).with_parents(request.parents.clone());
+        if let Some(agent) = request.agent {
+            builder = builder.with_agent(agent);
+        }
+        for (k, v) in &request.metadata {
+            builder = builder.with_metadata(k.clone(), v.clone());
+        }
+        let mut vertex = builder.build();
+        sign_vertex_if_available(&self.primal, &mut vertex).await;
+
+        self.primal
+            .merge_branches(request.session_id, request.parents, vertex)
+            .await
+            .map_err(RpcError::from)
+    }
+
+    async fn federate(
+        self,
+        _: tarpc::context::Context,
+        request: FederateRequest,
+    ) -> Result<FederateResponse, RpcError> {
+        let (imported, skipped, frontier) = self
+            .primal
+            .federate_vertices(request.session_id, request.vertices)
+            .await
+            .map_err(RpcError::from)?;
+
+        Ok(FederateResponse {
+            imported,
+            skipped,
+            frontier,
+        })
     }
 
     async fn partial_dehydrate(

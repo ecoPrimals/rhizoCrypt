@@ -221,6 +221,10 @@ fn normalize_method_maps_provenance_to_dag() {
     assert_eq!(normalize_method("provenance.dehydrate"), "dag.dehydrate");
     assert_eq!(normalize_method("provenance.dehydration.trigger"), "dag.dehydration.trigger");
     assert_eq!(normalize_method("provenance.dehydration.status"), "dag.dehydration.status");
+    assert_eq!(normalize_method("provenance.branch"), "dag.branch");
+    assert_eq!(normalize_method("provenance.diff"), "dag.diff");
+    assert_eq!(normalize_method("provenance.merge"), "dag.merge");
+    assert_eq!(normalize_method("provenance.federate"), "dag.federate");
 }
 
 #[test]

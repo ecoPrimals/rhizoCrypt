@@ -71,6 +71,16 @@ impl Vertex {
         }
     }
 
+    /// Clone this vertex for use in a branched session.
+    ///
+    /// Clears the cached ID so it gets recomputed in the new session context.
+    #[must_use]
+    pub fn clone_for_branch(&self) -> Self {
+        let mut v = self.clone();
+        v.id = None;
+        v
+    }
+
     /// Get the vertex ID if already computed.
     #[must_use]
     pub const fn cached_id(&self) -> Option<VertexId> {

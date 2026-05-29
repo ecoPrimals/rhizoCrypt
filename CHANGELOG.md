@@ -5,7 +5,22 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.14.0] - 2026-05-25
+## [0.14.0] - 2026-05-29
+
+### Added
+
+#### Wave 60: DAG Evolution — Branch/Diff/Merge/Federate (May 29, 2026)
+
+- **4 new DAG methods** for rootPulse signal graphs (version control over graph composition):
+  - `dag.branch` — Fork a session at a checkout vertex, copying the ancestor subgraph into a new session. Enables named branch points in the DAG.
+  - `dag.diff` — Compute structural diff between two DAG session frontiers. Returns vertex sets unique to each side plus common count.
+  - `dag.merge` — Create a merge vertex joining 2+ frontier tips (3-way merge semantics). Validates all parents are current frontier vertices.
+  - `dag.federate` — Import vertices from a remote peer into a local session. Diff-based: vertices already present are skipped. Cross-gate ready.
+- **Full stack implementation**: Core types (`BranchRequest/Response`, `DiffRequest/Response`, `MergeRequest`, `FederateRequest/Response`), core logic on `RhizoCrypt`, tarpc trait methods, JSON-RPC handler dispatch (`handler/branch.rs`), `METHOD_CATALOG` entries (37 total), `PROVENANCE_ALIASES`, `capability_registry.toml` (4 capabilities, stability: evolving), deploy graph updated.
+- **Vertex::clone_for_branch()**: Clones a vertex with cleared cached ID for use in branched sessions.
+- **8 new handler tests**: Branch lifecycle, invalid vertex rejection, diff between sessions, merge frontier collapse, merge single-parent rejection, federate import, federate duplicate skip, provenance.branch alias.
+- **Niche test coverage**: `normalize_method` tests for `provenance.branch/diff/merge/federate` aliases.
+- **Stadial gate**: 1,654 tests, 0 clippy warnings, 0 fmt diffs. 172 `.rs` files, ~54,251 lines.
 
 ### Changed
 

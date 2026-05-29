@@ -5,6 +5,7 @@
 //!
 //! Dispatches semantic method names to `RhizoCryptRpcServer` operations.
 
+mod branch;
 mod capabilities;
 mod dehydration;
 mod events;
@@ -109,6 +110,10 @@ pub async fn handle_request(
         "dag.slice.get" => slice::dispatch_slice_get(&server, params).await,
         "dag.slice.list" => slice::dispatch_slice_list(&server).await,
         "dag.slice.resolve" => slice::dispatch_slice_resolve(&server, params).await,
+        "dag.branch" => branch::dispatch_branch(&server, params).await,
+        "dag.diff" => branch::dispatch_diff(&server, params).await,
+        "dag.merge" => branch::dispatch_merge(&server, params).await,
+        "dag.federate" => branch::dispatch_federate(&server, params).await,
         "dag.partial_dehydrate" => dehydration::dispatch_partial_dehydrate(&server, params).await,
         "dag.dehydration.trigger" | "dag.dehydrate" => {
             dehydration::dispatch_dehydrate(&server, params).await

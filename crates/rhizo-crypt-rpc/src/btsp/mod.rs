@@ -51,8 +51,9 @@ pub use types::{BtspCipher, HandshakeError};
 #[must_use]
 pub fn read_family_seed(primal_env_prefix: &str) -> Option<bytes::Bytes> {
     let primal_key = format!("{primal_env_prefix}_FAMILY_SEED");
-    let val = rhizo_crypt_core::SafeEnv::get_optional(&primal_key)
-        .or_else(|| rhizo_crypt_core::SafeEnv::get_optional(rhizo_crypt_core::SafeEnv::FAMILY_SEED))?;
+    let val = rhizo_crypt_core::SafeEnv::get_optional(&primal_key).or_else(|| {
+        rhizo_crypt_core::SafeEnv::get_optional(rhizo_crypt_core::SafeEnv::FAMILY_SEED)
+    })?;
     let trimmed = val.trim();
     if trimmed.is_empty() {
         None

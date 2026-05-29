@@ -1,7 +1,7 @@
 +++
 title = "rhizoCrypt Validation Summary"
-description = "Ephemeral DAG engine — 1,646 tests, 32 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
-date = 2026-05-25
+description = "Ephemeral DAG engine — 1,654 tests, 37 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
+date = 2026-05-29
 
 [taxonomies]
 primals = ["rhizocrypt"]
@@ -10,9 +10,9 @@ springs = []
 
 ## Status
 
-- **1,646 tests** passing (unit + integration + property + doc, `--all-features`)
-- **171 `.rs` files**, ~53,341 lines
-- **32 registered methods** across 6 domains (31 stable, 1 evolving)
+- **1,654 tests** passing (unit + integration + property + doc, `--all-features`)
+- **172 `.rs` files**, ~54,251 lines
+- **37 registered methods** across 6 domains (31 stable, 5 evolving + 1 dag.partial_dehydrate)
 - **93.88% line coverage** (CI gate: 90%)
 - **Zero `unsafe` blocks** — `unsafe_code = "deny"` workspace-wide
 - **Zero C dependencies** — ecoBin compliant, `cargo-deny` enforced
@@ -30,6 +30,7 @@ springs = []
 | `dag.slice.*` | 4 | Stable | Immutable snapshot checkout/resolve |
 | `dag.dehydration.*` | 2 | Stable | Commit to permanent storage |
 | `dag.partial_dehydrate` | 1 | Evolving | Partial Merkle root without closing session |
+| `dag.branch/diff/merge/federate` | 4 | Evolving | DAG evolution — branch, diff, merge, cross-gate federation (Wave 60) |
 | `health.*` | 4 | Stable | Liveness, readiness, check, metrics |
 | `auth.*` | 3 | Stable | Method gate introspection (JH-0/JH-1) |
 | `identity/capabilities/tools` | 6 | Stable | Discovery, MCP tool exposure |
@@ -86,6 +87,6 @@ and sweetGrass braids.
 
 ## See Also
 
-- [Capability Registry](../capability_registry.toml) — 32 methods with stability tiers
+- [Capability Registry](../capability_registry.toml) — 37 methods with stability tiers
 - [API Specification](../specs/API_SPECIFICATION.md) — tarpc + JSON-RPC wire format
 - [CHANGELOG](../CHANGELOG.md) — full evolution history

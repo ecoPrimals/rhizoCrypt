@@ -137,8 +137,8 @@ pub fn family_scoped_socket_path(name: &str, primal_env_prefix: &str) -> Option<
 #[must_use]
 pub fn read_family_id(primal_env_prefix: &str) -> Option<String> {
     let primal_key = format!("{primal_env_prefix}_FAMILY_ID");
-    let val = SafeEnv::get_optional(&primal_key)
-        .or_else(|| SafeEnv::get_optional(SafeEnv::FAMILY_ID))?;
+    let val =
+        SafeEnv::get_optional(&primal_key).or_else(|| SafeEnv::get_optional(SafeEnv::FAMILY_ID))?;
     let val = val.trim().to_string();
     if val.is_empty() || val == "default" {
         None

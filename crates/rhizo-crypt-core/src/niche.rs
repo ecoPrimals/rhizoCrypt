@@ -242,6 +242,43 @@ pub const METHOD_CATALOG: &[MethodSpec] = &[
         external: false,
         deps: &["dag.slice.checkout"],
     },
+    // Branch/Diff/Merge/Federate — version control over DAG composition (Wave 60)
+    MethodSpec {
+        fqn: "dag.branch",
+        domain: "dag",
+        short_name: "branch",
+        estimated_ms: 10,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create", "dag.event.append"],
+    },
+    MethodSpec {
+        fqn: "dag.diff",
+        domain: "dag",
+        short_name: "diff",
+        estimated_ms: 5,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create"],
+    },
+    MethodSpec {
+        fqn: "dag.merge",
+        domain: "dag",
+        short_name: "merge",
+        estimated_ms: 5,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create", "dag.event.append"],
+    },
+    MethodSpec {
+        fqn: "dag.federate",
+        domain: "dag",
+        short_name: "federate",
+        estimated_ms: 20,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create"],
+    },
     // Partial dehydration — read-only Merkle root without closing session
     MethodSpec {
         fqn: "dag.partial_dehydrate",
@@ -409,6 +446,10 @@ const SEMANTIC_ALIASES: &[(&str, &str)] = &[
     ("provenance.event.append", "dag.event.append"),
     ("provenance.event.append_batch", "dag.event.append_batch"),
     ("provenance.dehydration.trigger", "dag.dehydration.trigger"),
+    ("provenance.branch", "dag.branch"),
+    ("provenance.diff", "dag.diff"),
+    ("provenance.merge", "dag.merge"),
+    ("provenance.federate", "dag.federate"),
 ];
 
 /// All semantic mappings: standard (`short_name` → `fqn`) + aliases.
@@ -681,6 +722,10 @@ const PROVENANCE_ALIASES: &[(&str, &str)] = &[
     ("provenance.dehydrate", "dag.dehydrate"),
     ("provenance.dehydration.status", "dag.dehydration.status"),
     ("provenance.partial_dehydrate", "dag.partial_dehydrate"),
+    ("provenance.branch", "dag.branch"),
+    ("provenance.diff", "dag.diff"),
+    ("provenance.merge", "dag.merge"),
+    ("provenance.federate", "dag.federate"),
 ];
 
 /// MCP tool definitions for AI coordination layer.

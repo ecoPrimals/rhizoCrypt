@@ -129,6 +129,32 @@ domain = "dag.slice"
 stability = "stable"
 description = "Resolve a slice to its underlying session data"
 
+# ── Branch / Diff / Merge / Federate (Wave 60: DAG evolution) ─────
+
+[capabilities.branch]
+method = "dag.branch"
+domain = "dag.branch"
+stability = "evolving"
+description = "Create a named branch point in the DAG — fork session at a checkout vertex"
+
+[capabilities.diff]
+method = "dag.diff"
+domain = "dag.diff"
+stability = "evolving"
+description = "Compute structural diff between two DAG session frontiers"
+
+[capabilities.merge]
+method = "dag.merge"
+domain = "dag.merge"
+stability = "evolving"
+description = "Merge two or more DAG branches via multi-parent vertex (3-way merge semantics)"
+
+[capabilities.federate]
+method = "dag.federate"
+domain = "dag.federate"
+stability = "evolving"
+description = "Replicate DAG state to/from a remote peer — diff-based partial federation"
+
 # ── Partial dehydration (read-only Merkle root, session stays open) ──
 
 [capabilities.partial_dehydrate]
@@ -257,6 +283,10 @@ description = "Connection origin and token status for the current caller"
 #   provenance.dehydration.status  → dag.dehydration.status
 #   provenance.dehydrate           → dag.dehydrate (legacy)
 #   provenance.partial_dehydrate   → dag.partial_dehydrate
+#   provenance.branch              → dag.branch
+#   provenance.diff                → dag.diff
+#   provenance.merge               → dag.merge
+#   provenance.federate            → dag.federate
 
 # ===========================================================================
 # Neural API Announce (outbound, Wave 43)
