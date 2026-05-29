@@ -1,6 +1,6 @@
 +++
 title = "rhizoCrypt Validation Summary"
-description = "Ephemeral DAG engine — 1,654 tests, 37 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
+description = "Ephemeral DAG engine — 1,654 tests, 36 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
 date = 2026-05-29
 
 [taxonomies]
@@ -12,7 +12,7 @@ springs = []
 
 - **1,654 tests** passing (unit + integration + property + doc, `--all-features`)
 - **175 `.rs` files**, ~54,294 lines
-- **37 registered methods** across 6 domains (31 stable, 5 evolving + 1 dag.partial_dehydrate)
+- **36 registered methods** across 6 domains (31 stable, 5 evolving)
 - **93.88% line coverage** (CI gate: 90%)
 - **Zero `unsafe` blocks** — `unsafe_code = "deny"` workspace-wide
 - **Zero C dependencies** — ecoBin compliant, `cargo-deny` enforced
@@ -87,6 +87,6 @@ and sweetGrass braids.
 
 ## See Also
 
-- [Capability Registry](../capability_registry.toml) — 37 methods with stability tiers
+- [Capability Registry](../capability_registry.toml) — 36 methods with stability tiers
 - [API Specification](../specs/API_SPECIFICATION.md) — tarpc + JSON-RPC wire format
 - [CHANGELOG](../CHANGELOG.md) — full evolution history

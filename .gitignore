@@ -21,11 +21,6 @@ lcov.info
 tarpaulin-report.html
 llvm-cov-*.txt
 
-# Showcase runtime artifacts
-showcase/**/logs/
-showcase/**/receipts/
-showcase/**/*.pid
-
 # Fuzz artifacts
 **/fuzz/artifacts/
 **/fuzz/corpus/

@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `dag.diff` — Compute structural diff between two DAG session frontiers. Returns vertex sets unique to each side plus common count.
   - `dag.merge` — Create a merge vertex joining 2+ frontier tips (3-way merge semantics). Validates all parents are current frontier vertices.
   - `dag.federate` — Import vertices from a remote peer into a local session. Diff-based: vertices already present are skipped. Cross-gate ready.
-- **Full stack implementation**: Core types (`BranchRequest/Response`, `DiffRequest/Response`, `MergeRequest`, `FederateRequest/Response`), core logic on `RhizoCrypt`, tarpc trait methods, JSON-RPC handler dispatch (`handler/branch.rs`), `METHOD_CATALOG` entries (37 total), `PROVENANCE_ALIASES`, `capability_registry.toml` (4 capabilities, stability: evolving), deploy graph updated.
+- **Full stack implementation**: Core types (`BranchRequest/Response`, `DiffRequest/Response`, `MergeRequest`, `FederateRequest/Response`), core logic on `RhizoCrypt`, tarpc trait methods, JSON-RPC handler dispatch (`handler/branch.rs`), `METHOD_CATALOG` entries (36 total), `PROVENANCE_ALIASES`, `capability_registry.toml` (4 capabilities, stability: evolving), deploy graph updated.
 - **Vertex::clone_for_branch()**: Clones a vertex with cleared cached ID for use in branched sessions.
 - **8 new handler tests**: Branch lifecycle, invalid vertex rejection, diff between sessions, merge frontier collapse, merge single-parent rejection, federate import, federate duplicate skip, provenance.branch alias.
 - **Niche test coverage**: `normalize_method` tests for `provenance.branch/diff/merge/federate` aliases.

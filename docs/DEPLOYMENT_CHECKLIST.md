@@ -1,6 +1,6 @@
 # DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.0
 
-**Date**: May 25, 2026
+**Date**: May 29, 2026
 **Version**: 0.14.0
 **Status**: PRODUCTION READY
 
@@ -13,7 +13,7 @@
 - [x] **93.88% line coverage** (last measured)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
-- [x] **100% file size compliance** (all production files under 800 lines)
+- [x] **100% file size compliance** (all production files under 700 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
 - [x] **AGPL-3.0-or-later** SPDX header on all 175 `.rs` files
 
@@ -256,5 +256,5 @@ rhizocrypt doctor --comprehensive
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: May 17, 2026
+**Last Updated**: May 29, 2026
 **Version**: rhizoCrypt 0.14.0
