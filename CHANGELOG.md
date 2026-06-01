@@ -5,6 +5,15 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-06-01
+
+### Fixed
+
+#### Wave 67: Provenance Trio Wire Alignment (Jun 1, 2026)
+
+- **Permanent commit method names fixed**: `PermanentStorageClient` adapter calls now use ecosystem-standard dot-notation (`commit.session`, `commit.verify`, `commit.get`, `slice.checkout`, `slice.resolve`) instead of underscore-separated names. Aligns with LoamSpine's native method negotiation — trio wiring would have failed on live commit path.
+- Wire constants centralized in `permanent.rs::wire` module for single-source-of-truth method naming.
+
 ## [0.14.0] - 2026-05-29
 
 ### Added

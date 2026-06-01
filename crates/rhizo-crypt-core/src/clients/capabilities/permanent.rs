@@ -16,6 +16,18 @@ use crate::types::Did;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+/// Wire method names for permanent storage JSON-RPC calls.
+///
+/// Aligned with `LoamSpine`'s native method negotiation:
+/// `commit.session`, `commit.verify`, `commit.get`, `slice.checkout`, `slice.resolve`.
+mod wire {
+    pub const COMMIT_SESSION: &str = "commit.session";
+    pub const COMMIT_VERIFY: &str = "commit.verify";
+    pub const COMMIT_GET: &str = "commit.get";
+    pub const SLICE_CHECKOUT: &str = "slice.checkout";
+    pub const SLICE_RESOLVE: &str = "slice.resolve";
+}
+
 /// Generic permanent storage client - works with ANY provider.
 #[derive(Debug, Clone)]
 pub struct PermanentStorageClient {
@@ -94,7 +106,7 @@ impl PermanentStorageClient {
             summary: summary.clone(),
         };
 
-        let response: CommitResponse = self.adapter.call("commit", request).await?;
+        let response: CommitResponse = self.adapter.call(wire::COMMIT_SESSION, request).await?;
 
         Ok(response.commit_ref)
     }
@@ -109,7 +121,7 @@ impl PermanentStorageClient {
             commit_ref: commit_ref.clone(),
         };
 
-        let response: VerifyCommitResponse = self.adapter.call("verify_commit", request).await?;
+        let response: VerifyCommitResponse = self.adapter.call(wire::COMMIT_VERIFY, request).await?;
 
         Ok(response.valid)
     }
@@ -124,7 +136,7 @@ impl PermanentStorageClient {
             commit_ref: commit_ref.clone(),
         };
 
-        let response: GetCommitResponse = self.adapter.call("get_commit", request).await?;
+        let response: GetCommitResponse = self.adapter.call(wire::COMMIT_GET, request).await?;
 
         Ok(response.summary)
     }
@@ -146,7 +158,7 @@ impl PermanentStorageClient {
             holder: holder.clone(),
         };
 
-        let response: CheckoutSliceResponse = self.adapter.call("checkout_slice", request).await?;
+        let response: CheckoutSliceResponse = self.adapter.call(wire::SLICE_CHECKOUT, request).await?;
 
         Ok(response.origin)
     }
@@ -162,7 +174,7 @@ impl PermanentStorageClient {
             outcome: outcome.clone(),
         };
 
-        let _response: ResolveSliceResponse = self.adapter.call("resolve_slice", request).await?;
+        let _response: ResolveSliceResponse = self.adapter.call(wire::SLICE_RESOLVE, request).await?;
 
         Ok(())
     }
