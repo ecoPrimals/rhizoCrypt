@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wire constants centralized in `permanent.rs::wire` module for single-source-of-truth method naming.
 - **ProvenanceNotifier connected at startup**: `connect()` was never called — all push notifications to sweetGrass were silent no-ops. Now called during `PrimalLifecycle::start()` with graceful failure (provenance trio is optional).
 - **Session commit notification hooked**: `notify_session_commit()` now fires after successful dehydration commit, notifying attribution providers of finalized sessions.
+- **Workspace dependency hygiene**: Hoisted `chacha20poly1305`, `clap`, `tempfile`, `proptest`, and `wiremock` from crate-local pins to `[workspace.dependencies]`. Unified `tempfile` version (was `"3"` in rpc, `"3.15"` in core/service — now `"3.15"` everywhere).
 
 ## [0.14.0] - 2026-05-29
 

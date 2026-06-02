@@ -69,8 +69,17 @@ criterion = { version = "0.5", features = ["html_reports"] }
 # Embedded database (Pure Rust)
 redb = "2.4"
 
+# BTSP Phase 3 — encrypted channel (Pure Rust AEAD)
+chacha20poly1305 = "0.10"
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
 # Test utilities
 temp-env = "0.3"
+tempfile = "3.15"
+proptest = "1.5"
+wiremock = "0.6"
 
 [workspace.lints.rust]
 # deny (not forbid) so test modules can #[allow(unsafe_code)] for env var

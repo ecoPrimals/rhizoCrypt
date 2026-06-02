@@ -27,13 +27,13 @@ path = "tests/service_integration/mod.rs"
 
 [dependencies]
 rhizo-crypt-core = { path = "../rhizo-crypt-core" }
-tempfile = "3.15"
+tempfile = { workspace = true }
 thiserror = { workspace = true }
 rhizo-crypt-rpc = { path = "../rhizo-crypt-rpc" }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-clap = { version = "4.5", features = ["derive"] }
+clap = { workspace = true }
 serde_json = { workspace = true }
 
 [lints]
