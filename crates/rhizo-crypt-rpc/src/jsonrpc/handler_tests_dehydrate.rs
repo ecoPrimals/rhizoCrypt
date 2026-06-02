@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! dag.partial_dehydrate tests (wetSpring upstream ask).
+//! `dag.partial_dehydrate` tests (wetSpring upstream ask).
 
 #![allow(clippy::unwrap_used)]
 

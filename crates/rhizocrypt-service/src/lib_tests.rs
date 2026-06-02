@@ -148,8 +148,8 @@ fn test_print_status_no_panic() {
 async fn test_register_with_discovery_unreachable() {
     let addr: SocketAddr = "127.0.0.1:9999".parse().unwrap();
     let result = register_with_discovery("http://invalid-host-12345:99999", addr).await;
-    assert!(result.is_err());
-    match &result.unwrap_err() {
+    let err = result.err().expect("should be an error");
+    match &err {
         ServiceError::Discovery(msg) => assert!(!msg.is_empty()),
         other => panic!("expected Discovery error, got: {other}"),
     }
