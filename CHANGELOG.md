@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-#### Wave 67: Provenance Trio Wire Alignment (Jun 1, 2026)
+#### Wave 67: Provenance Trio Wire Alignment (Jun 1–2, 2026)
 
 - **Permanent commit method names fixed**: `PermanentStorageClient` adapter calls now use ecosystem-standard dot-notation (`commit.session`, `commit.verify`, `commit.get`, `slice.checkout`, `slice.resolve`) instead of underscore-separated names. Aligns with LoamSpine's native method negotiation — trio wiring would have failed on live commit path.
 - Wire constants centralized in `permanent.rs::wire` module for single-source-of-truth method naming.
+- **ProvenanceNotifier connected at startup**: `connect()` was never called — all push notifications to sweetGrass were silent no-ops. Now called during `PrimalLifecycle::start()` with graceful failure (provenance trio is optional).
+- **Session commit notification hooked**: `notify_session_commit()` now fires after successful dehydration commit, notifying attribution providers of finalized sessions.
 
 ## [0.14.0] - 2026-05-29
 

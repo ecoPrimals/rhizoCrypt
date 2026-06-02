@@ -611,6 +611,11 @@ impl PrimalLifecycle for RhizoCrypt {
         self.state = PrimalState::Running;
         tracing::info!(primal = %self.config.name, "running");
 
+        // Attempt provenance provider connection (non-fatal: trio is optional)
+        if let Err(e) = self.provenance_notifier.connect().await {
+            tracing::warn!(error = %e, "Provenance notifier connect failed (non-fatal)");
+        }
+
         Ok(())
     }
 

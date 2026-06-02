@@ -71,6 +71,7 @@ impl RhizoCrypt {
         let commit_ref = self.commit_to_permanent_storage(&summary_with_attestations).await?;
 
         self.provenance_notifier.notify_dehydration(&summary_with_attestations).await.ok();
+        self.provenance_notifier.notify_session_commit(session_id).await.ok();
 
         self.dehydration_status.insert(
             session_id,
