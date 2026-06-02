@@ -4,7 +4,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 0.14.0 |
+| Version | 0.14.1 |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
 | Tests | 1,655 passing (`--all-features`, Jun 2026) |
 | Coverage | 93.88% lines (last measured) |

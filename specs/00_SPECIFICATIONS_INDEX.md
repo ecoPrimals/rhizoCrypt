@@ -1,7 +1,7 @@
 # 🔐 RhizoCrypt — Specifications Index
 
-**Last Updated**: April 20, 2026  
-**Version**: 0.14.0  
+**Last Updated**: Jun 2, 2026  
+**Version**: 0.14.1  
 **Status**: Active Development
 
 ---
@@ -74,7 +74,7 @@ RhizoCrypt respects human dignity by:
 
 | Document | Purpose | Status |
 |----------|---------|--------|
-| [CONTENT_INDEX_EXPERIMENT.md](./CONTENT_INDEX_EXPERIMENT.md) | Locality-sensitive cross-session similarity index | 🧪 Proposed |
+| [CONTENT_INDEX_EXPERIMENT.md](./archive/CONTENT_INDEX_EXPERIMENT.md) | Locality-sensitive cross-session similarity index | 📦 Archived |
 
 ---
 

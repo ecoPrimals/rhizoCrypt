@@ -1,7 +1,7 @@
 +++
 title = "rhizoCrypt Validation Summary"
 description = "Ephemeral DAG engine — 1,655 tests, 36 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
-date = 2026-05-29
+date = 2026-06-02
 
 [taxonomies]
 primals = ["rhizocrypt"]

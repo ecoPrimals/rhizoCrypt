@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Eager peer population**: `register_with_discovery` now returns the connected `DiscoveryClient`. `serve_with_tcp` calls `populate_registry()` at startup to eagerly seed the engine's registry with peer endpoints — capability clients no longer wait for their first lazy query.
 - **Neural API announce extracted**: `announce_to_biomeos`, `discover_neural_api_socket`, and `send_jsonrpc_uds` moved from `lib.rs` (712→589 lines) into `neural_api.rs` (141 lines). All production files remain under 700 lines.
 - **Handler tests refactored (1419→722 lines)**: Extracted gates/auth (194L), composition (213L), provenance aliases (153L), and partial dehydrate (133L) into focused test modules. Zero files over 800 lines remain.
+- **Version reconciliation**: Aligned `0.14.0` → `0.14.1` across README, CONTEXT, DEPLOYMENT_CHECKLIST, ENV_VARS, Dockerfile, k8s, capability_registry, deploy graph, specs index, and service README. Archived `CONTENT_INDEX_EXPERIMENT.md` (unimplemented draft → `specs/archive/`).
+- **Stadial gate**: 1,655 tests, 0 clippy warnings, 180 `.rs` files, max 686L production file, zero `unsafe` blocks.
 
 ## [0.14.0] - 2026-05-29
 

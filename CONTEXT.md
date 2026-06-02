@@ -1,6 +1,6 @@
 # rhizoCrypt — AI Context Block
 
-**Version**: 0.14.0
+**Version**: 0.14.1
 **Role**: Ephemeral DAG Engine — working memory for the ecoPrimals ecosystem
 **License**: AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 (scyBorg Triple-Copyleft)
 **Language**: Rust 2024, edition 2024, MSRV 1.87 (dev toolchain 1.94.1)
