@@ -150,5 +150,21 @@ mod tests_validation;
 mod tests_branching;
 
 #[cfg(test)]
+#[path = "../handler_tests_gates.rs"]
+mod tests_gates;
+
+#[cfg(test)]
+#[path = "../handler_tests_composition.rs"]
+mod tests_composition;
+
+#[cfg(test)]
+#[path = "../handler_tests_provenance.rs"]
+mod tests_provenance;
+
+#[cfg(test)]
+#[path = "../handler_tests_dehydrate.rs"]
+mod tests_dehydrate;
+
+#[cfg(test)]
 #[path = "../handler_proptests.rs"]
 mod handler_proptests;

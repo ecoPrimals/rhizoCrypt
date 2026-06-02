@@ -362,6 +362,13 @@ async fn serve_with_tcp(
             Ok(()) => info!("Registered with discovery service"),
             Err(e) => warn!(error = %e, "Discovery registration failed, continuing standalone"),
         }
+
+        // Bootstrap the engine's discovery registry so capability clients
+        // (signing, permanent storage, provenance) can resolve peers at runtime.
+        if let Ok(source_addr) = discovery_addr.parse::<std::net::SocketAddr>() {
+            primal.discovery_registry().set_discovery_source(source_addr).await;
+            info!("Discovery source bootstrapped for peer capability resolution");
+        }
     } else {
         info!("No discovery service configured (standalone mode)");
     }

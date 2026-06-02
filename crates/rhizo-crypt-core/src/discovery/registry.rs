@@ -167,7 +167,7 @@ impl DiscoveryRegistry {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use tokio::net::TcpStream;
 
-        let capability_name = format!("{capability:?}");
+        let capability_name = capability.to_string();
 
         let request_body = serde_json::json!({
             "jsonrpc": "2.0",
