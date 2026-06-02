@@ -632,3 +632,60 @@ async fn test_registry_concurrent_register_and_discover() {
         _ => panic!("expected Available"),
     }
 }
+
+/// Eager population fails (connection refused) but lazy source is set.
+/// A subsequent `discover()` should resolve via `query_discovery_source`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_lazy_fallback_after_eager_population_failure() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let body = r#"{"jsonrpc":"2.0","result":[{"service_id":"loamSpine","address":"127.0.0.1:9300","capabilities":["storage:permanent:commit","slice:checkout","slice:resolution"]}],"id":1}"#;
+    tokio::spawn(serve_one_http_json_response(listener, body, None));
+
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+
+    // No eager endpoints registered — simulate populate_registry failure.
+    assert!(!registry.is_available(&Capability::PermanentCommit).await);
+
+    // Set the lazy fallback source (same addr that serves the discovery response).
+    registry.set_discovery_source(addr).await;
+
+    // Now discover should resolve lazily via the source.
+    let status = registry.discover(&Capability::PermanentCommit).await;
+    assert!(status.is_available(), "lazy fallback should resolve PermanentCommit");
+
+    // Cached — subsequent lookups succeed even without source.
+    registry.clear_discovery_source().await;
+    assert!(registry.is_available(&Capability::PermanentCommit).await);
+    assert!(registry.is_available(&Capability::SliceCheckout).await);
+    assert!(registry.is_available(&Capability::SliceResolution).await);
+}
+
+/// No discovery source configured and no eager population — pure standalone.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_standalone_mode_no_source_no_population() {
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+
+    let status = registry.discover(&Capability::Signing).await;
+    assert!(matches!(status, DiscoveryStatus::Unavailable));
+
+    let status = registry.discover(&Capability::PermanentCommit).await;
+    assert!(matches!(status, DiscoveryStatus::Unavailable));
+
+    assert!(registry.all_endpoints().await.is_empty());
+}
+
+/// Lazy source unreachable returns Failed, not panic.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_lazy_source_unreachable_returns_failed() {
+    let registry = DiscoveryRegistry::new("rhizoCrypt");
+    registry
+        .set_discovery_source("127.0.0.1:1".parse().unwrap())
+        .await;
+
+    let status = registry.discover(&Capability::Signing).await;
+    assert!(
+        matches!(status, DiscoveryStatus::Failed(_)),
+        "unreachable source should return Failed"
+    );
+}

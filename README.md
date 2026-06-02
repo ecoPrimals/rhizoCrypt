@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.14.1 |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,655 passing (`--all-features`, Jun 2026) |
+| Tests | 1,663 passing (`--all-features`, Jun 2026) |
 | Coverage | 93.88% lines (last measured) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |

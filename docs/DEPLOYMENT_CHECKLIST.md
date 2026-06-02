@@ -9,7 +9,7 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,655 tests passing** (all features), 0 failures
+- [x] **1,663 tests passing** (all features), 0 failures
 - [x] **93.88% line coverage** (last measured)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
@@ -30,7 +30,7 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,655 tests)
+- [x] **README.md** (current metrics — 1,663 tests)
 - [x] **CHANGELOG.md** (version history through Wave 67)
 - [x] **showcase/** — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`
 - [x] **specs/** (12 specification documents)

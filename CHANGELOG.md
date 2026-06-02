@@ -22,7 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Neural API announce extracted**: `announce_to_biomeos`, `discover_neural_api_socket`, and `send_jsonrpc_uds` moved from `lib.rs` (712→589 lines) into `neural_api.rs` (141 lines). All production files remain under 700 lines.
 - **Handler tests refactored (1419→722 lines)**: Extracted gates/auth (194L), composition (213L), provenance aliases (153L), and partial dehydrate (133L) into focused test modules. Zero files over 800 lines remain.
 - **Version reconciliation**: Aligned `0.14.0` → `0.14.1` across README, CONTEXT, DEPLOYMENT_CHECKLIST, ENV_VARS, Dockerfile, k8s, capability_registry, deploy graph, specs index, and service README. Archived `CONTENT_INDEX_EXPERIMENT.md` (unimplemented draft → `specs/archive/`).
-- **Stadial gate**: 1,655 tests, 0 clippy warnings, 180 `.rs` files, max 686L production file, zero `unsafe` blocks.
+
+#### Wave 69: Discovery Fallback Hardening + Test Coverage (Jun 2, 2026)
+
+- **Lazy discovery fallback tests**: Added `test_lazy_fallback_after_eager_population_failure` — verifies that when eager `populate_registry()` fails, the lazy `query_discovery_source` path resolves peers on first capability query. Also: `test_standalone_mode_no_source_no_population`, `test_lazy_source_unreachable_returns_failed`.
+- **Dehydrate edge cases**: `test_partial_dehydrate_missing_session_id`, `test_partial_dehydrate_nonexistent_session`, `test_partial_dehydrate_idempotent`.
+- **Readiness gate coverage**: `test_readiness_gate_allows_health_prefix_when_not_running` (all `health.*`), `test_readiness_gate_allows_exact_public_methods_when_not_running` (`primal.capabilities`, `capabilities.list`, `identity.get`, `tools.list`).
+- **sled→redb audit**: Confirmed zero sled references in active code/deps. redb 2.6.3 is the sole persistent backend. `DagStore` trait + `DagBackend` enum provide clean migration abstraction for downstream primals.
+- **Wave 68 FRAGO acked**: `wave68-dependency-evolution-coordination` — rhizoCrypt has no action (sled fully removed since s20, redb is default). southGate owns Songbird+BearDog sled→redb migration.
+- **Stadial gate**: 1,663 tests, 0 clippy warnings, 180 `.rs` files, max 686L production file, zero `unsafe` blocks.
 
 ## [0.14.0] - 2026-05-29
 

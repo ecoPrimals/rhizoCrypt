@@ -205,3 +205,34 @@ async fn test_auth_methods_work_when_primal_not_running() {
         assert!(result.is_ok(), "{method} should work even when primal is not running");
     }
 }
+
+/// All `health.*` prefix methods bypass readiness via `PUBLIC_METHOD_PREFIXES`.
+#[tokio::test]
+async fn test_readiness_gate_allows_health_prefix_when_not_running() {
+    let primal = create_unstarted_primal();
+    assert!(!primal.state().is_running());
+
+    for method in ["health.check", "health.liveness", "health.readiness", "health.metrics"] {
+        let req = make_request(method, None);
+        let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
+        assert!(result.is_ok(), "{method} should bypass readiness gate (health.* prefix)");
+    }
+}
+
+/// Exact public methods bypass readiness gate even when not running.
+#[tokio::test]
+async fn test_readiness_gate_allows_exact_public_methods_when_not_running() {
+    let primal = create_unstarted_primal();
+    assert!(!primal.state().is_running());
+
+    for method in [
+        "primal.capabilities",
+        "capabilities.list",
+        "identity.get",
+        "tools.list",
+    ] {
+        let req = make_request(method, None);
+        let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
+        assert!(result.is_ok(), "{method} should bypass readiness gate (exact public)");
+    }
+}

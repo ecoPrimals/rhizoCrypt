@@ -152,3 +152,50 @@ async fn test_partial_dehydrate_empty_session() {
     assert_eq!(resp["sealed_count"], 0);
     assert_eq!(resp["open_count"], 0);
 }
+
+#[tokio::test]
+async fn test_partial_dehydrate_missing_session_id() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("dag.partial_dehydrate", Some(json!({})));
+    let resp = handle_request(primal, req, &test_gate(), &test_caller()).await;
+    assert!(resp.is_err(), "missing session_id should error");
+}
+
+#[tokio::test]
+async fn test_partial_dehydrate_nonexistent_session() {
+    let primal = create_test_primal().await;
+
+    let fake_id = "00000000-0000-7000-8000-000000000000";
+    let req = make_request("dag.partial_dehydrate", Some(json!({"session_id": fake_id})));
+    let resp = handle_request(primal, req, &test_gate(), &test_caller()).await;
+    assert!(resp.is_err(), "nonexistent session should error");
+}
+
+#[tokio::test]
+async fn test_partial_dehydrate_idempotent() {
+    let primal = create_test_primal().await;
+
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let session_id =
+        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = session_id.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({
+            "session_id": session_id,
+            "event_type": {"DataCreate": {"schema": "idempotent-test"}},
+            "agent": "did:key:z6MkIdempotent"
+        })),
+    );
+    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+
+    let req1 = make_request("dag.partial_dehydrate", Some(json!({"session_id": session_id})));
+    let resp1 = handle_request(primal.clone(), req1, &test_gate(), &test_caller()).await.unwrap();
+
+    let req2 = make_request("dag.partial_dehydrate", Some(json!({"session_id": session_id})));
+    let resp2 = handle_request(primal.clone(), req2, &test_gate(), &test_caller()).await.unwrap();
+
+    assert_eq!(resp1["sealed_count"], resp2["sealed_count"]);
+}
