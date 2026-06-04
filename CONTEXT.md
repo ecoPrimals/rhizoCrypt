@@ -72,8 +72,8 @@ Three workspace crates:
 | Tests | 1,670 passing (all features) |
 | Coverage | 93.88% lines (last measured) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
-| Source files | 180 `.rs`, ~54,378 lines |
-| Max file size | 686 lines production (limit: 700) |
+| Source files | 181 `.rs`, ~54,835 lines |
+| Max file size | 698 lines production (limit: 700) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |

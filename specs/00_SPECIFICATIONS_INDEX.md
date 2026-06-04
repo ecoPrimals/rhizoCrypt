@@ -1,6 +1,6 @@
 # 🔐 RhizoCrypt — Specifications Index
 
-**Last Updated**: Jun 2, 2026  
+**Last Updated**: Jun 3, 2026  
 **Version**: 0.14.1  
 **Status**: Active Development
 
@@ -54,7 +54,7 @@ RhizoCrypt respects human dignity by:
 | [SLICE_SEMANTICS.md](./SLICE_SEMANTICS.md) | Slice modes, resolution routing, waypoints | ✅ Complete |
 | [DEHYDRATION_PROTOCOL.md](./DEHYDRATION_PROTOCOL.md) | DAG → LoamSpine commit protocol | ✅ Complete |
 | [API_SPECIFICATION.md](./API_SPECIFICATION.md) | tarpc & REST API definitions | ✅ Complete |
-| [EVENT_TYPE_REFERENCE.md](./EVENT_TYPE_REFERENCE.md) | `dag.event.append` — 27-variant wire format for domain springs | ✅ Complete |
+| [EVENT_TYPE_REFERENCE.md](./EVENT_TYPE_REFERENCE.md) | `dag.event.append` — 32-variant wire format for domain springs (incl. mesh domain, Wave 76) | ✅ Complete |
 
 ### Integration Specifications
 
