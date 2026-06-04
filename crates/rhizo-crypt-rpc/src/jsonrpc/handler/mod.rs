@@ -11,6 +11,7 @@ mod dehydration;
 mod events;
 mod health;
 mod merkle;
+mod mesh;
 mod params;
 mod session;
 mod slice;
@@ -127,6 +128,7 @@ pub async fn handle_request(
         "capabilities.list" | "capability.list" | "primal.capabilities" => {
             capabilities::dispatch_capability_list(&server).await
         }
+        "mesh.events.record" => mesh::dispatch_mesh_events_record(&server, params).await,
         "tools.list" | "mcp.tools.list" => Ok(tools::dispatch_tools_list()),
         "tools.call" | "mcp.tools.call" => tools::dispatch_tools_call(&server, params).await,
         _ => Err(HandlerError::MethodNotFound(request.method.into())),

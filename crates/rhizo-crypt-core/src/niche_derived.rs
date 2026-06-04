@@ -20,6 +20,7 @@ pub const DOMAIN_DESCRIPTIONS: &[(&str, &str)] = &[
     ("capabilities", "Capability introspection"),
     ("identity", "Primal identity for biomeOS discovery"),
     ("tools", "MCP tool exposure for AI coordination"),
+    ("mesh", "Cross-gate trust event recording"),
     ("auth", "Method gate introspection and authorization (JH-0)"),
 ];
 
@@ -213,6 +214,7 @@ fn semantic_mapping_object() -> serde_json::Value {
 pub const CONSUMED_CAPABILITIES: &[&str] = &[
     "crypto.sign",
     "crypto.verify",
+    "crypto.trust_events",
     "commit.session",
     "commit.entry",
     "storage.store",
@@ -233,6 +235,7 @@ pub const DEPENDENCIES: &[(&str, bool, &str)] = &[
     ("commit", false, "dehydration to permanent storage (graceful fallback to local-only)"),
     ("storage", false, "content-addressed payload storage (graceful fallback to inline)"),
     ("provenance", false, "attribution braids (graceful fallback to unattributed)"),
+    ("mesh", false, "cross-gate trust event recording (graceful fallback to no-op)"),
 ];
 
 /// All semantic mappings: standard (`short_name` → `fqn`) + aliases.

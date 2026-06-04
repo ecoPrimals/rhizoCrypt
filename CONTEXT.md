@@ -40,7 +40,7 @@ Three workspace crates:
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | DAG engine, sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc service (28 ops), JSON-RPC 2.0 handler (36 methods, 6 domains), NDJSON streaming, rate limiting |
+| `rhizo-crypt-rpc` | tarpc service (28 ops), JSON-RPC 2.0 handler (37 methods, 7 domains), NDJSON streaming, rate limiting |
 | `rhizocrypt-service` | UniBin binary (`server`, `client`, `status`, `version`, `doctor`) |
 
 ## IPC
@@ -63,7 +63,7 @@ Three workspace crates:
 | BTSP Phase 3 | Server-side handshake + ChaCha20-Poly1305 encrypted channel via `btsp.negotiate` |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 184 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 186 `.rs` files |
 
 ## Metrics
 
@@ -72,8 +72,8 @@ Three workspace crates:
 | Tests | 1,681 passing (all features) |
 | Coverage | 93.88% lines (last measured) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
-| Source files | 184 `.rs`, ~55,408 lines |
-| Max file size | 701 lines (production 693L, limit: 700) |
+| Source files | 186 `.rs`, ~55,506 lines |
+| Max file size | 686 lines production (`service.rs`, limit: 700) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |
@@ -86,7 +86,7 @@ Three workspace crates:
 ## Key Files
 
 - `Cargo.toml` — Workspace config, lint policy, dependency pins
-- `capability_registry.toml` — Capability method registry (36 methods in `METHOD_CATALOG`, 6 domains)
+- `capability_registry.toml` — Capability method registry (37 methods in `METHOD_CATALOG`, 7 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
 - `specs/` — 12 specification documents (incl. `CRYPTO_MODEL.md` — signing provider crypto delegation)
 - `showcase/` — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`

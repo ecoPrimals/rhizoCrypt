@@ -233,6 +233,14 @@ domain = "tools"
 stability = "stable"
 description = "Execute an MCP tool call dispatched by AI agents"
 
+# ── Mesh trust events (cross-gate DAG recording, Wave 76c) ───────
+
+[capabilities.mesh_events_record]
+method = "mesh.events.record"
+domain = "mesh"
+stability = "evolving"
+description = "Record a cross-gate trust event from bearDog into the DAG"
+
 # ── Auth introspection (JH-0 method gate) ────────────────────────
 
 [capabilities.auth_check]

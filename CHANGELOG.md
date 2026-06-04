@@ -46,6 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Wave 76 FRAGO acked**: `wave76-parity-sprint-provenance` — schemas defined and serialization tested. Not yet wired to bearDog.
 - **Stadial gate**: 1,670 tests, 0 clippy warnings, 181 `.rs` files, max 698L production file (rpc_integration.rs), zero `unsafe` blocks.
 
+#### Wave 77d: Lifecycle Extraction + mesh.events.record Handler + Niche Wiring (Jun 4, 2026)
+
+- **Lifecycle extracted**: `PrimalLifecycle` + `PrimalHealth` impls moved from `rhizocrypt/mod.rs` (701→579 lines) to `rhizocrypt/lifecycle.rs` (137 lines). Production code well under 700L limit.
+- **`mesh.events.record` handler**: New JSON-RPC method wired end-to-end — handler dispatches to `MeshEventListener::record_event()`, returns mapped `EventType` name and event count. Protected by method gate (requires auth token).
+- **Niche catalog updated**: `mesh.events.record` added to `METHOD_CATALOG` (37 methods, 7 domains). `mesh` domain added to `DOMAIN_DESCRIPTIONS`. `crypto.trust_events` added to `CONSUMED_CAPABILITIES`. `mesh` dependency added to `DEPENDENCIES` (optional, graceful fallback).
+- **`capability_registry.toml`**: `mesh_events_record` entry added (domain: `mesh`, stability: `evolving`).
+- **`cargo-deny`**: advisories ok, bans ok, licenses ok, sources ok.
+- **Stadial gate**: 1,681 tests, 0 clippy warnings (including `--tests`), 186 `.rs` files, max 686L production file (`service.rs`), zero `unsafe` blocks.
+
 #### Wave 76b: MeshEventListener + IPC Trigger Path Design (Jun 4, 2026)
 
 - **`MeshEventListener` module**: New `types_ecosystem::mesh` module with listener, wire DTOs, and event mapping. Mirrors `ProvenanceNotifier` architecture (inverted — inbound from bearDog instead of outbound to sweetGrass).

@@ -393,6 +393,16 @@ pub const METHOD_CATALOG: &[MethodSpec] = &[
         external: false,
         deps: &[],
     },
+    // Mesh trust events — cross-gate DAG event recording (Wave 76c)
+    MethodSpec {
+        fqn: "mesh.events.record",
+        domain: "mesh",
+        short_name: "events.record",
+        estimated_ms: 3,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create", "dag.event.append"],
+    },
     // Auth introspection — JH-0 method gate (public, always allowed)
     MethodSpec {
         fqn: "auth.check",

@@ -15,7 +15,7 @@
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all production files under 700 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 184 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 186 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)

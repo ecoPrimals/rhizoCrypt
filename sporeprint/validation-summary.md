@@ -11,8 +11,8 @@ springs = []
 ## Status
 
 - **1,681 tests** passing (unit + integration + property + doc, `--all-features`)
-- **184 `.rs` files**, ~55,408 lines
-- **36 registered methods** across 6 domains (31 stable, 5 evolving)
+- **186 `.rs` files**, ~55,506 lines
+- **37 registered methods** across 7 domains (31 stable, 6 evolving)
 - **93.88% line coverage** (CI gate: 90%)
 - **Zero `unsafe` blocks** — `unsafe_code = "deny"` workspace-wide
 - **Zero C dependencies** — ecoBin compliant, `cargo-deny` enforced
