@@ -46,6 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Wave 76 FRAGO acked**: `wave76-parity-sprint-provenance` — schemas defined and serialization tested. Not yet wired to bearDog.
 - **Stadial gate**: 1,670 tests, 0 clippy warnings, 181 `.rs` files, max 698L production file (rpc_integration.rs), zero `unsafe` blocks.
 
+#### Deep Debt Hygiene: Clippy Guard Consistency + Provenance Wire Fix (Jun 3, 2026)
+
+- **Clippy `#[expect]` consistency**: Added `#[expect(clippy::unwrap_used, reason = "test code")]` to 7 test modules that were missing it: `storage.rs`, `compute.rs`, `factory.rs`, `adapters/mod.rs`, `adapters/tarpc.rs`, `capabilities/provenance.rs`, `metrics.rs`. All test modules now have explicit local clippy guards (matching `permanent.rs` pattern).
+- **Provenance wire fix**: `ProvenanceNotifier::send_jsonrpc` used `unwrap_or_default()` for serialization — would silently send empty line on failure. Evolved to `map_err(|e| format!("Serialize failed: {e}"))?` for proper error propagation.
+- **Audit findings**: Zero `.unwrap()`/`.expect()` in production code across all 181 `.rs` files. All reported counts (42+40+25+40+24+41+28+18) are test-only, properly guarded. All `unwrap_or*` in production are idiomatic fallback patterns. Constants centralized in `constants.rs`. Config is environment-driven. Mocks fully `cfg(test|test-utils)` gated. Zero C deps in production (nix is dev-dep only for test signals). Duplicate crates (rand 0.8/0.9, getrandom 0.2/0.3/0.4) are transitive, forced by tarpc 0.37 pinning.
+
 ## [0.14.0] - 2026-05-29
 
 ### Added

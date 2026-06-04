@@ -285,7 +285,10 @@ impl ProvenanceNotifier {
 
         let (reader, mut writer) = stream.into_split();
 
-        let payload = format!("{}\n", serde_json::to_string(request).unwrap_or_default());
+        let payload = format!(
+            "{}\n",
+            serde_json::to_string(request).map_err(|e| format!("Serialize failed: {e}"))?
+        );
         writer.write_all(payload.as_bytes()).await.map_err(|e| format!("Write failed: {e}"))?;
         writer.flush().await.map_err(|e| format!("Flush failed: {e}"))?;
 

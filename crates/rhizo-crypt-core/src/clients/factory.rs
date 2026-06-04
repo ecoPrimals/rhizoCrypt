@@ -289,6 +289,7 @@ impl CapabilityClientFactory {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
     use crate::discovery::{Capability, ServiceEndpoint};
