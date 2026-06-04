@@ -224,6 +224,9 @@ pub use types_ecosystem::compute::{
     ComputeEvent, ComputeProviderClient, ComputeProviderConfig, TaskId,
 };
 
+// Mesh event listener types
+pub use types_ecosystem::mesh::{MeshEventListener, MeshTrustEvent, MeshTrustEventKind};
+
 // Provenance capability types
 pub use types_ecosystem::provenance::{
     AgentContribution, ProvenanceChain, ProvenanceNotifier, ProvenanceProviderConfig,

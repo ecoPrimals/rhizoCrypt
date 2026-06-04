@@ -5,7 +5,7 @@
 //!
 //! Tests the complete session flow: create → append → query → resolve.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(clippy::expect_used, reason = "test code")]
 
 use rhizo_crypt_core::{
     EventType, PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, SessionBuilder, SessionType,

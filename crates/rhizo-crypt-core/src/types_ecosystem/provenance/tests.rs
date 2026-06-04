@@ -3,7 +3,7 @@
 
 //! Tests for provenance types and config.
 
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used, reason = "test code")]
 
 use super::types::*;
 use crate::types::{Did, PayloadRef, SessionId, Timestamp, VertexId};

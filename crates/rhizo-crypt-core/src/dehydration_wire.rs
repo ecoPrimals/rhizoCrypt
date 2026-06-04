@@ -165,6 +165,7 @@ pub struct WireOperationRef {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test code")]
 mod tests {
     use super::*;
 

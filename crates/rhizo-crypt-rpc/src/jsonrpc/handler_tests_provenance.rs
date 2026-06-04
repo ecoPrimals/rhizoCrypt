@@ -3,7 +3,7 @@
 
 //! GAP-36: provenance.* wire-name alias tests + session summary fields.
 
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used, reason = "test code")]
 
 use super::test_support::{create_test_primal, make_request, test_caller, test_gate};
 use super::*;

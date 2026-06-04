@@ -6,7 +6,8 @@
 //! Tests the main service entry point, configuration, startup, shutdown,
 //! and error handling scenarios using the `server` subcommand.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(clippy::unwrap_used, reason = "test code")]
+#![expect(clippy::expect_used, reason = "test code")]
 
 use rhizocrypt_service::exit_codes;
 use std::process::{Child, Command, ExitStatus, Stdio};

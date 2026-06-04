@@ -3,7 +3,6 @@
 
 //! End-to-end test suite for rhizoCrypt.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod common;
 mod e2e;

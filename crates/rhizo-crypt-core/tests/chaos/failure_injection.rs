@@ -5,7 +5,7 @@
 //!
 //! Tests system behavior when operations fail or timeout.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(clippy::expect_used, reason = "test code")]
 
 use rhizo_crypt_core::{
     PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, SessionBuilder, SessionId, SessionType,

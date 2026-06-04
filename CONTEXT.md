@@ -63,17 +63,17 @@ Three workspace crates:
 | BTSP Phase 3 | Server-side handshake + ChaCha20-Poly1305 encrypted channel via `btsp.negotiate` |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 181 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 184 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,670 passing (all features) |
+| Tests | 1,681 passing (all features) |
 | Coverage | 93.88% lines (last measured) |
-| Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
-| Source files | 181 `.rs`, ~54,835 lines |
-| Max file size | 698 lines production (limit: 700) |
+| Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
+| Source files | 184 `.rs`, ~55,408 lines |
+| Max file size | 701 lines (production 693L, limit: 700) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |

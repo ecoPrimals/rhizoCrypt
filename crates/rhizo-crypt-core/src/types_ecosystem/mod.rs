@@ -7,4 +7,5 @@
 //! These types are vendor-agnostic and can be used with any compatible service.
 
 pub mod compute;
+pub mod mesh;
 pub mod provenance;

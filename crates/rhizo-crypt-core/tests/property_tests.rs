@@ -6,7 +6,7 @@
 //! Uses proptest to validate invariants across a wide range of inputs.
 //! These tests complement unit tests by exploring edge cases automatically.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(clippy::unwrap_used, reason = "test code")]
 
 use proptest::prelude::*;
 use rhizo_crypt_core::{

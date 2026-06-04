@@ -3,7 +3,7 @@
 
 //! Validation and error-path tests for the JSON-RPC handler.
 
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used, reason = "test code")]
 
 use super::test_support::{create_test_primal, make_request, test_caller, test_gate};
 use super::*;

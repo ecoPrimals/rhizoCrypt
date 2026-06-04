@@ -5,7 +5,9 @@
 //!
 //! Tests the service configuration, startup behavior, and basic functionality.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::uninlined_format_args)]
+#![expect(clippy::unwrap_used, reason = "test code")]
+#![expect(clippy::expect_used, reason = "test code")]
+#![expect(clippy::uninlined_format_args, reason = "test code")]
 
 mod client_and_config;
 mod doctor;

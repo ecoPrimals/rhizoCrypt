@@ -5,7 +5,7 @@
 //!
 //! Tests system behavior when discovery fails or clients are unavailable.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(clippy::unwrap_used, reason = "test code")]
 
 use rhizo_crypt_core::{
     Capability, ClientFactory, ClientProvider, DiscoveryRegistry, DiscoveryStatus,

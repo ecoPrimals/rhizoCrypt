@@ -7,7 +7,7 @@
 //! without requiring live trio peers.  Covers the primalSpring audit action:
 //! "validate witness chain under NUCLEUS mesh (store → witness → verify round-trip)."
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(clippy::expect_used, reason = "test code")]
 
 use rhizo_crypt_core::{
     MerkleRoot,

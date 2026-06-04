@@ -46,11 +46,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Wave 76 FRAGO acked**: `wave76-parity-sprint-provenance` — schemas defined and serialization tested. Not yet wired to bearDog.
 - **Stadial gate**: 1,670 tests, 0 clippy warnings, 181 `.rs` files, max 698L production file (rpc_integration.rs), zero `unsafe` blocks.
 
-#### Deep Debt Hygiene: Clippy Guard Consistency + Provenance Wire Fix (Jun 3, 2026)
+#### Wave 76b: MeshEventListener + IPC Trigger Path Design (Jun 4, 2026)
 
-- **Clippy `#[expect]` consistency**: Added `#[expect(clippy::unwrap_used, reason = "test code")]` to 7 test modules that were missing it: `storage.rs`, `compute.rs`, `factory.rs`, `adapters/mod.rs`, `adapters/tarpc.rs`, `capabilities/provenance.rs`, `metrics.rs`. All test modules now have explicit local clippy guards (matching `permanent.rs` pattern).
+- **`MeshEventListener` module**: New `types_ecosystem::mesh` module with listener, wire DTOs, and event mapping. Mirrors `ProvenanceNotifier` architecture (inverted — inbound from bearDog instead of outbound to sweetGrass).
+  - `MeshEventListener` — discovers signing provider, connects at startup (non-fatal), provides `record_event()` for mapping trust events to DAG vertices.
+  - `MeshTrustEvent` / `MeshTrustEventKind` — wire DTOs for bearDog w137 `auth.trust_issuer` payloads with 1:1 mapping to `EventType` mesh variants.
+  - IPC trigger path designed: bearDog `auth.trust_issuer` → rhizoCrypt listener → `EventType::TrustIssuerRegistered` → DAG append.
+- **`RhizoCrypt` struct wired**: `mesh_listener` field added, created in `new()`, connected in `PrimalLifecycle::start()` (non-fatal, after provenance notifier). `mesh_listener()` accessor exposed.
+- **Re-exports**: `MeshEventListener`, `MeshTrustEvent`, `MeshTrustEventKind` re-exported from `lib.rs`.
+- **11 new tests**: Wire DTO roundtrip, `into_event_type` mapping for all 5 event kinds, listener state machine, drain, discovery connection.
+
+#### Deep Debt Hygiene: Clippy Guard Consistency + Provenance Wire Fix (Jun 3–4, 2026)
+
+- **Clippy `#[expect]` full migration**: Migrated 29 test files from `#![allow(clippy::unwrap_used)]` to `#![expect(clippy::unwrap_used, reason = "test code")]`. Removed unfulfilled guards where test files only use `expect()` (not `unwrap()`). Added guards to 2 additional inline test modules (`dehydration_wire.rs`, `integration/mocks.rs::capability_mock_tests`). Zero unfulfilled-expect warnings with `--tests`.
 - **Provenance wire fix**: `ProvenanceNotifier::send_jsonrpc` used `unwrap_or_default()` for serialization — would silently send empty line on failure. Evolved to `map_err(|e| format!("Serialize failed: {e}"))?` for proper error propagation.
-- **Audit findings**: Zero `.unwrap()`/`.expect()` in production code across all 181 `.rs` files. All reported counts (42+40+25+40+24+41+28+18) are test-only, properly guarded. All `unwrap_or*` in production are idiomatic fallback patterns. Constants centralized in `constants.rs`. Config is environment-driven. Mocks fully `cfg(test|test-utils)` gated. Zero C deps in production (nix is dev-dep only for test signals). Duplicate crates (rand 0.8/0.9, getrandom 0.2/0.3/0.4) are transitive, forced by tarpc 0.37 pinning.
+- **Audit findings**: Zero `.unwrap()`/`.expect()` in production code across all 184 `.rs` files. All test `unwrap()`/`expect()` properly guarded. Zero `unsafe` blocks. Zero TODO/FIXME markers.
+- **Stadial gate**: 1,681 tests, 0 clippy warnings (including `--tests`), 184 `.rs` files, max 701L (production 693L), zero `unsafe` blocks.
 
 ## [0.14.0] - 2026-05-29
 

@@ -3,7 +3,7 @@
 
 //! Composition payload tests (provenance trio + JH-5 Phase 3 readiness).
 
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used, reason = "test code")]
 
 use super::test_support::{create_test_primal, make_request, test_caller, test_gate};
 use super::*;

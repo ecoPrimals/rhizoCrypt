@@ -6,7 +6,7 @@
 //! Tests the full dehydration process from session creation through
 //! Merkle computation, summary generation, and commitment.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(clippy::expect_used, reason = "test code")]
 
 use rhizo_crypt_core::{
     EventType, PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, SessionBuilder, SessionType,

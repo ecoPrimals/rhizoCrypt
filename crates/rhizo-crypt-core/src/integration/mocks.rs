@@ -578,6 +578,7 @@ impl MockCapabilityFactory {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
 mod capability_mock_tests {
     use super::*;
     use crate::clients::adapters::ProtocolAdapter;

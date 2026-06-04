@@ -5,7 +5,7 @@
 //!
 //! Tests vertex linking, frontier tracking, and DAG traversal.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(clippy::expect_used, reason = "test code")]
 
 use rhizo_crypt_core::{
     DagStore, EventType, PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, SessionBuilder,

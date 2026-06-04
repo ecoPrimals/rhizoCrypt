@@ -71,12 +71,15 @@ pub struct RhizoCrypt {
     signing_client: OnceCell<Option<crate::clients::SigningClient>>,
     // Provenance notifier (optional, non-fatal)
     provenance_notifier: Arc<crate::types_ecosystem::provenance::ProvenanceNotifier>,
+    // Cross-gate mesh event listener (optional, non-fatal)
+    mesh_listener: Arc<crate::types_ecosystem::mesh::MeshEventListener>,
 }
 
 impl RhizoCrypt {
     /// Create a new `RhizoCrypt` instance.
     #[must_use]
     pub fn new(config: RhizoCryptConfig) -> Self {
+        use crate::types_ecosystem::mesh::MeshEventListener;
         use crate::types_ecosystem::provenance::ProvenanceNotifier;
 
         let registry = Arc::new(DiscoveryRegistry::new(crate::constants::PRIMAL_NAME));
@@ -94,7 +97,10 @@ impl RhizoCrypt {
             metrics: Arc::new(PrimalMetrics::new()),
             discovery_registry: Arc::clone(&registry),
             signing_client: OnceCell::new(),
-            provenance_notifier: Arc::new(ProvenanceNotifier::with_discovery(registry)),
+            provenance_notifier: Arc::new(ProvenanceNotifier::with_discovery(
+                Arc::clone(&registry),
+            )),
+            mesh_listener: Arc::new(MeshEventListener::new(registry)),
         }
     }
 
@@ -118,6 +124,15 @@ impl RhizoCrypt {
     #[must_use]
     pub const fn discovery_registry(&self) -> &Arc<DiscoveryRegistry> {
         &self.discovery_registry
+    }
+
+    /// Get the cross-gate mesh event listener.
+    ///
+    /// Used to record trust establishment events (from bearDog or any
+    /// signing provider) into the DAG.
+    #[must_use]
+    pub const fn mesh_listener(&self) -> &Arc<crate::types_ecosystem::mesh::MeshEventListener> {
+        &self.mesh_listener
     }
 
     /// Get the lazily-resolved signing client.
@@ -614,6 +629,11 @@ impl PrimalLifecycle for RhizoCrypt {
         // Attempt provenance provider connection (non-fatal: trio is optional)
         if let Err(e) = self.provenance_notifier.connect().await {
             tracing::warn!(error = %e, "Provenance notifier connect failed (non-fatal)");
+        }
+
+        // Attempt mesh event listener connection (non-fatal: bearDog is optional)
+        if let Err(e) = self.mesh_listener.connect().await {
+            tracing::warn!(error = %e, "Mesh event listener connect failed (non-fatal)");
         }
 
         Ok(())

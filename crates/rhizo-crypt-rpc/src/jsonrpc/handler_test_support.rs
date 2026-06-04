@@ -6,7 +6,7 @@
 //! Consumed by `handler_tests.rs`, `handler_tests_validation.rs`, and
 //! property-based test modules via `use super::test_support::*`.
 
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used, reason = "test code")]
 
 use crate::jsonrpc::method_gate::{CallerContext, EnforcementMode, MethodGate};
 use crate::jsonrpc::types::{JsonRpcId, JsonRpcRequest};

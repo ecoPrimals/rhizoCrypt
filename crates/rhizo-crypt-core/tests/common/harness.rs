@@ -5,7 +5,7 @@
 //!
 //! Provides a standardized way to set up and tear down test environments.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(clippy::expect_used, reason = "test code")]
 
 use rhizo_crypt_core::{
     PrimalLifecycle, RhizoCrypt, RhizoCryptConfig, Session, SessionBuilder, SessionType,
