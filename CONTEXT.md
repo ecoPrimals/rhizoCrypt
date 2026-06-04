@@ -63,13 +63,13 @@ Three workspace crates:
 | BTSP Phase 3 | Server-side handshake + ChaCha20-Poly1305 encrypted channel via `btsp.negotiate` |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 180 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 181 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,663 passing (all features) |
+| Tests | 1,670 passing (all features) |
 | Coverage | 93.88% lines (last measured) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
 | Source files | 180 `.rs`, ~54,378 lines |

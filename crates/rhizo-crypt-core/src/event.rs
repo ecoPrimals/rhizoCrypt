@@ -4,9 +4,10 @@
 //! Event types for the `RhizoCrypt` DAG.
 //!
 //! Events are the domain-specific actions recorded in the DAG via
-//! `dag.event.append`. The [`EventType`] enum defines 27 variants across
-//! 7 domains (session, agent, data, slice, gaming, science, collaboration)
-//! plus a freeform [`Custom`](EventType::Custom) variant for domain springs.
+//! `dag.event.append`. The [`EventType`] enum defines 32 variants across
+//! 8 domains (session, agent, data, slice, gaming, science, collaboration,
+//! mesh) plus a freeform [`Custom`](EventType::Custom) variant for domain
+//! springs.
 //!
 //! ## Wire Format (JSON-RPC)
 //!
@@ -24,7 +25,7 @@ use serde::{Deserialize, Serialize};
 
 /// Event type identifier for `dag.event.append`.
 ///
-/// 27 variants across 7 domains. Uses serde externally-tagged JSON:
+/// 32 variants across 8 domains. Uses serde externally-tagged JSON:
 /// `{"DataCreate": {"schema": "v2"}}` for variants with fields,
 /// `"DataDelete"` for unit variants.
 ///
@@ -191,6 +192,62 @@ pub enum EventType {
     /// Approval revoked.
     ApprovalRevoke,
 
+    // === Mesh (Cross-Gate Trust) ===
+    /// A trusted issuer was registered in the gate's issuer registry.
+    ///
+    /// Records the Ed25519 public key fingerprint and the gate that
+    /// enrolled the issuer. Wire: bearDog w135 `TrustedIssuerRegistry`.
+    TrustIssuerRegistered {
+        /// Ed25519 public key fingerprint (hex-encoded).
+        issuer_fingerprint: String,
+        /// Gate that registered the issuer.
+        registering_gate: String,
+    },
+
+    /// An Ed25519 key exchange was completed between two gates.
+    ///
+    /// Records both gate identifiers and the key exchange method.
+    /// Wire: bearDog w135 cross-gate key exchange protocol.
+    KeyExchangeCompleted {
+        /// Local gate identifier.
+        local_gate: String,
+        /// Remote gate identifier.
+        remote_gate: String,
+        /// Key exchange method (e.g. `ed25519_dh`, `x25519`).
+        method: String,
+    },
+
+    /// A primal family enrolled in the mesh.
+    ///
+    /// Records the family identifier, the gate it joined through,
+    /// and the number of primals in the family.
+    FamilyEnrollment {
+        /// Family identifier (`ECOPRIMALS_FAMILY_ID`).
+        family_id: String,
+        /// Gate the family enrolled through.
+        gate: String,
+        /// Number of primals in the family at enrollment time.
+        primal_count: u32,
+    },
+
+    /// A gate joined the mesh network.
+    MeshJoin {
+        /// Gate identifier.
+        gate: String,
+        /// Mesh network identifier.
+        mesh_id: String,
+    },
+
+    /// A gate left the mesh network.
+    MeshLeave {
+        /// Gate identifier.
+        gate: String,
+        /// Mesh network identifier.
+        mesh_id: String,
+        /// Reason for leaving.
+        reason: MeshLeaveReason,
+    },
+
     // === Custom ===
     /// Custom event type.
     Custom {
@@ -272,6 +329,11 @@ impl EventType {
             | Self::CommentAdd
             | Self::ApprovalGrant
             | Self::ApprovalRevoke => "collaboration",
+            Self::TrustIssuerRegistered { .. }
+            | Self::KeyExchangeCompleted { .. }
+            | Self::FamilyEnrollment { .. }
+            | Self::MeshJoin { .. }
+            | Self::MeshLeave { .. } => "mesh",
             Self::Custom {
                 domain,
                 ..
@@ -354,6 +416,11 @@ impl EventType {
             Self::CommentAdd => "comment_add",
             Self::ApprovalGrant => "approval_grant",
             Self::ApprovalRevoke => "approval_revoke",
+            Self::TrustIssuerRegistered { .. } => "trust_issuer_registered",
+            Self::KeyExchangeCompleted { .. } => "key_exchange_completed",
+            Self::FamilyEnrollment { .. } => "family_enrollment",
+            Self::MeshJoin { .. } => "mesh_join",
+            Self::MeshLeave { .. } => "mesh_leave",
         }
     }
 }
@@ -453,197 +520,20 @@ pub enum ResolutionType {
     Consumed,
 }
 
+/// Reason a gate left the mesh.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MeshLeaveReason {
+    /// Graceful shutdown.
+    Graceful,
+    /// Lost connectivity.
+    Disconnected,
+    /// Evicted by mesh consensus.
+    Evicted,
+    /// Trust revoked (key compromised or issuer deregistered).
+    TrustRevoked,
+}
+
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test code")]
-mod tests {
-    use super::*;
-
-    /// Collect all `EventType` variants for exhaustive testing.
-    fn all_event_types() -> Vec<EventType> {
-        vec![
-            EventType::SessionStart,
-            EventType::SessionEnd {
-                outcome: SessionOutcome::Success,
-            },
-            EventType::AgentJoin {
-                role: AgentRole::Participant,
-            },
-            EventType::AgentLeave {
-                reason: LeaveReason::Normal,
-            },
-            EventType::AgentAction {
-                action: "test".into(),
-            },
-            EventType::DataCreate {
-                schema: None,
-            },
-            EventType::DataModify {
-                delta_type: "patch".into(),
-            },
-            EventType::DataDelete,
-            EventType::DataTransfer {
-                to: Did::new("did:key:recipient"),
-            },
-            EventType::SliceCheckout {
-                slice_id: SliceId::now(),
-                mode: SliceMode::Copy {
-                    allow_recopy: false,
-                },
-            },
-            EventType::SliceOperation {
-                slice_id: SliceId::now(),
-                operation: "read".into(),
-            },
-            EventType::SliceResolve {
-                slice_id: SliceId::now(),
-                resolution: ResolutionType::ReturnToOrigin,
-            },
-            EventType::GameEvent {
-                game_type: "rpg".into(),
-                event_name: "level_up".into(),
-            },
-            EventType::ItemLoot {
-                item_type: "weapon".into(),
-            },
-            EventType::ItemDrop,
-            EventType::ItemTransfer {
-                to: Did::new("did:key:recipient"),
-            },
-            EventType::Combat {
-                target: Did::new("did:key:target"),
-                outcome: "win".into(),
-            },
-            EventType::Extraction {
-                success: true,
-            },
-            EventType::ExperimentStart {
-                protocol: "test".into(),
-            },
-            EventType::Observation {
-                instrument: "microscope".into(),
-            },
-            EventType::Analysis {
-                method: "pca".into(),
-            },
-            EventType::Result {
-                confidence_percent: 95,
-            },
-            EventType::DocumentEdit {
-                operation: "insert".into(),
-            },
-            EventType::CommentAdd,
-            EventType::ApprovalGrant,
-            EventType::ApprovalRevoke,
-            EventType::Custom {
-                domain: "custom".into(),
-                event_name: "custom_event".into(),
-            },
-        ]
-    }
-
-    #[test]
-    fn test_all_event_type_names() {
-        for event in all_event_types() {
-            let name = event.name();
-            assert!(!name.is_empty(), "variant {event:?} has empty name");
-        }
-    }
-
-    #[test]
-    fn test_all_event_type_domains() {
-        for event in all_event_types() {
-            let domain = event.domain();
-            assert!(!domain.is_empty(), "variant {event:?} has empty domain");
-        }
-    }
-
-    #[test]
-    fn test_event_type_serialization_roundtrip() {
-        for event in all_event_types() {
-            let json = serde_json::to_string(&event).unwrap();
-            let parsed: EventType = serde_json::from_str(&json).unwrap();
-            assert_eq!(event, parsed, "roundtrip failed for {event:?}");
-        }
-    }
-
-    #[test]
-    fn test_session_outcome_all_variants() {
-        let variants = vec![
-            SessionOutcome::Success,
-            SessionOutcome::Failure {
-                reason: "error".into(),
-            },
-            SessionOutcome::Timeout,
-            SessionOutcome::Cancelled,
-            SessionOutcome::Rollback,
-        ];
-        for outcome in variants {
-            let json = serde_json::to_string(&outcome).unwrap();
-            let parsed: SessionOutcome = serde_json::from_str(&json).unwrap();
-            assert_eq!(outcome, parsed);
-        }
-    }
-
-    #[test]
-    fn test_event_type_domain() {
-        assert_eq!(EventType::SessionStart.domain(), "session");
-        assert_eq!(
-            EventType::AgentJoin {
-                role: AgentRole::Participant
-            }
-            .domain(),
-            "agent"
-        );
-        assert_eq!(
-            EventType::DataCreate {
-                schema: None
-            }
-            .domain(),
-            "data"
-        );
-        assert_eq!(
-            EventType::ItemLoot {
-                item_type: "weapon".into()
-            }
-            .domain(),
-            "gaming"
-        );
-        assert_eq!(
-            EventType::ExperimentStart {
-                protocol: "test".into()
-            }
-            .domain(),
-            "science"
-        );
-        assert_eq!(
-            EventType::Custom {
-                domain: "custom".into(),
-                event_name: "test".into()
-            }
-            .domain(),
-            "custom"
-        );
-    }
-
-    #[test]
-    fn test_event_type_name() {
-        assert_eq!(EventType::SessionStart.name(), "session_start");
-        assert_eq!(
-            EventType::SessionEnd {
-                outcome: SessionOutcome::Success
-            }
-            .name(),
-            "session_end"
-        );
-    }
-
-    #[test]
-    fn test_session_outcome_serialization() {
-        let outcome = SessionOutcome::Failure {
-            reason: "test error".into(),
-        };
-        let json = serde_json::to_string(&outcome).unwrap();
-        let parsed: SessionOutcome = serde_json::from_str(&json).unwrap();
-        assert_eq!(outcome, parsed);
-    }
-}
+#[path = "event_tests.rs"]
+mod tests;

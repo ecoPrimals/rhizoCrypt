@@ -1,6 +1,6 @@
 # `dag.event.append` — Event Type Reference
 
-**Date**: April 13, 2026
+**Date**: June 3, 2026
 **Version**: 0.14.1
 **Canonical source**: `crates/rhizo-crypt-core/src/event.rs` → `pub enum EventType`
 
@@ -35,7 +35,7 @@ The enum is `#[non_exhaustive]` — new variants may be added without a major ve
 
 ---
 
-## Variant Reference (27 variants)
+## Variant Reference (32 variants)
 
 ### Session Lifecycle
 
@@ -134,6 +134,24 @@ The event type captures the *kind* of action; rich context goes in `metadata` an
 
 ---
 
+### Mesh (Cross-Gate Trust)
+
+| Variant | Fields | JSON Example |
+|---------|--------|-------------|
+| `TrustIssuerRegistered` | `issuer_fingerprint: String`, `registering_gate: String` | `{"TrustIssuerRegistered": {"issuer_fingerprint": "a1b2c3d4...", "registering_gate": "eastGate"}}` |
+| `KeyExchangeCompleted` | `local_gate: String`, `remote_gate: String`, `method: String` | `{"KeyExchangeCompleted": {"local_gate": "strandGate", "remote_gate": "southGate", "method": "ed25519_dh"}}` |
+| `FamilyEnrollment` | `family_id: String`, `gate: String`, `primal_count: u32` | `{"FamilyEnrollment": {"family_id": "ecoPrimal", "gate": "strandGate", "primal_count": 3}}` |
+| `MeshJoin` | `gate: String`, `mesh_id: String` | `{"MeshJoin": {"gate": "ironGate", "mesh_id": "glacial-mesh-v1"}}` |
+| `MeshLeave` | `gate: String`, `mesh_id: String`, `reason: MeshLeaveReason` | `{"MeshLeave": {"gate": "ironGate", "mesh_id": "glacial-mesh-v1", "reason": "Graceful"}}` |
+
+`MeshLeaveReason` values: `"Graceful"`, `"Disconnected"`, `"Evicted"`, `"TrustRevoked"`
+
+**Context**: Cross-gate trust events align with bearDog w135 `TrustedIssuerRegistry` and
+Ed25519 key exchange protocol. These events record trust establishment and mesh lifecycle
+in the DAG for provenance tracking across gate boundaries.
+
+---
+
 ### Custom (any domain)
 
 | Variant | Fields | JSON Example |
@@ -157,6 +175,7 @@ The `domain` field should use the spring's capability domain (e.g., `"ecology"`,
 | `gaming` | `GameEvent`, `ItemLoot`, `ItemDrop`, `ItemTransfer`, `Combat`, `Extraction` | ludoSpring |
 | `science` | `ExperimentStart`, `Observation`, `Analysis`, `Result` | wetSpring, hotSpring, groundSpring, airSpring |
 | `collaboration` | `DocumentEdit`, `CommentAdd`, `ApprovalGrant`, `ApprovalRevoke` | esotericWebb |
+| `mesh` | `TrustIssuerRegistered`, `KeyExchangeCompleted`, `FamilyEnrollment`, `MeshJoin`, `MeshLeave` | bearDog, gate operators |
 | `custom` | `Custom` | Any domain spring |
 
 ---

@@ -32,6 +32,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Wave 68 FRAGO acked**: `wave68-dependency-evolution-coordination` — rhizoCrypt has no action (sled fully removed since s20, redb is default). southGate owns Songbird+BearDog sled→redb migration.
 - **Stadial gate**: 1,663 tests, 0 clippy warnings, 180 `.rs` files, max 686L production file, zero `unsafe` blocks.
 
+#### Wave 76: Cross-Gate Mesh Event Types (Jun 3, 2026)
+
+- **Cross-gate DAG event types**: Added 5 new `EventType` variants in the `mesh` domain for recording trust establishment and mesh lifecycle across gate boundaries:
+  - `TrustIssuerRegistered` — Ed25519 issuer registered in gate's trusted issuer registry (aligns with bearDog w135 `TrustedIssuerRegistry`).
+  - `KeyExchangeCompleted` — cross-gate Ed25519 key exchange completed with method specification.
+  - `FamilyEnrollment` — primal family enrolled in mesh through a gate.
+  - `MeshJoin` — gate joined mesh network.
+  - `MeshLeave` — gate left mesh network (with `MeshLeaveReason`: `Graceful`, `Disconnected`, `Evicted`, `TrustRevoked`).
+- **Event tests extracted**: Moved 390 lines of event tests from `event.rs` (was 922L) to `event_tests.rs`. Production file now 539 lines.
+- **`MeshLeaveReason` re-exported** from `rhizo-crypt-core` lib root for consumer access.
+- **EVENT_TYPE_REFERENCE.md updated**: Variant count 27→32, 8 domains (added mesh), domain mapping table updated, wire format examples for all new types.
+- **Wave 76 FRAGO acked**: `wave76-parity-sprint-provenance` — schemas defined and serialization tested. Not yet wired to bearDog.
+- **Stadial gate**: 1,670 tests, 0 clippy warnings, 181 `.rs` files, max 698L production file (rpc_integration.rs), zero `unsafe` blocks.
+
 ## [0.14.0] - 2026-05-29
 
 ### Added

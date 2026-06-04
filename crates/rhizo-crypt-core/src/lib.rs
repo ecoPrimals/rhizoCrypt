@@ -116,7 +116,7 @@ pub use error::{
 pub use validation::{StderrSink, StringSink, ValidationHarness, ValidationSink};
 
 // Events
-pub use event::EventType;
+pub use event::{EventType, MeshLeaveReason};
 
 // Integration
 pub use integration::{ClientFactory, IntegrationStatus, ServiceStatus};
