@@ -316,6 +316,15 @@ pub const PROVENANCE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 /// Provenance provider response timeout.
 pub const PROVENANCE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// Mesh event poller interval (how often to poll bearDog for trust events).
+pub const MESH_POLL_INTERVAL: Duration = Duration::from_secs(30);
+
+/// Mesh event poller connection timeout.
+pub const MESH_CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Mesh event poller response timeout.
+pub const MESH_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// Default maximum results per provenance query.
 pub const PROVENANCE_DEFAULT_MAX_RESULTS: usize = 1000;
 

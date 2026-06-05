@@ -46,6 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Wave 76 FRAGO acked**: `wave76-parity-sprint-provenance` — schemas defined and serialization tested. Not yet wired to bearDog.
 - **Stadial gate**: 1,670 tests, 0 clippy warnings, 181 `.rs` files, max 698L production file (rpc_integration.rs), zero `unsafe` blocks.
 
+#### Wave 77e: MeshEventListener Polling — RC-POLL-01 Complete (Jun 4, 2026)
+
+- **Polling wired**: `MeshEventListener::poll_events()` sends `auth.events.poll` JSON-RPC to bearDog with incremental `since_timestamp`, deserializes `MeshTrustEvent` entries from response, records each via `record_event()`. Newline-delimited TCP transport (same as `ProvenanceNotifier`).
+- **Background poller**: `spawn_poller()` runs a `tokio::spawn` task polling every 30s (`MESH_POLL_INTERVAL`). Non-fatal — poll failures logged and retried. Tracks `ListenerState::Polling`.
+- **Constants added**: `MESH_POLL_INTERVAL` (30s), `MESH_CONNECTION_TIMEOUT` (5s), `MESH_RESPONSE_TIMEOUT` (10s).
+- **bearDog ACK received**: FRAGO `wave76c-beardog-auth-events-subscribe` answered — bearDog Wave 139 delivered Option C (`auth.events.poll`) with `AuthEventBus`, wire format matching our DTOs exactly. `TrustIssuerRegistered` and `KeyExchangeCompleted` actively emitted.
+- **RC-POLL-01 resolved**: Provenance chain now completable: bearDog → rhizoCrypt → loamSpine → sweetGrass.
+- **Stadial gate**: 1,683 tests, 0 clippy warnings (including `--tests`), 186 `.rs` files, zero `unsafe` blocks.
+
 #### Wave 77d: Lifecycle Extraction + mesh.events.record Handler + Niche Wiring (Jun 4, 2026)
 
 - **Lifecycle extracted**: `PrimalLifecycle` + `PrimalHealth` impls moved from `rhizocrypt/mod.rs` (701→579 lines) to `rhizocrypt/lifecycle.rs` (137 lines). Production code well under 700L limit.

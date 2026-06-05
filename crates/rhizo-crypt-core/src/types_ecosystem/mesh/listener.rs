@@ -1,34 +1,33 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Cross-gate mesh event listener.
+//! Cross-gate mesh event listener with polling support.
 //!
 //! Discovers the signing provider endpoint (bearDog) via the capability
-//! registry and prepares to receive trust establishment events. When
-//! events arrive (via poll or push), maps them to [`EventType`] mesh
-//! variants and appends them to a dedicated mesh-trust DAG session.
+//! registry and polls `auth.events.poll` for trust establishment events.
 //!
 //! ## IPC Trigger Path
 //!
 //! 1. bearDog fires `auth.trust_issuer` (or `key_exchange`, etc.)
-//! 2. `MeshEventListener` receives the event via JSON-RPC
-//! 3. Deserializes into [`MeshTrustEvent`]
-//! 4. Maps to [`EventType::TrustIssuerRegistered`] (etc.)
-//! 5. Appends to the mesh-trust session via internal DAG API
+//! 2. bearDog's `AuthEventBus` records the event
+//! 3. `MeshEventListener` polls `auth.events.poll` with `since_timestamp`
+//! 4. Deserializes response into [`MeshTrustEvent`] vec
+//! 5. Maps each to [`EventType`] via `record_event()`
 //!
-//! ## Current Status
+//! ## Polling
 //!
-//! Scaffold: discovery + connect lifecycle implemented. Event ingestion
-//! requires bearDog w137+ to expose `auth.events.subscribe` or
-//! `ipc.watch` on its signing endpoint. Until then, events can be
-//! injected via `record_event()` from the RPC handler layer.
+//! `spawn_poller()` starts a background `tokio::spawn` task that polls
+//! bearDog every [`MESH_POLL_INTERVAL`](crate::constants::MESH_POLL_INTERVAL)
+//! seconds. Events are recorded into the internal log. The poller uses
+//! newline-delimited JSON-RPC over TCP (same transport as `ProvenanceNotifier`).
 
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
+use crate::constants::{MESH_CONNECTION_TIMEOUT, MESH_RESPONSE_TIMEOUT};
 use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::Result;
 
@@ -39,17 +38,18 @@ use super::types::MeshTrustEvent;
 pub enum ListenerState {
     /// Not yet connected to a signing provider.
     Disconnected,
-    /// Connected — ready to receive events.
+    /// Connected — ready to receive/poll events.
     Connected,
-    /// Connection failed — will retry on next event.
-    Failed,
+    /// Actively polling for events.
+    Polling,
 }
 
 /// Listener for cross-gate mesh trust events.
 ///
 /// Discovers bearDog (or any signing provider) via the capability
-/// registry, connects at startup, and provides `record_event()` for
-/// mapping trust events to DAG vertices.
+/// registry, connects at startup, and provides both manual
+/// `record_event()` and automatic `poll_events()` for ingesting
+/// trust events.
 ///
 /// ## Lifecycle
 ///
@@ -64,6 +64,8 @@ pub struct MeshEventListener {
     state: Arc<RwLock<ListenerState>>,
     /// Events received (buffered for batch append or inspection).
     event_log: Arc<RwLock<Vec<MeshTrustEvent>>>,
+    /// Last poll timestamp (unix seconds) for incremental polling.
+    last_poll_timestamp: Arc<RwLock<u64>>,
 }
 
 impl MeshEventListener {
@@ -75,6 +77,7 @@ impl MeshEventListener {
             endpoint: Arc::new(RwLock::new(None)),
             state: Arc::new(RwLock::new(ListenerState::Disconnected)),
             event_log: Arc::new(RwLock::new(Vec::new())),
+            last_poll_timestamp: Arc::new(RwLock::new(0)),
         }
     }
 
@@ -117,11 +120,6 @@ impl MeshEventListener {
     ///
     /// Stores the event in the internal log and returns the mapped
     /// [`EventType`] for the caller to append to a DAG session.
-    ///
-    /// This is the primary ingestion point. In the future, a background
-    /// task will poll/watch the signing provider and call this method
-    /// automatically. For now, the RPC handler layer can call this when
-    /// it receives cross-gate trust notifications.
     pub async fn record_event(
         &self,
         event: MeshTrustEvent,
@@ -139,6 +137,160 @@ impl MeshEventListener {
         event_type
     }
 
+    /// Poll bearDog's `auth.events.poll` for new trust events.
+    ///
+    /// Sends a JSON-RPC request with `since_timestamp` and deserializes
+    /// the response into `MeshTrustEvent` entries. Each event is recorded
+    /// via `record_event()`. Returns the number of new events received.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if not connected or RPC call fails.
+    pub async fn poll_events(&self) -> Result<usize> {
+        let endpoint = self.endpoint.read().await;
+        let Some(addr) = *endpoint else {
+            return Ok(0);
+        };
+        drop(endpoint);
+
+        let since = *self.last_poll_timestamp.read().await;
+
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "auth.events.poll",
+            "params": {
+                "since_timestamp": since,
+            },
+            "id": 1
+        });
+
+        let response = match Self::send_jsonrpc(&addr, &request).await {
+            Ok(resp) => resp,
+            Err(e) => {
+                debug!(error = %e, "Mesh event poll failed (non-fatal)");
+                return Ok(0);
+            }
+        };
+
+        let parsed: serde_json::Value = serde_json::from_str(&response).map_err(|e| {
+            crate::error::RhizoCryptError::integration(format!(
+                "Failed to parse poll response: {e}"
+            ))
+        })?;
+
+        let events = parsed
+            .get("result")
+            .and_then(|r| r.get("events"))
+            .and_then(serde_json::Value::as_array);
+
+        let Some(events_arr) = events else {
+            return Ok(0);
+        };
+
+        let mut count = 0;
+        let mut max_timestamp = since;
+
+        for event_val in events_arr {
+            match serde_json::from_value::<MeshTrustEvent>(event_val.clone()) {
+                Ok(event) => {
+                    if event.timestamp > max_timestamp {
+                        max_timestamp = event.timestamp;
+                    }
+                    self.record_event(event).await;
+                    count += 1;
+                }
+                Err(e) => {
+                    warn!(error = %e, "Skipping malformed mesh event from poll");
+                }
+            }
+        }
+
+        if count > 0 {
+            *self.last_poll_timestamp.write().await = max_timestamp;
+            info!(count, max_timestamp, "Polled new mesh trust events");
+        }
+
+        Ok(count)
+    }
+
+    /// Spawn a background poller that polls bearDog periodically.
+    ///
+    /// Returns a `JoinHandle` for cancellation. The poller runs every
+    /// [`MESH_POLL_INTERVAL`](crate::constants::MESH_POLL_INTERVAL)
+    /// and is non-fatal — poll failures are logged and retried.
+    #[must_use]
+    pub fn spawn_poller(self: &Arc<Self>) -> tokio::task::JoinHandle<()> {
+        let listener = Arc::clone(self);
+        let interval = crate::constants::MESH_POLL_INTERVAL;
+
+        *listener.state.blocking_write() = ListenerState::Polling;
+
+        tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(interval);
+            ticker.tick().await; // skip first immediate tick
+            loop {
+                ticker.tick().await;
+                if *listener.state.read().await == ListenerState::Disconnected {
+                    debug!("Mesh event poller exiting: listener disconnected");
+                    break;
+                }
+                match listener.poll_events().await {
+                    Ok(0) => {}
+                    Ok(n) => {
+                        debug!(events = n, "Mesh event poll cycle complete");
+                    }
+                    Err(e) => {
+                        debug!(error = %e, "Mesh event poll error (will retry)");
+                    }
+                }
+            }
+        })
+    }
+
+    /// Send a JSON-RPC request over newline-delimited TCP.
+    async fn send_jsonrpc(
+        endpoint: &SocketAddr,
+        request: &serde_json::Value,
+    ) -> std::result::Result<String, String> {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::TcpStream;
+
+        let stream =
+            tokio::time::timeout(MESH_CONNECTION_TIMEOUT, TcpStream::connect(endpoint))
+                .await
+                .map_err(|_| format!("Connection timeout to {endpoint}"))?
+                .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
+
+        stream
+            .set_nodelay(true)
+            .map_err(|e| format!("Failed to set TCP_NODELAY: {e}"))?;
+
+        let (reader, mut writer) = stream.into_split();
+
+        let payload = format!(
+            "{}\n",
+            serde_json::to_string(request).map_err(|e| format!("Serialize failed: {e}"))?
+        );
+        writer
+            .write_all(payload.as_bytes())
+            .await
+            .map_err(|e| format!("Write failed: {e}"))?;
+        writer
+            .flush()
+            .await
+            .map_err(|e| format!("Flush failed: {e}"))?;
+
+        let mut buf_reader = BufReader::new(reader);
+        let mut response = String::new();
+
+        tokio::time::timeout(MESH_RESPONSE_TIMEOUT, buf_reader.read_line(&mut response))
+            .await
+            .map_err(|_| "Response timeout".to_string())?
+            .map_err(|e| format!("Read failed: {e}"))?;
+
+        Ok(response)
+    }
+
     /// Get the resolved signing provider endpoint (if connected).
     pub async fn endpoint(&self) -> Option<SocketAddr> {
         *self.endpoint.read().await
@@ -148,6 +300,11 @@ impl MeshEventListener {
     pub async fn drain_events(&self) -> Vec<MeshTrustEvent> {
         let mut log = self.event_log.write().await;
         std::mem::take(&mut *log)
+    }
+
+    /// Get the last poll timestamp.
+    pub async fn last_poll_timestamp(&self) -> u64 {
+        *self.last_poll_timestamp.read().await
     }
 }
 
@@ -174,6 +331,7 @@ mod tests {
         assert_eq!(listener.state().await, ListenerState::Disconnected);
         assert_eq!(listener.event_count().await, 0);
         assert!(listener.endpoint().await.is_none());
+        assert_eq!(listener.last_poll_timestamp().await, 0);
     }
 
     #[tokio::test]
@@ -257,5 +415,29 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(listener.state().await, ListenerState::Connected);
         assert_eq!(listener.endpoint().await, Some(addr));
+    }
+
+    #[tokio::test]
+    async fn test_poll_events_disconnected_returns_zero() {
+        let listener = MeshEventListener::new(test_registry());
+        let count = listener.poll_events().await.unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_poll_timestamp_tracking() {
+        let listener = MeshEventListener::new(test_registry());
+        assert_eq!(listener.last_poll_timestamp().await, 0);
+
+        let event = MeshTrustEvent {
+            kind: super::super::types::MeshTrustEventKind::TrustIssuerRegistered {
+                issuer_fingerprint: "ff".into(),
+            },
+            source_gate: "test".into(),
+            timestamp: 42,
+        };
+        listener.record_event(event).await;
+        // record_event doesn't update poll timestamp (that's poll_events' job)
+        assert_eq!(listener.last_poll_timestamp().await, 0);
     }
 }

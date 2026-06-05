@@ -12,11 +12,18 @@
 //! ## IPC Trigger Path
 //!
 //! ```text
-//! bearDog (auth.trust_issuer fires)
-//!   → rhizoCrypt MeshEventListener polls/watches signing endpoint
-//!   → maps payload to EventType::TrustIssuerRegistered
-//!   → appends to dedicated mesh-trust session via internal DAG API
+//! bearDog (auth.trust_issuer fires → AuthEventBus records)
+//!   → rhizoCrypt MeshEventListener polls auth.events.poll
+//!   → deserializes MeshTrustEvent from JSON-RPC response
+//!   → maps to EventType::TrustIssuerRegistered via into_event_type()
+//!   → records in event log (ready for DAG session append)
 //! ```
+//!
+//! ## Polling
+//!
+//! `spawn_poller()` runs a background task polling bearDog every
+//! [`MESH_POLL_INTERVAL`](crate::constants::MESH_POLL_INTERVAL).
+//! Uses incremental `since_timestamp` to fetch only new events.
 //!
 //! ## Lifecycle
 //!
