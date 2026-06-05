@@ -256,6 +256,11 @@ pub async fn run_server_with_ready(
     let primal = Arc::new(primal);
     info!("DAG engine initialized and running");
 
+    // Background mesh event poller — polls bearDog auth.events.poll for
+    // cross-gate trust events and appends them to a mesh-trust DAG session.
+    // Non-fatal: runs silently if no signing provider is available.
+    let _mesh_poller = primal.spawn_mesh_poller();
+
     // UDS is unconditional on Unix (Provenance Trio standard — LD-06).
     // None = no UDS (test backward-compat), Some("") = default, Some(path) = custom.
     #[cfg(unix)]

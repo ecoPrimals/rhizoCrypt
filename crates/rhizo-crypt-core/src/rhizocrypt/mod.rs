@@ -547,6 +547,105 @@ impl RhizoCrypt {
         count
     }
 
+    /// Spawn a background mesh event poller that polls bearDog's
+    /// `auth.events.poll` and appends trust events to a dedicated
+    /// mesh-trust DAG session.
+    ///
+    /// Auto-provisions a `SessionType::Custom { domain: "mesh-trust" }`
+    /// session on the first event received. Each polled event becomes a
+    /// `Vertex` appended to that session.
+    ///
+    /// Returns a `JoinHandle` for cancellation. Non-fatal — poll failures
+    /// are logged and retried.
+    #[must_use]
+    pub fn spawn_mesh_poller(self: &Arc<Self>) -> tokio::task::JoinHandle<()> {
+        use crate::session::{SessionBuilder, SessionType};
+        use crate::vertex::VertexBuilder;
+
+        let primal = Arc::clone(self);
+        let interval = crate::constants::MESH_POLL_INTERVAL;
+
+        tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(interval);
+            ticker.tick().await; // skip first immediate tick
+
+            let mut mesh_session_id: Option<SessionId> = None;
+
+            loop {
+                ticker.tick().await;
+                if !primal.state.is_running() {
+                    tracing::debug!("Mesh poller exiting: primal no longer running");
+                    break;
+                }
+
+                let count = match primal.mesh_listener.poll_events().await {
+                    Ok(n) => n,
+                    Err(e) => {
+                        tracing::debug!(error = %e, "Mesh poll error (will retry)");
+                        continue;
+                    }
+                };
+
+                if count == 0 {
+                    continue;
+                }
+
+                let events = primal.mesh_listener.drain_events().await;
+                if events.is_empty() {
+                    continue;
+                }
+
+                // Auto-provision mesh-trust session on first event
+                if mesh_session_id.is_none() {
+                    let session = SessionBuilder::new(SessionType::Custom {
+                        domain: "mesh-trust".into(),
+                    })
+                    .with_name("mesh-trust-events")
+                    .build();
+
+                    match primal.create_session(session) {
+                        Ok(id) => {
+                            tracing::info!(
+                                %id,
+                                "Auto-provisioned mesh-trust session for cross-gate events"
+                            );
+                            mesh_session_id = Some(id);
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                error = %e,
+                                "Failed to create mesh-trust session (events buffered)"
+                            );
+                            continue;
+                        }
+                    }
+                }
+
+                let Some(session_id) = mesh_session_id else {
+                    continue;
+                };
+
+                for event in events {
+                    let event_type = event.into_event_type();
+                    let vertex = VertexBuilder::new(event_type).build();
+
+                    if let Err(e) = primal.append_vertex(session_id, vertex).await {
+                        tracing::warn!(
+                            error = %e,
+                            "Failed to append mesh trust event to DAG"
+                        );
+                    }
+                }
+
+                tracing::info!(
+                    count,
+                    %session_id,
+                    "Appended mesh trust events to DAG"
+                );
+            }
+        })
+    }
+
     /// Spawn a background GC task that runs periodically.
     ///
     /// Returns a `JoinHandle` that can be used to cancel the sweeper on

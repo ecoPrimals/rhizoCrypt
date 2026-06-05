@@ -1,6 +1,6 @@
 # rhizoCrypt — AI Context Block
 
-**Version**: 0.14.1
+**Version**: 0.14.2
 **Role**: Ephemeral DAG Engine — working memory for the ecoPrimals ecosystem
 **License**: AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 (scyBorg Triple-Copyleft)
 **Language**: Rust 2024, edition 2024, MSRV 1.87 (dev toolchain 1.94.1)
@@ -86,7 +86,7 @@ Three workspace crates:
 ## Key Files
 
 - `Cargo.toml` — Workspace config, lint policy, dependency pins
-- `capability_registry.toml` — Capability method registry (37 methods in `METHOD_CATALOG`, 7 domains)
+- `config/capability_registry.toml` — Capability method registry (37 methods in `METHOD_CATALOG`, 7 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
 - `specs/` — 12 specification documents (incl. `CRYPTO_MODEL.md` — signing provider crypto delegation)
 - `showcase/` — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`

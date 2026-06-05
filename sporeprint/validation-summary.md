@@ -87,6 +87,6 @@ and sweetGrass braids.
 
 ## See Also
 
-- [Capability Registry](../capability_registry.toml) — 36 methods with stability tiers
+- [Capability Registry](../config/capability_registry.toml) — 37 methods with stability tiers
 - [API Specification](../specs/API_SPECIFICATION.md) — tarpc + JSON-RPC wire format
 - [CHANGELOG](../CHANGELOG.md) — full evolution history

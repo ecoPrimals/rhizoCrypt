@@ -5,6 +5,18 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.2] - 2026-06-05
+
+### Added
+
+#### Wave 78: Mesh-Trust DAG Append + Lifecycle Wiring (Jun 5, 2026)
+
+- **Mesh-trust session auto-provision**: `spawn_mesh_poller()` on `RhizoCrypt` creates a `SessionType::Custom { domain: "mesh-trust" }` session on the first polled trust event, then reuses it for all subsequent events.
+- **DAG vertex append**: Each `MeshTrustEvent` polled from bearDog's `auth.events.poll` is converted to an `EventType` variant via `into_event_type()` and appended to the mesh-trust session as a `Vertex` via `append_vertex()`.
+- **Service-layer lifecycle wiring**: `spawn_mesh_poller()` is called from the service layer after `Arc::new(primal)`, running as a background task alongside `spawn_gc_sweeper()`. Non-fatal — runs silently when no signing provider is available.
+- **`config/capability_registry.toml`**: Moved from project root to `config/` for ecosystem convention consistency (biomeOS, petalTongue, sweetGrass pattern).
+- Updated all doc references (`README.md`, `CONTEXT.md`, `validation-summary.md`, `constants.rs`) to reflect the new `config/` path.
+
 ## [0.14.1] - 2026-06-01
 
 ### Fixed

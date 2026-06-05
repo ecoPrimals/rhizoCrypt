@@ -7,7 +7,7 @@
 
 [primal]
 name = "rhizocrypt"
-version = "0.14.1"
+version = "0.14.2"
 domain = "dag"
 stability = "stable"
 license = "AGPL-3.0-or-later"

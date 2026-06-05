@@ -446,7 +446,7 @@ pub const NEURAL_API_READ_TIMEOUT_SECS: u64 = 5;
 /// Capability domains this primal advertises for discovery registration.
 ///
 /// Used by `SongbirdConfig` default and capability descriptors. Aligned
-/// with `capability_registry.toml` provider entries for `rhizocrypt`.
+/// with `config/capability_registry.toml` provider entries for `rhizocrypt`.
 pub const ADVERTISED_CAPABILITIES: &[&str] =
     &["dag-engine", "session-management", "merkle-proofs", "slice-checkout", "dehydration"];
 
