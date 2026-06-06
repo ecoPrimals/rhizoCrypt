@@ -558,16 +558,8 @@ pub async fn register_with_discovery(
     config.address = std::borrow::Cow::Owned(discovery_addr.to_owned());
     let client = DiscoveryClient::new(config);
 
-    client.connect().await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
-
     let our_endpoint = format!("{}://{our_addr}", constants::DISCOVERY_ENDPOINT_SCHEME);
-    let result =
-        client.register(&our_endpoint).await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
-
-    if !result.success {
-        return Err(ServiceError::Discovery(result.message));
-    }
-
+    client.register(&our_endpoint).await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
     client.start_heartbeat().await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
 
     Ok(client)
