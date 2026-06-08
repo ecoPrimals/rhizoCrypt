@@ -7,9 +7,9 @@
 //! When connected, sends JSON-RPC calls to any attribution provider that
 //! implements the `ProvenanceQuery` capability.
 
-use std::net::SocketAddr;
 use std::sync::Arc;
 
+use sourdough_core::transport::{connect_transport, TransportEndpoint};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -34,8 +34,8 @@ pub struct ProvenanceNotifier {
     /// Current state.
     state: Arc<RwLock<ClientState>>,
 
-    /// Connected endpoint.
-    endpoint: Arc<RwLock<Option<SocketAddr>>>,
+    /// Connected endpoint (transport-agnostic).
+    endpoint: Arc<RwLock<Option<TransportEndpoint>>>,
 }
 
 impl ProvenanceNotifier {
@@ -74,24 +74,32 @@ impl ProvenanceNotifier {
     pub async fn connect(&self) -> Result<()> {
         // Try discovery first
         if let Some(registry) = &self.registry
-            && let Some(endpoint) = registry.get_endpoint(&Capability::ProvenanceQuery).await
+            && let Some(service) = registry.get_endpoint(&Capability::ProvenanceQuery).await
         {
-            info!(address = %endpoint.addr, "Discovered provenance provider via registry");
-            *self.endpoint.write().await = Some(endpoint.addr);
+            let transport = TransportEndpoint::tcp(
+                service.addr.ip().to_string(),
+                service.addr.port(),
+            );
+            info!(endpoint = %transport, "Discovered provenance provider via registry");
+            *self.endpoint.write().await = Some(transport);
             *self.state.write().await = ClientState::Connected;
             return Ok(());
         }
 
-        // Fall back to configured address
         if let Some(ref addr) = self.config.push_address {
-            let socket_addr: SocketAddr = addr.parse().map_err(|e| {
-                RhizoCryptError::integration(format!(
-                    "Invalid provenance provider address '{addr}': {e}"
-                ))
-            })?;
+            let transport = serde_json::from_str::<TransportEndpoint>(addr)
+                .or_else(|_| {
+                    addr.parse::<std::net::SocketAddr>()
+                        .map(|sa| TransportEndpoint::tcp(sa.ip().to_string(), sa.port()))
+                        .map_err(|e| {
+                            RhizoCryptError::integration(format!(
+                                "Invalid provenance provider address '{addr}': {e}"
+                            ))
+                        })
+                })?;
 
-            debug!(address = %socket_addr, "Connecting to provenance provider");
-            *self.endpoint.write().await = Some(socket_addr);
+            debug!(endpoint = %transport, "Connecting to provenance provider");
+            *self.endpoint.write().await = Some(transport);
             *self.state.write().await = ClientState::Connected;
             return Ok(());
         }
@@ -114,8 +122,7 @@ impl ProvenanceNotifier {
             return Ok(());
         }
 
-        let stored = *self.endpoint.read().await;
-        let Some(endpoint) = stored else {
+        let Some(endpoint) = self.endpoint.read().await.clone() else {
             return Ok(());
         };
 
@@ -165,8 +172,7 @@ impl ProvenanceNotifier {
             return Ok(());
         }
 
-        let stored = *self.endpoint.read().await;
-        let Some(endpoint) = stored else {
+        let Some(endpoint) = self.endpoint.read().await.clone() else {
             return Ok(());
         };
 
@@ -220,8 +226,7 @@ impl ProvenanceNotifier {
             return Ok(());
         }
 
-        let stored = *self.endpoint.read().await;
-        let Some(endpoint) = stored else {
+        let Some(endpoint) = self.endpoint.read().await.clone() else {
             return Ok(());
         };
 
@@ -261,29 +266,28 @@ impl ProvenanceNotifier {
         Ok(())
     }
 
-    /// Send a JSON-RPC request to the given endpoint via TCP.
+    /// Send a JSON-RPC request via transport-agnostic connection.
     ///
-    /// Sets `TCP_NODELAY` to prevent Nagle buffering of newline-delimited
-    /// payloads, and flushes the writer before reading the response. This
-    /// mirrors the hardening already present in `jsonrpc/mod.rs` and
-    /// `btsp/framing.rs`, and mitigates the "connection closes after first
-    /// response" issue common with newline-delimited JSON-RPC over TCP.
+    /// Sets `TCP_NODELAY` when the underlying transport is TCP to prevent
+    /// Nagle buffering of newline-delimited payloads.
     async fn send_jsonrpc(
-        endpoint: &SocketAddr,
+        endpoint: &TransportEndpoint,
         request: &serde_json::Value,
     ) -> std::result::Result<String, String> {
+        use sourdough_core::transport::TransportStream;
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-        use tokio::net::TcpStream;
 
         let stream =
-            tokio::time::timeout(PROVENANCE_CONNECTION_TIMEOUT, TcpStream::connect(endpoint))
+            tokio::time::timeout(PROVENANCE_CONNECTION_TIMEOUT, connect_transport(endpoint))
                 .await
                 .map_err(|_| format!("Connection timeout to {endpoint}"))?
                 .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
 
-        stream.set_nodelay(true).map_err(|e| format!("Failed to set TCP_NODELAY: {e}"))?;
+        if let TransportStream::Tcp(ref tcp) = stream {
+            let _ = tcp.set_nodelay(true);
+        }
 
-        let (reader, mut writer) = stream.into_split();
+        let (reader, mut writer) = tokio::io::split(stream);
 
         let payload = format!(
             "{}\n",
@@ -304,14 +308,16 @@ impl ProvenanceNotifier {
     }
 
     /// Get the current endpoint.
-    pub async fn endpoint(&self) -> Option<SocketAddr> {
-        *self.endpoint.read().await
+    pub async fn endpoint(&self) -> Option<TransportEndpoint> {
+        self.endpoint.read().await.clone()
     }
 }
 
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
+    use std::net::SocketAddr;
+
     use super::*;
     use crate::MerkleRoot;
     use crate::types::{Did, Timestamp, VertexId};
@@ -543,7 +549,11 @@ mod tests {
         let result = notifier.connect().await;
         assert!(result.is_ok());
         assert_eq!(notifier.state().await, ClientState::Connected);
-        assert_eq!(notifier.endpoint().await, Some(addr));
+        let expected = sourdough_core::transport::TransportEndpoint::tcp(
+            addr.ip().to_string(),
+            addr.port(),
+        );
+        assert_eq!(notifier.endpoint().await, Some(expected));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

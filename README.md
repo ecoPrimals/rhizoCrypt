@@ -4,9 +4,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 0.14.2 |
+| Version | 0.14.3 |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,683 passing (`--all-features`, Jun 5, 2026) |
+| Tests | 1,683 passing (`--all-features`, Jun 8, 2026) |
 | Coverage | 93.88% lines (last measured) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -18,7 +18,7 @@
 | Error Model | Structured `IpcErrorPhase` + `DispatchOutcome` (protocol vs application) |
 | Discovery | Capability-based + manifest (PG-32) + Neural API `primal.announce` (Wave 43) |
 | Chaos | `ChaosEngine` framework with 7 fault classes |
-| Transport | UDS unconditional (Unix), TCP opt-in (`--port` / env), BTSP Phase 3 (ChaCha20-Poly1305 encrypted channel) on UDS |
+| Transport | UDS unconditional, TCP opt-in (`--port`), `TRANSPORT_ENDPOINT` injection (sourdough-core), BTSP Phase 3 (ChaCha20-Poly1305) |
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
@@ -135,10 +135,15 @@ cargo llvm-cov --workspace --html
 
 ---
 
-## Transport Model (GAP-06 resolved)
+## Transport Model (GAP-06 resolved + Wave 100 transport evolution)
 
 UDS is **unconditional** on Unix — no flags needed. TCP is **opt-in** via
-`--port` or `RHIZOCRYPT_PORT`. This is the Provenance Trio standard (LD-06).
+`--port` or `RHIZOCRYPT_PORT` (Tier 5 fallback for standalone/debug only).
+
+**Transport injection** (Wave 100): Accepts `TRANSPORT_ENDPOINT` env var as
+JSON-encoded `TransportEndpoint` from the launcher. Outbound IPC uses
+`connect_transport()` from `sourdough-core` — transport-agnostic (UDS, TCP,
+or mesh relay depending on endpoint resolution).
 
 ```
 rhizocrypt server                           # UDS-only (default)

@@ -70,6 +70,10 @@ impl SafeEnv {
     /// Metrics port override.
     pub const RHIZOCRYPT_METRICS_PORT: &'static str = "RHIZOCRYPT_METRICS_PORT";
 
+    /// Transport endpoint override (JSON-encoded `TransportEndpoint`).
+    /// Ecosystem standard: launcher injects transport, primal accepts it.
+    pub const TRANSPORT_ENDPOINT: &'static str = "TRANSPORT_ENDPOINT";
+
     /// Universal discovery adapter address.
     pub const RHIZOCRYPT_DISCOVERY_ADAPTER: &'static str = "RHIZOCRYPT_DISCOVERY_ADAPTER";
 
@@ -189,6 +193,17 @@ impl SafeEnv {
         let key_address = format!("{prefix}_ADDRESS");
 
         std::env::var(&key_endpoint).ok().or_else(|| std::env::var(&key_address).ok())
+    }
+
+    /// Parse `TRANSPORT_ENDPOINT` from environment (JSON-encoded).
+    ///
+    /// Returns `None` if the variable is not set or cannot be parsed.
+    /// Ecosystem standard: the launcher injects a JSON string like
+    /// `{"transport":"uds","path":"/run/user/1000/biomeos/rhizocrypt.sock"}`.
+    #[must_use]
+    pub fn transport_endpoint() -> Option<sourdough_core::transport::TransportEndpoint> {
+        let val = std::env::var(Self::TRANSPORT_ENDPOINT).ok()?;
+        serde_json::from_str(&val).ok()
     }
 
     /// Get a capability endpoint from environment.

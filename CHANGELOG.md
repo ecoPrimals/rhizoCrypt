@@ -5,6 +5,19 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.3] - 2026-06-08
+
+### Added
+
+#### Wave 100: Transport Evolution — sourdough-core TransportEndpoint (Jun 8, 2026)
+
+- **Transport injection**: Added `sourdough-core` as workspace dependency. Outbound IPC clients (mesh listener, provenance notifier) now use `connect_transport()` via `TransportEndpoint` — transport-agnostic (UDS, TCP, or mesh relay).
+- **`TRANSPORT_ENDPOINT` env var**: Parsed as JSON-encoded `TransportEndpoint` from launcher. Logged at startup. `SafeEnv::transport_endpoint()` helper added.
+- **Re-exports**: `TransportEndpoint`, `TransportStream`, `connect_transport` re-exported from `rhizo-crypt-core` root.
+- **Provenance notifier**: `connect()` fallback now accepts both legacy `host:port` strings and JSON `TransportEndpoint` format. Endpoint field evolved from `SocketAddr` to `TransportEndpoint`.
+- **Mesh event listener**: `send_jsonrpc()` uses `connect_transport()`. `TCP_NODELAY` applied only when transport is TCP (correct per transport type).
+- **Niche**: `transport` added to `DEPENDENCIES` as optional capability domain.
+
 ## [0.14.2] - 2026-06-05
 
 ### Added

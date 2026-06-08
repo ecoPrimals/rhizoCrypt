@@ -250,6 +250,10 @@ pub async fn run_server_with_ready(
         info!(family_id = %fid, "BTSP Phase 1: family-scoped socket naming active");
     }
 
+    if let Some(transport) = rhizo_crypt_core::SafeEnv::transport_endpoint() {
+        info!(endpoint = %transport, "TRANSPORT_ENDPOINT injected by launcher");
+    }
+
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
     primal.start().await.map_err(|e| ServiceError::Config(e.to_string()))?;

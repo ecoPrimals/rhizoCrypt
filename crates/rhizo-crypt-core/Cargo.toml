@@ -50,6 +50,8 @@ futures-util = { workspace = true, optional = true }
 bincode = { workspace = true, optional = true }
 base64 = { workspace = true }
 hex = { workspace = true }
+# Ecosystem core (transport abstraction)
+sourdough-core = { workspace = true }
 
 
 [dev-dependencies]

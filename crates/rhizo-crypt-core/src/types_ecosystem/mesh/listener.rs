@@ -19,11 +19,12 @@
 //! `spawn_poller()` starts a background `tokio::spawn` task that polls
 //! bearDog every [`MESH_POLL_INTERVAL`](crate::constants::MESH_POLL_INTERVAL)
 //! seconds. Events are recorded into the internal log. The poller uses
-//! newline-delimited JSON-RPC over TCP (same transport as `ProvenanceNotifier`).
+//! newline-delimited JSON-RPC via `connect_transport()` (transport-agnostic —
+//! UDS or TCP depending on endpoint resolution).
 
-use std::net::SocketAddr;
 use std::sync::Arc;
 
+use sourdough_core::transport::{connect_transport, TransportEndpoint};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -58,8 +59,8 @@ pub enum ListenerState {
 pub struct MeshEventListener {
     /// Discovery registry for finding the signing provider.
     registry: Arc<DiscoveryRegistry>,
-    /// Resolved signing provider endpoint.
-    endpoint: Arc<RwLock<Option<SocketAddr>>>,
+    /// Resolved signing provider endpoint (transport-agnostic).
+    endpoint: Arc<RwLock<Option<TransportEndpoint>>>,
     /// Current listener state.
     state: Arc<RwLock<ListenerState>>,
     /// Events received (buffered for batch append or inspection).
@@ -101,13 +102,14 @@ impl MeshEventListener {
     ///
     /// Returns error if discovery succeeds but endpoint is invalid.
     pub async fn connect(&self) -> Result<()> {
-        if let Some(endpoint) = self.registry.get_endpoint(&Capability::Signing).await {
+        if let Some(service) = self.registry.get_endpoint(&Capability::Signing).await {
+            let transport = TransportEndpoint::tcp(service.addr.ip().to_string(), service.addr.port());
             info!(
-                address = %endpoint.addr,
-                service = %endpoint.service_id,
+                endpoint = %transport,
+                service = %service.service_id,
                 "Mesh event listener connected to signing provider"
             );
-            *self.endpoint.write().await = Some(endpoint.addr);
+            *self.endpoint.write().await = Some(transport);
             *self.state.write().await = ListenerState::Connected;
         } else {
             debug!("No signing provider for mesh event listener (standalone mode)");
@@ -144,11 +146,12 @@ impl MeshEventListener {
     ///
     /// Returns error if not connected or RPC call fails.
     pub async fn poll_events(&self) -> Result<usize> {
-        let endpoint = self.endpoint.read().await;
-        let Some(addr) = *endpoint else {
+        let endpoint_guard = self.endpoint.read().await;
+        let Some(ref transport) = *endpoint_guard else {
             return Ok(0);
         };
-        drop(endpoint);
+        let transport = transport.clone();
+        drop(endpoint_guard);
 
         let since = *self.last_poll_timestamp.read().await;
 
@@ -161,7 +164,7 @@ impl MeshEventListener {
             "id": 1
         });
 
-        let response = match Self::send_jsonrpc(&addr, &request).await {
+        let response = match Self::send_jsonrpc(&transport, &request).await {
             Ok(resp) => resp,
             Err(e) => {
                 debug!(error = %e, "Mesh event poll failed (non-fatal)");
@@ -244,22 +247,24 @@ impl MeshEventListener {
         })
     }
 
-    /// Send a JSON-RPC request over newline-delimited TCP.
+    /// Send a JSON-RPC request via transport-agnostic connection.
     async fn send_jsonrpc(
-        endpoint: &SocketAddr,
+        endpoint: &TransportEndpoint,
         request: &serde_json::Value,
     ) -> std::result::Result<String, String> {
+        use sourdough_core::transport::TransportStream;
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-        use tokio::net::TcpStream;
 
-        let stream = tokio::time::timeout(MESH_CONNECTION_TIMEOUT, TcpStream::connect(endpoint))
+        let stream = tokio::time::timeout(MESH_CONNECTION_TIMEOUT, connect_transport(endpoint))
             .await
             .map_err(|_| format!("Connection timeout to {endpoint}"))?
             .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
 
-        stream.set_nodelay(true).map_err(|e| format!("Failed to set TCP_NODELAY: {e}"))?;
+        if let TransportStream::Tcp(ref tcp) = stream {
+            let _ = tcp.set_nodelay(true);
+        }
 
-        let (reader, mut writer) = stream.into_split();
+        let (reader, mut writer) = tokio::io::split(stream);
 
         let payload = format!(
             "{}\n",
@@ -280,8 +285,8 @@ impl MeshEventListener {
     }
 
     /// Get the resolved signing provider endpoint (if connected).
-    pub async fn endpoint(&self) -> Option<SocketAddr> {
-        *self.endpoint.read().await
+    pub async fn endpoint(&self) -> Option<TransportEndpoint> {
+        self.endpoint.read().await.clone()
     }
 
     /// Drain all recorded events (for batch processing or testing).
@@ -305,6 +310,8 @@ impl std::fmt::Debug for MeshEventListener {
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
+    use std::net::SocketAddr;
+
     use super::*;
 
     fn test_registry() -> Arc<DiscoveryRegistry> {
@@ -400,7 +407,8 @@ mod tests {
         let result = listener.connect().await;
         assert!(result.is_ok());
         assert_eq!(listener.state().await, ListenerState::Connected);
-        assert_eq!(listener.endpoint().await, Some(addr));
+        let expected = TransportEndpoint::tcp(addr.ip().to_string(), addr.port());
+        assert_eq!(listener.endpoint().await, Some(expected));
     }
 
     #[tokio::test]

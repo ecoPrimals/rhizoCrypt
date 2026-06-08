@@ -236,6 +236,7 @@ pub const DEPENDENCIES: &[(&str, bool, &str)] = &[
     ("storage", false, "content-addressed payload storage (graceful fallback to inline)"),
     ("provenance", false, "attribution braids (graceful fallback to unattributed)"),
     ("mesh", false, "cross-gate trust event recording (graceful fallback to no-op)"),
+    ("transport", false, "sourdough-core TransportEndpoint abstraction (graceful fallback to direct TCP/UDS)"),
 ];
 
 /// All semantic mappings: standard (`short_name` → `fqn`) + aliases.

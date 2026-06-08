@@ -7,7 +7,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.14.2"
+version = "0.14.3"
 edition = "2024"
 rust-version = "1.87"
 license = "AGPL-3.0-or-later"
@@ -74,6 +74,9 @@ chacha20poly1305 = "0.10"
 
 # CLI
 clap = { version = "4.5", features = ["derive"] }
+
+# Ecosystem core (transport abstraction, shared traits)
+sourdough-core = { path = "../sourDough/crates/sourdough-core" }
 
 # Test utilities
 temp-env = "0.3"

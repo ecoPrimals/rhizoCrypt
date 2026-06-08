@@ -27,8 +27,9 @@
 //!
 //! ## Environment Variables
 //!
-//! - `RHIZOCRYPT_PORT` - Opt-in TCP: tarpc port (triggers TCP transport)
-//! - `RHIZOCRYPT_JSONRPC_PORT` - Opt-in TCP: JSON-RPC port
+//! - `TRANSPORT_ENDPOINT` - Transport injection (JSON): `{"transport":"uds","path":"..."}`
+//! - `RHIZOCRYPT_PORT` - Tier 5 fallback: opt-in TCP (standalone/debug only)
+//! - `RHIZOCRYPT_JSONRPC_PORT` - Tier 5 fallback: JSON-RPC port
 //! - `RHIZOCRYPT_HOST` - TCP bind address (default: 0.0.0.0)
 //! - `RHIZOCRYPT_DISCOVERY_ADAPTER` or `DISCOVERY_ENDPOINT` - Discovery adapter for registration
 //! - `RHIZOCRYPT_ENV` - Environment mode (development/production)
