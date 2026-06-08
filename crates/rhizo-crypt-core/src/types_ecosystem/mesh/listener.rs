@@ -24,7 +24,7 @@
 
 use std::sync::Arc;
 
-use sourdough_core::transport::{connect_transport, TransportEndpoint};
+use crate::transport::{connect_transport, TransportEndpoint};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -252,7 +252,7 @@ impl MeshEventListener {
         endpoint: &TransportEndpoint,
         request: &serde_json::Value,
     ) -> std::result::Result<String, String> {
-        use sourdough_core::transport::TransportStream;
+        use crate::transport::TransportStream;
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
         let stream = tokio::time::timeout(MESH_CONNECTION_TIMEOUT, connect_transport(endpoint))

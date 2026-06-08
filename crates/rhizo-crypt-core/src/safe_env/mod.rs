@@ -201,7 +201,7 @@ impl SafeEnv {
     /// Ecosystem standard: the launcher injects a JSON string like
     /// `{"transport":"uds","path":"/run/user/1000/biomeos/rhizocrypt.sock"}`.
     #[must_use]
-    pub fn transport_endpoint() -> Option<sourdough_core::transport::TransportEndpoint> {
+    pub fn transport_endpoint() -> Option<crate::transport::TransportEndpoint> {
         let val = std::env::var(Self::TRANSPORT_ENDPOINT).ok()?;
         serde_json::from_str(&val).ok()
     }

@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use sourdough_core::transport::{connect_transport, TransportEndpoint};
+use crate::transport::{connect_transport, TransportEndpoint};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -274,7 +274,7 @@ impl ProvenanceNotifier {
         endpoint: &TransportEndpoint,
         request: &serde_json::Value,
     ) -> std::result::Result<String, String> {
-        use sourdough_core::transport::TransportStream;
+        use crate::transport::TransportStream;
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
         let stream =
@@ -549,7 +549,7 @@ mod tests {
         let result = notifier.connect().await;
         assert!(result.is_ok());
         assert_eq!(notifier.state().await, ClientState::Connected);
-        let expected = sourdough_core::transport::TransportEndpoint::tcp(
+        let expected = crate::transport::TransportEndpoint::tcp(
             addr.ip().to_string(),
             addr.port(),
         );

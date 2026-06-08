@@ -3,13 +3,14 @@
 
 //! Platform-agnostic transport selection (ecoBin v2.0).
 //!
-//! Provides runtime transport negotiation across platforms:
-//! - Unix domain sockets (Linux, macOS, BSD)
-//! - Abstract namespace sockets (Android)
-//! - TCP fallback (Windows, unsupported platforms)
-//!
-//! The transport layer is decoupled from constants so that IPC selection
-//! logic and platform detection can evolve independently from static values.
+//! Provides:
+//! - [`TransportEndpoint`] — ecosystem-standard wire type for describing how
+//!   to reach a service. Serde-tagged JSON, wire-compatible with the
+//!   `sourDough`/`songBird`/`cellMembrane` canonical format.
+//! - [`connect_transport`] — connect to a service via its resolved endpoint.
+//! - [`TransportStream`] — transport-agnostic connected stream.
+//! - [`TransportHint`] — legacy platform detection (ecoBin v2.0).
+//! - BTSP helpers (family-scoped socket paths, insecure mode guard).
 
 use std::path::{Path, PathBuf};
 
@@ -187,6 +188,181 @@ pub fn btsp_env_guard(primal_env_prefix: &str) -> Result<(), BtspConfigError> {
 
     Ok(())
 }
+
+// ============================================================================
+// TransportEndpoint — ecosystem canonical wire type
+// ============================================================================
+
+/// Structured transport endpoint — wire-compatible with the ecosystem standard.
+///
+/// ```json
+/// { "transport": "uds", "path": "/run/membrane/beardog.sock" }
+/// { "transport": "tcp", "host": "192.168.1.144", "port": 7700 }
+/// { "transport": "mesh_relay", "peer_id": "strand-gate", "capability": "security" }
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "transport")]
+pub enum TransportEndpoint {
+    /// Unix Domain Socket.
+    #[serde(rename = "uds")]
+    Uds {
+        /// Filesystem path to the socket.
+        path: String,
+    },
+    /// TCP connection.
+    #[serde(rename = "tcp")]
+    Tcp {
+        /// Host address.
+        host: String,
+        /// TCP port number.
+        port: u16,
+    },
+    /// Mesh relay via Songbird.
+    #[serde(rename = "mesh_relay")]
+    MeshRelay {
+        /// Mesh peer identifier.
+        peer_id: String,
+        /// Capability being resolved.
+        capability: String,
+    },
+}
+
+impl TransportEndpoint {
+    /// Construct a TCP endpoint.
+    #[must_use]
+    pub fn tcp(host: impl Into<String>, port: u16) -> Self {
+        Self::Tcp {
+            host: host.into(),
+            port,
+        }
+    }
+
+    /// Returns `(host, port)` if this is a TCP endpoint.
+    #[must_use]
+    pub fn tcp_addr(&self) -> Option<(&str, u16)> {
+        match self {
+            Self::Tcp { host, port } => Some((host, *port)),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for TransportEndpoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Uds { path } => write!(f, "unix://{path}"),
+            Self::Tcp { host, port } => write!(f, "tcp://{host}:{port}"),
+            Self::MeshRelay {
+                peer_id,
+                capability,
+            } => write!(f, "mesh://{peer_id}/{capability}"),
+        }
+    }
+}
+
+// ============================================================================
+// TransportStream — transport-agnostic connected stream
+// ============================================================================
+
+/// A transport-agnostic connected stream implementing `AsyncRead + AsyncWrite`.
+pub enum TransportStream {
+    /// Connected Unix domain socket.
+    #[cfg(unix)]
+    Unix(tokio::net::UnixStream),
+    /// Connected TCP stream.
+    Tcp(tokio::net::TcpStream),
+}
+
+impl tokio::io::AsyncRead for TransportStream {
+    fn poll_read(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        match self.get_mut() {
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_read(cx, buf),
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_read(cx, buf),
+        }
+    }
+}
+
+impl tokio::io::AsyncWrite for TransportStream {
+    fn poll_write(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        match self.get_mut() {
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_write(cx, buf),
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_write(cx, buf),
+        }
+    }
+
+    fn poll_flush(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        match self.get_mut() {
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_flush(cx),
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_flush(cx),
+        }
+    }
+
+    fn poll_shutdown(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        match self.get_mut() {
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_shutdown(cx),
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_shutdown(cx),
+        }
+    }
+}
+
+// ============================================================================
+// connect_transport — connect to a resolved endpoint
+// ============================================================================
+
+/// Connect to a service via its resolved [`TransportEndpoint`].
+///
+/// # Errors
+///
+/// Returns `io::Error` on connection failure. `MeshRelay` endpoints require
+/// routing through Songbird and are not directly connectable.
+pub async fn connect_transport(endpoint: &TransportEndpoint) -> std::io::Result<TransportStream> {
+    match endpoint {
+        #[cfg(unix)]
+        TransportEndpoint::Uds { path } => {
+            let stream = tokio::net::UnixStream::connect(path).await?;
+            Ok(TransportStream::Unix(stream))
+        }
+        #[cfg(not(unix))]
+        TransportEndpoint::Uds { path } => Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            format!("UDS not available on this platform for {path}"),
+        )),
+        TransportEndpoint::Tcp { host, port } => {
+            let addr = format!("{host}:{port}");
+            let stream = tokio::net::TcpStream::connect(&addr).await?;
+            Ok(TransportStream::Tcp(stream))
+        }
+        TransportEndpoint::MeshRelay {
+            peer_id,
+            capability,
+        } => Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            format!("mesh relay ({peer_id}/{capability}) requires Songbird routing"),
+        )),
+    }
+}
+
+// ============================================================================
+// TransportHint — legacy platform detection
+// ============================================================================
 
 /// Transport hint for primal IPC, selected per-platform per ecoBin v2.0.
 #[derive(Clone, Debug, Eq, PartialEq)]

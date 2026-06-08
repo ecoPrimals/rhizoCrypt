@@ -156,8 +156,8 @@ pub use store::{
 #[cfg(feature = "redb")]
 pub use store_redb::RedbDagStore;
 
-// Transport (ecosystem canonical — sourDough TransportEndpoint standard)
-pub use sourdough_core::transport::{connect_transport, TransportEndpoint, TransportStream};
+// Transport (ecosystem canonical wire format — local impl, no cross-primal dep)
+pub use transport::{connect_transport, TransportEndpoint, TransportStream};
 
 // Types
 pub use types::{ContentHash, Did, PayloadRef, SessionId, Signature, SliceId, Timestamp, VertexId};

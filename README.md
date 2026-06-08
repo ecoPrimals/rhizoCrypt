@@ -18,7 +18,7 @@
 | Error Model | Structured `IpcErrorPhase` + `DispatchOutcome` (protocol vs application) |
 | Discovery | Capability-based + manifest (PG-32) + Neural API `primal.announce` (Wave 43) |
 | Chaos | `ChaosEngine` framework with 7 fault classes |
-| Transport | UDS unconditional, TCP opt-in (`--port`), `TRANSPORT_ENDPOINT` injection (sourdough-core), BTSP Phase 3 (ChaCha20-Poly1305) |
+| Transport | UDS unconditional, TCP opt-in (`--port`), `TRANSPORT_ENDPOINT` injection (local impl), BTSP Phase 3 (ChaCha20-Poly1305) |
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
@@ -140,10 +140,10 @@ cargo llvm-cov --workspace --html
 UDS is **unconditional** on Unix — no flags needed. TCP is **opt-in** via
 `--port` or `RHIZOCRYPT_PORT` (Tier 5 fallback for standalone/debug only).
 
-**Transport injection** (Wave 100): Accepts `TRANSPORT_ENDPOINT` env var as
-JSON-encoded `TransportEndpoint` from the launcher. Outbound IPC uses
-`connect_transport()` from `sourdough-core` — transport-agnostic (UDS, TCP,
-or mesh relay depending on endpoint resolution).
+**Transport injection** (Wave 100–101): Accepts `TRANSPORT_ENDPOINT` env var as
+JSON-encoded `TransportEndpoint` from the launcher. Outbound IPC uses local
+`connect_transport()` — transport-agnostic (UDS, TCP, or mesh relay). Wire
+format is the contract — no cross-primal compile deps.
 
 ```
 rhizocrypt server                           # UDS-only (default)

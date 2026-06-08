@@ -9,14 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-#### Wave 100: Transport Evolution — sourdough-core TransportEndpoint (Jun 8, 2026)
+#### Wave 100–101: Transport Evolution — Local TransportEndpoint (Jun 8, 2026)
 
-- **Transport injection**: Added `sourdough-core` as workspace dependency. Outbound IPC clients (mesh listener, provenance notifier) now use `connect_transport()` via `TransportEndpoint` — transport-agnostic (UDS, TCP, or mesh relay).
+- **Transport injection**: `TransportEndpoint`, `TransportStream`, and `connect_transport()` implemented locally in `transport.rs` (~170 lines). Wire-compatible with ecosystem standard (sourDough, songBird, cellMembrane tagged JSON format). **No cross-primal dep** — the wire format is the contract.
 - **`TRANSPORT_ENDPOINT` env var**: Parsed as JSON-encoded `TransportEndpoint` from launcher. Logged at startup. `SafeEnv::transport_endpoint()` helper added.
 - **Re-exports**: `TransportEndpoint`, `TransportStream`, `connect_transport` re-exported from `rhizo-crypt-core` root.
 - **Provenance notifier**: `connect()` fallback now accepts both legacy `host:port` strings and JSON `TransportEndpoint` format. Endpoint field evolved from `SocketAddr` to `TransportEndpoint`.
 - **Mesh event listener**: `send_jsonrpc()` uses `connect_transport()`. `TCP_NODELAY` applied only when transport is TCP (correct per transport type).
 - **Niche**: `transport` added to `DEPENDENCIES` as optional capability domain.
+
+### Fixed
+
+- **Removed `sourdough-core` path dep** (Wave 101): Cross-primal path dependency violated primal self-knowledge. Replaced with local wire-compatible implementation. Zero cross-primal compile deps restored.
 
 ## [0.14.2] - 2026-06-05
 
