@@ -121,7 +121,8 @@ impl PermanentStorageClient {
             commit_ref: commit_ref.clone(),
         };
 
-        let response: VerifyCommitResponse = self.adapter.call(wire::COMMIT_VERIFY, request).await?;
+        let response: VerifyCommitResponse =
+            self.adapter.call(wire::COMMIT_VERIFY, request).await?;
 
         Ok(response.valid)
     }
@@ -158,7 +159,8 @@ impl PermanentStorageClient {
             holder: holder.clone(),
         };
 
-        let response: CheckoutSliceResponse = self.adapter.call(wire::SLICE_CHECKOUT, request).await?;
+        let response: CheckoutSliceResponse =
+            self.adapter.call(wire::SLICE_CHECKOUT, request).await?;
 
         Ok(response.origin)
     }
@@ -174,7 +176,8 @@ impl PermanentStorageClient {
             outcome: outcome.clone(),
         };
 
-        let _response: ResolveSliceResponse = self.adapter.call(wire::SLICE_RESOLVE, request).await?;
+        let _response: ResolveSliceResponse =
+            self.adapter.call(wire::SLICE_RESOLVE, request).await?;
 
         Ok(())
     }

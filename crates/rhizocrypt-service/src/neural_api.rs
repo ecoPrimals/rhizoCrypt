@@ -82,17 +82,13 @@ fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
     let socket_name = format!("neural-api-{family}.sock");
 
     if let Some(xdg) = SafeEnv::get_optional(SafeEnv::XDG_RUNTIME_DIR) {
-        let p = PathBuf::from(xdg)
-            .join(constants::BIOMEOS_SOCKET_SUBDIR)
-            .join(&socket_name);
+        let p = PathBuf::from(xdg).join(constants::BIOMEOS_SOCKET_SUBDIR).join(&socket_name);
         if p.exists() {
             return Some(p);
         }
     }
 
-    let p = PathBuf::from("/tmp")
-        .join(constants::BIOMEOS_SOCKET_SUBDIR)
-        .join(&socket_name);
+    let p = PathBuf::from("/tmp").join(constants::BIOMEOS_SOCKET_SUBDIR).join(&socket_name);
     if p.exists() {
         return Some(p);
     }

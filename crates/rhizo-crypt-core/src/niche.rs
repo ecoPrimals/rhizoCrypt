@@ -21,10 +21,10 @@
 mod niche_derived;
 
 pub use niche_derived::{
-    announce_payload, capability_list, cost_tier, health_liveness, health_readiness, identity_get,
-    mcp_tools, method_locality_counts, normalize_method, operation_dependencies,
     CONSUMED_CAPABILITIES, DEPENDENCIES, DOMAIN_DESCRIPTIONS, PROVENANCE_ALIASES,
-    SEMANTIC_MAPPINGS,
+    SEMANTIC_MAPPINGS, announce_payload, capability_list, cost_tier, health_liveness,
+    health_readiness, identity_get, mcp_tools, method_locality_counts, normalize_method,
+    operation_dependencies,
 };
 
 use std::sync::LazyLock;

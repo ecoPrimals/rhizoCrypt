@@ -120,10 +120,7 @@ impl MeshEventListener {
     ///
     /// Stores the event in the internal log and returns the mapped
     /// [`EventType`] for the caller to append to a DAG session.
-    pub async fn record_event(
-        &self,
-        event: MeshTrustEvent,
-    ) -> crate::event::EventType {
+    pub async fn record_event(&self, event: MeshTrustEvent) -> crate::event::EventType {
         let event_type = event.clone().into_event_type();
 
         debug!(
@@ -255,15 +252,12 @@ impl MeshEventListener {
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
         use tokio::net::TcpStream;
 
-        let stream =
-            tokio::time::timeout(MESH_CONNECTION_TIMEOUT, TcpStream::connect(endpoint))
-                .await
-                .map_err(|_| format!("Connection timeout to {endpoint}"))?
-                .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
+        let stream = tokio::time::timeout(MESH_CONNECTION_TIMEOUT, TcpStream::connect(endpoint))
+            .await
+            .map_err(|_| format!("Connection timeout to {endpoint}"))?
+            .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
 
-        stream
-            .set_nodelay(true)
-            .map_err(|e| format!("Failed to set TCP_NODELAY: {e}"))?;
+        stream.set_nodelay(true).map_err(|e| format!("Failed to set TCP_NODELAY: {e}"))?;
 
         let (reader, mut writer) = stream.into_split();
 
@@ -271,14 +265,8 @@ impl MeshEventListener {
             "{}\n",
             serde_json::to_string(request).map_err(|e| format!("Serialize failed: {e}"))?
         );
-        writer
-            .write_all(payload.as_bytes())
-            .await
-            .map_err(|e| format!("Write failed: {e}"))?;
-        writer
-            .flush()
-            .await
-            .map_err(|e| format!("Flush failed: {e}"))?;
+        writer.write_all(payload.as_bytes()).await.map_err(|e| format!("Write failed: {e}"))?;
+        writer.flush().await.map_err(|e| format!("Flush failed: {e}"))?;
 
         let mut buf_reader = BufReader::new(reader);
         let mut response = String::new();
@@ -310,9 +298,7 @@ impl MeshEventListener {
 
 impl std::fmt::Debug for MeshEventListener {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MeshEventListener")
-            .field("registry", &"<DiscoveryRegistry>")
-            .finish()
+        f.debug_struct("MeshEventListener").field("registry", &"<DiscoveryRegistry>").finish()
     }
 }
 

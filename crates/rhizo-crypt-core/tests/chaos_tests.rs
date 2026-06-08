@@ -3,6 +3,5 @@
 
 //! Chaos test suite for rhizoCrypt.
 
-
 mod chaos;
 mod common;

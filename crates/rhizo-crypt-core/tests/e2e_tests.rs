@@ -3,6 +3,5 @@
 
 //! End-to-end test suite for rhizoCrypt.
 
-
 mod common;
 mod e2e;

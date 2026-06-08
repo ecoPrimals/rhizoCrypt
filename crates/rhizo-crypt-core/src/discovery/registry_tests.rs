@@ -679,9 +679,7 @@ async fn test_standalone_mode_no_source_no_population() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_lazy_source_unreachable_returns_failed() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
-    registry
-        .set_discovery_source("127.0.0.1:1".parse().unwrap())
-        .await;
+    registry.set_discovery_source("127.0.0.1:1".parse().unwrap()).await;
 
     let status = registry.discover(&Capability::Signing).await;
     assert!(

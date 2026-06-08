@@ -329,11 +329,21 @@ impl EventType {
             | Self::CommentAdd
             | Self::ApprovalGrant
             | Self::ApprovalRevoke => "collaboration",
-            Self::TrustIssuerRegistered { .. }
-            | Self::KeyExchangeCompleted { .. }
-            | Self::FamilyEnrollment { .. }
-            | Self::MeshJoin { .. }
-            | Self::MeshLeave { .. } => "mesh",
+            Self::TrustIssuerRegistered {
+                ..
+            }
+            | Self::KeyExchangeCompleted {
+                ..
+            }
+            | Self::FamilyEnrollment {
+                ..
+            }
+            | Self::MeshJoin {
+                ..
+            }
+            | Self::MeshLeave {
+                ..
+            } => "mesh",
             Self::Custom {
                 domain,
                 ..
@@ -416,11 +426,21 @@ impl EventType {
             Self::CommentAdd => "comment_add",
             Self::ApprovalGrant => "approval_grant",
             Self::ApprovalRevoke => "approval_revoke",
-            Self::TrustIssuerRegistered { .. } => "trust_issuer_registered",
-            Self::KeyExchangeCompleted { .. } => "key_exchange_completed",
-            Self::FamilyEnrollment { .. } => "family_enrollment",
-            Self::MeshJoin { .. } => "mesh_join",
-            Self::MeshLeave { .. } => "mesh_leave",
+            Self::TrustIssuerRegistered {
+                ..
+            } => "trust_issuer_registered",
+            Self::KeyExchangeCompleted {
+                ..
+            } => "key_exchange_completed",
+            Self::FamilyEnrollment {
+                ..
+            } => "family_enrollment",
+            Self::MeshJoin {
+                ..
+            } => "mesh_join",
+            Self::MeshLeave {
+                ..
+            } => "mesh_leave",
         }
     }
 }

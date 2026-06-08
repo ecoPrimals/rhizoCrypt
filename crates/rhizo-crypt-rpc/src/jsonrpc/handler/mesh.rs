@@ -47,9 +47,8 @@ pub async fn dispatch_mesh_events_record(
 ) -> Result<Value, HandlerError> {
     let obj = get_obj(&params)?;
 
-    let event: MeshTrustEvent = serde_json::from_value(Value::Object(obj.clone())).map_err(
-        |e| HandlerError::InvalidParams(Cow::Owned(format!("invalid mesh event: {e}"))),
-    )?;
+    let event: MeshTrustEvent = serde_json::from_value(Value::Object(obj.clone()))
+        .map_err(|e| HandlerError::InvalidParams(Cow::Owned(format!("invalid mesh event: {e}"))))?;
 
     let source_gate = event.source_gate.clone();
     let event_type = server.primal.mesh_listener().record_event(event).await;

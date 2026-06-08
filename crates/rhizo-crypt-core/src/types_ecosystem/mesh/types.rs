@@ -94,11 +94,16 @@ impl MeshTrustEvent {
                 gate: self.source_gate,
                 primal_count,
             },
-            MeshTrustEventKind::MeshJoin { mesh_id } => EventType::MeshJoin {
+            MeshTrustEventKind::MeshJoin {
+                mesh_id,
+            } => EventType::MeshJoin {
                 gate: self.source_gate,
                 mesh_id,
             },
-            MeshTrustEventKind::MeshLeave { mesh_id, reason } => EventType::MeshLeave {
+            MeshTrustEventKind::MeshLeave {
+                mesh_id,
+                reason,
+            } => EventType::MeshLeave {
                 gate: self.source_gate,
                 mesh_id,
                 reason,

@@ -225,12 +225,7 @@ async fn test_readiness_gate_allows_exact_public_methods_when_not_running() {
     let primal = create_unstarted_primal();
     assert!(!primal.state().is_running());
 
-    for method in [
-        "primal.capabilities",
-        "capabilities.list",
-        "identity.get",
-        "tools.list",
-    ] {
+    for method in ["primal.capabilities", "capabilities.list", "identity.get", "tools.list"] {
         let req = make_request(method, None);
         let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
         assert!(result.is_ok(), "{method} should bypass readiness gate (exact public)");

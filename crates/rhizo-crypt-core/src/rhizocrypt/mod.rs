@@ -98,9 +98,9 @@ impl RhizoCrypt {
             metrics: Arc::new(PrimalMetrics::new()),
             discovery_registry: Arc::clone(&registry),
             signing_client: OnceCell::new(),
-            provenance_notifier: Arc::new(ProvenanceNotifier::with_discovery(
-                Arc::clone(&registry),
-            )),
+            provenance_notifier: Arc::new(ProvenanceNotifier::with_discovery(Arc::clone(
+                &registry,
+            ))),
             mesh_listener: Arc::new(MeshEventListener::new(registry)),
         }
     }
