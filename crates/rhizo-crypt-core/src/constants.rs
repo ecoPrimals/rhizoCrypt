@@ -429,6 +429,11 @@ pub const SOCKET_FILE_EXTENSION: &str = ".sock";
 /// Fallback temporary directory for UDS discovery when `XDG_RUNTIME_DIR` is absent.
 pub const POSIX_FALLBACK_TMPDIR: &str = "/tmp";
 
+/// Default family identifier for neural API socket discovery.
+///
+/// Used when `ECOPRIMALS_FAMILY_ID` is not set.
+pub const DEFAULT_FAMILY_ID: &str = "ecoPrimal";
+
 /// Default in-memory storage cap (1 GiB).
 pub const DEFAULT_MAX_MEMORY_BYTES: u64 = 1024 * 1024 * 1024;
 

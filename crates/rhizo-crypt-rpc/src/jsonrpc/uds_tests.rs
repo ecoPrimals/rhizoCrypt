@@ -173,6 +173,7 @@ async fn test_btsp_jsonline_handshake_over_uds() {
 
     let family_seed = b"integration-test-family-seed-ok!";
     let primal = test_primal().await;
+    let server = crate::service::RhizoCryptRpcServer::new(primal);
 
     let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
     server_raw.set_nonblocking(true).unwrap();
@@ -181,7 +182,7 @@ async fn test_btsp_jsonline_handshake_over_uds() {
     let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
 
     let server_handle = tokio::spawn(async move {
-        handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        handle_uds_connection(server_stream, server, true, Some(family_seed)).await
     });
 
     let b64 = base64::engine::general_purpose::STANDARD;
@@ -381,6 +382,7 @@ async fn test_btsp_phase3_encrypted_transport_over_uds() {
 
     let family_seed = b"integration-test-family-seed-ok!";
     let primal = test_primal().await;
+    let server = crate::service::RhizoCryptRpcServer::new(primal);
 
     let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
     server_raw.set_nonblocking(true).unwrap();
@@ -389,7 +391,7 @@ async fn test_btsp_phase3_encrypted_transport_over_uds() {
     let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
 
     let server_handle = tokio::spawn(async move {
-        handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        handle_uds_connection(server_stream, server, true, Some(family_seed)).await
     });
 
     let (session_id, handshake_key) = client_phase2_handshake(&mut client, family_seed).await;
@@ -462,6 +464,7 @@ async fn test_btsp_phase3_encrypted_transport_over_uds() {
 async fn test_btsp_jsonline_invalid_key_returns_error() {
     let family_seed = b"integration-test-family-seed-ok!";
     let primal = test_primal().await;
+    let server = crate::service::RhizoCryptRpcServer::new(primal);
 
     let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
     server_raw.set_nonblocking(true).unwrap();
@@ -470,7 +473,7 @@ async fn test_btsp_jsonline_invalid_key_returns_error() {
     let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
 
     let server_handle = tokio::spawn(async move {
-        handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        handle_uds_connection(server_stream, server, true, Some(family_seed)).await
     });
 
     let hello = r#"{"protocol":"btsp","version":1,"client_ephemeral_pub":"dGVzdA=="}"#;
@@ -505,6 +508,7 @@ async fn test_btsp_jsonline_invalid_key_returns_error() {
 async fn test_plain_jsonrpc_data_methods_on_btsp_uds() {
     let family_seed = b"integration-test-family-seed-ok!";
     let primal = test_primal().await;
+    let server = crate::service::RhizoCryptRpcServer::new(primal);
 
     let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
     server_raw.set_nonblocking(true).unwrap();
@@ -513,7 +517,7 @@ async fn test_plain_jsonrpc_data_methods_on_btsp_uds() {
     let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
 
     let server_handle = tokio::spawn(async move {
-        handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        handle_uds_connection(server_stream, server, true, Some(family_seed)).await
     });
 
     let req = r#"{"jsonrpc":"2.0","method":"dag.session.create","params":{"description":"PG-52 test","session_type":"General"},"id":1}"#;
@@ -551,6 +555,7 @@ async fn test_plain_jsonrpc_data_methods_on_btsp_uds() {
 async fn test_dag_method_suite_on_btsp_uds() {
     let family_seed = b"integration-test-family-seed-ok!";
     let primal = test_primal().await;
+    let server = crate::service::RhizoCryptRpcServer::new(primal);
 
     let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
     server_raw.set_nonblocking(true).unwrap();
@@ -559,7 +564,7 @@ async fn test_dag_method_suite_on_btsp_uds() {
     let client_stream = tokio::net::UnixStream::from_std(client_raw).unwrap();
 
     let server_handle = tokio::spawn(async move {
-        handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        handle_uds_connection(server_stream, server, true, Some(family_seed)).await
     });
 
     let (reader, mut writer) = client_stream.into_split();
@@ -605,6 +610,7 @@ async fn test_dag_method_suite_on_btsp_uds() {
 async fn test_batch_jsonrpc_on_btsp_uds() {
     let family_seed = b"integration-test-family-seed-ok!";
     let primal = test_primal().await;
+    let server = crate::service::RhizoCryptRpcServer::new(primal);
 
     let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
     server_raw.set_nonblocking(true).unwrap();
@@ -613,7 +619,7 @@ async fn test_batch_jsonrpc_on_btsp_uds() {
     let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
 
     let server_handle = tokio::spawn(async move {
-        handle_uds_connection(server_stream, primal, true, Some(family_seed)).await
+        handle_uds_connection(server_stream, server, true, Some(family_seed)).await
     });
 
     let batch = r#"[{"jsonrpc":"2.0","method":"health.check","params":{},"id":1},{"jsonrpc":"2.0","method":"dag.session.create","params":{"description":"batch","session_type":"General"},"id":2}]"#;

@@ -59,12 +59,12 @@ impl RpcServer {
         let is_running = Arc::clone(&self.is_running);
         let mut shutdown_rx = self.shutdown_rx.clone();
 
-        // Create a stream that stops on shutdown signal
+        let shared_server = RhizoCryptRpcServer::new(Arc::clone(&self.primal));
         let incoming = listener.filter_map(|r| async { r.ok() });
 
         tokio::select! {
             () = incoming.for_each(|transport| {
-                let server = RhizoCryptRpcServer::new(Arc::clone(&self.primal));
+                let server = shared_server.clone();
 
                 async move {
                     let fut = server::BaseChannel::with_defaults(transport)

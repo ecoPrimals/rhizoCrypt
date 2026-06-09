@@ -7,7 +7,7 @@
 
 #![expect(clippy::unwrap_used, reason = "test code")]
 
-use super::test_support::{create_test_primal, make_request, test_caller, test_gate};
+use super::test_support::{create_test_server, make_request, test_caller, test_gate};
 use super::*;
 use serde_json::json;
 
@@ -17,12 +17,12 @@ use serde_json::json;
 
 #[tokio::test]
 async fn test_dag_branch_creates_forked_session() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let gate = test_gate();
     let caller = test_caller();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let result = handle_request(&server, req, &gate, &caller).await.unwrap();
     let session_id = result.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -32,7 +32,7 @@ async fn test_dag_branch_creates_forked_session() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let v1 = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let v1 = handle_request(&server, req, &gate, &caller).await.unwrap();
     let v1_hex = v1.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -43,7 +43,7 @@ async fn test_dag_branch_creates_forked_session() {
             "parents": [v1_hex]
         })),
     );
-    let v2 = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let v2 = handle_request(&server, req, &gate, &caller).await.unwrap();
     let v2_hex = v2.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -54,7 +54,7 @@ async fn test_dag_branch_creates_forked_session() {
             "name": "feature-branch"
         })),
     );
-    let resp = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let resp = handle_request(&server, req, &gate, &caller).await.unwrap();
     let resp_obj = resp.as_object().unwrap();
     assert!(resp_obj.get("session_id").is_some());
     assert_eq!(resp_obj["vertex_count"], 2);
@@ -63,12 +63,12 @@ async fn test_dag_branch_creates_forked_session() {
 
 #[tokio::test]
 async fn test_dag_branch_invalid_vertex_returns_error() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let gate = test_gate();
     let caller = test_caller();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let result = handle_request(&server, req, &gate, &caller).await.unwrap();
     let session_id = result.as_str().unwrap().to_string();
 
     let fake_hex = hex::encode([0u8; 32]);
@@ -79,22 +79,22 @@ async fn test_dag_branch_invalid_vertex_returns_error() {
             "checkout_vertex": fake_hex,
         })),
     );
-    let resp = handle_request(primal.clone(), req, &gate, &caller).await;
+    let resp = handle_request(&server, req, &gate, &caller).await;
     assert!(resp.is_err());
 }
 
 #[tokio::test]
 async fn test_dag_diff_between_sessions() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let gate = test_gate();
     let caller = test_caller();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let s1 = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let s1 = handle_request(&server, req, &gate, &caller).await.unwrap();
     let s1_id = s1.as_str().unwrap().to_string();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let s2 = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let s2 = handle_request(&server, req, &gate, &caller).await.unwrap();
     let s2_id = s2.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -104,7 +104,7 @@ async fn test_dag_diff_between_sessions() {
             "event_type": {"SessionStart": null}
         })),
     );
-    handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    handle_request(&server, req, &gate, &caller).await.unwrap();
 
     let req = make_request(
         "dag.event.append",
@@ -113,7 +113,7 @@ async fn test_dag_diff_between_sessions() {
             "event_type": {"DataCreate": {"schema": "other"}}
         })),
     );
-    handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    handle_request(&server, req, &gate, &caller).await.unwrap();
 
     let req = make_request(
         "dag.diff",
@@ -122,7 +122,7 @@ async fn test_dag_diff_between_sessions() {
             "other_session_id": s2_id
         })),
     );
-    let resp = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let resp = handle_request(&server, req, &gate, &caller).await.unwrap();
     let obj = resp.as_object().unwrap();
     assert_eq!(obj["only_in_base"].as_array().unwrap().len(), 1);
     assert_eq!(obj["only_in_other"].as_array().unwrap().len(), 1);
@@ -131,12 +131,12 @@ async fn test_dag_diff_between_sessions() {
 
 #[tokio::test]
 async fn test_dag_merge_collapses_frontier() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let gate = test_gate();
     let caller = test_caller();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let result = handle_request(&server, req, &gate, &caller).await.unwrap();
     let session_id = result.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -146,7 +146,7 @@ async fn test_dag_merge_collapses_frontier() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let genesis = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let genesis = handle_request(&server, req, &gate, &caller).await.unwrap();
     let genesis_hex = genesis.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -157,7 +157,7 @@ async fn test_dag_merge_collapses_frontier() {
             "parents": [genesis_hex]
         })),
     );
-    let branch_a = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let branch_a = handle_request(&server, req, &gate, &caller).await.unwrap();
     let branch_a_hex = branch_a.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -168,11 +168,11 @@ async fn test_dag_merge_collapses_frontier() {
             "parents": [genesis_hex]
         })),
     );
-    let branch_b = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let branch_b = handle_request(&server, req, &gate, &caller).await.unwrap();
     let branch_b_hex = branch_b.as_str().unwrap().to_string();
 
     let req = make_request("dag.frontier.get", Some(json!({"session_id": session_id})));
-    let frontier = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let frontier = handle_request(&server, req, &gate, &caller).await.unwrap();
     assert_eq!(frontier.as_array().unwrap().len(), 2);
 
     let req = make_request(
@@ -183,22 +183,22 @@ async fn test_dag_merge_collapses_frontier() {
             "event_type": {"DataCreate": {"schema": "merge"}}
         })),
     );
-    let merge_id = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let merge_id = handle_request(&server, req, &gate, &caller).await.unwrap();
     assert!(merge_id.as_str().is_some());
 
     let req = make_request("dag.frontier.get", Some(json!({"session_id": session_id})));
-    let frontier = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let frontier = handle_request(&server, req, &gate, &caller).await.unwrap();
     assert_eq!(frontier.as_array().unwrap().len(), 1, "merge should collapse frontier to 1");
 }
 
 #[tokio::test]
 async fn test_dag_merge_rejects_single_parent() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let gate = test_gate();
     let caller = test_caller();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let result = handle_request(&server, req, &gate, &caller).await.unwrap();
     let session_id = result.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -208,7 +208,7 @@ async fn test_dag_merge_rejects_single_parent() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let v1 = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let v1 = handle_request(&server, req, &gate, &caller).await.unwrap();
     let v1_hex = v1.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -219,18 +219,18 @@ async fn test_dag_merge_rejects_single_parent() {
             "event_type": {"DataCreate": {"schema": "nope"}}
         })),
     );
-    let resp = handle_request(primal.clone(), req, &gate, &caller).await;
+    let resp = handle_request(&server, req, &gate, &caller).await;
     assert!(resp.is_err(), "merge with <2 parents should fail");
 }
 
 #[tokio::test]
 async fn test_dag_federate_imports_vertices() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let gate = test_gate();
     let caller = test_caller();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let result = handle_request(&server, req, &gate, &caller).await.unwrap();
     let session_id = result.as_str().unwrap().to_string();
 
     let vertex_json = json!({
@@ -247,7 +247,7 @@ async fn test_dag_federate_imports_vertices() {
             "vertices": [vertex_json]
         })),
     );
-    let resp = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let resp = handle_request(&server, req, &gate, &caller).await.unwrap();
     let obj = resp.as_object().unwrap();
     assert_eq!(obj["imported"], 1);
     assert_eq!(obj["skipped"], 0);
@@ -256,12 +256,12 @@ async fn test_dag_federate_imports_vertices() {
 
 #[tokio::test]
 async fn test_dag_federate_skips_duplicates() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let gate = test_gate();
     let caller = test_caller();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let result = handle_request(&server, req, &gate, &caller).await.unwrap();
     let session_id = result.as_str().unwrap().to_string();
 
     let vertex_json = json!({
@@ -278,7 +278,7 @@ async fn test_dag_federate_skips_duplicates() {
             "vertices": [vertex_json.clone()]
         })),
     );
-    handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    handle_request(&server, req, &gate, &caller).await.unwrap();
 
     let req = make_request(
         "dag.federate",
@@ -287,7 +287,7 @@ async fn test_dag_federate_skips_duplicates() {
             "vertices": [vertex_json]
         })),
     );
-    let resp = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let resp = handle_request(&server, req, &gate, &caller).await.unwrap();
     let obj = resp.as_object().unwrap();
     assert_eq!(obj["imported"], 0);
     assert_eq!(obj["skipped"], 1);
@@ -295,12 +295,12 @@ async fn test_dag_federate_skips_duplicates() {
 
 #[tokio::test]
 async fn test_provenance_aliases_for_wave60_methods() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let gate = test_gate();
     let caller = test_caller();
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let result = handle_request(&server, req, &gate, &caller).await.unwrap();
     let session_id = result.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -310,7 +310,7 @@ async fn test_provenance_aliases_for_wave60_methods() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let v1 = handle_request(primal.clone(), req, &gate, &caller).await.unwrap();
+    let v1 = handle_request(&server, req, &gate, &caller).await.unwrap();
     let v1_hex = v1.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -320,6 +320,6 @@ async fn test_provenance_aliases_for_wave60_methods() {
             "checkout_vertex": v1_hex,
         })),
     );
-    let resp = handle_request(primal.clone(), req, &gate, &caller).await;
+    let resp = handle_request(&server, req, &gate, &caller).await;
     assert!(resp.is_ok(), "provenance.branch should alias to dag.branch");
 }

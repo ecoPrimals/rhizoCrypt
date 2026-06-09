@@ -5,6 +5,19 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.5] - 2026-06-08
+
+### Changed
+
+#### Wave 103: Server Lifecycle + Discovery Bootstrap + SSOT (Jun 8, 2026)
+
+- **Discovery bootstrap now parses `TransportEndpoint`**: `lib.rs` service startup uses `TransportEndpoint::try_parse_address` instead of `SocketAddr`-only parsing for the discovery source, enabling UDS-based discovery.
+- **Shared `RhizoCryptRpcServer` per transport**: JSON-RPC (HTTP + newline), UDS, and tarpc servers now create a single `RhizoCryptRpcServer` at startup and share it across all connections. Previously, a new server was constructed per request/connection, resetting `start_time` on each — `health.check` and `health.metrics` now report correct uptime.
+- **`handle_request` takes `&RhizoCryptRpcServer`**: Handler dispatch no longer requires `Arc<RhizoCrypt>` — receives a shared server reference. Eliminates per-request `Arc::clone` + `Instant::now()` overhead.
+- **`RhizoCryptRpcServer::primal()` accessor**: New public method to access the underlying `RhizoCrypt` instance without field access.
+- **SSOT string cleanup**: Hardcoded `"rhizocrypt"` literals in `lib.rs` (manifest + unpublish), `uds.rs` (socket path) replaced with `niche::PRIMAL_ID`. Hardcoded `"ecoPrimal"` default in `neural_api.rs` replaced with `constants::DEFAULT_FAMILY_ID`.
+- **New constant `DEFAULT_FAMILY_ID`**: Centralizes the fallback family identifier for neural API socket discovery.
+
 ## [0.14.4] - 2026-06-08
 
 ### Changed

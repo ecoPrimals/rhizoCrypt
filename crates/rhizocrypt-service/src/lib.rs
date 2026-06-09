@@ -334,7 +334,7 @@ pub async fn run_server_with_ready(
     // Unpublish manifest on shutdown (best-effort cleanup).
     #[cfg(unix)]
     {
-        rhizo_crypt_core::discovery::unpublish_manifest("rhizocrypt").await;
+        rhizo_crypt_core::discovery::unpublish_manifest(rhizo_crypt_core::niche::PRIMAL_ID).await;
         debug!("Capability manifest unpublished");
     }
 
@@ -388,8 +388,8 @@ async fn serve_with_tcp(
 
         // Bootstrap the lazy-resolution fallback so capability clients can
         // query Songbird on demand for peers not yet in the registry.
-        if let Ok(source_addr) = discovery_addr.parse::<std::net::SocketAddr>() {
-            primal.discovery_registry().set_discovery_source(source_addr).await;
+        if let Some(ep) = rhizo_crypt_core::transport::TransportEndpoint::try_parse_address(&discovery_addr) {
+            primal.discovery_registry().set_discovery_source(ep).await;
             info!("Discovery source bootstrapped for peer capability resolution");
         }
     } else {
@@ -526,7 +526,7 @@ async fn publish_capability_manifest(socket_path: &std::path::Path, tcp_addr: Op
     use rhizo_crypt_core::niche::CAPABILITIES;
 
     let manifest = PrimalManifest {
-        primal: "rhizocrypt".to_string(),
+        primal: rhizo_crypt_core::niche::PRIMAL_ID.to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         socket: socket_path.display().to_string(),
         address: tcp_addr.map(|a| a.to_string()),

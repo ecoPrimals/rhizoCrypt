@@ -38,7 +38,7 @@ fn serialize_response(value: &impl serde::Serialize) -> serde_json::Value {
 /// Shared state for the JSON-RPC handler.
 #[derive(Clone)]
 struct JsonRpcState {
-    primal: Arc<RhizoCrypt>,
+    server: crate::service::RhizoCryptRpcServer,
     gate: Arc<method_gate::MethodGate>,
 }
 
@@ -109,6 +109,9 @@ impl JsonRpcServer {
         }
 
         let app = Self::router(Arc::clone(&self.primal));
+        let server = Arc::new(crate::service::RhizoCryptRpcServer::new(
+            Arc::clone(&self.primal),
+        ));
         let semaphore = Arc::new(Semaphore::new(DEFAULT_MAX_CONNECTIONS));
 
         loop {
@@ -120,11 +123,11 @@ impl JsonRpcServer {
                         drop(stream);
                         continue;
                     };
-                    let primal = Arc::clone(&self.primal);
+                    let server = Arc::clone(&server);
                     let app = app.clone();
 
                     tokio::spawn(async move {
-                        if let Err(e) = handle_tcp_connection(stream, peer, primal, app).await {
+                        if let Err(e) = handle_tcp_connection(stream, peer, &server, app).await {
                             debug!(peer = %peer, error = %e, "TCP connection ended");
                         }
                         drop(permit);
@@ -143,8 +146,9 @@ impl JsonRpcServer {
     ///
     /// Serves JSON-RPC at the path from [`rhizo_crypt_core::constants::JSON_RPC_PATH`].
     pub fn router(primal: Arc<RhizoCrypt>) -> Router {
+        let server = crate::service::RhizoCryptRpcServer::new(primal);
         let state = JsonRpcState {
-            primal,
+            server,
             gate: Arc::new(method_gate::MethodGate::from_env()),
         };
         let cors = CorsLayer::new()
@@ -168,7 +172,7 @@ impl JsonRpcServer {
 async fn handle_tcp_connection(
     stream: tokio::net::TcpStream,
     peer: SocketAddr,
-    primal: Arc<RhizoCrypt>,
+    server: &crate::service::RhizoCryptRpcServer,
     app: Router,
 ) -> std::io::Result<()> {
     stream.set_nodelay(true)?;
@@ -180,7 +184,7 @@ async fn handle_tcp_connection(
         debug!(peer = %peer, "detected newline JSON-RPC");
         let gate = method_gate::MethodGate::from_env();
         let caller = method_gate::CallerContext::loopback();
-        newline::handle_newline_connection(stream, primal, &gate, &caller).await?;
+        newline::handle_newline_connection(stream, server, &gate, &caller).await?;
     } else {
         debug!(peer = %peer, "detected HTTP");
         let io = hyper_util::rt::TokioIo::new(stream);
@@ -239,14 +243,14 @@ async fn handle_jsonrpc(
             let mut results = Vec::with_capacity(arr.len());
             for item in arr {
                 let response =
-                    process_single_request(Arc::clone(&state.primal), item, &state.gate, &caller)
+                    process_single_request(&state.server, item, &state.gate, &caller)
                         .await;
                 results.push(response);
             }
             (StatusCode::OK, Json(serde_json::json!(results))).into_response()
         }
         value => {
-            let response = process_single_request(state.primal, value, &state.gate, &caller).await;
+            let response = process_single_request(&state.server, value, &state.gate, &caller).await;
             (StatusCode::OK, Json(response)).into_response()
         }
     }
@@ -258,7 +262,7 @@ async fn handle_jsonrpc(
 /// verifies it via the gate's [`method_gate::TokenVerifier`], and builds
 /// a per-request [`method_gate::CallerContext`] enriched with verified claims.
 async fn process_single_request(
-    primal: Arc<RhizoCrypt>,
+    server: &crate::service::RhizoCryptRpcServer,
     value: serde_json::Value,
     gate: &method_gate::MethodGate,
     connection_caller: &method_gate::CallerContext,
@@ -301,7 +305,7 @@ async fn process_single_request(
     let mut caller = method_gate::CallerContext::with_bearer_token(token, connection_caller.origin);
     caller.verify_token(gate.verifier());
 
-    match handler::handle_request(primal, request, gate, &caller).await {
+    match handler::handle_request(server, request, gate, &caller).await {
         Ok(result) => serialize_response(&success(id, result)),
         Err(e) => {
             let detail = serde_json::json!(e.to_string());

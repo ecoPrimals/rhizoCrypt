@@ -3,7 +3,7 @@
 
 #![expect(clippy::unwrap_used, reason = "test code")]
 
-use super::test_support::{create_test_primal, make_request, test_caller, test_gate};
+use super::test_support::{create_test_server, make_request, test_caller, test_gate};
 use super::*;
 use serde_json::json;
 
@@ -13,39 +13,39 @@ use serde_json::json;
 
 #[tokio::test]
 async fn test_session_lifecycle() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
     assert!(uuid::Uuid::parse_str(session_id).is_ok());
 
     let req = make_request("dag.session.get", Some(json!({"session_id": session_id})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let info = result.as_object().unwrap();
     assert_eq!(info.get("description").and_then(|v| v.as_str()), Some("test"));
 
     let req = make_request("dag.session.list", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let list = result.as_array().unwrap();
     assert_eq!(list.len(), 1);
 
     let req = make_request("dag.session.discard", Some(json!({"session_id": session_id})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.is_null());
 
     let req = make_request("dag.session.list", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let list = result.as_array().unwrap();
     assert!(list.is_empty());
 }
 
 #[tokio::test]
 async fn test_session_create_with_optional_params() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request(
         "dag.session.create",
         Some(json!({
@@ -55,19 +55,19 @@ async fn test_session_create_with_optional_params() {
             "ttl_seconds": 3600
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.as_str().is_some());
 }
 
 #[tokio::test]
 async fn test_session_create_with_parent_session() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "parent"})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let parent_id = result.as_str().unwrap().to_string();
 
     let req = make_request(
@@ -78,13 +78,13 @@ async fn test_session_create_with_parent_session() {
             "parent_session": parent_id,
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await;
     assert!(result.is_ok());
 }
 
 #[tokio::test]
 async fn test_session_create_with_limits() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
@@ -94,7 +94,7 @@ async fn test_session_create_with_limits() {
             "ttl_seconds": 3600,
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await;
     assert!(result.is_ok());
 }
 
@@ -104,13 +104,13 @@ async fn test_session_create_with_limits() {
 
 #[tokio::test]
 async fn test_event_append() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -120,7 +120,7 @@ async fn test_event_append() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let vertex_id_hex = result.as_str().unwrap();
     assert_eq!(vertex_id_hex.len(), 64);
     assert!(hex::decode(vertex_id_hex).is_ok());
@@ -129,20 +129,20 @@ async fn test_event_append() {
         "dag.vertex.get",
         Some(json!({"session_id": session_id, "vertex_id": vertex_id_hex})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let vertex = result.as_object().unwrap();
     assert!(vertex.contains_key("event_type"));
 }
 
 #[tokio::test]
 async fn test_event_append_batch() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -154,7 +154,7 @@ async fn test_event_append_batch() {
             ]
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let ids = result.as_array().unwrap();
     assert_eq!(ids.len(), 2);
     for id in ids {
@@ -164,9 +164,9 @@ async fn test_event_append_batch() {
 
 #[tokio::test]
 async fn test_event_append_with_full_params() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -178,17 +178,17 @@ async fn test_event_append_with_full_params() {
             "metadata": {"key": "value"}
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.as_str().is_some());
 }
 
 #[tokio::test]
 async fn test_event_append_with_metadata_array() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
     let session_id =
-        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -202,17 +202,17 @@ async fn test_event_append_with_metadata_array() {
             ],
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await;
     assert!(result.is_ok());
 }
 
 #[tokio::test]
 async fn test_event_append_with_payload_ref() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
     let session_id =
-        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -223,14 +223,14 @@ async fn test_event_append_with_payload_ref() {
             "payload_ref": "ipfs://QmTest123",
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let vertex_id = result.as_str().unwrap();
 
     let req = make_request(
         "dag.vertex.get",
         Some(json!({"session_id": session_id, "vertex_id": vertex_id})),
     );
-    let vertex = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let vertex = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(
         vertex.get("payload").is_some(),
         "payload_ref should be applied to vertex, got: {vertex}"
@@ -239,11 +239,11 @@ async fn test_event_append_with_payload_ref() {
 
 #[tokio::test]
 async fn test_event_append_with_agent() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
     let session_id =
-        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -254,7 +254,7 @@ async fn test_event_append_with_agent() {
             "agent": "did:eco:agent:test-001",
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await;
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await;
     assert!(result.is_ok());
 }
 
@@ -264,13 +264,13 @@ async fn test_event_append_with_agent() {
 
 #[tokio::test]
 async fn test_frontier_and_genesis() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -280,28 +280,28 @@ async fn test_frontier_and_genesis() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let _ = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request("dag.frontier.get", Some(json!({"session_id": session_id})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let frontier = result.as_array().unwrap();
     assert_eq!(frontier.len(), 1);
 
     let req = make_request("dag.genesis.get", Some(json!({"session_id": session_id})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let genesis = result.as_array().unwrap();
     assert_eq!(genesis.len(), 1);
 }
 
 #[tokio::test]
 async fn test_children() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -311,7 +311,7 @@ async fn test_children() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let parent_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -322,13 +322,13 @@ async fn test_children() {
             "parents": [parent_id]
         })),
     );
-    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let _ = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request(
         "dag.vertex.children",
         Some(json!({"session_id": session_id, "vertex_id": parent_id})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let children = result.as_array().unwrap();
     assert_eq!(children.len(), 1);
 }
@@ -339,13 +339,13 @@ async fn test_children() {
 
 #[tokio::test]
 async fn test_merkle_operations() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -355,11 +355,11 @@ async fn test_merkle_operations() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let vertex_id_hex = result.as_str().unwrap();
 
     let req = make_request("dag.merkle.root", Some(json!({"session_id": session_id})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let root_hex = result.as_str().unwrap();
     assert_eq!(root_hex.len(), 64);
 
@@ -367,12 +367,12 @@ async fn test_merkle_operations() {
         "dag.merkle.proof",
         Some(json!({"session_id": session_id, "vertex_id": vertex_id_hex})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let proof = result.as_object().unwrap();
     assert!(proof.contains_key("vertex_id"));
 
     let req = make_request("dag.merkle.verify", Some(json!({"root": root_hex, "proof": proof})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.as_bool().unwrap());
 }
 
@@ -382,13 +382,13 @@ async fn test_merkle_operations() {
 
 #[tokio::test]
 async fn test_slice_operations() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "test"})),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request(
@@ -398,10 +398,10 @@ async fn test_slice_operations() {
             "event_type": {"SessionStart": null}
         })),
     );
-    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let _ = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
-    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let _ = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
 
     let zero_vertex = "0".repeat(64);
     let req = make_request(
@@ -416,17 +416,17 @@ async fn test_slice_operations() {
             "checkout_vertex": zero_vertex,
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let slice_id = result.as_str().unwrap();
     assert!(uuid::Uuid::parse_str(slice_id).is_ok());
 
     let req = make_request("dag.slice.get", Some(json!({"slice_id": slice_id})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let slice = result.as_object().unwrap();
     assert!(slice.contains_key("id") || slice.contains_key("origin"));
 
     let req = make_request("dag.slice.list", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let list = result.as_array().unwrap();
     assert!(!list.is_empty());
 }
@@ -437,10 +437,10 @@ async fn test_slice_operations() {
 
 #[tokio::test]
 async fn test_health_check() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request("health.check", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let health = result.as_object().unwrap();
     assert!(health.get("healthy").and_then(Value::as_bool).unwrap());
     assert!(health.contains_key("state"));
@@ -448,10 +448,10 @@ async fn test_health_check() {
 
 #[tokio::test]
 async fn test_health_metrics() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request("health.metrics", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let metrics = result.as_object().unwrap();
     assert!(metrics.contains_key("sessions_created"));
     assert!(metrics.contains_key("vertices_appended"));
@@ -459,10 +459,10 @@ async fn test_health_metrics() {
 
 #[tokio::test]
 async fn test_capability_list() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request("capability.list", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let obj = result.as_object().unwrap();
 
     assert_eq!(obj["primal"].as_str().unwrap(), "rhizocrypt", "L2: primal");
@@ -504,13 +504,13 @@ async fn test_capability_list() {
 
 #[tokio::test]
 async fn test_dehydrate_status_handler() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req = make_request("dag.dehydration.status", Some(json!({"session_id": session_id})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(
         result.as_str().is_some() || result.as_object().is_some(),
         "dehydration.status should return string (unit variant) or object (struct variant)"
@@ -519,26 +519,26 @@ async fn test_dehydrate_status_handler() {
 
 #[tokio::test]
 async fn test_dehydrate_alias_routes_to_trigger() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = result.as_str().unwrap();
 
     let req_canonical =
         make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
     let result_canonical =
-        handle_request(primal.clone(), req_canonical, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req_canonical, &test_gate(), &test_caller()).await.unwrap();
 
     let req_alias = make_request("dag.dehydrate", Some(json!({"session_id": session_id})));
     let result_alias =
-        handle_request(primal.clone(), req_alias, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req_alias, &test_gate(), &test_caller()).await.unwrap();
 
     assert_eq!(result_canonical, result_alias, "dag.dehydrate alias should route identically");
 }
 
 #[tokio::test]
 async fn test_extra_fields_ignored() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request(
         "dag.session.create",
         Some(json!({
@@ -548,7 +548,7 @@ async fn test_extra_fields_ignored() {
             "another_extra": 123
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(uuid::Uuid::parse_str(result.as_str().unwrap()).is_ok());
 }
 
@@ -558,41 +558,41 @@ async fn test_extra_fields_ignored() {
 
 #[tokio::test]
 async fn test_health_alias_status() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("status", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.get("healthy").is_some());
 }
 
 #[tokio::test]
 async fn test_health_alias_check() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("check", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.get("healthy").is_some());
 }
 
 #[tokio::test]
 async fn test_health_liveness_alias_ping() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("ping", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.get("status").is_some() || result.get("alive").is_some() || result.is_object());
 }
 
 #[tokio::test]
 async fn test_health_liveness_alias_health() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("health", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.is_object());
 }
 
 #[tokio::test]
 async fn test_health_readiness() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("health.readiness", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.is_object());
 }
 
@@ -602,23 +602,23 @@ async fn test_health_readiness() {
 
 #[tokio::test]
 async fn test_mcp_tools_list() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("tools.list", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.is_object() || result.is_array());
 }
 
 #[tokio::test]
 async fn test_mcp_tools_list_alias() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("mcp.tools.list", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.is_object() || result.is_array());
 }
 
 #[tokio::test]
 async fn test_mcp_tools_call_session_create() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request(
         "tools.call",
         Some(json!({
@@ -626,55 +626,55 @@ async fn test_mcp_tools_call_session_create() {
             "arguments": { "session_type": "General" }
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(uuid::Uuid::parse_str(result.as_str().unwrap()).is_ok());
 }
 
 #[tokio::test]
 async fn test_mcp_tools_call_health() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request(
         "tools.call",
         Some(json!({
             "name": "health.check"
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.get("healthy").is_some());
 }
 
 #[tokio::test]
 async fn test_mcp_tools_call_capabilities() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request(
         "tools.call",
         Some(json!({
             "name": "capabilities.list"
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.is_object(), "Format E wrapper is an object");
     assert!(result.get("provided_capabilities").is_some());
 }
 
 #[tokio::test]
 async fn test_mcp_tools_call_unknown_tool() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request(
         "tools.call",
         Some(json!({
             "name": "nonexistent.tool"
         })),
     );
-    let err = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap_err();
+    let err = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::MethodNotFound(_)));
 }
 
 #[tokio::test]
 async fn test_mcp_tools_call_missing_arguments() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("tools.call", Some(json!({"name": "status"})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.get("healthy").is_some());
 }
 
@@ -684,11 +684,11 @@ async fn test_mcp_tools_call_missing_arguments() {
 
 #[tokio::test]
 async fn test_capability_list_aliases() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     for method in &["capabilities.list", "capability.list", "primal.capabilities"] {
         let req = make_request(method, None);
         let result =
-            handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+            handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
         assert!(
             result.get("provided_capabilities").is_some(),
             "capabilities.list alias '{method}' should return Format E wrapper"
@@ -698,9 +698,9 @@ async fn test_capability_list_aliases() {
 
 #[tokio::test]
 async fn test_identity_get() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let req = make_request("identity.get", None);
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let obj = result.as_object().unwrap();
     assert_eq!(obj["primal"].as_str().unwrap(), "rhizocrypt");
     assert!(obj.contains_key("version"));
@@ -714,9 +714,9 @@ async fn test_identity_get() {
 
 #[tokio::test]
 async fn test_handler_rpc_error_session_not_found() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
     let fake_id = "00000000-0000-0000-0000-000000000099";
     let req = make_request("dag.session.get", Some(json!({"session_id": fake_id})));
-    let err = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap_err();
+    let err = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::Rpc(_)));
 }

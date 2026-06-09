@@ -207,6 +207,12 @@ impl RhizoCryptRpcServer {
             start_time: std::time::Instant::now(),
         }
     }
+
+    /// Access the underlying primal instance.
+    #[must_use]
+    pub fn primal(&self) -> &rhizo_crypt_core::RhizoCrypt {
+        &self.primal
+    }
 }
 
 /// Attempt to cryptographically sign a vertex via the discovered signing provider.

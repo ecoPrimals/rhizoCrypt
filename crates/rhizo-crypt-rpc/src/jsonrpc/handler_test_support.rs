@@ -28,6 +28,11 @@ pub async fn create_test_primal() -> Arc<rhizo_crypt_core::RhizoCrypt> {
     Arc::new(primal)
 }
 
+pub async fn create_test_server() -> crate::service::RhizoCryptRpcServer {
+    let primal = create_test_primal().await;
+    crate::service::RhizoCryptRpcServer::new(primal)
+}
+
 pub fn make_request(method: &str, params: Option<Value>) -> JsonRpcRequest {
     JsonRpcRequest {
         jsonrpc: "2.0".to_string(),

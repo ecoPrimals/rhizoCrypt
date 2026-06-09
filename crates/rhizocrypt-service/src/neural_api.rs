@@ -78,7 +78,10 @@ fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
         }
     }
 
-    let family = SafeEnv::get_or_default(SafeEnv::ECOPRIMALS_FAMILY_ID, "ecoPrimal");
+    let family = SafeEnv::get_or_default(
+        SafeEnv::ECOPRIMALS_FAMILY_ID,
+        rhizo_crypt_core::constants::DEFAULT_FAMILY_ID,
+    );
     let socket_name = format!("neural-api-{family}.sock");
 
     if let Some(xdg) = SafeEnv::get_optional(SafeEnv::XDG_RUNTIME_DIR) {

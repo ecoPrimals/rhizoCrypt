@@ -15,9 +15,7 @@
 //! ← {"jsonrpc":"2.0","result":{...},"id":1}\n
 //! ```
 
-use rhizo_crypt_core::RhizoCrypt;
 use rhizo_crypt_core::constants::MAX_JSONRPC_LINE_LENGTH;
-use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::{debug, warn};
 
@@ -63,7 +61,7 @@ const UNAUTHENTICATED_METHODS: &[&str] = &[
 /// Returns `std::io::Error` on stream read/write failures.
 pub async fn handle_newline_connection<S>(
     stream: S,
-    primal: Arc<RhizoCrypt>,
+    server: &crate::service::RhizoCryptRpcServer,
     gate: &MethodGate,
     caller: &CallerContext,
 ) -> std::io::Result<()>
@@ -124,7 +122,7 @@ where
                 let mut results = Vec::with_capacity(arr.len());
                 for item in arr {
                     results.push(
-                        process_single_request(Arc::clone(&primal), item, gate, caller).await,
+                        process_single_request(server, item, gate, caller).await,
                     );
                 }
                 let batch = serde_json::json!(results);
@@ -132,7 +130,7 @@ where
             }
             value => {
                 let response =
-                    process_single_request(Arc::clone(&primal), value, gate, caller).await;
+                    process_single_request(server, value, gate, caller).await;
                 write_response(&mut writer, &response).await?;
             }
         }
@@ -154,7 +152,7 @@ where
 /// Returns `std::io::Error` if reading from or writing to the stream fails.
 pub async fn handle_liveness_connection<S>(
     stream: S,
-    primal: Arc<RhizoCrypt>,
+    server: &crate::service::RhizoCryptRpcServer,
 ) -> std::io::Result<()>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
@@ -202,7 +200,7 @@ where
                     if UNAUTHENTICATED_METHODS.contains(&m) {
                         let gate = MethodGate::from_env();
                         let caller = CallerContext::loopback();
-                        process_single_request(Arc::clone(&primal), value, &gate, &caller).await
+                        process_single_request(server, value, &gate, &caller).await
                     } else {
                         debug!(method = m, "rejected unauthenticated method (BTSP required)");
                         serialize_response(&error_response(
@@ -254,24 +252,25 @@ async fn write_response<W: tokio::io::AsyncWrite + Unpin>(
 mod tests {
     use super::*;
     use crate::jsonrpc::method_gate::EnforcementMode;
-    use rhizo_crypt_core::{PrimalLifecycle, RhizoCryptConfig};
+    use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig};
+    use std::sync::Arc;
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, duplex};
 
-    async fn test_primal() -> Arc<RhizoCrypt> {
-        let mut p = RhizoCrypt::new(RhizoCryptConfig::default());
-        p.start().await.unwrap();
-        Arc::new(p)
+    fn test_server() -> crate::service::RhizoCryptRpcServer {
+        crate::service::RhizoCryptRpcServer::new(Arc::new(
+            RhizoCrypt::new(RhizoCryptConfig::default()),
+        ))
     }
 
     /// Write lines to a duplex client, close the write half, then read
     /// all response lines from the read half.
-    async fn roundtrip(primal: Arc<RhizoCrypt>, input: &[u8]) -> Vec<serde_json::Value> {
+    async fn roundtrip(rpc_server: crate::service::RhizoCryptRpcServer, input: &[u8]) -> Vec<serde_json::Value> {
         let (mut client, server) = duplex(8192);
         let gate = MethodGate::with_noop(EnforcementMode::Permissive);
         let caller = CallerContext::unix();
         let handle =
             tokio::spawn(
-                async move { handle_newline_connection(server, primal, &gate, &caller).await },
+                async move { handle_newline_connection(server, &rpc_server, &gate, &caller).await },
             );
 
         AsyncWriteExt::write_all(&mut client, input).await.unwrap();
@@ -289,9 +288,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_newline_health_check() {
-        let primal = test_primal().await;
+        let server = test_server();
         let input = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":1}\n";
-        let results = roundtrip(primal, input).await;
+        let results = roundtrip(server, input).await;
         assert_eq!(results.len(), 1);
         assert_eq!(results[0]["jsonrpc"], "2.0");
         assert!(results[0]["result"].is_object());
@@ -299,9 +298,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_newline_parse_error_continues() {
-        let primal = test_primal().await;
+        let server = test_server();
         let input = b"{ invalid json }\n{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":2}\n";
-        let results = roundtrip(primal, input).await;
+        let results = roundtrip(server, input).await;
         assert_eq!(results.len(), 2);
         assert_eq!(results[0]["error"]["code"], -32700);
         assert!(results[1]["result"].is_object());
@@ -309,19 +308,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_newline_empty_lines_skipped() {
-        let primal = test_primal().await;
+        let server = test_server();
         let input =
             b"\n\n{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":3}\n";
-        let results = roundtrip(primal, input).await;
+        let results = roundtrip(server, input).await;
         assert_eq!(results.len(), 1);
         assert_eq!(results[0]["id"], 3);
     }
 
     #[tokio::test]
     async fn test_newline_batch_request() {
-        let primal = test_primal().await;
+        let server = test_server();
         let input = b"[{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":1},{\"jsonrpc\":\"2.0\",\"method\":\"health.metrics\",\"params\":{},\"id\":2}]\n";
-        let results = roundtrip(primal, input).await;
+        let results = roundtrip(server, input).await;
         assert_eq!(results.len(), 1);
         let arr = results[0].as_array().unwrap();
         assert_eq!(arr.len(), 2);
@@ -329,9 +328,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_newline_empty_batch_error() {
-        let primal = test_primal().await;
+        let server = test_server();
         let input = b"[]\n";
-        let results = roundtrip(primal, input).await;
+        let results = roundtrip(server, input).await;
         assert_eq!(results.len(), 1);
         assert_eq!(results[0]["error"]["code"], -32600);
     }
@@ -341,17 +340,17 @@ mod tests {
     /// by primalSpring's trio integration guide (PG-52 validation).
     #[tokio::test]
     async fn test_newline_eof_without_trailing_newline() {
-        let primal = test_primal().await;
+        let server = test_server();
         let input = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":99}";
-        let results = roundtrip(primal, input).await;
+        let results = roundtrip(server, input).await;
         assert_eq!(results.len(), 1, "EOF after data should deliver the response");
         assert_eq!(results[0]["id"], 99);
         assert!(results[0]["result"].is_object());
     }
 
-    async fn liveness_roundtrip(primal: Arc<RhizoCrypt>, input: &[u8]) -> Vec<serde_json::Value> {
+    async fn liveness_roundtrip(rpc_server: crate::service::RhizoCryptRpcServer, input: &[u8]) -> Vec<serde_json::Value> {
         let (mut client, server) = duplex(8192);
-        let handle = tokio::spawn(handle_liveness_connection(server, primal));
+        let handle = tokio::spawn(async move { handle_liveness_connection(server, &rpc_server).await });
 
         AsyncWriteExt::write_all(&mut client, input).await.unwrap();
         AsyncWriteExt::shutdown(&mut client).await.unwrap();
@@ -368,29 +367,29 @@ mod tests {
 
     #[tokio::test]
     async fn test_liveness_allows_health_check() {
-        let primal = test_primal().await;
+        let server = test_server();
         let input = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":1}\n";
-        let results = liveness_roundtrip(primal, input).await;
+        let results = liveness_roundtrip(server, input).await;
         assert_eq!(results.len(), 1);
         assert!(results[0]["result"].is_object(), "health.check should succeed");
     }
 
     #[tokio::test]
     async fn test_liveness_allows_capability_list() {
-        let primal = test_primal().await;
+        let server = test_server();
         let input =
             b"{\"jsonrpc\":\"2.0\",\"method\":\"capability.list\",\"params\":{},\"id\":2}\n";
-        let results = liveness_roundtrip(primal, input).await;
+        let results = liveness_roundtrip(server, input).await;
         assert_eq!(results.len(), 1);
         assert!(results[0]["result"].is_object(), "capability.list should succeed");
     }
 
     #[tokio::test]
     async fn test_liveness_rejects_data_method() {
-        let primal = test_primal().await;
+        let server = test_server();
         let input =
             b"{\"jsonrpc\":\"2.0\",\"method\":\"dag.session.create\",\"params\":{},\"id\":3}\n";
-        let results = liveness_roundtrip(primal, input).await;
+        let results = liveness_roundtrip(server, input).await;
         assert_eq!(results.len(), 1);
         assert_eq!(
             results[0]["error"]["code"], -32000,
@@ -402,9 +401,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_liveness_rejects_batch() {
-        let primal = test_primal().await;
+        let server = test_server();
         let input = b"[{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{},\"id\":1}]\n";
-        let results = liveness_roundtrip(primal, input).await;
+        let results = liveness_roundtrip(server, input).await;
         assert_eq!(results.len(), 1);
         assert_eq!(
             results[0]["error"]["code"], -32600,

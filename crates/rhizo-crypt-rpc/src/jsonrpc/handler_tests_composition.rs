@@ -5,20 +5,20 @@
 
 #![expect(clippy::unwrap_used, reason = "test code")]
 
-use super::test_support::{create_test_primal, make_request, test_caller, test_gate};
+use super::test_support::{create_test_server, make_request, test_caller, test_gate};
 use super::*;
 use serde_json::json;
 
 #[tokio::test]
 async fn test_composition_skunkbat_security_event_forwarding() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "security-audit-pipeline"})),
     );
     let session_id =
-        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -35,7 +35,7 @@ async fn test_composition_skunkbat_security_event_forwarding() {
             ]
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert!(result.as_str().is_some(), "should return vertex_id hex");
     let vertex_id = result.as_str().unwrap();
     assert_eq!(vertex_id.len(), 64);
@@ -43,14 +43,14 @@ async fn test_composition_skunkbat_security_event_forwarding() {
 
 #[tokio::test]
 async fn test_composition_security_event_batch_forwarding() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "batch-audit"})),
     );
     let session_id =
-        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let events = vec![
@@ -75,7 +75,7 @@ async fn test_composition_security_event_batch_forwarding() {
     ];
 
     let req = make_request("dag.event.append_batch", Some(json!({"requests": events})));
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let ids = result.as_array().unwrap();
     assert_eq!(ids.len(), 3, "batch should return 3 vertex IDs");
     for id in ids {
@@ -85,14 +85,14 @@ async fn test_composition_security_event_batch_forwarding() {
 
 #[tokio::test]
 async fn test_composition_provenance_trio_full_pipeline() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request(
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "provenance-trio-pipeline"})),
     );
     let session_id =
-        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -103,7 +103,7 @@ async fn test_composition_provenance_trio_full_pipeline() {
             "agent": "did:key:z6MkOrchestrator"
         })),
     );
-    let v1 = handle_request(primal.clone(), req, &test_gate(), &test_caller())
+    let v1 = handle_request(&server, req, &test_gate(), &test_caller())
         .await
         .unwrap()
         .as_str()
@@ -120,7 +120,7 @@ async fn test_composition_provenance_trio_full_pipeline() {
             "payload_ref": "ipfs://QmRootPulseData123"
         })),
     );
-    let v2 = handle_request(primal.clone(), req, &test_gate(), &test_caller())
+    let v2 = handle_request(&server, req, &test_gate(), &test_caller())
         .await
         .unwrap()
         .as_str()
@@ -136,26 +136,26 @@ async fn test_composition_provenance_trio_full_pipeline() {
             "parents": [v2]
         })),
     );
-    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let _ = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request("dag.merkle.root", Some(json!({"session_id": session_id})));
-    let root = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let root = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let root_hex = root.as_str().unwrap();
     assert_eq!(root_hex.len(), 64, "Merkle root should be 64-char hex (32 bytes)");
 
     let session_req = make_request("dag.session.get", Some(json!({"session_id": session_id})));
     let info =
-        handle_request(primal.clone(), session_req, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, session_req, &test_gate(), &test_caller()).await.unwrap();
     assert_eq!(info["vertex_count"], 3);
 }
 
 #[tokio::test]
 async fn test_composition_payload_ref_hex_hash() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
     let session_id =
-        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let hex_hash = "a".repeat(64);
@@ -167,14 +167,14 @@ async fn test_composition_payload_ref_hex_hash() {
             "payload_ref": hex_hash
         })),
     );
-    let result = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let vertex_id = result.as_str().unwrap();
 
     let req = make_request(
         "dag.vertex.get",
         Some(json!({"session_id": session_id, "vertex_id": vertex_id})),
     );
-    let vertex = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let vertex = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let payload = vertex.get("payload").unwrap();
     let payload_hash = payload["hash"].as_array().unwrap();
     assert_eq!(payload_hash.len(), 32, "payload hash should be 32 bytes");
@@ -183,11 +183,11 @@ async fn test_composition_payload_ref_hex_hash() {
 
 #[tokio::test]
 async fn test_composition_dehydrate_produces_loamspine_compatible_root() {
-    let primal = create_test_primal().await;
+    let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
     let session_id =
-        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -198,10 +198,10 @@ async fn test_composition_dehydrate_produces_loamspine_compatible_root() {
             "agent": "did:key:z6MkCommitter"
         })),
     );
-    let _ = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let _ = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
 
     let req = make_request("dag.dehydration.trigger", Some(json!({"session_id": session_id})));
-    let root = handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+    let root = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let root_hex = root.as_str().unwrap();
     assert_eq!(root_hex.len(), 64, "dehydration root should be 64-char hex");
     assert!(
@@ -211,7 +211,7 @@ async fn test_composition_dehydrate_produces_loamspine_compatible_root() {
 
     let req = make_request("dag.merkle.root", Some(json!({"session_id": session_id})));
     let merkle_root =
-        handle_request(primal.clone(), req, &test_gate(), &test_caller()).await.unwrap();
+        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert_eq!(
         root_hex,
         merkle_root.as_str().unwrap(),

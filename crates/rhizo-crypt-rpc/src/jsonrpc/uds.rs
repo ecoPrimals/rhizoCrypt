@@ -26,16 +26,17 @@ use tracing::{debug, info, warn};
 /// Serves newline-delimited JSON-RPC 2.0 over a Unix socket, sharing the
 /// same request handler as the TCP and HTTP transports.
 pub struct UdsJsonRpcServer {
-    primal: Arc<RhizoCrypt>,
+    server: crate::service::RhizoCryptRpcServer,
     socket_path: PathBuf,
 }
 
 impl UdsJsonRpcServer {
     /// Create a new UDS server that will bind to `socket_path`.
     #[must_use]
-    pub const fn new(primal: Arc<RhizoCrypt>, socket_path: PathBuf) -> Self {
+    pub fn new(primal: Arc<RhizoCrypt>, socket_path: PathBuf) -> Self {
+        let server = crate::service::RhizoCryptRpcServer::new(primal);
         Self {
-            primal,
+            server,
             socket_path,
         }
     }
@@ -111,11 +112,11 @@ impl UdsJsonRpcServer {
                                 drop(stream);
                                 continue;
                             };
-                            let primal = Arc::clone(&self.primal);
+                            let server = self.server.clone();
                             let seed = family_seed.clone();
                             let enforce = btsp_required;
                             tokio::spawn(async move {
-                                if let Err(e) = handle_uds_connection(stream, primal, enforce, seed.as_deref()).await {
+                                if let Err(e) = handle_uds_connection(stream, server, enforce, seed.as_deref()).await {
                                     warn!(error = %e, "UDS connection error");
                                 }
                                 drop(permit);
@@ -180,7 +181,7 @@ impl UdsJsonRpcServer {
 /// raw newline-delimited JSON-RPC immediately with all methods.
 async fn handle_uds_connection(
     mut stream: tokio::net::UnixStream,
-    primal: Arc<RhizoCrypt>,
+    server: crate::service::RhizoCryptRpcServer,
     btsp_required: bool,
     family_seed: Option<&[u8]>,
 ) -> std::io::Result<()> {
@@ -237,7 +238,7 @@ async fn handle_uds_connection(
                             cipher = session.cipher.as_str(),
                             "BTSP JSON-line handshake complete"
                         );
-                        serve_after_handshake(rw, primal, session).await
+                        serve_after_handshake(rw, &server, session).await
                     }
                     Err(e) => {
                         warn!(error = %e, "BTSP JSON-line handshake failed");
@@ -256,14 +257,14 @@ async fn handle_uds_connection(
                 debug!("plain JSON-RPC on UDS (filesystem-authenticated, all methods)");
                 let chained_reader = first_line.as_slice().chain(reader);
                 let joined = tokio::io::join(chained_reader, writer);
-                super::newline::handle_newline_connection(joined, primal, &gate, &caller).await
+                super::newline::handle_newline_connection(joined, &server, &gate, &caller).await
             }
         } else if first[0] == b'[' {
             debug!("batch JSON-RPC on UDS (filesystem-authenticated, all methods)");
             let (reader, writer) = stream.into_split();
             let chained_reader = (&first[..]).chain(reader);
             let joined = tokio::io::join(chained_reader, writer);
-            super::newline::handle_newline_connection(joined, primal, &gate, &caller).await
+            super::newline::handle_newline_connection(joined, &server, &gate, &caller).await
         } else {
             // Length-prefixed BTSP handshake (internal binary framing).
             let (reader, writer) = stream.into_split();
@@ -273,7 +274,7 @@ async fn handle_uds_connection(
             match BtspServer::accept_handshake(&mut rw, seed).await {
                 Ok(session) => {
                     debug!(cipher = session.cipher.as_str(), "BTSP handshake complete");
-                    serve_after_handshake(rw, primal, session).await
+                    serve_after_handshake(rw, &server, session).await
                 }
                 Err(e) => {
                     warn!(error = %e, "BTSP handshake failed, dropping connection");
@@ -287,7 +288,7 @@ async fn handle_uds_connection(
             }
         }
     } else {
-        super::newline::handle_newline_connection(stream, primal, &gate, &caller).await
+        super::newline::handle_newline_connection(stream, &server, &gate, &caller).await
     }
 }
 
@@ -299,7 +300,7 @@ async fn handle_uds_connection(
 /// chains it back and falls through to the standard newline handler.
 async fn serve_after_handshake<S>(
     mut stream: S,
-    primal: Arc<RhizoCrypt>,
+    server: &crate::service::RhizoCryptRpcServer,
     session: crate::btsp::BtspSession,
 ) -> std::io::Result<()>
 where
@@ -318,7 +319,7 @@ where
     let first_json: serde_json::Value = match serde_json::from_slice(&first_line) {
         Ok(v) => v,
         Err(_) => {
-            return chain_and_serve(first_line.to_vec(), stream, primal).await;
+            return chain_and_serve(first_line.to_vec(), stream, server).await;
         }
     };
 
@@ -336,24 +337,24 @@ where
         {
             Ok(Some(keys)) => {
                 debug!("BTSP Phase 3 active, serving encrypted JSON-RPC");
-                handle_encrypted_connection(stream, primal, keys).await
+                handle_encrypted_connection(stream, server, keys).await
             }
             Ok(None) => {
                 debug!("BTSP Phase 3 declined (null cipher), serving plaintext JSON-RPC");
                 let gate = super::method_gate::MethodGate::from_env();
                 let caller = super::method_gate::CallerContext::unix();
-                super::newline::handle_newline_connection(stream, primal, &gate, &caller).await
+                super::newline::handle_newline_connection(stream, server, &gate, &caller).await
             }
             Err(e) => {
                 warn!(error = %e, "BTSP Phase 3 negotiate failed");
                 let gate = super::method_gate::MethodGate::from_env();
                 let caller = super::method_gate::CallerContext::unix();
-                super::newline::handle_newline_connection(stream, primal, &gate, &caller).await
+                super::newline::handle_newline_connection(stream, server, &gate, &caller).await
             }
         }
     } else {
         debug!("no Phase 3 negotiate, serving plaintext JSON-RPC");
-        chain_and_serve(first_line.to_vec(), stream, primal).await
+        chain_and_serve(first_line.to_vec(), stream, server).await
     }
 }
 
@@ -361,7 +362,7 @@ where
 async fn chain_and_serve<S>(
     first_line: Vec<u8>,
     stream: S,
-    primal: Arc<RhizoCrypt>,
+    server: &crate::service::RhizoCryptRpcServer,
 ) -> std::io::Result<()>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
@@ -374,7 +375,7 @@ where
     let cursor = std::io::Cursor::new(prepend);
     let chained = tokio::io::AsyncReadExt::chain(cursor, reader);
     let joined = tokio::io::join(chained, writer);
-    super::newline::handle_newline_connection(joined, primal, &gate, &caller).await
+    super::newline::handle_newline_connection(joined, server, &gate, &caller).await
 }
 
 /// Serve JSON-RPC over a BTSP Phase 3 encrypted channel.
@@ -383,7 +384,7 @@ where
 /// the encrypted payload is `[12B nonce][ciphertext + Poly1305 tag]`.
 async fn handle_encrypted_connection<S>(
     mut stream: S,
-    primal: Arc<RhizoCrypt>,
+    server: &crate::service::RhizoCryptRpcServer,
     keys: crate::btsp::Phase3Keys,
 ) -> std::io::Result<()>
 where
@@ -429,7 +430,7 @@ where
         let gate = super::method_gate::MethodGate::from_env();
         let caller = super::method_gate::CallerContext::unix();
         let response =
-            super::process_single_request(Arc::clone(&primal), value, &gate, &caller).await;
+            super::process_single_request(server, value, &gate, &caller).await;
         let resp_bytes = serde_json::to_vec(&response)
             .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
         let encrypted = keys
@@ -463,11 +464,12 @@ pub fn default_socket_path() -> PathBuf {
     use rhizo_crypt_core::constants::{BIOMEOS_SOCKET_SUBDIR, SOCKET_FILE_EXTENSION};
     use rhizo_crypt_core::transport::{family_scoped_socket_path, read_family_id};
 
-    family_scoped_socket_path("rhizocrypt", "RHIZOCRYPT").unwrap_or_else(|| {
+    let id = rhizo_crypt_core::niche::PRIMAL_ID;
+    family_scoped_socket_path(id, "RHIZOCRYPT").unwrap_or_else(|| {
         let family_id = read_family_id("RHIZOCRYPT");
         let stem = family_id.map_or_else(
-            || format!("rhizocrypt{SOCKET_FILE_EXTENSION}"),
-            |fid| format!("rhizocrypt-{fid}{SOCKET_FILE_EXTENSION}"),
+            || format!("{id}{SOCKET_FILE_EXTENSION}"),
+            |fid| format!("{id}-{fid}{SOCKET_FILE_EXTENSION}"),
         );
         std::env::temp_dir().join(BIOMEOS_SOCKET_SUBDIR).join(stem)
     })

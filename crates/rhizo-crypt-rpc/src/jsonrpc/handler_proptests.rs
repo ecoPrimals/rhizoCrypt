@@ -5,15 +5,13 @@
 
 #![expect(clippy::unwrap_used, reason = "test code")]
 
+use super::test_support::create_test_server;
 use super::{HandlerError, handle_request};
 use crate::jsonrpc::method_gate::{CallerContext, EnforcementMode, MethodGate};
 use crate::jsonrpc::types::{JsonRpcId, JsonRpcRequest};
 use proptest::prelude::*;
-use rhizo_crypt_core::PrimalLifecycle;
-use rhizo_crypt_core::RhizoCryptConfig;
 use rhizo_crypt_core::niche::{self, CAPABILITIES, SEMANTIC_MAPPINGS};
 use serde_json::{Value, json};
-use std::sync::Arc;
 
 fn test_gate() -> MethodGate {
     MethodGate::with_noop(EnforcementMode::Permissive)
@@ -47,12 +45,6 @@ fn arbitrary_json_params() -> impl Strategy<Value = Option<Value>> {
     ]
 }
 
-async fn create_test_primal() -> Arc<rhizo_crypt_core::RhizoCrypt> {
-    let mut primal = rhizo_crypt_core::RhizoCrypt::new(RhizoCryptConfig::default());
-    primal.start().await.unwrap();
-    Arc::new(primal)
-}
-
 fn make_request(method: &str, params: Option<Value>) -> JsonRpcRequest {
     JsonRpcRequest {
         jsonrpc: "2.0".to_string(),
@@ -73,9 +65,9 @@ proptest! {
             .build()
             .unwrap();
         let cap = CAPABILITIES[idx];
-        let primal = rt.block_on(create_test_primal());
+        let server = rt.block_on(create_test_server());
         let req = make_request(cap, Some(json!({})));
-        let result = rt.block_on(handle_request(primal, req, &test_gate(), &test_caller()));
+        let result = rt.block_on(handle_request(&server, req, &test_gate(), &test_caller()));
         prop_assert!(
             !matches!(result, Err(HandlerError::MethodNotFound(_))),
             "capability {cap} must not produce MethodNotFound, got {result:?}"
@@ -90,9 +82,9 @@ proptest! {
             .build()
             .unwrap();
         let method = format!("dag.__proptest_unknown.{salt}");
-        let primal = rt.block_on(create_test_primal());
+        let server = rt.block_on(create_test_server());
         let req = make_request(&method, Some(json!({})));
-        let result = rt.block_on(handle_request(primal, req, &test_gate(), &test_caller()));
+        let result = rt.block_on(handle_request(&server, req, &test_gate(), &test_caller()));
         prop_assert!(
             matches!(result, Err(HandlerError::MethodNotFound(_))),
             "expected MethodNotFound for {method}, got {result:?}"
@@ -129,9 +121,9 @@ proptest! {
             .enable_all()
             .build()
             .unwrap();
-        let primal = rt.block_on(create_test_primal());
+        let server = rt.block_on(create_test_server());
         let req = make_request(method, params);
-        let got = rt.block_on(handle_request(primal, req, &test_gate(), &test_caller())).unwrap();
+        let got = rt.block_on(handle_request(&server, req, &test_gate(), &test_caller())).unwrap();
         prop_assert_eq!(got, niche::health_liveness());
     }
 }
