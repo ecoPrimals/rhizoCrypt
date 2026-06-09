@@ -6,6 +6,7 @@ use crate::config::{StorageBackend, StorageConfig};
 use crate::event::EventType;
 use crate::session::{CommitRef, SessionBuilder, SessionState, SessionType};
 use crate::slice::ResolutionOutcome;
+use crate::types::Did;
 use crate::vertex::VertexBuilder;
 use std::sync::Arc;
 use std::time::Duration;

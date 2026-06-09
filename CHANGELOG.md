@@ -5,6 +5,17 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.6] - 2026-06-09
+
+### Changed
+
+#### Wave 104: Discovery Fix + Module Extraction + Live Clients (Jun 9, 2026)
+
+- **Discovery registration now connects first**: `register_with_discovery` calls `client.connect()` before `register()`, checks `result.success`, and propagates rejection as `ServiceError::Discovery`. Previously, registration was silently dead (never connected, `register()` would fail immediately).
+- **`live-clients` feature enabled by default**: `rhizocrypt-service` now enables `live-clients` on `rhizo-crypt-core`, activating real tarpc transport for Songbird mesh registration, heartbeat, and capability discovery in production builds.
+- **`rhizocrypt/mod.rs` extraction**: Vertex CRUD, query, and Merkle operations (append, get, get_all, query, compute_merkle_root, generate_merkle_proof) extracted to `vertex_ops.rs`. Core module reduced from 671 → 523 production lines.
+- **Tarpc dispatch clone reduction**: Removed redundant `method_owned.clone()` in `TarpcAdapter::call` — method string was being cloned once for the RPC call and again unnecessarily; now consumed by `client.call()` directly.
+
 ## [0.14.5] - 2026-06-08
 
 ### Changed

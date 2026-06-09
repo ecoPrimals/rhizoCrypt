@@ -10,8 +10,9 @@ keywords = ["dag", "ephemeral", "rpc", "primal", "ecoprimal"]
 categories = ["cryptography", "network-programming", "data-structures"]
 
 [features]
-default = ["redb"]
+default = ["redb", "live-clients"]
 redb = ["rhizo-crypt-core/redb"]
+live-clients = ["rhizo-crypt-core/live-clients"]
 
 [lib]
 name = "rhizocrypt_service"

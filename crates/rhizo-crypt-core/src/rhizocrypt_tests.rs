@@ -5,6 +5,7 @@ use super::*;
 use crate::event::EventType;
 use crate::session::{SessionBuilder, SessionType};
 use crate::slice::{ResolutionOutcome, SliceBuilder, SliceMode, SliceOrigin};
+use crate::types::Did;
 use crate::vertex::VertexBuilder;
 
 async fn running_primal() -> RhizoCrypt {

@@ -562,9 +562,28 @@ pub async fn register_with_discovery(
     config.address = std::borrow::Cow::Owned(discovery_addr.to_owned());
     let client = DiscoveryClient::new(config);
 
+    client
+        .connect()
+        .await
+        .map_err(|e| ServiceError::Discovery(format!("songbird connect: {e}")))?;
+
     let our_endpoint = format!("{}://{our_addr}", constants::DISCOVERY_ENDPOINT_SCHEME);
-    client.register(&our_endpoint).await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
-    client.start_heartbeat().await.map_err(|e| ServiceError::Discovery(e.to_string()))?;
+    let result = client
+        .register(&our_endpoint)
+        .await
+        .map_err(|e| ServiceError::Discovery(format!("songbird register: {e}")))?;
+
+    if !result.success {
+        return Err(ServiceError::Discovery(format!(
+            "songbird registration rejected: {}",
+            result.message
+        )));
+    }
+
+    client
+        .start_heartbeat()
+        .await
+        .map_err(|e| ServiceError::Discovery(format!("songbird heartbeat: {e}")))?;
 
     Ok(client)
 }
