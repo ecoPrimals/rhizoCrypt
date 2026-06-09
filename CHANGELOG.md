@@ -5,6 +5,21 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.4] - 2026-06-08
+
+### Changed
+
+#### Wave 102: Deep Debt — Transport Pervasion + Service Extraction (Jun 8, 2026)
+
+- **`ServiceEndpoint.addr` → `ServiceEndpoint.endpoint`**: Evolved from `SocketAddr` to `TransportEndpoint` across discovery, integration, and all capability clients. Every outbound client now resolves addresses via transport abstraction.
+- **`DiscoveryRegistry::discovery_source`**: Evolved from `SocketAddr` to `TransportEndpoint`. Discovery adapter queries now use `connect_transport()` with conditional `TCP_NODELAY`.
+- **`ComputeProviderClient`**: Probe connection evolved from raw `TcpStream::connect` to `connect_transport()`. Endpoint stored as `TransportEndpoint`.
+- **`AdapterFactory`**: Supports `tcp://` protocol scheme (maps to tarpc adapter like `tarpc://`).
+- **`TransportEndpoint`**: Added `From<SocketAddr>`, `uds()`, `parse_address()`, `try_parse_address()` helpers. Backward-compatible with existing `SocketAddr` callers.
+- **`service.rs` extraction**: Split from 686L to 589L by extracting vertex/event ops (154L) and branch/federate ops (89L) into `service_vertex_ops.rs` and `service_branch_ops.rs`.
+- **`doctor.rs`**: Health-check probe uses `connect_transport()` instead of raw `TcpStream`.
+- **Neural API**: `/tmp` fallback path centralized as `constants::POSIX_FALLBACK_TMPDIR`.
+
 ## [0.14.3] - 2026-06-08
 
 ### Added

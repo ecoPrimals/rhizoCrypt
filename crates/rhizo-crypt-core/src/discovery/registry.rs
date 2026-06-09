@@ -8,9 +8,9 @@
 
 use super::{Capability, ServiceEndpoint};
 use crate::constants::{DISCOVERY_QUERY_TIMEOUT, DISCOVERY_RESPONSE_BUFFER_SIZE};
+use crate::transport::{TransportEndpoint, TransportStream, connect_transport};
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::net::SocketAddr;
 use tokio::sync::RwLock;
 
 /// Discovery status for a capability.
@@ -52,8 +52,8 @@ impl DiscoveryStatus {
 pub struct DiscoveryRegistry {
     /// Known endpoints by capability.
     endpoints: RwLock<HashMap<Capability, Vec<ServiceEndpoint>>>,
-    /// Discovery adapter address (bootstrap endpoint for capability queries).
-    discovery_source: RwLock<Option<SocketAddr>>,
+    /// Discovery adapter endpoint (bootstrap endpoint for capability queries).
+    discovery_source: RwLock<Option<TransportEndpoint>>,
     /// Local primal name (self-knowledge only).
     local_primal: Cow<'static, str>,
 }
@@ -69,11 +69,13 @@ impl DiscoveryRegistry {
         }
     }
 
-    /// Set the discovery adapter address.
+    /// Set the discovery adapter endpoint.
     ///
-    /// This is the only "configured" address — everything else is discovered.
-    pub async fn set_discovery_source(&self, addr: SocketAddr) {
-        *self.discovery_source.write().await = Some(addr);
+    /// This is the only "configured" endpoint — everything else is discovered.
+    /// Accepts any type that converts to `TransportEndpoint` (including `SocketAddr`
+    /// for backward compatibility).
+    pub async fn set_discovery_source(&self, endpoint: impl Into<TransportEndpoint>) {
+        *self.discovery_source.write().await = Some(endpoint.into());
     }
 
     /// Clear the configured discovery adapter (standalone mode).
@@ -111,13 +113,13 @@ impl DiscoveryRegistry {
 
         // Try to discover via discovery source
         let source = self.discovery_source.read().await;
-        let Some(source_addr) = *source else {
+        let Some(source_endpoint) = source.clone() else {
             return DiscoveryStatus::Unavailable;
         };
         drop(source);
 
         // Query discovery adapter for the capability
-        match self.query_discovery_source(source_addr, capability).await {
+        match self.query_discovery_source(&source_endpoint, capability).await {
             Ok(endpoints) if !endpoints.is_empty() => {
                 // Cache the discovered endpoints
                 {
@@ -144,10 +146,11 @@ impl DiscoveryRegistry {
 
     /// Query the discovery adapter for endpoints providing a capability.
     ///
-    /// Sends a lightweight TCP JSON-RPC `discovery.resolve` call.
+    /// Sends a lightweight JSON-RPC `discovery.resolve` call over the
+    /// configured transport (TCP or UDS).
     async fn query_discovery_source(
         &self,
-        source_addr: SocketAddr,
+        source: &TransportEndpoint,
         capability: &Capability,
     ) -> std::result::Result<Vec<ServiceEndpoint>, String> {
         #[derive(serde::Deserialize)]
@@ -165,7 +168,6 @@ impl DiscoveryRegistry {
         }
 
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
-        use tokio::net::TcpStream;
 
         let capability_name = capability.to_string();
 
@@ -181,9 +183,15 @@ impl DiscoveryRegistry {
 
         let body_bytes = serde_json::to_vec(&request_body).map_err(|e| e.to_string())?;
 
+        let host_header = match source {
+            TransportEndpoint::Tcp { host, port } => format!("{host}:{port}"),
+            TransportEndpoint::Uds { path } => path.clone(),
+            TransportEndpoint::MeshRelay { .. } => "mesh-relay".to_string(),
+        };
+
         let header = format!(
             "POST /rpc HTTP/1.1\r\n\
-             Host: {source_addr}\r\n\
+             Host: {host_header}\r\n\
              Content-Type: application/json\r\n\
              Content-Length: {}\r\n\
              Connection: close\r\n\
@@ -193,16 +201,22 @@ impl DiscoveryRegistry {
 
         let timeout = DISCOVERY_QUERY_TIMEOUT;
 
-        let mut stream = tokio::time::timeout(timeout, TcpStream::connect(source_addr))
+        let stream = tokio::time::timeout(timeout, connect_transport(source))
             .await
-            .map_err(|_| format!("Discovery source connection timed out: {source_addr}"))?
+            .map_err(|_| format!("Discovery source connection timed out: {source:?}"))?
             .map_err(|e| format!("Discovery source connection failed: {e}"))?;
 
-        stream.write_all(header.as_bytes()).await.map_err(|e| e.to_string())?;
-        stream.write_all(&body_bytes).await.map_err(|e| e.to_string())?;
+        if let TransportStream::Tcp(ref tcp) = stream {
+            let _ = tcp.set_nodelay(true);
+        }
+
+        let (mut reader, mut writer) = tokio::io::split(stream);
+
+        writer.write_all(header.as_bytes()).await.map_err(|e| e.to_string())?;
+        writer.write_all(&body_bytes).await.map_err(|e| e.to_string())?;
 
         let mut response_buf = Vec::with_capacity(DISCOVERY_RESPONSE_BUFFER_SIZE);
-        tokio::time::timeout(timeout, stream.read_to_end(&mut response_buf))
+        tokio::time::timeout(timeout, reader.read_to_end(&mut response_buf))
             .await
             .map_err(|_| "Discovery source read timed out".to_string())?
             .map_err(|e| format!("Discovery source read failed: {e}"))?;
@@ -221,13 +235,14 @@ impl DiscoveryRegistry {
 
         let mut endpoints = Vec::with_capacity(discovered.len());
         for d in discovered {
-            let Ok(addr) = d.address.parse::<SocketAddr>() else {
+            let Some(ep) = TransportEndpoint::try_parse_address(&d.address) else {
+                tracing::debug!(address = %d.address, "Skipping invalid discovery address");
                 continue;
             };
             let caps: Vec<Capability> =
                 d.capabilities.iter().filter_map(|c| parse_capability(c)).collect();
             if !caps.is_empty() {
-                endpoints.push(ServiceEndpoint::new(d.service_id, addr, caps));
+                endpoints.push(ServiceEndpoint::new(d.service_id, ep, caps));
             }
         }
 

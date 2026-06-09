@@ -19,12 +19,13 @@
 //! ```no_run
 //! # use rhizo_crypt_core::clients::capabilities::SigningClient;
 //! # use rhizo_crypt_core::discovery::DiscoveryRegistry;
+//! # use rhizo_crypt_core::transport::TransportEndpoint;
 //! # use rhizo_crypt_core::types::Did;
 //! # use std::sync::Arc;
 //! # tokio::runtime::Runtime::new().unwrap().block_on(async {
 //! # let registry = Arc::new(DiscoveryRegistry::new("doc-test"));
 //! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
-//! #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+//! #     "test-signer", TransportEndpoint::tcp("127.0.0.1", 9500),
 //! #     vec![rhizo_crypt_core::discovery::Capability::Signing],
 //! # )).await;
 //! // Discover and connect to ANY signing provider

@@ -103,13 +103,12 @@ impl MeshEventListener {
     /// Returns error if discovery succeeds but endpoint is invalid.
     pub async fn connect(&self) -> Result<()> {
         if let Some(service) = self.registry.get_endpoint(&Capability::Signing).await {
-            let transport = TransportEndpoint::tcp(service.addr.ip().to_string(), service.addr.port());
             info!(
-                endpoint = %transport,
+                endpoint = %service.endpoint,
                 service = %service.service_id,
                 "Mesh event listener connected to signing provider"
             );
-            *self.endpoint.write().await = Some(transport);
+            *self.endpoint.write().await = Some(service.endpoint.clone());
             *self.state.write().await = ListenerState::Connected;
         } else {
             debug!("No signing provider for mesh event listener (standalone mode)");
@@ -398,7 +397,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "test-beardog",
-                addr,
+                addr.into(),
                 vec![Capability::Signing],
             ))
             .await;

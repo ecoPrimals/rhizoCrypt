@@ -14,12 +14,13 @@
 //!
 //! ```no_run
 //! # use rhizo_crypt_core::clients::capabilities::SigningClient;
+//! # use rhizo_crypt_core::transport::TransportEndpoint;
 //! # use rhizo_crypt_core::types::Did;
 //! # use std::sync::Arc;
 //! # tokio::runtime::Runtime::new().unwrap().block_on(async {
 //! # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
 //! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
-//! #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+//! #     "test-signer", TransportEndpoint::tcp("127.0.0.1", 9500),
 //! #     vec![rhizo_crypt_core::discovery::Capability::Signing],
 //! # )).await;
 //! // Discover ANY signing provider
@@ -41,9 +42,9 @@ pub use traits::{PayloadStorageProvider, PermanentStorageProvider, SigningProvid
 
 use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::Result;
+use crate::transport::TransportEndpoint;
 
 use std::borrow::Cow;
-use std::net::SocketAddr;
 use std::sync::Arc;
 
 // Test-only mock implementations
@@ -210,11 +211,12 @@ const fn status_str(status: &ServiceStatus) -> &'static str {
 /// ```no_run
 /// # use rhizo_crypt_core::integration::ClientFactory;
 /// # use rhizo_crypt_core::discovery::{DiscoveryRegistry, ServiceEndpoint, Capability};
+/// # use rhizo_crypt_core::transport::TransportEndpoint;
 /// # use std::sync::Arc;
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
 /// # let registry = Arc::new(DiscoveryRegistry::new("rhizoCrypt"));
 /// # registry.register_endpoint(ServiceEndpoint::new(
-/// #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+/// #     "test-signer", TransportEndpoint::tcp("127.0.0.1", 9500),
 /// #     vec![Capability::Signing],
 /// # )).await;
 /// let factory = ClientFactory::new(registry);
@@ -261,12 +263,12 @@ impl ClientFactory {
     /// # Errors
     ///
     /// Returns error if no signing service is registered.
-    pub async fn signing_endpoint(&self) -> Result<SocketAddr> {
+    pub async fn signing_endpoint(&self) -> Result<TransportEndpoint> {
         self.registry
             .get_endpoint(&Capability::Signing)
             .await
             .ok_or_else(|| crate::error::RhizoCryptError::integration("No signing service found"))
-            .map(|e| e.addr)
+            .map(|e| e.endpoint)
     }
 
     /// Get the endpoint for permanent commit capability.
@@ -274,14 +276,14 @@ impl ClientFactory {
     /// # Errors
     ///
     /// Returns error if no commit service is registered.
-    pub async fn commit_endpoint(&self) -> Result<SocketAddr> {
+    pub async fn commit_endpoint(&self) -> Result<TransportEndpoint> {
         self.registry
             .get_endpoint(&Capability::PermanentCommit)
             .await
             .ok_or_else(|| {
                 crate::error::RhizoCryptError::integration("No permanent commit service found")
             })
-            .map(|e| e.addr)
+            .map(|e| e.endpoint)
     }
 
     /// Get the endpoint for payload storage capability.
@@ -289,14 +291,14 @@ impl ClientFactory {
     /// # Errors
     ///
     /// Returns error if no storage service is registered.
-    pub async fn storage_endpoint(&self) -> Result<SocketAddr> {
+    pub async fn storage_endpoint(&self) -> Result<TransportEndpoint> {
         self.registry
             .get_endpoint(&Capability::PayloadStorage)
             .await
             .ok_or_else(|| {
                 crate::error::RhizoCryptError::integration("No payload storage service found")
             })
-            .map(|e| e.addr)
+            .map(|e| e.endpoint)
     }
 
     /// Get the discovery registry for direct access.
@@ -310,15 +312,15 @@ impl ClientFactory {
         let mut status = IntegrationStatus::new();
 
         if let Some(endpoint) = self.registry.get_endpoint(&Capability::Signing).await {
-            status.signing = ServiceStatus::healthy(endpoint.addr.to_string());
+            status.signing = ServiceStatus::healthy(endpoint.endpoint.to_string());
         }
 
         if let Some(endpoint) = self.registry.get_endpoint(&Capability::PermanentCommit).await {
-            status.permanent_storage = ServiceStatus::healthy(endpoint.addr.to_string());
+            status.permanent_storage = ServiceStatus::healthy(endpoint.endpoint.to_string());
         }
 
         if let Some(endpoint) = self.registry.get_endpoint(&Capability::PayloadStorage).await {
-            status.payload_storage = ServiceStatus::healthy(endpoint.addr.to_string());
+            status.payload_storage = ServiceStatus::healthy(endpoint.endpoint.to_string());
         }
 
         status
@@ -334,6 +336,7 @@ impl ClientFactory {
 mod tests {
     use super::*;
     use crate::discovery::ServiceEndpoint;
+    use crate::transport::TransportEndpoint;
 
     #[test]
     fn test_service_status() {
@@ -431,7 +434,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "signing-provider-a",
-                "127.0.0.1:9000".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9000),
                 vec![Capability::Signing, Capability::DidVerification],
             ))
             .await;
@@ -439,7 +442,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "commit-provider-a",
-                "127.0.0.1:9001".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9001),
                 vec![Capability::PermanentCommit],
             ))
             .await;
@@ -447,7 +450,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "storage-provider-a",
-                "127.0.0.1:9002".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9002),
                 vec![Capability::PayloadStorage],
             ))
             .await;
@@ -459,13 +462,13 @@ mod tests {
 
         // Endpoints should be retrievable
         let signing_addr = factory.signing_endpoint().await.unwrap();
-        assert_eq!(signing_addr.port(), 9000);
+        assert_eq!(signing_addr.tcp_addr().map(|(_, p)| p), Some(9000));
 
         let commit_addr = factory.commit_endpoint().await.unwrap();
-        assert_eq!(commit_addr.port(), 9001);
+        assert_eq!(commit_addr.tcp_addr().map(|(_, p)| p), Some(9001));
 
         let storage_addr = factory.storage_endpoint().await.unwrap();
-        assert_eq!(storage_addr.port(), 9002);
+        assert_eq!(storage_addr.tcp_addr().map(|(_, p)| p), Some(9002));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -482,7 +485,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "signing-provider-b",
-                "127.0.0.1:9000".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9000),
                 vec![Capability::Signing],
             ))
             .await;
@@ -490,7 +493,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "commit-provider-b",
-                "127.0.0.1:9001".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9001),
                 vec![Capability::PermanentCommit],
             ))
             .await;
@@ -498,7 +501,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "storage-provider-b",
-                "127.0.0.1:9002".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9002),
                 vec![Capability::PayloadStorage],
             ))
             .await;

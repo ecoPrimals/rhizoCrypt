@@ -8,8 +8,8 @@
 //! only what capabilities are available at this endpoint.
 
 use super::Capability;
+use crate::transport::TransportEndpoint;
 use std::borrow::Cow;
-use std::net::SocketAddr;
 use std::time::Duration;
 
 // Note: ServiceEndpoint is not Serialize/Deserialize because std::time::Instant
@@ -24,8 +24,8 @@ use std::time::Duration;
 pub struct ServiceEndpoint {
     /// Unique service instance identifier (primal-agnostic).
     pub service_id: Cow<'static, str>,
-    /// Socket address for RPC connections.
-    pub addr: SocketAddr,
+    /// Transport endpoint (TCP or UDS) for RPC connections.
+    pub endpoint: TransportEndpoint,
     /// Capabilities provided by this endpoint.
     pub capabilities: Vec<Capability>,
     /// When this endpoint was last seen healthy (not serialized).
@@ -39,12 +39,12 @@ impl ServiceEndpoint {
     #[must_use]
     pub fn new(
         service_id: impl Into<Cow<'static, str>>,
-        addr: SocketAddr,
+        endpoint: TransportEndpoint,
         capabilities: Vec<Capability>,
     ) -> Self {
         Self {
             service_id: service_id.into(),
-            addr,
+            endpoint,
             capabilities,
             last_healthy: std::time::Instant::now(),
             health_interval: crate::constants::DEFAULT_HEALTH_CHECK_INTERVAL,
@@ -71,70 +71,85 @@ impl ServiceEndpoint {
 mod tests {
     use super::*;
 
+    fn tcp_ep(addr: &str) -> TransportEndpoint {
+        let (host, port) = addr.rsplit_once(':').unwrap();
+        TransportEndpoint::tcp(host, port.parse().unwrap())
+    }
+
     #[test]
     fn test_service_endpoint() {
-        let endpoint = ServiceEndpoint::new(
+        let ep = ServiceEndpoint::new(
             "testService",
-            "127.0.0.1:9000".parse().unwrap(),
+            tcp_ep("127.0.0.1:9000"),
             vec![Capability::Signing, Capability::DidVerification],
         );
 
-        assert_eq!(endpoint.service_id.as_ref(), "testService");
-        assert!(endpoint.has_capability(&Capability::Signing));
-        assert!(endpoint.has_capability(&Capability::DidVerification));
-        assert!(!endpoint.has_capability(&Capability::PayloadStorage));
-        assert!(endpoint.is_healthy());
+        assert_eq!(ep.service_id.as_ref(), "testService");
+        assert!(ep.has_capability(&Capability::Signing));
+        assert!(ep.has_capability(&Capability::DidVerification));
+        assert!(!ep.has_capability(&Capability::PayloadStorage));
+        assert!(ep.is_healthy());
     }
 
     #[test]
     fn test_service_endpoint_health_interval() {
-        let mut endpoint = ServiceEndpoint::new(
+        let mut ep = ServiceEndpoint::new(
             "test",
-            "127.0.0.1:9000".parse().unwrap(),
+            tcp_ep("127.0.0.1:9000"),
             vec![Capability::Signing],
         );
 
-        assert_eq!(endpoint.health_interval, crate::constants::DEFAULT_HEALTH_CHECK_INTERVAL);
+        assert_eq!(ep.health_interval, crate::constants::DEFAULT_HEALTH_CHECK_INTERVAL);
 
-        endpoint.health_interval = Duration::from_secs(60);
-        assert_eq!(endpoint.health_interval, Duration::from_secs(60));
+        ep.health_interval = Duration::from_secs(60);
+        assert_eq!(ep.health_interval, Duration::from_secs(60));
     }
 
     #[test]
     fn test_endpoint_no_capabilities() {
-        let endpoint = ServiceEndpoint::new("empty", "127.0.0.1:9001".parse().unwrap(), vec![]);
-        assert!(!endpoint.has_capability(&Capability::Signing));
-        assert!(endpoint.capabilities.is_empty());
+        let ep = ServiceEndpoint::new("empty", tcp_ep("127.0.0.1:9001"), vec![]);
+        assert!(!ep.has_capability(&Capability::Signing));
+        assert!(ep.capabilities.is_empty());
     }
 
     #[test]
     fn test_endpoint_clone() {
-        let endpoint = ServiceEndpoint::new(
+        let ep = ServiceEndpoint::new(
             "cloneable",
-            "127.0.0.1:9002".parse().unwrap(),
+            tcp_ep("127.0.0.1:9002"),
             vec![Capability::PermanentCommit],
         );
-        let cloned = endpoint.clone();
-        assert_eq!(cloned.service_id, endpoint.service_id);
-        assert_eq!(cloned.addr, endpoint.addr);
-        assert_eq!(cloned.capabilities, endpoint.capabilities);
+        let cloned = ep.clone();
+        assert_eq!(cloned.service_id, ep.service_id);
+        assert_eq!(cloned.endpoint, ep.endpoint);
+        assert_eq!(cloned.capabilities, ep.capabilities);
     }
 
     #[test]
     fn test_endpoint_static_service_id() {
-        let endpoint = ServiceEndpoint::new(
+        let ep = ServiceEndpoint::new(
             "static-id",
-            "127.0.0.1:9003".parse().unwrap(),
+            tcp_ep("127.0.0.1:9003"),
             vec![Capability::Signing],
         );
-        assert_eq!(endpoint.service_id.as_ref(), "static-id");
+        assert_eq!(ep.service_id.as_ref(), "static-id");
     }
 
     #[test]
     fn test_endpoint_owned_service_id() {
         let id = String::from("dynamic-id");
-        let endpoint =
-            ServiceEndpoint::new(id, "127.0.0.1:9004".parse().unwrap(), vec![Capability::Signing]);
-        assert_eq!(endpoint.service_id.as_ref(), "dynamic-id");
+        let ep = ServiceEndpoint::new(id, tcp_ep("127.0.0.1:9004"), vec![Capability::Signing]);
+        assert_eq!(ep.service_id.as_ref(), "dynamic-id");
+    }
+
+    #[test]
+    fn test_uds_endpoint() {
+        let ep = ServiceEndpoint::new(
+            "uds-service",
+            TransportEndpoint::Uds { path: "/run/biomeos/test.sock".into() },
+            vec![Capability::Signing],
+        );
+        assert!(matches!(ep.endpoint, TransportEndpoint::Uds { .. }));
+        assert!(ep.is_healthy());
     }
 }

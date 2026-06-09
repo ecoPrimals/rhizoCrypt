@@ -35,11 +35,12 @@ use crate::vertex::Vertex;
 ///
 /// ```no_run
 /// # use rhizo_crypt_core::clients::capabilities::SigningClient;
+/// # use rhizo_crypt_core::transport::TransportEndpoint;
 /// # use std::sync::Arc;
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
 /// # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
 /// # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
-/// #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+/// #     "test-signer", TransportEndpoint::tcp("127.0.0.1", 9500),
 /// #     vec![rhizo_crypt_core::discovery::Capability::Signing],
 /// # )).await;
 /// let signer = SigningClient::discover(&registry).await?;
@@ -108,11 +109,12 @@ pub trait SigningProvider: Send + Sync {
 ///
 /// ```no_run
 /// # use rhizo_crypt_core::clients::capabilities::PermanentStorageClient;
+/// # use rhizo_crypt_core::transport::TransportEndpoint;
 /// # use std::sync::Arc;
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
 /// # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
 /// # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
-/// #     "test-store", "127.0.0.1:9700".parse().unwrap(),
+/// #     "test-store", TransportEndpoint::tcp("127.0.0.1", 9700),
 /// #     vec![rhizo_crypt_core::discovery::Capability::PermanentCommit],
 /// # )).await;
 /// let storage = PermanentStorageClient::discover(&registry).await?;
@@ -176,11 +178,12 @@ pub trait PermanentStorageProvider: Send + Sync {
 ///
 /// ```no_run
 /// # use rhizo_crypt_core::clients::capabilities::StorageClient;
+/// # use rhizo_crypt_core::transport::TransportEndpoint;
 /// # use std::sync::Arc;
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
 /// # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
 /// # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
-/// #     "test-store", "127.0.0.1:9600".parse().unwrap(),
+/// #     "test-store", TransportEndpoint::tcp("127.0.0.1", 9600),
 /// #     vec![rhizo_crypt_core::discovery::Capability::PayloadStorage],
 /// # )).await;
 /// let storage = StorageClient::discover(&registry).await?;

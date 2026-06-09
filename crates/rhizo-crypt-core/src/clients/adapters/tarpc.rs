@@ -123,7 +123,10 @@ impl TarpcAdapter {
     /// - Address cannot be parsed or resolved
     pub fn new(endpoint: &str) -> Result<Self> {
         // Strip protocol if present
-        let addr_str = endpoint.strip_prefix("tarpc://").unwrap_or(endpoint);
+        let addr_str = endpoint
+            .strip_prefix("tarpc://")
+            .or_else(|| endpoint.strip_prefix("tcp://"))
+            .unwrap_or(endpoint);
 
         // Try to parse as SocketAddr first (IP address)
         let addr: SocketAddr = if let Ok(addr) = addr_str.parse() {

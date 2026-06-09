@@ -277,7 +277,7 @@ async fn check_discovery(comprehensive: bool) -> (DoctorCheck, String) {
     }
 }
 
-/// Attempt TCP connection to discovery endpoint.
+/// Attempt connection to discovery endpoint via the resolved transport.
 ///
 /// # Errors
 ///
@@ -289,10 +289,12 @@ pub async fn check_discovery_connectivity(addr: &str) -> Result<(), String> {
         .unwrap_or(addr)
         .trim_end_matches('/');
 
-    let socket_addr: std::net::SocketAddr =
-        host_port.parse().map_err(|e: std::net::AddrParseError| e.to_string())?;
+    let ep = rhizo_crypt_core::transport::TransportEndpoint::try_parse_address(host_port)
+        .ok_or_else(|| format!("Invalid discovery address: {host_port}"))?;
 
-    tokio::net::TcpStream::connect(socket_addr).await.map_err(|e: std::io::Error| e.to_string())?;
+    rhizo_crypt_core::transport::connect_transport(&ep)
+        .await
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }

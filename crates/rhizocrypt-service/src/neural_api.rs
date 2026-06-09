@@ -88,7 +88,9 @@ fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
         }
     }
 
-    let p = PathBuf::from("/tmp").join(constants::BIOMEOS_SOCKET_SUBDIR).join(&socket_name);
+    let p = PathBuf::from(constants::POSIX_FALLBACK_TMPDIR)
+        .join(constants::BIOMEOS_SOCKET_SUBDIR)
+        .join(&socket_name);
     if p.exists() {
         return Some(p);
     }

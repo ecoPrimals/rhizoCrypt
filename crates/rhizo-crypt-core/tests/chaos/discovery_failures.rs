@@ -9,7 +9,7 @@
 
 use rhizo_crypt_core::{
     Capability, ClientFactory, ClientProvider, DiscoveryRegistry, DiscoveryStatus,
-    IntegrationStatus, ServiceEndpoint, ServiceStatus,
+    IntegrationStatus, ServiceEndpoint, ServiceStatus, TransportEndpoint,
 };
 use std::sync::Arc;
 
@@ -86,7 +86,7 @@ async fn test_partial_service_availability() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "crypto-provider",
-            "127.0.0.1:9000".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9000),
             vec![Capability::Signing, Capability::DidVerification],
         ))
         .await;
@@ -120,7 +120,7 @@ async fn test_service_lifecycle() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "crypto-provider",
-            "127.0.0.1:9000".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9000),
             vec![Capability::Signing],
         ))
         .await;
@@ -128,7 +128,7 @@ async fn test_service_lifecycle() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "storage-provider",
-            "127.0.0.1:9001".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9001),
             vec![Capability::PayloadStorage],
         ))
         .await;
@@ -152,7 +152,7 @@ async fn test_multiple_providers() {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 format!("signer-{i}"),
-                format!("127.0.0.1:900{i}").parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9000 + i),
                 vec![Capability::Signing],
             ))
             .await;
@@ -209,7 +209,7 @@ async fn test_discovery_source() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
 
     // Set discovery source
-    let songbird_addr = "127.0.0.1:8091".parse().unwrap();
+    let songbird_addr: std::net::SocketAddr = "127.0.0.1:8091".parse().unwrap();
     registry.set_discovery_source(songbird_addr).await;
 
     // Discovery still returns unavailable (no cache, no real Songbird)
@@ -229,7 +229,7 @@ async fn test_custom_capability() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "customService",
-            "127.0.0.1:9999".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9999),
             vec![custom_cap.clone()],
         ))
         .await;

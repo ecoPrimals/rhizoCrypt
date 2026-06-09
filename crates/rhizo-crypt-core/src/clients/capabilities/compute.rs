@@ -38,7 +38,7 @@ impl ComputeClient {
         };
 
         let service_name = Some(endpoint.service_id.as_ref().to_string());
-        let endpoint_addr = endpoint.addr.to_string();
+        let endpoint_addr = endpoint.endpoint.to_string();
 
         tracing::info!(
             service = ?service_name,
@@ -133,7 +133,7 @@ mod tests {
         let addr: SocketAddr = "127.0.0.1:9800".parse().unwrap();
         let endpoint = ServiceEndpoint::new(
             "test-compute".to_string(),
-            addr,
+            addr.into(),
             vec![Capability::ComputeOrchestration],
         );
         registry.register_endpoint(endpoint).await;
@@ -169,7 +169,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "compute-primary".to_string(),
-                addr1,
+                addr1.into(),
                 vec![Capability::ComputeOrchestration],
             ))
             .await;
@@ -178,7 +178,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "compute-secondary".to_string(),
-                addr2,
+                addr2.into(),
                 vec![Capability::ComputeOrchestration],
             ))
             .await;
@@ -200,7 +200,7 @@ mod tests {
         let addr: SocketAddr = "127.0.0.1:9800".parse().unwrap();
         let endpoint = ServiceEndpoint::new(
             "compute-gpu".to_string(),
-            addr,
+            addr.into(),
             vec![Capability::ComputeOrchestration],
         );
         registry.register_endpoint(endpoint).await;
@@ -245,7 +245,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "compute-orchestrator".to_string(),
-                addr1,
+                addr1.into(),
                 vec![Capability::ComputeOrchestration],
             ))
             .await;
@@ -259,7 +259,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "signing-service".to_string(),
-                addr2,
+                addr2.into(),
                 vec![Capability::Signing],
             ))
             .await;
@@ -296,7 +296,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "shared-compute".to_string(),
-                addr,
+                addr.into(),
                 vec![Capability::ComputeOrchestration],
             ))
             .await;

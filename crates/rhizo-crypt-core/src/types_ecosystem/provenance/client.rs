@@ -76,12 +76,8 @@ impl ProvenanceNotifier {
         if let Some(registry) = &self.registry
             && let Some(service) = registry.get_endpoint(&Capability::ProvenanceQuery).await
         {
-            let transport = TransportEndpoint::tcp(
-                service.addr.ip().to_string(),
-                service.addr.port(),
-            );
-            info!(endpoint = %transport, "Discovered provenance provider via registry");
-            *self.endpoint.write().await = Some(transport);
+            info!(endpoint = %service.endpoint, "Discovered provenance provider via registry");
+            *self.endpoint.write().await = Some(service.endpoint.clone());
             *self.state.write().await = ClientState::Connected;
             return Ok(());
         }
@@ -540,7 +536,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "provenance-test",
-                addr,
+                addr.into(),
                 vec![Capability::ProvenanceQuery],
             ))
             .await;

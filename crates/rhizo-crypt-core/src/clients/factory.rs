@@ -14,11 +14,11 @@
 //! # tokio::runtime::Runtime::new().unwrap().block_on(async {
 //! # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
 //! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
-//! #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+//! #     "test-signer", rhizo_crypt_core::transport::TransportEndpoint::tcp("127.0.0.1", 9500),
 //! #     vec![rhizo_crypt_core::discovery::Capability::Signing],
 //! # )).await;
 //! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
-//! #     "test-storage", "127.0.0.1:9600".parse().unwrap(),
+//! #     "test-storage", rhizo_crypt_core::transport::TransportEndpoint::tcp("127.0.0.1", 9600),
 //! #     vec![rhizo_crypt_core::discovery::Capability::PayloadStorage],
 //! # )).await;
 //! // Production: discover and connect to real services
@@ -267,13 +267,14 @@ impl CapabilityClientFactory {
     /// ```no_run
     /// # use rhizo_crypt_core::clients::CapabilityClientFactory;
     /// # use rhizo_crypt_core::discovery::{DiscoveryRegistry, ServiceEndpoint, Capability};
+    /// # use rhizo_crypt_core::transport::TransportEndpoint;
     /// # use std::sync::Arc;
     /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
     /// let registry = Arc::new(DiscoveryRegistry::new("doc-test"));
     /// // Register mock services
     /// registry.register_endpoint(ServiceEndpoint::new(
     ///     "mock-signer",
-    ///     "127.0.0.1:9999".parse().unwrap(),
+    ///     TransportEndpoint::tcp("127.0.0.1", 9999),
     ///     vec![Capability::Signing],
     /// )).await;
     ///
@@ -293,6 +294,7 @@ impl CapabilityClientFactory {
 mod tests {
     use super::*;
     use crate::discovery::{Capability, ServiceEndpoint};
+    use crate::transport::TransportEndpoint;
 
     #[tokio::test]
     async fn test_factory_creation() {
@@ -318,7 +320,7 @@ mod tests {
         // Register a signing service via discovery
         let endpoint = ServiceEndpoint::new(
             "test-signer",
-            "127.0.0.1:9500".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9500),
             vec![Capability::Signing],
         );
         registry.register_endpoint(endpoint).await;
@@ -337,7 +339,7 @@ mod tests {
         // Register a storage service via discovery
         let endpoint = ServiceEndpoint::new(
             "test-storage",
-            "127.0.0.1:9600".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9600),
             vec![Capability::PayloadStorage],
         );
         registry.register_endpoint(endpoint).await;
@@ -356,7 +358,7 @@ mod tests {
         // Register a compute service via discovery
         let endpoint = ServiceEndpoint::new(
             "test-compute",
-            "127.0.0.1:9800".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9800),
             vec![Capability::ComputeOrchestration],
         );
         registry.register_endpoint(endpoint).await;
@@ -375,7 +377,7 @@ mod tests {
         // Register a permanent storage service via discovery
         let endpoint = ServiceEndpoint::new(
             "test-loamspine",
-            "127.0.0.1:9700".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9700),
             vec![Capability::PermanentCommit, Capability::SliceCheckout],
         );
         registry.register_endpoint(endpoint).await;
@@ -394,7 +396,7 @@ mod tests {
         // Register a signing service via discovery
         let endpoint = ServiceEndpoint::new(
             "test-signer",
-            "127.0.0.1:9500".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9500),
             vec![Capability::Signing],
         );
         registry.register_endpoint(endpoint).await;
@@ -433,14 +435,14 @@ mod tests {
         // Register multiple signing services - demonstrates capability-based discovery
         let endpoint1 = ServiceEndpoint::new(
             "signer-1",
-            "127.0.0.1:9500".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9500),
             vec![Capability::Signing],
         );
         registry.register_endpoint(endpoint1).await;
 
         let endpoint2 = ServiceEndpoint::new(
             "signer-2",
-            "127.0.0.1:9501".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9501),
             vec![Capability::Signing],
         );
         registry.register_endpoint(endpoint2).await;
@@ -469,14 +471,14 @@ mod tests {
         // Register services via discovery
         let signing_endpoint = ServiceEndpoint::new(
             "signer",
-            "127.0.0.1:9500".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9500),
             vec![Capability::Signing],
         );
         registry.register_endpoint(signing_endpoint).await;
 
         let storage_endpoint = ServiceEndpoint::new(
             "storage",
-            "127.0.0.1:9600".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9600),
             vec![Capability::PayloadStorage],
         );
         registry.register_endpoint(storage_endpoint).await;

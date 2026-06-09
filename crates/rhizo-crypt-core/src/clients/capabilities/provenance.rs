@@ -42,7 +42,7 @@ impl ProvenanceClient {
         };
 
         let service_name = Some(endpoint.service_id.as_ref().to_string());
-        let endpoint_addr = endpoint.addr.to_string();
+        let endpoint_addr = endpoint.endpoint.to_string();
 
         tracing::info!(
             service = ?service_name,
@@ -226,13 +226,13 @@ mod tests {
         registry
             .register_endpoint(crate::discovery::ServiceEndpoint::new(
                 "provenance-test",
-                addr,
+                addr.into(),
                 vec![Capability::ProvenanceQuery],
             ))
             .await;
 
         let client = ProvenanceClient::discover(&registry).await.unwrap();
-        assert_eq!(client.endpoint(), "127.0.0.1:19900");
+        assert_eq!(client.endpoint(), "tcp://127.0.0.1:19900");
         assert_eq!(client.service_name(), Some("provenance-test"));
     }
 

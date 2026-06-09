@@ -5,7 +5,6 @@
 //!
 //! Client for subscribing to compute task events from capability providers.
 
-use std::net::SocketAddr;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -13,6 +12,7 @@ use tracing::{debug, info, warn};
 
 use crate::discovery::{Capability, DiscoveryRegistry};
 use crate::error::{Result, RhizoCryptError};
+use crate::transport::{TransportEndpoint, TransportStream, connect_transport};
 use crate::types::Timestamp;
 
 use super::types::{ClientState, ComputeEvent, ComputeProviderConfig, TaskId};
@@ -53,7 +53,7 @@ pub struct ComputeProviderClient {
     state: Arc<RwLock<ClientState>>,
 
     /// Connected endpoint (if any).
-    endpoint: Arc<RwLock<Option<SocketAddr>>>,
+    endpoint: Arc<RwLock<Option<TransportEndpoint>>>,
 }
 
 impl ComputeProviderClient {
@@ -109,18 +109,14 @@ impl ComputeProviderClient {
         if let Some(registry) = &self.registry
             && let Some(endpoint) = registry.get_endpoint(&Capability::ComputeOrchestration).await
         {
-            info!(address = %endpoint.addr, "Discovered compute provider via registry");
-            return self.connect_to(endpoint.addr).await;
+            info!(endpoint = %endpoint.endpoint, "Discovered compute provider via registry");
+            return self.connect_to(&endpoint.endpoint).await;
         }
 
         // Fall back to configured address
         if let Some(ref addr) = self.config.fallback_address {
-            let socket_addr: SocketAddr = addr.parse().map_err(|e| {
-                RhizoCryptError::integration(format!(
-                    "Invalid compute provider address '{addr}': {e}"
-                ))
-            })?;
-            return self.connect_to(socket_addr).await;
+            let ep = TransportEndpoint::parse_address(addr);
+            return self.connect_to(&ep).await;
         }
 
         *self.state.write().await = ClientState::Error;
@@ -129,20 +125,22 @@ impl ComputeProviderClient {
         ))
     }
 
-    /// Connect to a specific address.
-    async fn connect_to(&self, addr: SocketAddr) -> Result<()> {
-        debug!(address = %addr, "Connecting to compute provider");
+    /// Connect to a specific endpoint.
+    async fn connect_to(&self, ep: &TransportEndpoint) -> Result<()> {
+        debug!(endpoint = %ep, "Connecting to compute provider");
 
-        // Scaffolded mode: verify we can reach the address
         match tokio::time::timeout(
             std::time::Duration::from_millis(self.config.timeout_ms),
-            tokio::net::TcpStream::connect(addr),
+            connect_transport(ep),
         )
         .await
         {
-            Ok(Ok(_stream)) => {
-                info!(address = %addr, "Connected to compute provider (scaffolded mode)");
-                *self.endpoint.write().await = Some(addr);
+            Ok(Ok(stream)) => {
+                if let TransportStream::Tcp(ref tcp) = stream {
+                    let _ = tcp.set_nodelay(true);
+                }
+                info!(endpoint = %ep, "Connected to compute provider");
+                *self.endpoint.write().await = Some(ep.clone());
                 *self.state.write().await = ClientState::Connected;
                 Ok(())
             }
@@ -235,8 +233,8 @@ impl ComputeProviderClient {
     }
 
     /// Get the current endpoint.
-    pub async fn endpoint(&self) -> Option<SocketAddr> {
-        *self.endpoint.read().await
+    pub async fn endpoint(&self) -> Option<TransportEndpoint> {
+        self.endpoint.read().await.clone()
     }
 
     /// Get the discovery registry (if configured).
@@ -253,8 +251,8 @@ impl ComputeProviderClient {
     }
 
     /// Set the connected state and endpoint.
-    pub async fn set_connected(&self, endpoint: SocketAddr) {
-        *self.endpoint.write().await = Some(endpoint);
+    pub async fn set_connected(&self, endpoint: impl Into<TransportEndpoint>) {
+        *self.endpoint.write().await = Some(endpoint.into());
         *self.state.write().await = ClientState::Connected;
     }
 }
@@ -403,11 +401,14 @@ mod tests {
         assert!(client.endpoint().await.is_none());
 
         // Set endpoint
-        let addr: SocketAddr = "127.0.0.1:9800".parse().unwrap();
+        let addr: std::net::SocketAddr = "127.0.0.1:9800".parse().unwrap();
         client.set_connected(addr).await;
 
         // Verify endpoint and state
-        assert_eq!(client.endpoint().await, Some(addr));
+        assert_eq!(
+            client.endpoint().await,
+            Some(TransportEndpoint::tcp("127.0.0.1", 9800))
+        );
         assert_eq!(client.state().await, ClientState::Connected);
         assert!(client.is_connected().await);
     }

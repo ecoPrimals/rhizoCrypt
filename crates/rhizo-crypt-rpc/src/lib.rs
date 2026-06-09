@@ -62,6 +62,8 @@ mod metrics;
 mod rate_limit;
 pub mod server;
 mod service;
+mod service_vertex_ops;
+mod service_branch_ops;
 pub(crate) mod service_types;
 pub mod streaming;
 

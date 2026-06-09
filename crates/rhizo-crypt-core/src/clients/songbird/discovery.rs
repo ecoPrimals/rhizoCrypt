@@ -7,6 +7,7 @@ use tracing::debug;
 
 use crate::discovery::{Capability, DiscoveryRegistry, ServiceEndpoint};
 use crate::error::{Result, RhizoCryptError};
+use crate::transport::TransportEndpoint;
 
 use super::super::songbird_types::ServiceInfo;
 use super::client::SongbirdClient;
@@ -139,15 +140,20 @@ impl SongbirdClient {
 
         for (domain, capabilities) in capability_mappings {
             for service in self.discover(domain).await? {
-                if let Ok(addr) = service.endpoint.parse() {
-                    registry
-                        .register_endpoint(ServiceEndpoint::new(
-                            service.name,
-                            addr,
-                            capabilities.to_vec(),
-                        ))
-                        .await;
-                }
+                let Some(ep) = TransportEndpoint::try_parse_address(&service.endpoint) else {
+                    tracing::debug!(
+                        endpoint = %service.endpoint,
+                        "Skipping service with unparseable endpoint"
+                    );
+                    continue;
+                };
+                registry
+                    .register_endpoint(ServiceEndpoint::new(
+                        service.name,
+                        ep,
+                        capabilities.to_vec(),
+                    ))
+                    .await;
             }
         }
 

@@ -183,7 +183,7 @@ impl AdapterFactory {
         if let Some((protocol, _)) = endpoint.split_once("://") {
             match protocol {
                 "unix" => Ok(Box::new(UnixSocketAdapter::from_endpoint(endpoint)?)),
-                "tarpc" => Ok(Box::new(TarpcAdapter::new(endpoint)?)),
+                "tcp" | "tarpc" => Ok(Box::new(TarpcAdapter::new(endpoint)?)),
                 #[cfg(feature = "http-clients")]
                 "http" | "https" => Ok(Box::new(HttpAdapter::new(endpoint)?)),
                 #[cfg(not(feature = "http-clients"))]

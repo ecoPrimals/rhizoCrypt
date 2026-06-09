@@ -15,8 +15,8 @@ use crate::service_types::{
     SessionInfo, cached_capability_descriptors,
 };
 use rhizo_crypt_core::{
-    DagStore, MerkleProof, MerkleRoot, PayloadRef, Session, SessionBuilder, SessionId, SliceId,
-    Vertex, VertexBuilder, VertexId,
+    MerkleProof, MerkleRoot, PayloadRef, Session, SessionBuilder, SessionId, SliceId, Vertex,
+    VertexId,
 };
 use std::sync::Arc;
 
@@ -222,7 +222,7 @@ impl RhizoCryptRpcServer {
 /// (size unknown = 0). Otherwise the reference string itself is hashed
 /// (Blake3) so the vertex carries a deterministic content-addressed
 /// reference regardless of the URI scheme.
-fn parse_payload_ref(s: &str) -> Option<PayloadRef> {
+pub fn parse_payload_ref(s: &str) -> Option<PayloadRef> {
     if s.is_empty() {
         return None;
     }
@@ -236,7 +236,7 @@ fn parse_payload_ref(s: &str) -> Option<PayloadRef> {
 
 /// Gracefully degrades: if no provider is discovered or signing fails, the vertex
 /// remains unsigned (matching standalone / pre-composition behavior).
-async fn sign_vertex_if_available(primal: &rhizo_crypt_core::RhizoCrypt, vertex: &mut Vertex) {
+pub async fn sign_vertex_if_available(primal: &rhizo_crypt_core::RhizoCrypt, vertex: &mut Vertex) {
     let Some(agent) = vertex.agent.clone() else {
         return;
     };
@@ -261,6 +261,8 @@ async fn sign_vertex_if_available(primal: &rhizo_crypt_core::RhizoCrypt, vertex:
 }
 
 impl RhizoCryptRpc for RhizoCryptRpcServer {
+    // Session operations (thin delegation — kept inline)
+
     async fn create_session(
         self,
         _: tarpc::context::Context,
@@ -306,32 +308,14 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         self.primal.discard_session(session_id).await.map_err(RpcError::from)
     }
 
+    // Vertex / event operations (delegated to service_vertex_ops)
+
     async fn append_event(
         self,
         _: tarpc::context::Context,
         request: AppendEventRequest,
     ) -> Result<VertexId, RpcError> {
-        let mut builder = VertexBuilder::new(request.event_type);
-
-        if let Some(agent) = request.agent {
-            builder = builder.with_agent(agent);
-        }
-
-        for parent in request.parents {
-            builder = builder.with_parent(parent);
-        }
-
-        for (key, value) in request.metadata {
-            builder = builder.with_metadata(key, value);
-        }
-
-        if let Some(payload) = request.payload_ref.and_then(|r| parse_payload_ref(&r)) {
-            builder = builder.with_payload(payload);
-        }
-
-        let mut vertex = builder.build();
-        sign_vertex_if_available(&self.primal, &mut vertex).await;
-        self.primal.append_vertex(request.session_id, vertex).await.map_err(RpcError::from)
+        self.impl_append_event(request).await
     }
 
     async fn append_batch(
@@ -339,31 +323,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         requests: Vec<AppendEventRequest>,
     ) -> Result<Vec<VertexId>, RpcError> {
-        let mut results = Vec::with_capacity(requests.len());
-        for request in requests {
-            let mut builder = VertexBuilder::new(request.event_type);
-            if let Some(agent) = request.agent {
-                builder = builder.with_agent(agent);
-            }
-            for parent in request.parents {
-                builder = builder.with_parent(parent);
-            }
-            for (key, value) in request.metadata {
-                builder = builder.with_metadata(key, value);
-            }
-            if let Some(payload) = request.payload_ref.and_then(|r| parse_payload_ref(&r)) {
-                builder = builder.with_payload(payload);
-            }
-            let mut vertex = builder.build();
-            sign_vertex_if_available(&self.primal, &mut vertex).await;
-            let id = self
-                .primal
-                .append_vertex(request.session_id, vertex)
-                .await
-                .map_err(RpcError::from)?;
-            results.push(id);
-        }
-        Ok(results)
+        self.impl_append_batch(requests).await
     }
 
     async fn get_vertex(
@@ -372,10 +332,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         session_id: SessionId,
         vertex_id: VertexId,
     ) -> Result<Vertex, RpcError> {
-        tracing::debug!("get_vertex called: session={session_id:?}, vertex={vertex_id:?}");
-        let result = self.primal.get_vertex(session_id, vertex_id).await;
-        tracing::debug!("get_vertex result: {result:?}");
-        result.map_err(RpcError::from)
+        self.impl_get_vertex(session_id, vertex_id).await
     }
 
     async fn get_frontier(
@@ -383,8 +340,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<Vec<VertexId>, RpcError> {
-        let session = self.primal.get_session(session_id).map_err(RpcError::from)?;
-        Ok(session.frontier.into_iter().collect())
+        self.impl_get_frontier(session_id).await
     }
 
     async fn get_genesis(
@@ -392,8 +348,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<Vec<VertexId>, RpcError> {
-        let session = self.primal.get_session(session_id).map_err(RpcError::from)?;
-        Ok(session.genesis.into_iter().collect())
+        self.impl_get_genesis(session_id).await
     }
 
     async fn query_vertices(
@@ -401,14 +356,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         request: QueryRequest,
     ) -> Result<Vec<Vertex>, RpcError> {
-        let event_types = request.event_types;
-        let agent = request.agent;
-        let limit = request.limit.map(|l| usize::try_from(l).unwrap_or(usize::MAX));
-
-        self.primal
-            .query_vertices(request.session_id, event_types.as_deref(), agent.as_ref(), limit)
-            .await
-            .map_err(RpcError::from)
+        self.impl_query_vertices(request).await
     }
 
     async fn get_children(
@@ -417,17 +365,17 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         session_id: SessionId,
         vertex_id: VertexId,
     ) -> Result<Vec<VertexId>, RpcError> {
-        let dag_store = self.primal.dag_store().await.map_err(RpcError::from)?;
-
-        dag_store.get_children(session_id, vertex_id).await.map_err(RpcError::from)
+        self.impl_get_children(session_id, vertex_id).await
     }
+
+    // Merkle operations (delegated to service_vertex_ops)
 
     async fn get_merkle_root(
         self,
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<MerkleRoot, RpcError> {
-        self.primal.compute_merkle_root(session_id).await.map_err(RpcError::from)
+        self.impl_get_merkle_root(session_id).await
     }
 
     async fn get_merkle_proof(
@@ -436,7 +384,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         session_id: SessionId,
         vertex_id: VertexId,
     ) -> Result<MerkleProof, RpcError> {
-        self.primal.generate_merkle_proof(session_id, vertex_id).await.map_err(RpcError::from)
+        self.impl_get_merkle_proof(session_id, vertex_id).await
     }
 
     async fn verify_proof(
@@ -445,16 +393,10 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _root: MerkleRoot,
         proof: MerkleProof,
     ) -> Result<bool, RpcError> {
-        let session_id = self
-            .primal
-            .session_for_vertex(proof.vertex_id)
-            .ok_or_else(|| RpcError::VertexNotFound(proof.vertex_id.to_string()))?;
-
-        let vertex =
-            self.primal.get_vertex(session_id, proof.vertex_id).await.map_err(RpcError::from)?;
-
-        Ok(proof.verify(&vertex))
+        self.impl_verify_proof(proof).await
     }
+
+    // Slice operations (thin delegation — kept inline)
 
     async fn checkout_slice(
         self,
@@ -517,23 +459,14 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
             .map_err(RpcError::from)
     }
 
+    // Branch / diff / merge / federate (delegated to service_branch_ops)
+
     async fn branch_session(
         self,
         _: tarpc::context::Context,
         request: BranchRequest,
     ) -> Result<BranchResponse, RpcError> {
-        let parent_session_id = request.session_id;
-        let (session_id, vertex_count) = self
-            .primal
-            .branch_session(parent_session_id, request.checkout_vertex, request.name)
-            .await
-            .map_err(RpcError::from)?;
-
-        Ok(BranchResponse {
-            session_id,
-            vertex_count,
-            parent_session_id,
-        })
+        self.impl_branch_session(request).await
     }
 
     async fn diff_sessions(
@@ -541,17 +474,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         request: DiffRequest,
     ) -> Result<DiffResponse, RpcError> {
-        let (only_in_base, only_in_other, common_count) = self
-            .primal
-            .diff_sessions(request.base_session_id, request.other_session_id)
-            .await
-            .map_err(RpcError::from)?;
-
-        Ok(DiffResponse {
-            only_in_base,
-            only_in_other,
-            common_count,
-        })
+        self.impl_diff_sessions(request).await
     }
 
     async fn merge_branches(
@@ -559,21 +482,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         request: MergeRequest,
     ) -> Result<VertexId, RpcError> {
-        let mut builder =
-            VertexBuilder::new(request.event_type).with_parents(request.parents.clone());
-        if let Some(agent) = request.agent {
-            builder = builder.with_agent(agent);
-        }
-        for (k, v) in &request.metadata {
-            builder = builder.with_metadata(k.clone(), v.clone());
-        }
-        let mut vertex = builder.build();
-        sign_vertex_if_available(&self.primal, &mut vertex).await;
-
-        self.primal
-            .merge_branches(request.session_id, request.parents, vertex)
-            .await
-            .map_err(RpcError::from)
+        self.impl_merge_branches(request).await
     }
 
     async fn federate(
@@ -581,18 +490,10 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         request: FederateRequest,
     ) -> Result<FederateResponse, RpcError> {
-        let (imported, skipped, frontier) = self
-            .primal
-            .federate_vertices(request.session_id, request.vertices)
-            .await
-            .map_err(RpcError::from)?;
-
-        Ok(FederateResponse {
-            imported,
-            skipped,
-            frontier,
-        })
+        self.impl_federate(request).await
     }
+
+    // Dehydration operations (kept inline — moderate size)
 
     async fn partial_dehydrate(
         self,
@@ -642,6 +543,8 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
     ) -> Result<rhizo_crypt_core::DehydrationStatus, RpcError> {
         Ok(self.primal.get_dehydration_status(session_id))
     }
+
+    // Health / metrics / capabilities (kept inline — small)
 
     async fn health(self, _: tarpc::context::Context) -> Result<HealthStatus, RpcError> {
         use rhizo_crypt_core::PrimalLifecycle;

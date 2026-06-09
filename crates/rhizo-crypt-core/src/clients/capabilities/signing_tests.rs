@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::discovery::{DiscoveryRegistry, ServiceEndpoint};
+use crate::transport::TransportEndpoint;
 use std::net::SocketAddr;
 
 #[test]
@@ -39,7 +40,8 @@ async fn test_signing_client_discover_with_provider() {
     let registry = DiscoveryRegistry::new("test-rhizocrypt");
 
     let addr: SocketAddr = "127.0.0.1:9500".parse().unwrap();
-    let endpoint = ServiceEndpoint::new("test-signer".to_string(), addr, vec![Capability::Signing]);
+    let endpoint =
+        ServiceEndpoint::new("test-signer".to_string(), addr.into(), vec![Capability::Signing]);
     registry.register_endpoint(endpoint).await;
 
     let result = SigningClient::discover(&registry).await;
@@ -240,7 +242,7 @@ async fn test_signing_client_multiple_providers() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "signer-1".to_string(),
-            addr1,
+            addr1.into(),
             vec![Capability::Signing],
         ))
         .await;
@@ -249,7 +251,7 @@ async fn test_signing_client_multiple_providers() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "signer-2".to_string(),
-            addr2,
+            addr2.into(),
             vec![Capability::Signing],
         ))
         .await;
@@ -275,7 +277,8 @@ async fn test_signing_client_service_name_tracking() {
     let registry = DiscoveryRegistry::new("test-rhizocrypt");
 
     let addr: SocketAddr = "127.0.0.1:9500".parse().unwrap();
-    let endpoint = ServiceEndpoint::new("signing-hsm".to_string(), addr, vec![Capability::Signing]);
+    let endpoint =
+        ServiceEndpoint::new("signing-hsm".to_string(), addr.into(), vec![Capability::Signing]);
     registry.register_endpoint(endpoint).await;
 
     let client = SigningClient::discover(&registry).await.unwrap();
@@ -317,7 +320,7 @@ async fn test_verify_vertex_no_signature_with_agent() {
 #[tokio::test]
 async fn test_signing_client_discover_failed() {
     let registry = DiscoveryRegistry::new("test-rhizocrypt");
-    registry.set_discovery_source("127.0.0.1:1".parse().unwrap()).await;
+    registry.set_discovery_source("127.0.0.1:1".parse::<SocketAddr>().unwrap()).await;
 
     let result = SigningClient::discover(&registry).await;
     assert!(result.is_err());
@@ -536,7 +539,7 @@ async fn test_signing_discover_discovering_status() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "signer".to_string(),
-            "127.0.0.1:9500".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9500),
             vec![Capability::PayloadStorage],
         ))
         .await;

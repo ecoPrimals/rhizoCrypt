@@ -16,13 +16,14 @@
 //!
 //! ```no_run
 //! # use rhizo_crypt_core::clients::capabilities::SigningClient;
+//! # use rhizo_crypt_core::transport::TransportEndpoint;
 //! # use rhizo_crypt_core::types::Did;
 //! # use std::sync::Arc;
 //! # tokio::runtime::Runtime::new().unwrap().block_on(async {
 //! # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
 //! # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
 //! #     "test-signer",
-//! #     "127.0.0.1:9500".parse().unwrap(),
+//! #     TransportEndpoint::tcp("127.0.0.1", 9500),
 //! #     vec![rhizo_crypt_core::discovery::Capability::Signing],
 //! # )).await;
 //! // Discover ANY signing provider
@@ -96,11 +97,12 @@ impl SigningClient {
     ///
     /// ```no_run
     /// # use rhizo_crypt_core::clients::capabilities::SigningClient;
+    /// # use rhizo_crypt_core::transport::TransportEndpoint;
     /// # use std::sync::Arc;
     /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
     /// # let registry = Arc::new(rhizo_crypt_core::discovery::DiscoveryRegistry::new("doc-test"));
     /// # registry.register_endpoint(rhizo_crypt_core::discovery::ServiceEndpoint::new(
-    /// #     "test-signer", "127.0.0.1:9500".parse().unwrap(),
+    /// #     "test-signer", TransportEndpoint::tcp("127.0.0.1", 9500),
     /// #     vec![rhizo_crypt_core::discovery::Capability::Signing],
     /// # )).await;
     /// let signer = SigningClient::discover(&registry).await?;
@@ -134,7 +136,7 @@ impl SigningClient {
         };
 
         let service_name = Some(endpoint.service_id.as_ref().to_string());
-        let endpoint_addr = endpoint.addr.to_string();
+        let endpoint_addr = endpoint.endpoint.to_string();
 
         tracing::info!(
             service = ?service_name,

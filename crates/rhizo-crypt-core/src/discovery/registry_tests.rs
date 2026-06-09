@@ -3,6 +3,8 @@
 
 use super::*;
 
+use crate::transport::TransportEndpoint;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -44,7 +46,7 @@ async fn test_registry_registration() {
 
     let endpoint = ServiceEndpoint::new(
         "crypto-provider",
-        "127.0.0.1:9000".parse().unwrap(),
+        TransportEndpoint::tcp("127.0.0.1", 9000),
         vec![Capability::DidVerification, Capability::Signing],
     );
 
@@ -68,7 +70,7 @@ fn test_discovery_status() {
     assert!(!failed.is_available());
 
     let endpoint =
-        ServiceEndpoint::new("test", "127.0.0.1:9000".parse().unwrap(), vec![Capability::Signing]);
+        ServiceEndpoint::new("test", TransportEndpoint::tcp("127.0.0.1", 9000), vec![Capability::Signing]);
     let available = DiscoveryStatus::Available(vec![endpoint]);
     assert!(available.is_available());
     assert!(available.first_endpoint().is_some());
@@ -94,7 +96,7 @@ async fn test_registry_discover() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "crypto-provider",
-            "127.0.0.1:9000".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9000),
             vec![Capability::Signing],
         ))
         .await;
@@ -113,7 +115,7 @@ async fn test_registry_get_endpoint() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "storage-provider",
-            "127.0.0.1:9001".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9001),
             vec![Capability::PayloadStorage],
         ))
         .await;
@@ -154,14 +156,14 @@ async fn test_registry_all_endpoints() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "crypto-provider",
-            "127.0.0.1:9000".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9000),
             vec![Capability::DidVerification, Capability::Signing],
         ))
         .await;
     registry
         .register_endpoint(ServiceEndpoint::new(
             "storage-provider",
-            "127.0.0.1:9001".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9001),
             vec![Capability::PayloadStorage],
         ))
         .await;
@@ -177,14 +179,14 @@ async fn test_registry_multiple_endpoints_for_capability() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "signer-alpha",
-            "127.0.0.1:9000".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9000),
             vec![Capability::Signing],
         ))
         .await;
     registry
         .register_endpoint(ServiceEndpoint::new(
             "signer-beta",
-            "127.0.0.1:9001".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9001),
             vec![Capability::Signing],
         ))
         .await;
@@ -205,7 +207,7 @@ async fn test_registry_compute_provider() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "compute-provider",
-            "127.0.0.1:9003".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9003),
             vec![Capability::ComputeOrchestration, Capability::ComputeEvents],
         ))
         .await;
@@ -225,7 +227,7 @@ async fn test_registry_provenance_provider() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "provenance-provider",
-            "127.0.0.1:9004".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9004),
             vec![Capability::ProvenanceQuery, Capability::Attribution],
         ))
         .await;
@@ -237,7 +239,7 @@ async fn test_registry_provenance_provider() {
     assert!(endpoint.is_some());
     let ep = endpoint.unwrap();
     assert_eq!(ep.service_id.as_ref(), "provenance-provider");
-    assert_eq!(ep.addr.port(), 9004);
+    assert_eq!(ep.endpoint.tcp_addr().map(|(_, p)| p), Some(9004));
 }
 
 #[test]
@@ -378,7 +380,7 @@ async fn test_discover_unhealthy_endpoints_filtered() {
 
     let mut endpoint = ServiceEndpoint::new(
         "crypto-provider",
-        "127.0.0.1:9000".parse().unwrap(),
+        TransportEndpoint::tcp("127.0.0.1", 9000),
         vec![Capability::Signing],
     );
     endpoint.last_healthy =
@@ -393,7 +395,7 @@ async fn test_discover_unhealthy_endpoints_filtered() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_with_source_connection_refused() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
-    registry.set_discovery_source("127.0.0.1:1".parse().unwrap()).await;
+    registry.set_discovery_source("127.0.0.1:1".parse::<SocketAddr>().unwrap()).await;
 
     let status = registry.discover(&Capability::Signing).await;
     match status {
@@ -416,14 +418,14 @@ async fn test_get_endpoint_with_multiple() {
     registry
         .register_endpoint(ServiceEndpoint::new(
             "signer-alpha",
-            "127.0.0.1:9000".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9000),
             vec![Capability::Signing],
         ))
         .await;
     registry
         .register_endpoint(ServiceEndpoint::new(
             "signer-beta",
-            "127.0.0.1:9001".parse().unwrap(),
+            TransportEndpoint::tcp("127.0.0.1", 9001),
             vec![Capability::Signing],
         ))
         .await;
@@ -482,7 +484,7 @@ fn extract_capabilities_empty() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_clear_discovery_source() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
-    registry.set_discovery_source("127.0.0.1:8092".parse().unwrap()).await;
+    registry.set_discovery_source("127.0.0.1:8092".parse::<SocketAddr>().unwrap()).await;
     registry.clear_discovery_source().await;
 
     let status = registry.discover(&Capability::Signing).await;
@@ -593,7 +595,7 @@ async fn test_discover_unhealthy_then_empty_rpc_returns_unavailable() {
 
     let registry = DiscoveryRegistry::new("rhizoCrypt");
     let mut endpoint =
-        ServiceEndpoint::new("stale", "127.0.0.1:9000".parse().unwrap(), vec![Capability::Signing]);
+        ServiceEndpoint::new("stale", TransportEndpoint::tcp("127.0.0.1", 9000), vec![Capability::Signing]);
     endpoint.last_healthy =
         std::time::Instant::now().checked_sub(std::time::Duration::from_secs(300)).unwrap();
     registry.register_endpoint(endpoint).await;
@@ -615,7 +617,7 @@ async fn test_registry_concurrent_register_and_discover() {
             let sock: SocketAddr = format!("127.0.0.1:{port}").parse().unwrap();
             r.register_endpoint(ServiceEndpoint::new(
                 format!("svc{i}"),
-                sock,
+                sock.into(),
                 vec![Capability::Signing],
             ))
             .await;
@@ -679,7 +681,7 @@ async fn test_standalone_mode_no_source_no_population() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_lazy_source_unreachable_returns_failed() {
     let registry = DiscoveryRegistry::new("rhizoCrypt");
-    registry.set_discovery_source("127.0.0.1:1".parse().unwrap()).await;
+    registry.set_discovery_source("127.0.0.1:1".parse::<SocketAddr>().unwrap()).await;
 
     let status = registry.discover(&Capability::Signing).await;
     assert!(

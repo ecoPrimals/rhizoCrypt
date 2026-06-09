@@ -155,6 +155,7 @@ impl ClientProvider {
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
+    use crate::transport::TransportEndpoint;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_client_provider() {
@@ -166,7 +167,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "signingService",
-                "127.0.0.1:9000".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9000),
                 vec![Capability::DidVerification, Capability::Signing],
             ))
             .await;
@@ -189,7 +190,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "signingService", // Deliberately generic name
-                "127.0.0.1:9000".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9000),
                 vec![Capability::DidVerification, Capability::Signing],
             ))
             .await;
@@ -212,7 +213,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "permanentStore",
-                "127.0.0.1:9001".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9001),
                 vec![Capability::PermanentCommit, Capability::SliceCheckout],
             ))
             .await;
@@ -232,7 +233,7 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "payloadStore",
-                "127.0.0.1:9002".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9002),
                 vec![Capability::PayloadStorage, Capability::PayloadRetrieval],
             ))
             .await;
@@ -250,14 +251,14 @@ mod tests {
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "signer-primary",
-                "127.0.0.1:9000".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9000),
                 vec![Capability::Signing],
             ))
             .await;
         registry
             .register_endpoint(ServiceEndpoint::new(
                 "signer-fallback",
-                "127.0.0.1:9001".parse().unwrap(),
+                TransportEndpoint::tcp("127.0.0.1", 9001),
                 vec![Capability::Signing],
             ))
             .await;

@@ -245,6 +245,62 @@ impl TransportEndpoint {
             _ => None,
         }
     }
+
+    /// Construct a UDS endpoint.
+    #[must_use]
+    pub fn uds(path: impl Into<String>) -> Self {
+        Self::Uds { path: path.into() }
+    }
+
+    /// Try to parse an address string into a `TransportEndpoint`.
+    ///
+    /// Returns `None` for strings that don't look like valid addresses.
+    /// UDS paths must start with `/`, TCP addresses must be `host:port`.
+    #[must_use]
+    pub fn try_parse_address(s: &str) -> Option<Self> {
+        if s.starts_with('/') || s.to_ascii_lowercase().ends_with(".sock") {
+            return Some(Self::Uds {
+                path: s.to_string(),
+            });
+        }
+        if let Some((host, port_str)) = s.rsplit_once(':')
+            && let Ok(port) = port_str.parse::<u16>()
+            && !host.is_empty()
+        {
+            return Some(Self::tcp(host, port));
+        }
+        None
+    }
+
+    /// Parse an address string into a `TransportEndpoint`.
+    ///
+    /// Heuristic: if the string contains `/` or ends in `.sock`, treat as UDS path.
+    /// Otherwise try `host:port` for TCP. Falls back to UDS for unrecognized formats.
+    #[must_use]
+    pub fn parse_address(s: &str) -> Self {
+        if s.contains('/') || s.to_ascii_lowercase().ends_with(".sock") {
+            return Self::Uds {
+                path: s.to_string(),
+            };
+        }
+        if let Some((host, port_str)) = s.rsplit_once(':')
+            && let Ok(port) = port_str.parse::<u16>()
+        {
+            return Self::tcp(host, port);
+        }
+        Self::Uds {
+            path: s.to_string(),
+        }
+    }
+}
+
+impl From<std::net::SocketAddr> for TransportEndpoint {
+    fn from(addr: std::net::SocketAddr) -> Self {
+        Self::Tcp {
+            host: addr.ip().to_string(),
+            port: addr.port(),
+        }
+    }
 }
 
 impl std::fmt::Display for TransportEndpoint {
