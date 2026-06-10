@@ -1,7 +1,7 @@
 # 🔐 rhizoCrypt — Environment Variables
 
-**Last Updated**: Jun 2, 2026  
-**Version**: 0.14.1  
+**Last Updated**: Jun 10, 2026  
+**Version**: 0.14.7  
 **Philosophy**: Capability-based, not primal-based
 
 ---
@@ -32,6 +32,7 @@ rhizoCrypt follows the **infant discovery** pattern: it starts with **zero knowl
 | `FAMILY_SEED` | string | (unset) | **Required when `FAMILY_ID` is set.** BTSP Phase 2 handshake key material. Used to derive HKDF-SHA256 handshake keys for HMAC verification. Accepts hex-encoded strings (>= 32 chars), base64, or plain UTF-8. Without this, BTSP will **reject all connections** with "no family seed." |
 | `RHIZOCRYPT_FAMILY_SEED` | string | (unset) | Primal-specific override for `FAMILY_SEED`. Takes precedence over the ecosystem-wide variable. |
 | `BIOMEOS_INSECURE` | boolean | (unset) | Development mode flag (`1`, `true`, `yes`). Disables BTSP handshake enforcement. **Cannot be set when `FAMILY_ID` is set** — primal refuses to start on conflict. |
+| `TRANSPORT_ENDPOINT` | JSON | (unset) | Transport injection from biomeOS launcher. JSON-encoded `TransportEndpoint` (e.g. `{"transport":"uds","path":"/run/biomeos/rhizocrypt.sock"}` or `{"transport":"tcp","host":"0.0.0.0","port":9400}`). Logged at startup. Used by outbound `connect_transport()` for transport-agnostic IPC. |
 
 ### Unix Domain Socket (UDS)
 

@@ -1,7 +1,7 @@
-# DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.1
+# DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.7
 
-**Date**: Jun 4, 2026
-**Version**: 0.14.1
+**Date**: Jun 10, 2026
+**Version**: 0.14.7
 **Status**: PRODUCTION READY
 
 ---
@@ -9,7 +9,7 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,683 tests passing** (all features), 0 failures
+- [x] **1,684 tests passing** (all features), 0 failures
 - [x] **93.88% line coverage** (last measured)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
@@ -30,7 +30,7 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,670 tests)
+- [x] **README.md** (current metrics — 1,684 tests)
 - [x] **CHANGELOG.md** (version history through Wave 76)
 - [x] **showcase/** — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`
 - [x] **specs/** (12 specification documents)
@@ -83,14 +83,14 @@ non-root user (UID 1000).
 
 ```bash
 # Build Docker image (multi-stage musl-static)
-docker build -t rhizocrypt:0.14.1 .
+docker build -t rhizocrypt:0.14.7 .
 
 # Run container
 docker run -d \
   --name rhizocrypt \
   -p 9400:9400 \
   -e RHIZOCRYPT_ENV=production \
-  rhizocrypt:0.14.1
+  rhizocrypt:0.14.7
 
 # Health check (built-in HEALTHCHECK in Dockerfile)
 docker inspect --format='{{.State.Health.Status}}' rhizocrypt
@@ -101,7 +101,7 @@ docker inspect --format='{{.State.Health.Status}}' rhizocrypt
 version: '3.8'
 services:
   rhizocrypt:
-    image: rhizocrypt:0.14.1
+    image: rhizocrypt:0.14.7
     ports:
       - "9400:9400"
     environment:
@@ -130,7 +130,7 @@ spec:
     spec:
       containers:
         - name: rhizocrypt
-          image: rhizocrypt:0.14.1
+          image: rhizocrypt:0.14.7
           ports:
             - containerPort: 9400
           env:
@@ -257,4 +257,4 @@ rhizocrypt doctor --comprehensive
 
 **Created**: December 27, 2025
 **Last Updated**: May 29, 2026
-**Version**: rhizoCrypt 0.14.1
+**Version**: rhizoCrypt 0.14.7

@@ -9,7 +9,7 @@
 # Provenance trio nodes are optional — rhizoCrypt degrades gracefully to
 # standalone mode when dependencies are unavailable.
 #
-# STATUS: Production-ready (Mar 15, 2026)
+# STATUS: Production-ready (Jun 10, 2026)
 #
 # Usage:
 #   biomeos deploy --graph graphs/rhizocrypt_deploy.toml
@@ -17,7 +17,7 @@
 [graph]
 name = "rhizocrypt_dag_engine"
 description = "Ephemeral DAG engine with optional provenance trio wiring"
-version = "0.14.3"
+version = "0.14.7"
 coordination = "Sequential"
 
 # ── Node 1: BearDog (crypto + key management) ─────────────────────

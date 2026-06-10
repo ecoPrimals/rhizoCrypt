@@ -33,6 +33,6 @@ CMD ["server"]
 
 LABEL org.opencontainers.image.title="rhizoCrypt"
 LABEL org.opencontainers.image.description="Ephemeral DAG engine for ecoPrimals"
-LABEL org.opencontainers.image.version="0.14.1"
+LABEL org.opencontainers.image.version="0.14.7"
 LABEL org.opencontainers.image.vendor="ecoPrimals Project"
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"

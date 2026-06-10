@@ -4,9 +4,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 0.14.3 |
+| Version | 0.14.7 |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,683 passing (`--all-features`, Jun 8, 2026) |
+| Tests | 1,684 passing (`--all-features`, Jun 10, 2026) |
 | Coverage | 93.88% lines (last measured) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -27,7 +27,7 @@
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `config/capability_registry.toml` (37 methods, 7 domains, stability tiers, `provenance.*` → `dag.*` wire aliases) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
-| Cross-compile | CI: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
+| Cross-compile | plasmidBin: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
 
 ---
 
@@ -99,7 +99,7 @@ fallback) for forward/backward compatibility.
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc 0.37 service (28 ops), JSON-RPC 2.0 handler (36 methods across 6 domains), NDJSON streaming, rate limiting, metrics |
+| `rhizo-crypt-rpc` | tarpc 0.37 service (28 ops), JSON-RPC 2.0 handler (37 methods across 7 domains), NDJSON streaming, rate limiting, metrics |
 | `rhizocrypt-service` | UniBin binary and library (`server`, `client`, `status`, `version`, `doctor`) |
 
 ---
@@ -198,9 +198,9 @@ lookup: `$NEURAL_API_SOCKET` → `$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.s
 
 ### Stability Tiers
 
-31 of 36 methods are **stable**. 5 are **evolving**:
+31 of 37 methods are **stable**. 6 are **evolving**:
 `dag.partial_dehydrate`, `dag.branch`, `dag.diff`, `dag.merge`, `dag.federate`
-(Wave 60 DAG evolution, May 2026).
+(Wave 60), `mesh.events.record` (Wave 76c).
 
 ---
 
@@ -228,7 +228,7 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 | Standard | Status | Notes |
 |----------|--------|-------|
 | UniBin | Compliant | Single `rhizocrypt` binary with clap subcommands |
-| ecoBin v3.0 | Compliant | Default `redb` backend is 100% Pure Rust; cross-compile CI (musl, RISC-V) |
+| ecoBin v3.0 | Compliant | Default `redb` backend is 100% Pure Rust; cross-compile via plasmidBin (musl, RISC-V) |
 | Universal IPC v3 | Compliant | JSON-RPC 2.0 + tarpc, semantic method names |
 | Semantic Naming | Compliant | Native (`commit.*`) + compat (`permanent-storage.*`) with negotiation |
 | `unsafe_code = "deny"` | Compliant | Workspace-wide, `forbid` in non-test builds |

@@ -1,7 +1,7 @@
 +++
 title = "rhizoCrypt Validation Summary"
-description = "Ephemeral DAG engine — 1,683 tests, 37 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
-date = 2026-06-04
+description = "Ephemeral DAG engine — 1,684 tests, 37 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
+date = 2026-06-10
 
 [taxonomies]
 primals = ["rhizocrypt"]
@@ -10,7 +10,7 @@ springs = []
 
 ## Status
 
-- **1,683 tests** passing (unit + integration + property + doc, `--all-features`)
+- **1,684 tests** passing (unit + integration + property + doc, `--all-features`)
 - **186 `.rs` files**, ~55,506 lines
 - **37 registered methods** across 7 domains (31 stable, 6 evolving)
 - **93.88% line coverage** (CI gate: 90%)

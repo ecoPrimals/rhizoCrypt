@@ -1,6 +1,6 @@
 # rhizoCrypt — AI Context Block
 
-**Version**: 0.14.3
+**Version**: 0.14.7
 **Role**: Ephemeral DAG Engine — working memory for the ecoPrimals ecosystem
 **License**: AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 (scyBorg Triple-Copyleft)
 **Language**: Rust 2024, edition 2024, MSRV 1.87 (dev toolchain 1.94.1)
@@ -69,11 +69,11 @@ Three workspace crates:
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,683 passing (all features) |
+| Tests | 1,684 passing (all features) |
 | Coverage | 93.88% lines (last measured) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
 | Source files | 186 `.rs`, ~55,506 lines |
-| Max file size | 686 lines production (`service.rs`, limit: 700) |
+| Max file size | ~660 lines production (`loamspine_http.rs`, limit: 700) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |
