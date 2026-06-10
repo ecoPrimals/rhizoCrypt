@@ -195,7 +195,7 @@ fn check_transport() -> Vec<(String, DoctorCheck, Option<String>)> {
     // BTSP security
     let btsp_required = rhizo_crypt_rpc::btsp::is_btsp_required();
     let insecure = transport::is_biomeos_insecure();
-    let family_id = transport::read_family_id("RHIZOCRYPT");
+    let family_id = transport::read_family_id(rhizo_crypt_core::niche::ENV_PREFIX);
     let btsp_detail = if btsp_required {
         let fid = family_id.as_deref().unwrap_or("(missing FAMILY_SEED — will reject all)");
         format!("enforced (FAMILY_ID={fid})")

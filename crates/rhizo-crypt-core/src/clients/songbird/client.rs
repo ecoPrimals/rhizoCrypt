@@ -163,7 +163,7 @@ impl SongbirdClient {
         #[cfg(feature = "live-clients")]
         let result = {
             let registration = RpcServiceRegistration {
-                service_id: format!("rhizocrypt-{}", uuid::Uuid::now_v7()),
+                service_id: format!("{}-{}", crate::niche::PRIMAL_ID, uuid::Uuid::now_v7()),
                 service_name: self.config.service_name.to_string(),
                 capability: crate::constants::ADVERTISED_CAPABILITIES[0].to_string(),
                 endpoint: our_endpoint.to_string(),

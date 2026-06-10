@@ -102,7 +102,7 @@ fn is_hex_seed(s: &str) -> bool {
 /// The caller should also have a `FAMILY_SEED` available for the handshake.
 #[must_use]
 pub fn is_btsp_required() -> bool {
-    rhizo_crypt_core::transport::read_family_id("RHIZOCRYPT").is_some()
+    rhizo_crypt_core::transport::read_family_id(rhizo_crypt_core::niche::ENV_PREFIX).is_some()
 }
 
 #[cfg(test)]

@@ -239,14 +239,14 @@ pub async fn run_server_with_ready(
 
     info!("Starting rhizoCrypt service...");
 
-    rhizo_crypt_core::transport::btsp_env_guard("RHIZOCRYPT")
+    rhizo_crypt_core::transport::btsp_env_guard(rhizo_crypt_core::niche::ENV_PREFIX)
         .map_err(|e| ServiceError::Config(e.to_string()))?;
 
     if rhizo_crypt_core::transport::is_biomeos_insecure() {
         warn!("BIOMEOS_INSECURE=1 — running in development mode (no BTSP handshake)");
     }
 
-    if let Some(fid) = rhizo_crypt_core::transport::read_family_id("RHIZOCRYPT") {
+    if let Some(fid) = rhizo_crypt_core::transport::read_family_id(rhizo_crypt_core::niche::ENV_PREFIX) {
         info!(family_id = %fid, "BTSP Phase 1: family-scoped socket naming active");
     }
 

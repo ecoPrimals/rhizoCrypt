@@ -36,6 +36,9 @@ use std::sync::LazyLock;
 /// Primal identity — used in all JSON-RPC, IPC, and biomeOS interactions.
 pub const PRIMAL_ID: &str = "rhizocrypt";
 
+/// Environment variable prefix for this primal (e.g., `RHIZOCRYPT_PORT`).
+pub const ENV_PREFIX: &str = "RHIZOCRYPT";
+
 /// Human-readable description for biomeOS registration.
 pub const PRIMAL_DESCRIPTION: &str =
     "Ephemeral content-addressed DAG engine for session-scoped working memory";

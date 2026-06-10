@@ -4,12 +4,12 @@
 //! Manifest-based capability discovery.
 //!
 //! Absorbed from toadStool S156 and barraCuda v0.3.5 manifest discovery pattern.
-//! Scans `$XDG_RUNTIME_DIR/biomeos/*.json` for primal capability manifests,
+//! Scans the biomeOS socket directory for `*.json` primal capability manifests,
 //! providing a file-system-based discovery fallback when Songbird is unavailable.
 //!
 //! ## Manifest Format
 //!
-//! Each primal publishes a JSON manifest at its XDG runtime path:
+//! Each primal publishes a JSON manifest alongside its socket:
 //!
 //! ```json
 //! {
@@ -22,7 +22,8 @@
 //!
 //! ## Discovery Flow
 //!
-//! 1. Resolve `$XDG_RUNTIME_DIR/biomeos/`
+//! 1. Resolve manifest directory via [`manifest_dir()`] (same fallback chain as
+//!    [`crate::transport::socket_dir()`]: XDG → `/run/biomeos` → `temp_dir/biomeos`)
 //! 2. List all `*.json` files
 //! 3. Parse each as a [`PrimalManifest`]
 //! 4. Filter by requested capability
@@ -31,8 +32,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;
-
-use crate::safe_env::SafeEnv;
 
 /// A primal's capability manifest published to the filesystem.
 ///
@@ -67,11 +66,17 @@ impl PrimalManifest {
 
 /// Resolve the biomeOS manifest directory.
 ///
-/// Returns `$XDG_RUNTIME_DIR/biomeos/` if the env var is set, otherwise `None`.
+/// Delegates to [`crate::transport::socket_dir()`] so that manifests land
+/// in the same directory as sockets across all fallback tiers:
+///
+/// 1. `$XDG_RUNTIME_DIR/biomeos/`
+/// 2. `/run/biomeos` (Linux)
+/// 3. `{temp_dir}/biomeos` (other Unix)
+///
+/// Returns `None` on platforms without path-based sockets (Android, Windows).
 #[must_use]
 pub fn manifest_dir() -> Option<PathBuf> {
-    SafeEnv::get_optional(SafeEnv::XDG_RUNTIME_DIR)
-        .map(|xdg| PathBuf::from(xdg).join(crate::constants::BIOMEOS_SOCKET_SUBDIR))
+    crate::transport::socket_dir()
 }
 
 /// Scan the manifest directory for all primal manifests.
@@ -121,7 +126,10 @@ pub async fn discover_by_capability(capability: &str) -> Vec<PrimalManifest> {
 /// Returns an error if the directory can't be created or the file can't be written.
 pub async fn publish_manifest(manifest: &PrimalManifest) -> std::io::Result<PathBuf> {
     let Some(dir) = manifest_dir() else {
-        return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "XDG_RUNTIME_DIR not set"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "no socket directory available (Android/Windows unsupported)",
+        ));
     };
 
     fs::create_dir_all(&dir).await?;
@@ -294,9 +302,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn manifest_dir_returns_none_without_xdg() {
+    async fn manifest_dir_falls_back_without_xdg() {
         temp_env::with_var_unset("XDG_RUNTIME_DIR", || {
-            assert!(manifest_dir().is_none());
+            let result = manifest_dir();
+            if cfg!(target_os = "android") || cfg!(target_os = "windows") {
+                assert!(result.is_none());
+            } else {
+                assert!(result.is_some());
+                let p = result.unwrap();
+                assert!(p.ends_with(crate::constants::BIOMEOS_SOCKET_SUBDIR));
+            }
         });
     }
 
@@ -347,19 +362,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn publish_manifest_fails_without_xdg() {
-        let manifest = PrimalManifest {
-            primal: "noenv".into(),
-            version: "0.1.0".into(),
-            socket: String::new(),
-            address: None,
-            capabilities: Vec::new(),
-        };
-
+    async fn publish_manifest_uses_fallback_without_xdg() {
         let result = temp_env::with_var_unset("XDG_RUNTIME_DIR", manifest_dir);
-        assert!(result.is_none(), "manifest_dir should return None without XDG_RUNTIME_DIR");
-
-        let _ = manifest;
+        if cfg!(target_os = "android") || cfg!(target_os = "windows") {
+            assert!(result.is_none(), "manifest_dir should return None on Android/Windows");
+        } else {
+            assert!(result.is_some(), "manifest_dir should fall back on Unix");
+            let p = result.unwrap();
+            assert!(
+                p.ends_with(crate::constants::BIOMEOS_SOCKET_SUBDIR),
+                "fallback should still target biomeos subdir"
+            );
+        }
     }
 
     #[tokio::test]

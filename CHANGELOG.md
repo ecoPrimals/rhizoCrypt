@@ -5,6 +5,19 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.7] - 2026-06-10
+
+### Changed
+
+#### Wave 105: Socket/Manifest SSOT + ENV_PREFIX + Visibility (Jun 10, 2026)
+
+- **`manifest_dir()` now delegates to `socket_dir()`**: Manifest discovery uses the same 3-tier fallback chain as socket binding (XDG → `/run/biomeos` → `temp_dir/biomeos`). Previously, `manifest_dir()` only checked `XDG_RUNTIME_DIR` and returned `None` without it — causing `publish_manifest()` to fail even when the service had a working UDS.
+- **`default_socket_path()` simplified**: Removed duplicate fallback logic that re-implemented `family_scoped_socket_path()`; now delegates directly. Only falls back to `temp_dir` on platforms where `socket_dir()` returns `None`.
+- **`niche::ENV_PREFIX` constant**: Added `"RHIZOCRYPT"` as a centralized constant. All production callers of `btsp_env_guard`, `read_family_id`, `read_family_seed`, and `family_scoped_socket_path` now use `niche::ENV_PREFIX` instead of hardcoded string literals.
+- **Songbird service ID uses `PRIMAL_ID`**: Registration service ID prefix changed from hardcoded `"rhizocrypt-"` to `format!("{}-...", niche::PRIMAL_ID)`.
+- **`cleanup_socket_at` visibility tightened**: Changed from `pub` to `pub(crate)` — only used within `rhizo-crypt-rpc`.
+- **Module doc updates**: `manifest.rs` doc comments updated to reflect the fallback-tier discovery flow instead of XDG-only.
+
 ## [0.14.6] - 2026-06-09
 
 ### Changed

@@ -85,7 +85,7 @@ impl UdsJsonRpcServer {
         }
 
         let btsp_required = crate::btsp::is_btsp_required();
-        let family_seed = crate::btsp::read_family_seed("RHIZOCRYPT");
+        let family_seed = crate::btsp::read_family_seed(rhizo_crypt_core::niche::ENV_PREFIX);
 
         if btsp_required {
             if family_seed.is_some() {
@@ -442,7 +442,7 @@ where
 }
 
 /// Remove a socket file at the given path (idempotent, logs on failure).
-pub fn cleanup_socket_at(path: &Path) {
+pub(crate) fn cleanup_socket_at(path: &Path) {
     if path.exists() {
         if let Err(e) = std::fs::remove_file(path) {
             warn!(path = %path.display(), error = %e, "failed to clean up UDS socket");
@@ -454,24 +454,25 @@ pub fn cleanup_socket_at(path: &Path) {
 
 /// Resolve the default socket path for rhizoCrypt (BTSP Phase 1 compliant).
 ///
-/// When `FAMILY_ID` is set, returns `rhizocrypt-{family_id}.sock` per BTSP
-/// socket naming convention. When unset, returns `rhizocrypt.sock` (dev mode).
+/// Delegates to [`rhizo_crypt_core::transport::family_scoped_socket_path`]
+/// which uses the unified fallback chain:
 ///
-/// Uses `$XDG_RUNTIME_DIR/biomeos/` per the ecosystem standard.
-/// Falls back to `{temp_dir}/biomeos/` when path-based sockets are unavailable.
+/// 1. `$XDG_RUNTIME_DIR/biomeos/rhizocrypt[-{family}].sock`
+/// 2. `/run/biomeos/rhizocrypt[-{family}].sock` (Linux)
+/// 3. `{temp_dir}/biomeos/rhizocrypt[-{family}].sock` (other Unix)
+///
+/// On platforms without path-based sockets (Android, Windows) falls back
+/// to `{temp_dir}/biomeos/rhizocrypt.sock` as a best-effort default.
 #[must_use]
 pub fn default_socket_path() -> PathBuf {
     use rhizo_crypt_core::constants::{BIOMEOS_SOCKET_SUBDIR, SOCKET_FILE_EXTENSION};
-    use rhizo_crypt_core::transport::{family_scoped_socket_path, read_family_id};
+    use rhizo_crypt_core::transport::family_scoped_socket_path;
 
     let id = rhizo_crypt_core::niche::PRIMAL_ID;
-    family_scoped_socket_path(id, "RHIZOCRYPT").unwrap_or_else(|| {
-        let family_id = read_family_id("RHIZOCRYPT");
-        let stem = family_id.map_or_else(
-            || format!("{id}{SOCKET_FILE_EXTENSION}"),
-            |fid| format!("{id}-{fid}{SOCKET_FILE_EXTENSION}"),
-        );
-        std::env::temp_dir().join(BIOMEOS_SOCKET_SUBDIR).join(stem)
+    family_scoped_socket_path(id, rhizo_crypt_core::niche::ENV_PREFIX).unwrap_or_else(|| {
+        std::env::temp_dir()
+            .join(BIOMEOS_SOCKET_SUBDIR)
+            .join(format!("{id}{SOCKET_FILE_EXTENSION}"))
     })
 }
 
