@@ -25,5 +25,5 @@ pub use endpoint::ServiceEndpoint;
 pub use manifest::{
     PrimalManifest, discover_by_capability, publish_manifest, scan_manifests, unpublish_manifest,
 };
-pub use registry::{DiscoveryRegistry, DiscoveryStatus, extract_capabilities};
+pub use registry::{DiscoveryQueryError, DiscoveryRegistry, DiscoveryStatus, extract_capabilities};
 pub use resolution::ClientProvider;

@@ -11,7 +11,51 @@ use crate::constants::{DISCOVERY_QUERY_TIMEOUT, DISCOVERY_RESPONSE_BUFFER_SIZE};
 use crate::transport::{TransportEndpoint, TransportStream, connect_transport};
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::fmt;
 use tokio::sync::RwLock;
+
+/// Structured error for discovery source queries.
+#[derive(Debug)]
+pub enum DiscoveryQueryError {
+    /// Failed to serialize the JSON-RPC request body.
+    SerializeRequest(serde_json::Error),
+    /// Connection to the discovery source timed out.
+    ConnectTimeout,
+    /// Connection to the discovery source failed.
+    ConnectFailed(std::io::Error),
+    /// Failed to write the request to the transport.
+    WriteFailed(std::io::Error),
+    /// Reading the response from the discovery source timed out.
+    ReadTimeout,
+    /// Failed to read the response from the transport.
+    ReadFailed(std::io::Error),
+    /// Failed to parse the JSON response body.
+    ParseResponse(serde_json::Error),
+}
+
+impl fmt::Display for DiscoveryQueryError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SerializeRequest(e) => write!(f, "serialize discovery request: {e}"),
+            Self::ConnectTimeout => write!(f, "discovery source connection timed out"),
+            Self::ConnectFailed(e) => write!(f, "discovery source connection failed: {e}"),
+            Self::WriteFailed(e) => write!(f, "discovery source write failed: {e}"),
+            Self::ReadTimeout => write!(f, "discovery source read timed out"),
+            Self::ReadFailed(e) => write!(f, "discovery source read failed: {e}"),
+            Self::ParseResponse(e) => write!(f, "failed to parse discovery response: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for DiscoveryQueryError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::SerializeRequest(e) | Self::ParseResponse(e) => Some(e),
+            Self::ConnectFailed(e) | Self::WriteFailed(e) | Self::ReadFailed(e) => Some(e),
+            Self::ConnectTimeout | Self::ReadTimeout => None,
+        }
+    }
+}
 
 /// Discovery status for a capability.
 #[derive(Debug, Clone)]
@@ -139,7 +183,7 @@ impl DiscoveryRegistry {
                     capability = ?capability,
                     "Discovery query failed"
                 );
-                DiscoveryStatus::Failed(e)
+                DiscoveryStatus::Failed(e.to_string())
             }
         }
     }
@@ -152,7 +196,7 @@ impl DiscoveryRegistry {
         &self,
         source: &TransportEndpoint,
         capability: &Capability,
-    ) -> std::result::Result<Vec<ServiceEndpoint>, String> {
+    ) -> std::result::Result<Vec<ServiceEndpoint>, DiscoveryQueryError> {
         #[derive(serde::Deserialize)]
         struct DiscoveryResponse {
             #[serde(default)]
@@ -181,7 +225,8 @@ impl DiscoveryRegistry {
             "id": 1
         });
 
-        let body_bytes = serde_json::to_vec(&request_body).map_err(|e| e.to_string())?;
+        let body_bytes =
+            serde_json::to_vec(&request_body).map_err(DiscoveryQueryError::SerializeRequest)?;
 
         let host_header = match source {
             TransportEndpoint::Tcp { host, port } => format!("{host}:{port}"),
@@ -203,8 +248,8 @@ impl DiscoveryRegistry {
 
         let stream = tokio::time::timeout(timeout, connect_transport(source))
             .await
-            .map_err(|_| format!("Discovery source connection timed out: {source:?}"))?
-            .map_err(|e| format!("Discovery source connection failed: {e}"))?;
+            .map_err(|_| DiscoveryQueryError::ConnectTimeout)?
+            .map_err(DiscoveryQueryError::ConnectFailed)?;
 
         if let TransportStream::Tcp(ref tcp) = stream {
             let _ = tcp.set_nodelay(true);
@@ -212,22 +257,28 @@ impl DiscoveryRegistry {
 
         let (mut reader, mut writer) = tokio::io::split(stream);
 
-        writer.write_all(header.as_bytes()).await.map_err(|e| e.to_string())?;
-        writer.write_all(&body_bytes).await.map_err(|e| e.to_string())?;
+        writer
+            .write_all(header.as_bytes())
+            .await
+            .map_err(DiscoveryQueryError::WriteFailed)?;
+        writer
+            .write_all(&body_bytes)
+            .await
+            .map_err(DiscoveryQueryError::WriteFailed)?;
 
         let mut response_buf = Vec::with_capacity(DISCOVERY_RESPONSE_BUFFER_SIZE);
         tokio::time::timeout(timeout, reader.read_to_end(&mut response_buf))
             .await
-            .map_err(|_| "Discovery source read timed out".to_string())?
-            .map_err(|e| format!("Discovery source read failed: {e}"))?;
+            .map_err(|_| DiscoveryQueryError::ReadTimeout)?
+            .map_err(DiscoveryQueryError::ReadFailed)?;
 
         let body_start =
             response_buf.windows(4).position(|w| w == b"\r\n\r\n").map_or(0, |pos| pos + 4);
 
         let body = &response_buf[body_start..];
 
-        let parsed: DiscoveryResponse = serde_json::from_slice(body)
-            .map_err(|e| format!("Failed to parse discovery response: {e}"))?;
+        let parsed: DiscoveryResponse =
+            serde_json::from_slice(body).map_err(DiscoveryQueryError::ParseResponse)?;
 
         let Some(discovered) = parsed.result else {
             return Ok(Vec::new());

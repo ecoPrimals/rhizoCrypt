@@ -5,6 +5,14 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.9] - 2026-06-11
+
+### Changed
+
+#### Wave 108: Typed Discovery Errors (Jun 11, 2026)
+
+- **`DiscoveryQueryError` typed enum**: Replaced `Result<_, String>` in `query_discovery_source` with a structured `DiscoveryQueryError` enum. Seven `format!`/`to_string()` error sites now use typed variants (`SerializeRequest`, `ConnectTimeout`, `ConnectFailed`, `WriteFailed`, `ReadTimeout`, `ReadFailed`, `ParseResponse`). Implements `Display`, `Debug`, and `Error` with proper `source()` chaining. Converts to `String` only at the `DiscoveryStatus::Failed` boundary.
+
 ## [0.14.8] - 2026-06-11
 
 ### Changed
