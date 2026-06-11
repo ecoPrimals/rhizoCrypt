@@ -296,10 +296,15 @@ pub fn normalize_method(method: &str) -> &str {
         .map_or(method, |(_, canonical)| canonical)
 }
 
-/// Zero-cost liveness probe.
+/// Liveness probe (HEALTH-01 contract: `status`, `primal`, `version`, `uptime_s`).
 #[must_use]
-pub fn health_liveness() -> serde_json::Value {
-    serde_json::json!({ "status": "alive" })
+pub fn health_liveness(uptime_s: Option<u64>) -> serde_json::Value {
+    serde_json::json!({
+        "status": "alive",
+        "primal": PRIMAL_ID,
+        "version": PRIMAL_VERSION,
+        "uptime_s": uptime_s.unwrap_or(0),
+    })
 }
 
 /// Readiness probe — checks whether the primal can accept work.

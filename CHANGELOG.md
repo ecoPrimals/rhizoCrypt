@@ -5,6 +5,16 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.8] - 2026-06-11
+
+### Changed
+
+#### Wave 107: HEALTH-RC-01 — Health Contract Compliance (Jun 11, 2026)
+
+- **`health_liveness()` enriched (HEALTH-01 contract)**: Liveness probe now returns `{status, primal, version, uptime_s}` per the ecosystem-wide health contract. Previously returned only `{"status":"alive"}`. All three aliases (`health.liveness`, `ping`, `health`) now route through `dispatch_liveness` which reads uptime from the shared `RhizoCryptRpcServer` start time.
+- **`RhizoCryptRpcServer::start_time()` accessor**: New `const fn` exposing the server's start instant for uptime calculation outside the tarpc trait impl.
+- **Health tests tightened**: Handler tests for `ping` and `health` aliases now validate the full HEALTH-01 schema (`status`, `primal`, `version`, `uptime_s`). Property test updated to check structural fields.
+
 ## [0.14.7] - 2026-06-10
 
 ### Changed

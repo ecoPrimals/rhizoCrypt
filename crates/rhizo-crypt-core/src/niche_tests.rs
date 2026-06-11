@@ -170,8 +170,18 @@ fn domain_descriptions_cover_all_domains() {
 
 #[test]
 fn health_liveness_returns_status_alive() {
-    let result = health_liveness();
+    let result = health_liveness(Some(42));
     assert_eq!(result["status"], "alive");
+    assert_eq!(result["primal"], PRIMAL_ID);
+    assert!(!result["version"].as_str().expect("version").is_empty());
+    assert_eq!(result["uptime_s"], 42);
+}
+
+#[test]
+fn health_liveness_defaults_uptime_to_zero() {
+    let result = health_liveness(None);
+    assert_eq!(result["status"], "alive");
+    assert_eq!(result["uptime_s"], 0);
 }
 
 #[test]

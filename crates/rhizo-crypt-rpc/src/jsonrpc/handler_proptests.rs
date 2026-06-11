@@ -111,7 +111,7 @@ proptest! {
         );
     }
 
-    /// `health.liveness` / `ping` / `health` return the fixed liveness JSON regardless of params.
+    /// `health.liveness` / `ping` / `health` return HEALTH-01 schema regardless of params.
     #[test]
     fn prop_health_liveness_is_stateless(
         method in liveness_method(),
@@ -124,6 +124,9 @@ proptest! {
         let server = rt.block_on(create_test_server());
         let req = make_request(method, params);
         let got = rt.block_on(handle_request(&server, req, &test_gate(), &test_caller())).unwrap();
-        prop_assert_eq!(got, niche::health_liveness());
+        prop_assert_eq!(&got["status"], "alive");
+        prop_assert_eq!(&got["primal"], niche::PRIMAL_ID);
+        prop_assert!(!got["version"].as_str().unwrap().is_empty());
+        prop_assert!(got["uptime_s"].is_number());
     }
 }

@@ -213,6 +213,12 @@ impl RhizoCryptRpcServer {
     pub fn primal(&self) -> &rhizo_crypt_core::RhizoCrypt {
         &self.primal
     }
+
+    /// Server start time (for uptime calculation).
+    #[must_use]
+    pub const fn start_time(&self) -> std::time::Instant {
+        self.start_time
+    }
 }
 
 /// Attempt to cryptographically sign a vertex via the discovered signing provider.

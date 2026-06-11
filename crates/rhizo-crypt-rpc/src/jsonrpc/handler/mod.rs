@@ -119,7 +119,7 @@ pub async fn handle_request(
         }
         "dag.dehydration.status" => dehydration::dispatch_dehydrate_status(server, params).await,
         "health.check" | "status" | "check" => health::dispatch_health(server).await,
-        "health.liveness" | "ping" | "health" => Ok(rhizo_crypt_core::niche::health_liveness()),
+        "health.liveness" | "ping" | "health" => health::dispatch_liveness(server).await,
         "health.readiness" => health::dispatch_readiness(server).await,
         "health.metrics" => health::dispatch_metrics(server).await,
         "identity.get" => Ok(capabilities::dispatch_identity_get()),

@@ -13,6 +13,12 @@ pub async fn dispatch_health(server: &RhizoCryptRpcServer) -> Result<Value, Hand
     to_json(&status)
 }
 
+#[allow(clippy::unused_async)]
+pub async fn dispatch_liveness(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
+    let uptime = server.start_time().elapsed().as_secs();
+    Ok(rhizo_crypt_core::niche::health_liveness(Some(uptime)))
+}
+
 pub async fn dispatch_readiness(server: &RhizoCryptRpcServer) -> Result<Value, HandlerError> {
     let status = server.clone().health(tarpc::context::current()).await?;
     Ok(rhizo_crypt_core::niche::health_readiness(status.healthy))

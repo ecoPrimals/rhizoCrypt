@@ -487,4 +487,7 @@ async fn test_health_liveness_works_when_not_ready() {
     assert_eq!(json["jsonrpc"], "2.0");
     assert!(json["result"].is_object(), "liveness should succeed: {json}");
     assert_eq!(json["result"]["status"], "alive");
+    assert_eq!(json["result"]["primal"], "rhizocrypt");
+    assert!(json["result"]["version"].is_string());
+    assert!(json["result"]["uptime_s"].is_number());
 }

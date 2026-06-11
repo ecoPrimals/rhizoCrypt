@@ -577,7 +577,10 @@ async fn test_health_liveness_alias_ping() {
     let server = create_test_server().await;
     let req = make_request("ping", None);
     let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
-    assert!(result.get("status").is_some() || result.get("alive").is_some() || result.is_object());
+    assert_eq!(result["status"], "alive");
+    assert_eq!(result["primal"], "rhizocrypt");
+    assert!(result["version"].is_string());
+    assert!(result["uptime_s"].is_number());
 }
 
 #[tokio::test]
@@ -585,7 +588,10 @@ async fn test_health_liveness_alias_health() {
     let server = create_test_server().await;
     let req = make_request("health", None);
     let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
-    assert!(result.is_object());
+    assert_eq!(result["status"], "alive");
+    assert_eq!(result["primal"], "rhizocrypt");
+    assert!(result["version"].is_string());
+    assert!(result["uptime_s"].is_number());
 }
 
 #[tokio::test]
