@@ -316,7 +316,7 @@ pub const PROVENANCE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 /// Provenance provider response timeout.
 pub const PROVENANCE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// Mesh event poller interval (how often to poll bearDog for trust events).
+/// Mesh event poller interval (how often to poll the signing provider for trust events).
 pub const MESH_POLL_INTERVAL: Duration = Duration::from_secs(30);
 
 /// Mesh event poller connection timeout.
@@ -324,6 +324,12 @@ pub const MESH_CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Mesh event poller response timeout.
 pub const MESH_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// JSON-RPC method for polling cross-gate trust events from the signing provider.
+///
+/// Called by `MeshEventListener::poll_events()` against whatever primal
+/// provides the `Signing` capability (currently bearDog).
+pub const MESH_AUTH_EVENTS_POLL_METHOD: &str = "auth.events.poll";
 
 /// Default maximum results per provenance query.
 pub const PROVENANCE_DEFAULT_MAX_RESULTS: usize = 1000;
@@ -436,6 +442,30 @@ pub const DEFAULT_FAMILY_ID: &str = "ecoPrimal";
 
 /// Default in-memory storage cap (1 GiB).
 pub const DEFAULT_MAX_MEMORY_BYTES: u64 = 1024 * 1024 * 1024;
+
+/// Delay before firing the readiness notification after server bind.
+///
+/// Gives the OS a moment to finalize the socket bind before notifying
+/// waiting integration tests. Sub-100ms is enough for all observed platforms.
+pub const READINESS_NOTIFY_DELAY: Duration = Duration::from_millis(50);
+
+// ============================================================================
+// ANNOUNCE PAYLOAD CONSTANTS (biomeOS Neural API)
+// ============================================================================
+
+/// Cost hint for DAG operations in `primal.announce` payload.
+pub const ANNOUNCE_COST_DAG: f64 = 10.0;
+/// Cost hint for integrity operations in `primal.announce` payload.
+pub const ANNOUNCE_COST_INTEGRITY: f64 = 5.0;
+/// Cost hint for Merkle operations in `primal.announce` payload.
+pub const ANNOUNCE_COST_MERKLE: f64 = 8.0;
+
+/// Latency estimate (ms) for DAG operations in `primal.announce` payload.
+pub const ANNOUNCE_LATENCY_DAG_MS: u64 = 15;
+/// Latency estimate (ms) for integrity operations in `primal.announce` payload.
+pub const ANNOUNCE_LATENCY_INTEGRITY_MS: u64 = 5;
+/// Latency estimate (ms) for Merkle operations in `primal.announce` payload.
+pub const ANNOUNCE_LATENCY_MERKLE_MS: u64 = 10;
 
 /// Connect timeout for outbound Neural API UDS calls (seconds).
 pub const NEURAL_API_CONNECT_TIMEOUT_SECS: u64 = 2;

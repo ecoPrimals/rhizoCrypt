@@ -12,6 +12,22 @@ use rhizo_crypt_core::constants;
 use rhizo_crypt_core::primal::PrimalLifecycle;
 use rhizo_crypt_core::safe_env::SafeEnv;
 use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig};
+use thiserror::Error;
+
+/// Errors from doctor diagnostic checks.
+#[derive(Debug, Error)]
+pub enum DoctorCheckError {
+    /// Discovery address could not be parsed into a valid transport endpoint.
+    #[error("invalid discovery address: {address}")]
+    InvalidAddress {
+        /// The raw address string that failed parsing.
+        address: String,
+    },
+
+    /// Discovery endpoint parsed but was unreachable.
+    #[error("discovery endpoint unreachable: {0}")]
+    Unreachable(#[source] std::io::Error),
+}
 
 /// Result of a single doctor check.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -281,8 +297,10 @@ async fn check_discovery(comprehensive: bool) -> (DoctorCheck, String) {
 ///
 /// # Errors
 ///
-/// Returns `Err` when the address cannot be parsed or the endpoint is unreachable.
-pub async fn check_discovery_connectivity(addr: &str) -> Result<(), String> {
+/// Returns [`DoctorCheckError::InvalidAddress`] when the address cannot be
+/// parsed into a transport endpoint, or [`DoctorCheckError::Unreachable`]
+/// when the endpoint is unreachable.
+pub async fn check_discovery_connectivity(addr: &str) -> Result<(), DoctorCheckError> {
     let host_port = addr
         .strip_prefix("http://")
         .or_else(|| addr.strip_prefix("https://"))
@@ -290,11 +308,13 @@ pub async fn check_discovery_connectivity(addr: &str) -> Result<(), String> {
         .trim_end_matches('/');
 
     let ep = rhizo_crypt_core::transport::TransportEndpoint::try_parse_address(host_port)
-        .ok_or_else(|| format!("Invalid discovery address: {host_port}"))?;
+        .ok_or_else(|| DoctorCheckError::InvalidAddress {
+            address: host_port.to_owned(),
+        })?;
 
     rhizo_crypt_core::transport::connect_transport(&ep)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(DoctorCheckError::Unreachable)?;
 
     Ok(())
 }

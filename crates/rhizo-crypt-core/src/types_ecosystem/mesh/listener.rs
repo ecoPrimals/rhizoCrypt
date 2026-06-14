@@ -156,7 +156,7 @@ impl MeshEventListener {
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",
-            "method": "auth.events.poll",
+            "method": crate::constants::MESH_AUTH_EVENTS_POLL_METHOD,
             "params": {
                 "since_timestamp": since,
             },

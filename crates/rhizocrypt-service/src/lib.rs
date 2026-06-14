@@ -13,7 +13,8 @@ mod doctor;
 mod neural_api;
 
 pub use doctor::{
-    DoctorCheck, check_dag_engine, check_discovery_connectivity, check_storage_backend, run_doctor,
+    DoctorCheck, DoctorCheckError, check_dag_engine, check_discovery_connectivity,
+    check_storage_backend, run_doctor,
 };
 
 /// `UniBin` exit codes per the Architecture Standard.
@@ -314,7 +315,7 @@ pub async fn run_server_with_ready(
 
         if let Some(notify) = ready {
             tokio::spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                tokio::time::sleep(constants::READINESS_NOTIFY_DELAY).await;
                 notify.notify_one();
             });
         }

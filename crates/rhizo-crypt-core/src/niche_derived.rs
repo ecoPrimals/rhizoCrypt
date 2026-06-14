@@ -11,6 +11,7 @@ use super::{
     CAPABILITIES, DOMAIN, LICENSE, METHOD_CATALOG, PRIMAL_DESCRIPTION, PRIMAL_ID, PRIMAL_VERSION,
     PROTOCOL, TRANSPORT,
 };
+use crate::constants;
 use std::sync::LazyLock;
 
 /// Human-readable descriptions for each capability domain.
@@ -179,14 +180,14 @@ pub fn announce_payload(socket_path: &str, pid: Option<u32>) -> serde_json::Valu
         "semantic_mappings": semantic_mapping_object(),
         "signal_tiers": ["nest"],
         "cost_hints": {
-            "dag": 10.0,
-            "integrity": 5.0,
-            "merkle": 8.0,
+            "dag": constants::ANNOUNCE_COST_DAG,
+            "integrity": constants::ANNOUNCE_COST_INTEGRITY,
+            "merkle": constants::ANNOUNCE_COST_MERKLE,
         },
         "latency_estimates": {
-            "dag": 15,
-            "integrity": 5,
-            "merkle": 10,
+            "dag": constants::ANNOUNCE_LATENCY_DAG_MS,
+            "integrity": constants::ANNOUNCE_LATENCY_INTEGRITY_MS,
+            "merkle": constants::ANNOUNCE_LATENCY_MERKLE_MS,
         },
         "version": PRIMAL_VERSION,
         "attestation": null,

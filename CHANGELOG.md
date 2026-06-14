@@ -5,6 +5,16 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.12] - 2026-06-14
+
+### Changed
+
+#### Wave 111: Magic Numbers → Constants + Typed Doctor Error (Jun 14, 2026)
+
+- **Magic numbers centralized into `constants.rs`**: Moved 9 scattered literals into named SSOT constants — `READINESS_NOTIFY_DELAY` (50ms server bind notification), `MESH_AUTH_EVENTS_POLL_METHOD` (cross-gate trust poll RPC method), and 6 announce payload hints (`ANNOUNCE_COST_DAG/INTEGRITY/MERKLE`, `ANNOUNCE_LATENCY_DAG/INTEGRITY/MERKLE_MS`). All prior call sites updated to use the constants.
+- **`DoctorCheckError` typed enum**: Replaced `Result<(), String>` in `check_discovery_connectivity` with a structured `DoctorCheckError` enum with `InvalidAddress` and `Unreachable` variants. Implements `Display`, `Debug`, and `Error` with `#[source]` chaining via `thiserror`. Eliminates the last high-priority untyped error chain identified in the deep debt audit.
+- **Capability method SSOT**: Hardcoded `"auth.events.poll"` string literal in `MeshEventListener::poll_events()` replaced with `constants::MESH_AUTH_EVENTS_POLL_METHOD`, removing cross-primal method name coupling from production code.
+
 ## [0.14.11] - 2026-06-14
 
 ### Changed
