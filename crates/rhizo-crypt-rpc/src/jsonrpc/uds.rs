@@ -162,7 +162,17 @@ impl UdsJsonRpcServer {
     }
 }
 
+/// riboCipher connection-level signal: `[0xEC, 0x01]`.
+///
+/// cellMembrane health probes may prepend this 2-byte prefix before sending
+/// JSON-RPC. Primals MUST accept and discard it, then proceed with normal
+/// protocol detection.
+const RIBOCIPHER_PREFIX: [u8; 2] = [0xEC, 0x01];
+
 /// Handle a single UDS connection with optional BTSP handshake enforcement.
+///
+/// When the first two bytes match [`RIBOCIPHER_PREFIX`], they are silently
+/// consumed before protocol detection proceeds.
 ///
 /// When `btsp_required` is `true`, uses first-byte auto-detect with three
 /// branches:
@@ -191,84 +201,37 @@ async fn handle_uds_connection(
     let gate = super::method_gate::MethodGate::from_env();
     let caller = super::method_gate::CallerContext::unix();
 
+    let leftover = consume_ribocipher_prefix(&mut stream).await?;
+
     if btsp_required {
         let Some(seed) = family_seed else {
             warn!("BTSP required but no FAMILY_SEED — rejecting connection");
             return Err(std::io::Error::other("BTSP: no family seed"));
         };
 
-        let mut first = [0u8; 1];
-        let n = stream.read(&mut first).await?;
-        if n == 0 {
-            return Ok(());
-        }
-
-        if first[0] == b'{' {
-            // Read the rest of the first line to distinguish BTSP from JSON-RPC.
-            let mut first_line = vec![b'{'];
-            let mut byte = [0u8; 1];
-            loop {
-                let n = stream.read(&mut byte).await?;
-                if n == 0 {
-                    break;
-                }
-                first_line.push(byte[0]);
-                if byte[0] == b'\n' {
-                    break;
-                }
+        let first_byte = if let Some(&b) = leftover.first() {
+            b
+        } else {
+            let mut first = [0u8; 1];
+            let n = stream.read(&mut first).await?;
+            if n == 0 {
+                return Ok(());
             }
+            first[0]
+        };
+        let extra = if leftover.len() > 1 { &leftover[1..] } else { &[] };
 
-            let json_end =
-                first_line.iter().rposition(|&b| b != b'\n' && b != b'\r').map_or(0, |i| i + 1);
-            let json_bytes = &first_line[..json_end];
-
-            let is_btsp = serde_json::from_slice::<serde_json::Value>(json_bytes)
-                .ok()
-                .and_then(|v| v.get("protocol")?.as_str().map(|s| s == "btsp"))
-                .unwrap_or(false);
-
-            let (reader, writer) = stream.into_split();
-
-            if is_btsp {
-                debug!("detected BTSP JSON-line handshake (protocol:btsp)");
-                let mut rw = tokio::io::join(reader, writer);
-                match BtspServer::accept_handshake_jsonline(&mut rw, seed, json_bytes).await {
-                    Ok(session) => {
-                        debug!(
-                            cipher = session.cipher.as_str(),
-                            "BTSP JSON-line handshake complete"
-                        );
-                        serve_after_handshake(rw, &server, session).await
-                    }
-                    Err(e) => {
-                        warn!(error = %e, "BTSP JSON-line handshake failed");
-                        let (_, mut writer) = rw.into_inner();
-                        let reason = e.to_string();
-                        if let Err(e2) =
-                            BtspServer::send_handshake_error_jsonline(&mut writer, &reason).await
-                        {
-                            debug!(error = %e2, "failed to send BTSP JSON-line error");
-                        }
-                        let _ = writer.shutdown().await;
-                        Err(std::io::Error::other(format!("BTSP JSON-line handshake failed: {e}")))
-                    }
-                }
-            } else {
-                debug!("plain JSON-RPC on UDS (filesystem-authenticated, all methods)");
-                let chained_reader = first_line.as_slice().chain(reader);
-                let joined = tokio::io::join(chained_reader, writer);
-                super::newline::handle_newline_connection(joined, &server, &gate, &caller).await
-            }
-        } else if first[0] == b'[' {
+        if first_byte == b'{' {
+            detect_btsp_or_jsonrpc(stream, extra, seed, &server, &gate, &caller).await
+        } else if first_byte == b'[' {
             debug!("batch JSON-RPC on UDS (filesystem-authenticated, all methods)");
             let (reader, writer) = stream.into_split();
-            let chained_reader = (&first[..]).chain(reader);
+            let chained_reader = leftover.as_slice().chain(reader);
             let joined = tokio::io::join(chained_reader, writer);
             super::newline::handle_newline_connection(joined, &server, &gate, &caller).await
         } else {
-            // Length-prefixed BTSP handshake (internal binary framing).
             let (reader, writer) = stream.into_split();
-            let chained_reader = (&first[..]).chain(reader);
+            let chained_reader = leftover.as_slice().chain(reader);
             let mut rw = tokio::io::join(chained_reader, writer);
 
             match BtspServer::accept_handshake(&mut rw, seed).await {
@@ -287,8 +250,117 @@ async fn handle_uds_connection(
                 }
             }
         }
-    } else {
+    } else if leftover.is_empty() {
         super::newline::handle_newline_connection(stream, &server, &gate, &caller).await
+    } else {
+        let (reader, writer) = stream.into_split();
+        let chained = leftover.as_slice().chain(reader);
+        let joined = tokio::io::join(chained, writer);
+        super::newline::handle_newline_connection(joined, &server, &gate, &caller).await
+    }
+}
+
+/// Distinguish a JSON-line BTSP handshake from plain JSON-RPC.
+///
+/// The caller has already consumed the leading `{` and any extra bytes from
+/// the riboCipher prefix probe. This function reads the rest of the first
+/// line to check for `"protocol":"btsp"`.
+async fn detect_btsp_or_jsonrpc(
+    mut stream: tokio::net::UnixStream,
+    extra: &[u8],
+    seed: &[u8],
+    server: &crate::service::RhizoCryptRpcServer,
+    gate: &super::method_gate::MethodGate,
+    caller: &super::method_gate::CallerContext,
+) -> std::io::Result<()> {
+    use crate::btsp::BtspServer;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let mut first_line = vec![b'{'];
+    first_line.extend_from_slice(extra);
+    if !first_line.contains(&b'\n') {
+        let mut byte = [0u8; 1];
+        loop {
+            let n = stream.read(&mut byte).await?;
+            if n == 0 {
+                break;
+            }
+            first_line.push(byte[0]);
+            if byte[0] == b'\n' {
+                break;
+            }
+        }
+    }
+
+    let json_end =
+        first_line.iter().rposition(|&b| b != b'\n' && b != b'\r').map_or(0, |i| i + 1);
+    let json_bytes = &first_line[..json_end];
+
+    let is_btsp = serde_json::from_slice::<serde_json::Value>(json_bytes)
+        .ok()
+        .and_then(|v| v.get("protocol")?.as_str().map(|s| s == "btsp"))
+        .unwrap_or(false);
+
+    let (reader, writer) = stream.into_split();
+
+    if is_btsp {
+        debug!("detected BTSP JSON-line handshake (protocol:btsp)");
+        let mut rw = tokio::io::join(reader, writer);
+        match BtspServer::accept_handshake_jsonline(&mut rw, seed, json_bytes).await {
+            Ok(session) => {
+                debug!(
+                    cipher = session.cipher.as_str(),
+                    "BTSP JSON-line handshake complete"
+                );
+                serve_after_handshake(rw, server, session).await
+            }
+            Err(e) => {
+                warn!(error = %e, "BTSP JSON-line handshake failed");
+                let (_, mut writer) = rw.into_inner();
+                let reason = e.to_string();
+                if let Err(e2) =
+                    BtspServer::send_handshake_error_jsonline(&mut writer, &reason).await
+                {
+                    debug!(error = %e2, "failed to send BTSP JSON-line error");
+                }
+                let _ = writer.shutdown().await;
+                Err(std::io::Error::other(format!("BTSP JSON-line handshake failed: {e}")))
+            }
+        }
+    } else {
+        debug!("plain JSON-RPC on UDS (filesystem-authenticated, all methods)");
+        let chained_reader = first_line.as_slice().chain(reader);
+        let joined = tokio::io::join(chained_reader, writer);
+        super::newline::handle_newline_connection(joined, server, gate, caller).await
+    }
+}
+
+/// Read the first two bytes from a UDS connection and strip a riboCipher
+/// prefix if present.
+///
+/// Returns any consumed bytes that were **not** a riboCipher prefix so the
+/// caller can chain them back onto the stream. An empty `Vec` means either
+/// the prefix was stripped or the connection was empty.
+async fn consume_ribocipher_prefix(
+    stream: &mut tokio::net::UnixStream,
+) -> std::io::Result<Vec<u8>> {
+    use tokio::io::AsyncReadExt;
+
+    let mut probe = [0u8; 2];
+    let mut total = 0;
+    while total < 2 {
+        let n = stream.read(&mut probe[total..]).await?;
+        if n == 0 {
+            return Ok(probe[..total].to_vec());
+        }
+        total += n;
+    }
+
+    if probe == RIBOCIPHER_PREFIX {
+        debug!("riboCipher prefix accepted, proceeding with protocol detection");
+        Ok(Vec::new())
+    } else {
+        Ok(probe.to_vec())
     }
 }
 

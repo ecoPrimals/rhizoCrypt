@@ -5,6 +5,16 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.10] - 2026-06-14
+
+### Added
+
+#### Wave 109: riboCipher Prefix Acceptance (Jun 14, 2026)
+
+- **riboCipher `[0xEC, 0x01]` prefix accepted on UDS**: cellMembrane health probes may prepend a 2-byte riboCipher signal before JSON-RPC. The UDS connection handler (`handle_uds_connection`) now reads the first 2 bytes from every connection: if they match `[0xEC, 0x01]` they are silently consumed; otherwise they are chained back into the stream for normal protocol detection (BTSP or plaintext JSON-RPC). Works in both dev mode and BTSP-enforced mode.
+- **`detect_btsp_or_jsonrpc` extracted**: The JSON-line BTSP vs. plain JSON-RPC detection logic was extracted from `handle_uds_connection` into a dedicated helper, bringing the main handler under the 100-line clippy limit.
+- **3 new integration tests**: `test_ribocipher_prefix_jsonrpc_over_uds` (dev mode), `test_ribocipher_prefix_btsp_uds_plain_jsonrpc` (BTSP mode), `test_no_ribocipher_prefix_still_works` (regression guard).
+
 ## [0.14.9] - 2026-06-11
 
 ### Changed
