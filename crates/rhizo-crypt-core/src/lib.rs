@@ -157,7 +157,10 @@ pub use store::{
 pub use store_redb::RedbDagStore;
 
 // Transport (ecosystem canonical wire format — local impl, no cross-primal dep)
-pub use transport::{connect_transport, TransportEndpoint, TransportStream};
+pub use transport::{
+    JsonRpcTransportError, TransportEndpoint, TransportStream, connect_transport,
+    send_jsonrpc_request,
+};
 
 // Types
 pub use types::{ContentHash, Did, PayloadRef, SessionId, Signature, SliceId, Timestamp, VertexId};

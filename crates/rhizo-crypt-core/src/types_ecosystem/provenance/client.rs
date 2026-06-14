@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use crate::transport::{connect_transport, TransportEndpoint};
+use crate::transport::TransportEndpoint;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -262,45 +262,18 @@ impl ProvenanceNotifier {
         Ok(())
     }
 
-    /// Send a JSON-RPC request via transport-agnostic connection.
-    ///
-    /// Sets `TCP_NODELAY` when the underlying transport is TCP to prevent
-    /// Nagle buffering of newline-delimited payloads.
     async fn send_jsonrpc(
         endpoint: &TransportEndpoint,
         request: &serde_json::Value,
     ) -> std::result::Result<String, String> {
-        use crate::transport::TransportStream;
-        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-
-        let stream =
-            tokio::time::timeout(PROVENANCE_CONNECTION_TIMEOUT, connect_transport(endpoint))
-                .await
-                .map_err(|_| format!("Connection timeout to {endpoint}"))?
-                .map_err(|e| format!("Connection failed to {endpoint}: {e}"))?;
-
-        if let TransportStream::Tcp(ref tcp) = stream {
-            let _ = tcp.set_nodelay(true);
-        }
-
-        let (reader, mut writer) = tokio::io::split(stream);
-
-        let payload = format!(
-            "{}\n",
-            serde_json::to_string(request).map_err(|e| format!("Serialize failed: {e}"))?
-        );
-        writer.write_all(payload.as_bytes()).await.map_err(|e| format!("Write failed: {e}"))?;
-        writer.flush().await.map_err(|e| format!("Flush failed: {e}"))?;
-
-        let mut buf_reader = BufReader::new(reader);
-        let mut response = String::new();
-
-        tokio::time::timeout(PROVENANCE_RESPONSE_TIMEOUT, buf_reader.read_line(&mut response))
-            .await
-            .map_err(|_| "Response timeout".to_string())?
-            .map_err(|e| format!("Read failed: {e}"))?;
-
-        Ok(response)
+        crate::transport::send_jsonrpc_request(
+            endpoint,
+            request,
+            PROVENANCE_CONNECTION_TIMEOUT,
+            PROVENANCE_RESPONSE_TIMEOUT,
+        )
+        .await
+        .map_err(|e| e.to_string())
     }
 
     /// Get the current endpoint.

@@ -448,6 +448,97 @@ pub fn preferred_transport(primal_name: &str, port: u16) -> TransportHint {
     preferred_transport_with_platform(primal_name, port, PlatformKind::current())
 }
 
+/// Structured error for JSON-RPC transport operations.
+#[derive(Debug)]
+pub enum JsonRpcTransportError {
+    /// Timed out connecting to the endpoint.
+    ConnectTimeout,
+    /// Failed to establish a connection.
+    ConnectFailed(std::io::Error),
+    /// Failed to serialize the request body.
+    Serialize(serde_json::Error),
+    /// Failed to write the request to the transport.
+    Write(std::io::Error),
+    /// Timed out waiting for the response.
+    ResponseTimeout,
+    /// Failed to read the response from the transport.
+    Read(std::io::Error),
+}
+
+impl std::fmt::Display for JsonRpcTransportError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ConnectTimeout => write!(f, "connection timed out"),
+            Self::ConnectFailed(e) => write!(f, "connection failed: {e}"),
+            Self::Serialize(e) => write!(f, "serialize failed: {e}"),
+            Self::Write(e) => write!(f, "write failed: {e}"),
+            Self::ResponseTimeout => write!(f, "response timed out"),
+            Self::Read(e) => write!(f, "read failed: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for JsonRpcTransportError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::ConnectFailed(e) | Self::Write(e) | Self::Read(e) => Some(e),
+            Self::Serialize(e) => Some(e),
+            Self::ConnectTimeout | Self::ResponseTimeout => None,
+        }
+    }
+}
+
+/// Send a single JSON-RPC request over a transport endpoint and return the
+/// response line.
+///
+/// This is the shared implementation used by the provenance client, mesh
+/// listener, and any future ecosystem client that needs fire-and-forget
+/// JSON-RPC over `TransportEndpoint`.
+///
+/// # Errors
+///
+/// Returns [`JsonRpcTransportError`] on connection timeout/failure, write
+/// failure, serialization failure, or response timeout/read failure.
+pub async fn send_jsonrpc_request(
+    endpoint: &TransportEndpoint,
+    request: &serde_json::Value,
+    connect_timeout: std::time::Duration,
+    response_timeout: std::time::Duration,
+) -> std::result::Result<String, JsonRpcTransportError> {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+    let stream = tokio::time::timeout(connect_timeout, connect_transport(endpoint))
+        .await
+        .map_err(|_| JsonRpcTransportError::ConnectTimeout)?
+        .map_err(JsonRpcTransportError::ConnectFailed)?;
+
+    if let TransportStream::Tcp(ref tcp) = stream {
+        let _ = tcp.set_nodelay(true);
+    }
+
+    let (reader, mut writer) = tokio::io::split(stream);
+
+    let payload = format!(
+        "{}\n",
+        serde_json::to_string(request).map_err(JsonRpcTransportError::Serialize)?
+    );
+    writer
+        .write_all(payload.as_bytes())
+        .await
+        .map_err(JsonRpcTransportError::Write)?;
+    writer.flush().await.map_err(JsonRpcTransportError::Write)?;
+
+    let mut buf_reader = BufReader::new(reader);
+    let mut response = String::new();
+
+    tokio::time::timeout(response_timeout, buf_reader.read_line(&mut response))
+        .await
+        .map_err(|_| JsonRpcTransportError::ResponseTimeout)?
+        .map_err(JsonRpcTransportError::Read)?;
+
+    Ok(response)
+}
+
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 #[path = "transport_tests.rs"]

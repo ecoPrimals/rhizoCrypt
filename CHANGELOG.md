@@ -5,6 +5,15 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.11] - 2026-06-14
+
+### Changed
+
+#### Wave 110: DRY JSON-RPC Transport + Typed Error (Jun 14, 2026)
+
+- **`send_jsonrpc_request` shared helper**: Extracted the duplicate `send_jsonrpc` implementations from `provenance/client.rs` and `mesh/listener.rs` into a single `transport::send_jsonrpc_request()` free function with configurable timeouts. Both callers now delegate to it, eliminating ~60 lines of duplicated transport code.
+- **`JsonRpcTransportError` typed enum**: The shared helper returns a structured error with 6 variants (`ConnectTimeout`, `ConnectFailed`, `Serialize`, `Write`, `ResponseTimeout`, `Read`) instead of `Result<_, String>`. Implements `Display`, `Debug`, and `Error` with proper `source()` chaining. Callers convert to `String` at their own boundary for now.
+
 ## [0.14.10] - 2026-06-14
 
 ### Added
