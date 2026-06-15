@@ -249,7 +249,7 @@ impl MeshEventListener {
     async fn send_jsonrpc(
         endpoint: &TransportEndpoint,
         request: &serde_json::Value,
-    ) -> std::result::Result<String, String> {
+    ) -> std::result::Result<String, crate::transport::JsonRpcTransportError> {
         crate::transport::send_jsonrpc_request(
             endpoint,
             request,
@@ -257,7 +257,6 @@ impl MeshEventListener {
             MESH_RESPONSE_TIMEOUT,
         )
         .await
-        .map_err(|e| e.to_string())
     }
 
     /// Get the resolved signing provider endpoint (if connected).

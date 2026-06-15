@@ -81,8 +81,7 @@ impl RhizoCryptRpcServer {
         result.map_err(RpcError::from)
     }
 
-    #[allow(clippy::unused_async)]
-    pub(crate) async fn impl_get_frontier(
+    pub(crate) fn impl_get_frontier(
         &self,
         session_id: SessionId,
     ) -> Result<Vec<VertexId>, RpcError> {
@@ -90,8 +89,7 @@ impl RhizoCryptRpcServer {
         Ok(session.frontier.into_iter().collect())
     }
 
-    #[allow(clippy::unused_async)]
-    pub(crate) async fn impl_get_genesis(
+    pub(crate) fn impl_get_genesis(
         &self,
         session_id: SessionId,
     ) -> Result<Vec<VertexId>, RpcError> {

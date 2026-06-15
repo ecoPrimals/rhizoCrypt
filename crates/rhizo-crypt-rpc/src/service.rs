@@ -352,7 +352,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<Vec<VertexId>, RpcError> {
-        self.impl_get_frontier(session_id).await
+        self.impl_get_frontier(session_id)
     }
 
     async fn get_genesis(
@@ -360,7 +360,7 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         _: tarpc::context::Context,
         session_id: SessionId,
     ) -> Result<Vec<VertexId>, RpcError> {
-        self.impl_get_genesis(session_id).await
+        self.impl_get_genesis(session_id)
     }
 
     async fn query_vertices(

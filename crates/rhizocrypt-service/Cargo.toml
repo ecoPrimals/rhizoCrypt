@@ -11,7 +11,7 @@ categories = ["cryptography", "network-programming", "data-structures"]
 
 [features]
 default = ["redb", "live-clients"]
-redb = ["rhizo-crypt-core/redb"]
+redb = ["rhizo-crypt-core/redb", "dep:tempfile"]
 live-clients = ["rhizo-crypt-core/live-clients"]
 
 [lib]
@@ -28,7 +28,7 @@ path = "tests/service_integration/mod.rs"
 
 [dependencies]
 rhizo-crypt-core = { path = "../rhizo-crypt-core" }
-tempfile = { workspace = true }
+tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true }
 rhizo-crypt-rpc = { path = "../rhizo-crypt-rpc" }
 tokio = { workspace = true }

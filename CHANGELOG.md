@@ -5,6 +5,16 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.13] - 2026-06-14
+
+### Changed
+
+#### Wave 112: Dead Async Removal + Typed Transport Propagation + Dep Hygiene (Jun 14, 2026)
+
+- **3 `unused_async` suppressions eliminated**: `dispatch_liveness` (now returns `Value` directly, no future), `impl_get_frontier`, `impl_get_genesis` (now sync `fn`). Zero `#[allow(clippy::unused_async)]` remaining in production code.
+- **`send_jsonrpc` wrappers return typed errors**: Both `MeshEventListener::send_jsonrpc` and `ProvenanceNotifier::send_jsonrpc` now return `Result<String, JsonRpcTransportError>` instead of `Result<String, String>`, eliminating `.map_err(|e| e.to_string())` indirection. Callers use `Display` via tracing `%e` — no API change needed.
+- **`tempfile` feature-gated under `redb`**: `tempfile` dependency in `rhizocrypt-service` is now `optional = true` and pulled only when the `redb` feature is active (default). `--no-default-features` builds shed the dependency entirely.
+
 ## [0.14.12] - 2026-06-14
 
 ### Changed
