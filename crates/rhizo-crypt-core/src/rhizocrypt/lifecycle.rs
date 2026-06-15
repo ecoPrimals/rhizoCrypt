@@ -13,6 +13,7 @@ use crate::primal::{
 };
 use crate::store::{DagBackend, InMemoryDagStore, InMemoryPayloadStore};
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use super::RhizoCrypt;
@@ -42,7 +43,7 @@ impl PrimalLifecycle for RhizoCrypt {
                 }
                 #[cfg(feature = "redb")]
                 StorageBackend::Redb => {
-                    let path = self.config.storage.path.as_deref().unwrap_or("rhizocrypt.redb");
+                    let path = self.config.storage.path.as_deref().unwrap_or(crate::constants::DEFAULT_REDB_FILENAME);
                     tracing::info!(path = %path, "using redb DAG store");
                     let store = crate::store_redb::RedbDagStore::open(path).map_err(|e| {
                         PrimalError::StartupFailed(format!("redb open failed: {e}"))
@@ -59,11 +60,11 @@ impl PrimalLifecycle for RhizoCrypt {
                 }
             };
             let mut dag_store = self.dag_store.write().await;
-            *dag_store = Some(backend);
+            *dag_store = Some(Arc::new(backend));
         }
         {
             let mut payload_store = self.payload_store.write().await;
-            *payload_store = Some(InMemoryPayloadStore::new());
+            *payload_store = Some(Arc::new(InMemoryPayloadStore::new()));
         }
 
         self.started_at = Some(Instant::now());

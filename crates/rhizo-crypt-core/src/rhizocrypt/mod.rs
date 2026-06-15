@@ -54,9 +54,11 @@ pub struct RhizoCrypt {
     config: RhizoCryptConfig,
     state: PrimalState,
     started_at: Option<Instant>,
-    // Storage backends (initialized once at startup, dispatched via DagBackend)
-    dag_store: Arc<RwLock<Option<DagBackend>>>,
-    payload_store: Arc<RwLock<Option<InMemoryPayloadStore>>>,
+    // Storage backends (initialized once at startup, dispatched via DagBackend).
+    // Arc-wrapped so callers get a cheap reference-counted handle instead of
+    // cloning the full enum on every vertex operation.
+    dag_store: Arc<RwLock<Option<Arc<DagBackend>>>>,
+    payload_store: Arc<RwLock<Option<Arc<InMemoryPayloadStore>>>>,
     // Lock-free concurrent maps for session data
     sessions: Arc<DashMap<SessionId, Session>>,
     slices: Arc<DashMap<SliceId, Slice>>,
@@ -163,22 +165,27 @@ impl RhizoCrypt {
 
     /// Get the DAG store (if running).
     ///
+    /// Returns a cheap `Arc` handle — callers share the backend without
+    /// cloning the full enum on every vertex operation.
+    ///
     /// # Errors
     ///
     /// Returns an error if the primal is not running.
-    pub async fn dag_store(&self) -> Result<DagBackend> {
+    pub async fn dag_store(&self) -> Result<Arc<DagBackend>> {
         let store = self.dag_store.read().await;
-        store.clone().ok_or_else(|| RhizoCryptError::internal("primal not running"))
+        store.as_ref().map(Arc::clone).ok_or_else(|| RhizoCryptError::internal("primal not running"))
     }
 
     /// Get the payload store (if running).
     ///
+    /// Returns a cheap `Arc` handle.
+    ///
     /// # Errors
     ///
     /// Returns an error if the primal is not running.
-    pub async fn payload_store(&self) -> Result<InMemoryPayloadStore> {
+    pub async fn payload_store(&self) -> Result<Arc<InMemoryPayloadStore>> {
         let store = self.payload_store.read().await;
-        store.clone().ok_or_else(|| RhizoCryptError::internal("primal not running"))
+        store.as_ref().map(Arc::clone).ok_or_else(|| RhizoCryptError::internal("primal not running"))
     }
 
     /// Get uptime in seconds.

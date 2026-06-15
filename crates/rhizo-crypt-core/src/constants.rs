@@ -335,6 +335,16 @@ pub const MESH_AUTH_EVENTS_POLL_METHOD: &str = "auth.events.poll";
 pub const PROVENANCE_DEFAULT_MAX_RESULTS: usize = 1000;
 
 // ============================================================================
+// DEFAULT FILENAMES
+// ============================================================================
+
+/// Default redb database filename when no path is configured.
+pub const DEFAULT_REDB_FILENAME: &str = "rhizocrypt.redb";
+
+/// Default manifest filename written to the biomeOS socket directory.
+pub const DEFAULT_MANIFEST_FILENAME: &str = "rhizocrypt.json";
+
+// ============================================================================
 // STORAGE KEY GEOMETRY
 // ============================================================================
 

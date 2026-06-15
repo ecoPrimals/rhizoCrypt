@@ -232,7 +232,7 @@ fn check_transport() -> Vec<(String, DoctorCheck, Option<String>)> {
 
     // Capability manifest (PG-32: file-based discovery)
     let manifest_path = rhizo_crypt_core::discovery::manifest::manifest_dir()
-        .map(|dir| dir.join("rhizocrypt.json"));
+        .map(|dir| dir.join(rhizo_crypt_core::constants::DEFAULT_MANIFEST_FILENAME));
     let (manifest_status, manifest_detail) = match &manifest_path {
         Some(path) if path.exists() => {
             (DoctorCheck::Pass, format!("present at {}", path.display()))

@@ -90,6 +90,12 @@ impl SafeEnv {
     pub const RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS: &'static str =
         "RHIZOCRYPT_RATE_LIMIT_EXPENSIVE_RPS";
 
+    /// RPC enabled toggle (set to "false" to disable).
+    pub const RHIZOCRYPT_RPC_ENABLED: &'static str = "RHIZOCRYPT_RPC_ENABLED";
+
+    /// Auth enforcement mode ("enforced" | "permissive").
+    pub const RHIZOCRYPT_AUTH_MODE: &'static str = "RHIZOCRYPT_AUTH_MODE";
+
     /// Ecosystem-wide family identifier (BTSP Phase 1 socket scoping).
     pub const FAMILY_ID: &'static str = "FAMILY_ID";
 

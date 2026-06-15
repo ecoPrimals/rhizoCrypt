@@ -11,7 +11,7 @@
 //! - **Zero-knowledge initialization** — Works with no external configuration
 //! - **Environment-aware** — Can be customized via environment variables
 
-use crate::{constants, session::SessionConfig};
+use crate::{constants, safe_env::SafeEnv, session::SessionConfig};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::net::{IpAddr, Ipv4Addr};
@@ -285,17 +285,17 @@ impl RpcConfig {
     where
         F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
     {
-        let host = reader("RHIZOCRYPT_RPC_HOST")
+        let host = reader(SafeEnv::RHIZOCRYPT_RPC_HOST)
             .map(Cow::Owned)
             .unwrap_or(Cow::Borrowed(Self::DEFAULT_HOST));
 
-        let port = reader("RHIZOCRYPT_RPC_PORT")
+        let port = reader(SafeEnv::RHIZOCRYPT_RPC_PORT)
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(Self::DEFAULT_PORT);
 
         let enabled =
-            reader("RHIZOCRYPT_RPC_ENABLED").map_or(true, |s| s.to_lowercase() != "false");
+            reader(SafeEnv::RHIZOCRYPT_RPC_ENABLED).map_or(true, |s| s.to_lowercase() != "false");
 
         Self {
             host,

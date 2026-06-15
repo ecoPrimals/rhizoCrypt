@@ -295,7 +295,7 @@ impl EnforcementMode {
     /// Defaults to `Permissive` if unset or unrecognized.
     #[must_use]
     pub fn from_env() -> Self {
-        rhizo_crypt_core::SafeEnv::get_optional("RHIZOCRYPT_AUTH_MODE").map_or(
+        rhizo_crypt_core::SafeEnv::get_optional(rhizo_crypt_core::SafeEnv::RHIZOCRYPT_AUTH_MODE).map_or(
             Self::Permissive,
             |v| match v.to_lowercase().as_str() {
                 "enforced" | "enforce" | "strict" => Self::Enforced,

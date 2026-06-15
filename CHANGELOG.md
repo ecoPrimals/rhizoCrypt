@@ -5,6 +5,16 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.15] - 2026-06-14
+
+### Changed
+
+#### Wave 114: Arc-Wrap DagBackend + BTSP Test Extraction + SSOT Hardcoding Sweep (Jun 14, 2026)
+
+- **`DagBackend` Arc-wrapped**: `dag_store()` and `payload_store()` now return `Arc<DagBackend>` and `Arc<InMemoryPayloadStore>` respectively instead of cloning the full enum on every vertex operation. Reduces per-operation overhead from 3-4 atomic increments to 1 (single Arc clone). All callers work unchanged via auto-deref.
+- **BTSP server tests extracted**: Moved 333 lines of handshake tests from inline `mod tests` in `btsp/server.rs` to `btsp/server_tests.rs` via `#[path]` reference. Production code is now 317 lines (down from 650).
+- **SSOT hardcoding sweep**: `RpcConfig::from_env_reader` now reads env vars via `SafeEnv::RHIZOCRYPT_RPC_HOST` / `RHIZOCRYPT_RPC_PORT` / `RHIZOCRYPT_RPC_ENABLED` constants instead of raw string literals. `EnforcementMode::from_env` uses `SafeEnv::RHIZOCRYPT_AUTH_MODE`. Added `RHIZOCRYPT_RPC_ENABLED` and `RHIZOCRYPT_AUTH_MODE` to `SafeEnv`. Default redb filename (`"rhizocrypt.redb"`) and manifest filename (`"rhizocrypt.json"`) centralized as `constants::DEFAULT_REDB_FILENAME` and `constants::DEFAULT_MANIFEST_FILENAME`.
+
 ## [0.14.14] - 2026-06-14
 
 ### Changed
