@@ -116,7 +116,7 @@ pub enum RhizoCryptError {
     // === Slice Errors ===
     /// Slice not found.
     #[error("slice not found: {0}")]
-    SliceNotFound(String),
+    SliceNotFound(crate::types::SliceId),
 
     /// Invalid slice operation.
     #[error("invalid slice operation: {0}")]
@@ -124,7 +124,7 @@ pub enum RhizoCryptError {
 
     /// Slice already resolved.
     #[error("slice already resolved: {0}")]
-    SliceAlreadyResolved(String),
+    SliceAlreadyResolved(crate::types::SliceId),
 
     /// Slice has expired.
     #[error("slice has expired: {slice_id}")]

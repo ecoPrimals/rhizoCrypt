@@ -154,7 +154,7 @@ impl Default for MetricsConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            endpoint: "/metrics".to_string(),
+            endpoint: constants::METRICS_PATH.to_string(),
             per_session_metrics: false,
         }
     }

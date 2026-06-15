@@ -5,6 +5,18 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.16] - 2026-06-15
+
+### Changed
+
+#### Wave 115: Dead Code Removal + SSOT Sweep + Typed Slice Errors + DRY Provenance (Jun 15, 2026)
+
+- **Dead `MeshEventListener::spawn_poller` removed**: ~30 lines of duplicate polling logic eliminated. `RhizoCrypt::spawn_mesh_poller()` is the sole poll driver. Dead `ListenerState::Polling` variant also removed.
+- **JSON-RPC wire constants centralized**: Added `JSONRPC_VERSION`, `PROVENANCE_RECORD_SESSION_METHOD`, `PROVENANCE_RECORD_DEHYDRATION_METHOD`, `PROVENANCE_RECORD_PROVENANCE_METHOD`, `MESH_TRUST_DOMAIN`, `MESH_TRUST_SESSION_NAME`, `METRICS_PATH`, and `DEFAULT_RATE_LIMIT_{READ,WRITE,EXPENSIVE}_RPS` to `constants.rs`. Wired into provenance client, mesh listener, rate limiter, config, and discovery registry (HTTP path now uses `JSON_RPC_PATH`).
+- **`SliceNotFound` / `SliceAlreadyResolved` accept `SliceId`**: Error variants changed from `String` to `SliceId` (which is `Copy`), eliminating `.to_string()` allocation on every slice lookup error. Clippy-driven `ok_or_else` → `ok_or` simplification applied.
+- **Provenance notifier DRYed**: Triplicated `match Self::send_jsonrpc(...)` blocks (session/dehydration/provenance) collapsed into a single `log_notify_result()` helper.
+- **`#[inline]` on hot cross-crate accessors**: Added to `uptime_secs()`, `session_for_vertex()`, `session_count()`, `total_vertex_count()`, `is_running()`.
+
 ## [0.14.15] - 2026-06-14
 
 ### Changed

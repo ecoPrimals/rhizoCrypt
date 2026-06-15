@@ -125,8 +125,8 @@ impl ProvenanceNotifier {
         debug!(%session_id, %endpoint, "Notifying provenance provider of session commit");
 
         let request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": "contribution.record_session",
+            "jsonrpc": crate::constants::JSONRPC_VERSION,
+            "method": crate::constants::PROVENANCE_RECORD_SESSION_METHOD,
             "params": {
                 "session_id": session_id.to_string(),
                 "source_primal": crate::constants::PRIMAL_NAME,
@@ -134,22 +134,11 @@ impl ProvenanceNotifier {
             "id": 1
         });
 
-        match Self::send_jsonrpc(&endpoint, &request).await {
-            Ok(response) => {
-                info!(
-                    %session_id,
-                    "Provenance provider notified of session commit: {}",
-                    response
-                );
-            }
-            Err(e) => {
-                warn!(
-                    %session_id,
-                    error = %e,
-                    "Failed to notify provenance provider (non-fatal)"
-                );
-            }
-        }
+        Self::log_notify_result(
+            "session commit",
+            &format!("{session_id}"),
+            Self::send_jsonrpc(&endpoint, &request).await,
+        );
 
         Ok(())
     }
@@ -182,28 +171,17 @@ impl ProvenanceNotifier {
         let wire_summary: crate::dehydration_wire::DehydrationWireSummary = summary.into();
 
         let request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": "contribution.record_dehydration",
+            "jsonrpc": crate::constants::JSONRPC_VERSION,
+            "method": crate::constants::PROVENANCE_RECORD_DEHYDRATION_METHOD,
             "params": wire_summary,
             "id": 1
         });
 
-        match Self::send_jsonrpc(&endpoint, &request).await {
-            Ok(response) => {
-                info!(
-                    session_id = %summary.session_id,
-                    "Provenance provider notified of dehydration: {}",
-                    response
-                );
-            }
-            Err(e) => {
-                warn!(
-                    session_id = %summary.session_id,
-                    error = %e,
-                    "Failed to notify provenance provider of dehydration (non-fatal)"
-                );
-            }
-        }
+        Self::log_notify_result(
+            "dehydration",
+            &format!("{}", summary.session_id),
+            Self::send_jsonrpc(&endpoint, &request).await,
+        );
 
         Ok(())
     }
@@ -233,8 +211,8 @@ impl ProvenanceNotifier {
         );
 
         let request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": "contribution.record_provenance",
+            "jsonrpc": crate::constants::JSONRPC_VERSION,
+            "method": crate::constants::PROVENANCE_RECORD_PROVENANCE_METHOD,
             "params": {
                 "source_primal": crate::constants::PRIMAL_NAME,
                 "vertices": chain.vertices,
@@ -243,23 +221,28 @@ impl ProvenanceNotifier {
             "id": 1
         });
 
-        match Self::send_jsonrpc(&endpoint, &request).await {
-            Ok(response) => {
-                info!(
-                    vertices = chain.len(),
-                    "Provenance provider notified of provenance chain: {}", response
-                );
-            }
-            Err(e) => {
-                warn!(
-                    vertices = chain.len(),
-                    error = %e,
-                    "Failed to notify provenance provider of provenance chain (non-fatal)"
-                );
-            }
-        }
+        Self::log_notify_result(
+            "provenance chain",
+            &format!("{} vertices", chain.len()),
+            Self::send_jsonrpc(&endpoint, &request).await,
+        );
 
         Ok(())
+    }
+
+    fn log_notify_result(
+        kind: &str,
+        context: &str,
+        result: std::result::Result<String, crate::transport::JsonRpcTransportError>,
+    ) {
+        match result {
+            Ok(response) => {
+                info!(context, "Provenance provider notified of {kind}: {response}");
+            }
+            Err(e) => {
+                warn!(context, error = %e, "Failed to notify provenance provider of {kind} (non-fatal)");
+            }
+        }
     }
 
     async fn send_jsonrpc(

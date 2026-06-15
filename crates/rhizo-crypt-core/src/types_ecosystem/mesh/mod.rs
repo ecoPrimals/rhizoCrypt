@@ -21,7 +21,8 @@
 //!
 //! ## Polling
 //!
-//! `spawn_poller()` runs a background task polling bearDog every
+//! `RhizoCrypt::spawn_mesh_poller()` drives the poll loop via
+//! `poll_events()` + `drain_events()` every
 //! [`MESH_POLL_INTERVAL`](crate::constants::MESH_POLL_INTERVAL).
 //! Uses incremental `since_timestamp` to fetch only new events.
 //!

@@ -16,11 +16,11 @@
 //!
 //! ## Polling
 //!
-//! `spawn_poller()` starts a background `tokio::spawn` task that polls
-//! bearDog every [`MESH_POLL_INTERVAL`](crate::constants::MESH_POLL_INTERVAL)
-//! seconds. Events are recorded into the internal log. The poller uses
-//! newline-delimited JSON-RPC via `connect_transport()` (transport-agnostic —
-//! UDS or TCP depending on endpoint resolution).
+//! `RhizoCrypt::spawn_mesh_poller()` drives the poll loop externally via
+//! `poll_events()` + `drain_events()`, appending trust events into a
+//! dedicated DAG session. The listener uses newline-delimited JSON-RPC
+//! via `connect_transport()` (transport-agnostic — UDS or TCP depending
+//! on endpoint resolution).
 
 use std::sync::Arc;
 
@@ -41,8 +41,6 @@ pub enum ListenerState {
     Disconnected,
     /// Connected — ready to receive/poll events.
     Connected,
-    /// Actively polling for events.
-    Polling,
 }
 
 /// Listener for cross-gate mesh trust events.
@@ -155,7 +153,7 @@ impl MeshEventListener {
         let since = *self.last_poll_timestamp.read().await;
 
         let request = serde_json::json!({
-            "jsonrpc": "2.0",
+            "jsonrpc": crate::constants::JSONRPC_VERSION,
             "method": crate::constants::MESH_AUTH_EVENTS_POLL_METHOD,
             "params": {
                 "since_timestamp": since,
@@ -210,40 +208,6 @@ impl MeshEventListener {
         }
 
         Ok(count)
-    }
-
-    /// Spawn a background poller that polls bearDog periodically.
-    ///
-    /// Returns a `JoinHandle` for cancellation. The poller runs every
-    /// [`MESH_POLL_INTERVAL`](crate::constants::MESH_POLL_INTERVAL)
-    /// and is non-fatal — poll failures are logged and retried.
-    #[must_use]
-    pub fn spawn_poller(self: &Arc<Self>) -> tokio::task::JoinHandle<()> {
-        let listener = Arc::clone(self);
-        let interval = crate::constants::MESH_POLL_INTERVAL;
-
-        *listener.state.blocking_write() = ListenerState::Polling;
-
-        tokio::spawn(async move {
-            let mut ticker = tokio::time::interval(interval);
-            ticker.tick().await; // skip first immediate tick
-            loop {
-                ticker.tick().await;
-                if *listener.state.read().await == ListenerState::Disconnected {
-                    debug!("Mesh event poller exiting: listener disconnected");
-                    break;
-                }
-                match listener.poll_events().await {
-                    Ok(0) => {}
-                    Ok(n) => {
-                        debug!(events = n, "Mesh event poll cycle complete");
-                    }
-                    Err(e) => {
-                        debug!(error = %e, "Mesh event poll error (will retry)");
-                    }
-                }
-            }
-        })
     }
 
     async fn send_jsonrpc(

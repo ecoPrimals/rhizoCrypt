@@ -189,12 +189,14 @@ impl RhizoCrypt {
     }
 
     /// Get uptime in seconds.
+    #[inline]
     #[must_use]
     pub fn uptime_secs(&self) -> Option<u64> {
         self.started_at.map(|s| s.elapsed().as_secs())
     }
 
     /// Look up which session owns a vertex (O(1) via index).
+    #[inline]
     #[must_use]
     pub fn session_for_vertex(&self, vertex_id: VertexId) -> Option<SessionId> {
         self.vertex_session_index.get(&vertex_id).map(|e| *e.value())
@@ -274,12 +276,14 @@ impl RhizoCrypt {
     }
 
     /// Get session count (lock-free).
+    #[inline]
     #[must_use]
     pub fn session_count(&self) -> usize {
         self.sessions.len()
     }
 
     /// Get total vertex count across all sessions (lock-free).
+    #[inline]
     #[must_use]
     pub fn total_vertex_count(&self) -> u64 {
         self.sessions.iter().map(|entry| entry.value().vertex_count).sum()
@@ -314,7 +318,7 @@ impl RhizoCrypt {
         self.slices
             .get(&slice_id)
             .map(|entry| entry.value().clone())
-            .ok_or_else(|| RhizoCryptError::SliceNotFound(slice_id.to_string()))
+            .ok_or(RhizoCryptError::SliceNotFound(slice_id))
     }
 
     /// List all active slices (lock-free iterator).
@@ -342,13 +346,13 @@ impl RhizoCrypt {
         let mut slice_entry = self
             .slices
             .get_mut(&slice_id)
-            .ok_or_else(|| RhizoCryptError::SliceNotFound(slice_id.to_string()))?;
+            .ok_or(RhizoCryptError::SliceNotFound(slice_id))?;
 
         {
             let slice = slice_entry.value_mut();
 
             if slice.is_resolved() {
-                return Err(RhizoCryptError::SliceAlreadyResolved(slice_id.to_string()));
+                return Err(RhizoCryptError::SliceAlreadyResolved(slice_id));
             }
 
             slice.state = slice::SliceState::Resolved {
@@ -451,9 +455,9 @@ impl RhizoCrypt {
                 // Auto-provision mesh-trust session on first event
                 if mesh_session_id.is_none() {
                     let session = SessionBuilder::new(SessionType::Custom {
-                        domain: "mesh-trust".into(),
+                        domain: crate::constants::MESH_TRUST_DOMAIN.into(),
                     })
-                    .with_name("mesh-trust-events")
+                    .with_name(crate::constants::MESH_TRUST_SESSION_NAME)
                     .build();
 
                     match primal.create_session(session) {

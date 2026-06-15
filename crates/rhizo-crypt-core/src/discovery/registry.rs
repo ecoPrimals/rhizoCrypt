@@ -235,12 +235,13 @@ impl DiscoveryRegistry {
         };
 
         let header = format!(
-            "POST /rpc HTTP/1.1\r\n\
+            "POST {} HTTP/1.1\r\n\
              Host: {host_header}\r\n\
              Content-Type: application/json\r\n\
              Content-Length: {}\r\n\
              Connection: close\r\n\
              \r\n",
+            crate::constants::JSON_RPC_PATH,
             body_bytes.len()
         );
 

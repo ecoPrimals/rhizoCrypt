@@ -106,6 +106,7 @@ impl RpcServer {
     }
 
     /// Check if the server is currently running.
+    #[inline]
     #[must_use]
     pub fn is_running(&self) -> bool {
         self.is_running.load(Ordering::SeqCst)

@@ -33,9 +33,9 @@ pub struct RateLimitConfig {
 impl Default for RateLimitConfig {
     fn default() -> Self {
         Self {
-            read_rps: 1000,
-            write_rps: 100,
-            expensive_rps: 10,
+            read_rps: constants::DEFAULT_RATE_LIMIT_READ_RPS,
+            write_rps: constants::DEFAULT_RATE_LIMIT_WRITE_RPS,
+            expensive_rps: constants::DEFAULT_RATE_LIMIT_EXPENSIVE_RPS,
             burst_multiplier: 2,
             cleanup_interval: constants::RATE_LIMIT_CLEANUP_INTERVAL,
         }

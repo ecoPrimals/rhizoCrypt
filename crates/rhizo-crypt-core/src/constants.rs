@@ -484,8 +484,42 @@ pub const NEURAL_API_CONNECT_TIMEOUT_SECS: u64 = 2;
 pub const NEURAL_API_READ_TIMEOUT_SECS: u64 = 5;
 
 // ============================================================================
-// API PATH CONSTANTS
+// JSON-RPC WIRE CONSTANTS
 // ============================================================================
+
+/// JSON-RPC 2.0 protocol version string.
+pub const JSONRPC_VERSION: &str = "2.0";
+
+/// Provenance RPC method: record a session contribution.
+pub const PROVENANCE_RECORD_SESSION_METHOD: &str = "contribution.record_session";
+
+/// Provenance RPC method: record a dehydration contribution.
+pub const PROVENANCE_RECORD_DEHYDRATION_METHOD: &str = "contribution.record_dehydration";
+
+/// Provenance RPC method: record a provenance event.
+pub const PROVENANCE_RECORD_PROVENANCE_METHOD: &str = "contribution.record_provenance";
+
+/// Default metrics endpoint path.
+pub const METRICS_PATH: &str = "/metrics";
+
+/// Mesh trust session domain name for DAG auto-provisioning.
+pub const MESH_TRUST_DOMAIN: &str = "mesh-trust";
+
+/// Mesh trust session display name.
+pub const MESH_TRUST_SESSION_NAME: &str = "mesh-trust-events";
+
+// ============================================================================
+// RATE LIMIT DEFAULTS
+// ============================================================================
+
+/// Default rate limit for read operations (requests per second).
+pub const DEFAULT_RATE_LIMIT_READ_RPS: u32 = 1000;
+
+/// Default rate limit for write operations (requests per second).
+pub const DEFAULT_RATE_LIMIT_WRITE_RPS: u32 = 100;
+
+/// Default rate limit for expensive operations (requests per second).
+pub const DEFAULT_RATE_LIMIT_EXPENSIVE_RPS: u32 = 10;
 
 // ============================================================================
 // CAPABILITY ADVERTISEMENT
