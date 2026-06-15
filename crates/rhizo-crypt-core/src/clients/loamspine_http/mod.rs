@@ -15,6 +15,8 @@
 //!   first, falling back to compatibility names (`permanent-storage.commitSession`) for
 //!   older `LoamSpine` versions. Negotiation result is cached per client instance.
 
+mod wire_types;
+
 use crate::dehydration::DehydrationSummary;
 use crate::error::{Result, RhizoCryptError};
 use crate::integration::PermanentStorageProvider;
@@ -23,6 +25,15 @@ use crate::slice::{ResolutionOutcome, Slice, SliceOrigin};
 use crate::types::Did;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
+
+use wire_types::{
+    CheckoutSliceRequest, CheckoutSliceResponse, CommitSessionRequest, CommitSessionResponse,
+    EmptyParams, HealthCheckResponse, JsonRpcRequest, JsonRpcResponse, MethodSupport,
+    NegotiableError, RpcDehydrationSummary,
+};
+
+#[cfg(test)]
+use wire_types::{JsonRpcError, METHOD_NOT_FOUND_CODE};
 
 /// Native semantic JSON-RPC method names per the Universal IPC Standard.
 ///
@@ -50,9 +61,6 @@ mod methods {
         pub const RESOLVE_SLICE: &str = "permanent-storage.resolveSlice";
     }
 }
-
-/// JSON-RPC error code for "method not found" per JSON-RPC 2.0 spec.
-const METHOD_NOT_FOUND_CODE: i32 = -32601;
 
 /// HTTP client for `LoamSpine` permanent storage.
 ///
@@ -460,209 +468,10 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
     }
 }
 
-// ============================================================================
-// Method Negotiation
-// ============================================================================
-
-/// Tracks whether the server supports native or compat method names.
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum MethodSupport {
-    Unknown = 0,
-    Native = 1,
-    Compat = 2,
-}
-
-impl MethodSupport {
-    const fn from_u8(v: u8) -> Self {
-        match v {
-            1 => Self::Native,
-            2 => Self::Compat,
-            _ => Self::Unknown,
-        }
-    }
-
-    const fn to_u8(self) -> u8 {
-        match self {
-            Self::Unknown => 0,
-            Self::Native => 1,
-            Self::Compat => 2,
-        }
-    }
-}
-
-/// Distinguishes "method not found" from other errors during negotiation.
-#[derive(Debug)]
-enum NegotiableError {
-    MethodNotFound,
-    Other(RhizoCryptError),
-}
-
-impl NegotiableError {
-    fn into_rhizo_error(self) -> RhizoCryptError {
-        match self {
-            Self::MethodNotFound => {
-                RhizoCryptError::integration("JSON-RPC method not found on server")
-            }
-            Self::Other(e) => e,
-        }
-    }
-}
-
-// ============================================================================
-// JSON-RPC 2.0 Types
-// ============================================================================
-
-#[derive(Debug, Serialize)]
-struct JsonRpcRequest<'a, T> {
-    jsonrpc: &'static str,
-    method: &'a str,
-    params: T,
-    id: u64,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum JsonRpcResponse<T> {
-    Success {
-        jsonrpc: String,
-        result: T,
-        id: u64,
-    },
-    Error {
-        jsonrpc: String,
-        error: JsonRpcError,
-        id: u64,
-    },
-}
-
-impl<T> JsonRpcResponse<T> {
-    /// Validate JSON-RPC 2.0 protocol conformance and extract the result.
-    ///
-    /// Checks that the response version is "2.0" and the response ID matches
-    /// the request ID, per the JSON-RPC 2.0 specification.
-    fn into_result(self, expected_id: u64) -> std::result::Result<T, NegotiableError> {
-        match self {
-            Self::Success {
-                jsonrpc,
-                result,
-                id,
-            } => {
-                Self::validate_protocol(&jsonrpc, id, expected_id)?;
-                Ok(result)
-            }
-            Self::Error {
-                jsonrpc,
-                error,
-                id,
-            } => {
-                Self::validate_protocol(&jsonrpc, id, expected_id)?;
-                if error.code == METHOD_NOT_FOUND_CODE {
-                    return Err(NegotiableError::MethodNotFound);
-                }
-                let detail =
-                    error.data.as_ref().map(|d| format!(" (data: {d})")).unwrap_or_default();
-                Err(NegotiableError::Other(RhizoCryptError::integration(format!(
-                    "Permanent storage RPC error [{}]: {}{detail}",
-                    error.code, error.message
-                ))))
-            }
-        }
-    }
-
-    fn validate_protocol(
-        jsonrpc: &str,
-        id: u64,
-        expected_id: u64,
-    ) -> std::result::Result<(), NegotiableError> {
-        if jsonrpc != "2.0" {
-            return Err(NegotiableError::Other(RhizoCryptError::integration(format!(
-                "Invalid JSON-RPC version: expected \"2.0\", got \"{jsonrpc}\""
-            ))));
-        }
-        if id != expected_id {
-            return Err(NegotiableError::Other(RhizoCryptError::integration(format!(
-                "JSON-RPC response ID mismatch: expected {expected_id}, got {id}"
-            ))));
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Deserialize)]
-struct JsonRpcError {
-    code: i32,
-    message: String,
-    #[serde(default)]
-    data: Option<serde_json::Value>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct EmptyParams {}
-
-// ============================================================================
-// LoamSpine API Types
-// ============================================================================
-
-#[derive(Debug, Clone, Serialize)]
-struct CommitSessionRequest {
-    session_id: String,
-    merkle_root: String,
-    summary: RpcDehydrationSummary,
-    committer_did: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct RpcDehydrationSummary {
-    session_type: String,
-    vertex_count: u64,
-    leaf_count: u64,
-    started_at: u64,
-    ended_at: u64,
-    outcome: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct CommitSessionResponse {
-    accepted: bool,
-    commit_id: Option<String>,
-    spine_entry_hash: Option<String>,
-    entry_index: Option<u64>,
-    error: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct CheckoutSliceRequest {
-    spine_id: String,
-    entry_hash: String,
-    holder_did: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct CheckoutSliceResponse {
-    spine_id: String,
-    entry_index: u64,
-    certificate_id: Option<String>,
-    owner_did: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct HealthCheckResponse {
-    status: String,
-    version: String,
-    spine_count: u64,
-}
-
-impl HealthCheckResponse {
-    fn is_healthy(&self) -> bool {
-        self.status == "ok" || self.status == "healthy"
-    }
-}
-
 #[cfg(test)]
-#[path = "loamspine_http_tests.rs"]
+#[path = "../loamspine_http_tests.rs"]
 mod tests;
 
 #[cfg(test)]
-#[path = "loamspine_http_tests_wiremock.rs"]
+#[path = "../loamspine_http_tests_wiremock.rs"]
 mod tests_wiremock;

@@ -5,6 +5,14 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.14] - 2026-06-14
+
+### Changed
+
+#### Wave 113: loamspine_http Module Extraction (Jun 14, 2026)
+
+- **`loamspine_http.rs` split into directory module**: Extracted 198 lines of wire types — JSON-RPC 2.0 protocol types (`JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`), method negotiation state (`MethodSupport`, `NegotiableError`), and LoamSpine-specific DTOs (`CommitSessionRequest`, `CheckoutSliceResponse`, etc.) — into `loamspine_http/wire_types.rs`. Client logic remains in `loamspine_http/mod.rs` at 477 lines (down from 669). Existing test paths adjusted for the directory layout.
+
 ## [0.14.13] - 2026-06-14
 
 ### Changed
