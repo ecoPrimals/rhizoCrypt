@@ -118,10 +118,18 @@ pub async fn handle_request(
             dehydration::dispatch_dehydrate(server, params).await
         }
         "dag.dehydration.status" => dehydration::dispatch_dehydrate_status(server, params).await,
-        "health.check" | "status" | "check" => health::dispatch_health(server).await,
-        "health.liveness" | "ping" | "health" => Ok(health::dispatch_liveness(server)),
-        "health.readiness" => health::dispatch_readiness(server).await,
-        "health.metrics" => health::dispatch_metrics(server).await,
+        rhizo_crypt_core::constants::HEALTH_CHECK | "status" | "check" => {
+            health::dispatch_health(server).await
+        }
+        rhizo_crypt_core::constants::HEALTH_LIVENESS | "ping" | "health" => {
+            Ok(health::dispatch_liveness(server))
+        }
+        rhizo_crypt_core::constants::HEALTH_READINESS => {
+            health::dispatch_readiness(server).await
+        }
+        rhizo_crypt_core::constants::HEALTH_METRICS => {
+            health::dispatch_metrics(server).await
+        }
         "identity.get" => Ok(capabilities::dispatch_identity_get()),
         "capabilities.list" | "capability.list" | "primal.capabilities" => {
             capabilities::dispatch_capability_list(server).await

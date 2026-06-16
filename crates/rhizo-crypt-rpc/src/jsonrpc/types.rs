@@ -121,7 +121,7 @@ pub mod codes {
 #[must_use]
 pub fn success(id: JsonRpcId, result: Value) -> JsonRpcSuccessResponse {
     JsonRpcSuccessResponse {
-        jsonrpc: "2.0".to_string(),
+        jsonrpc: rhizo_crypt_core::constants::JSONRPC_VERSION.to_string(),
         result,
         id,
     }
@@ -136,7 +136,7 @@ pub fn error_response(
     data: Option<Value>,
 ) -> JsonRpcErrorResponse {
     JsonRpcErrorResponse {
-        jsonrpc: "2.0".to_string(),
+        jsonrpc: rhizo_crypt_core::constants::JSONRPC_VERSION.to_string(),
         error: JsonRpcError {
             code,
             message: message.to_string(),

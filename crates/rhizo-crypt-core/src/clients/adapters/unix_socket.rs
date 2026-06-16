@@ -236,7 +236,7 @@ impl ProtocolAdapter for UnixSocketAdapter {
                 .unwrap_or_else(|_| serde_json::Value::String(args_json.to_owned()));
 
             let request = serde_json::json!({
-                "jsonrpc": "2.0",
+                "jsonrpc": crate::constants::JSONRPC_VERSION,
                 "method": method,
                 "params": params,
                 "id": self.next_id()
@@ -267,7 +267,7 @@ impl ProtocolAdapter for UnixSocketAdapter {
                 .unwrap_or_else(|_| serde_json::Value::String(args_json.to_owned()));
 
             let request = serde_json::json!({
-                "jsonrpc": "2.0",
+                "jsonrpc": crate::constants::JSONRPC_VERSION,
                 "method": method,
                 "params": params,
             });
@@ -297,7 +297,11 @@ impl ProtocolAdapter for UnixSocketAdapter {
 
     fn is_healthy(&self) -> BoxFuture<'_, bool> {
         Box::pin(async move {
-            self.socket_path.exists() && self.call_json("health.check", "{}").await.is_ok()
+            self.socket_path.exists()
+                && self
+                    .call_json(crate::constants::HEALTH_CHECK, "{}")
+                    .await
+                    .is_ok()
         })
     }
 

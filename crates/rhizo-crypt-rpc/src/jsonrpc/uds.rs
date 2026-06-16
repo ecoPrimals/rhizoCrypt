@@ -162,17 +162,12 @@ impl UdsJsonRpcServer {
     }
 }
 
-/// riboCipher connection-level signal: `[0xEC, 0x01]`.
-///
-/// cellMembrane health probes may prepend this 2-byte prefix before sending
-/// JSON-RPC. Primals MUST accept and discard it, then proceed with normal
-/// protocol detection.
-const RIBOCIPHER_PREFIX: [u8; 2] = [0xEC, 0x01];
+use rhizo_crypt_core::constants::{MITO_BEACON_EXTENDED, MITO_BEACON_SIGNAL};
 
 /// Handle a single UDS connection with optional BTSP handshake enforcement.
 ///
-/// When the first two bytes match [`RIBOCIPHER_PREFIX`], they are silently
-/// consumed before protocol detection proceeds.
+/// When the first two bytes are a mito-beacon signal (`0xEC`/`0xED` + sub-type),
+/// they are silently consumed before protocol detection proceeds.
 ///
 /// When `btsp_required` is `true`, uses first-byte auto-detect with three
 /// branches:
@@ -201,7 +196,7 @@ async fn handle_uds_connection(
     let gate = super::method_gate::MethodGate::from_env();
     let caller = super::method_gate::CallerContext::unix();
 
-    let leftover = consume_ribocipher_prefix(&mut stream).await?;
+    let leftover = consume_mito_beacon_prefix(&mut stream).await?;
 
     if btsp_required {
         let Some(seed) = family_seed else {
@@ -263,7 +258,7 @@ async fn handle_uds_connection(
 /// Distinguish a JSON-line BTSP handshake from plain JSON-RPC.
 ///
 /// The caller has already consumed the leading `{` and any extra bytes from
-/// the riboCipher prefix probe. This function reads the rest of the first
+/// the mito-beacon prefix probe. This function reads the rest of the first
 /// line to check for `"protocol":"btsp"`.
 async fn detect_btsp_or_jsonrpc(
     mut stream: tokio::net::UnixStream,
@@ -335,13 +330,16 @@ async fn detect_btsp_or_jsonrpc(
     }
 }
 
-/// Read the first two bytes from a UDS connection and strip a riboCipher
-/// prefix if present.
+/// Read the first two bytes from a UDS connection and strip a mito-beacon
+/// signal prefix if present.
 ///
-/// Returns any consumed bytes that were **not** a riboCipher prefix so the
+/// Accepts any 2-byte prefix where the first byte is a mito-beacon signal
+/// (`0xEC` or `0xED`). The second byte is a sub-type indicator (discarded).
+///
+/// Returns any consumed bytes that were **not** a mito-beacon signal so the
 /// caller can chain them back onto the stream. An empty `Vec` means either
-/// the prefix was stripped or the connection was empty.
-async fn consume_ribocipher_prefix(
+/// the signal was stripped or the connection was empty.
+async fn consume_mito_beacon_prefix(
     stream: &mut tokio::net::UnixStream,
 ) -> std::io::Result<Vec<u8>> {
     use tokio::io::AsyncReadExt;
@@ -356,8 +354,12 @@ async fn consume_ribocipher_prefix(
         total += n;
     }
 
-    if probe == RIBOCIPHER_PREFIX {
-        debug!("riboCipher prefix accepted, proceeding with protocol detection");
+    if probe[0] == MITO_BEACON_SIGNAL || probe[0] == MITO_BEACON_EXTENDED {
+        debug!(
+            signal = format_args!("0x{:02X}", probe[0]),
+            sub_type = format_args!("0x{:02X}", probe[1]),
+            "mito-beacon signal accepted, proceeding with protocol detection"
+        );
         Ok(Vec::new())
     } else {
         Ok(probe.to_vec())

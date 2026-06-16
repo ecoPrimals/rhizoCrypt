@@ -215,7 +215,7 @@ where
 
     if params.session_id != session_id_hex {
         let err_resp = serde_json::json!({
-            "jsonrpc": "2.0",
+            "jsonrpc": rhizo_crypt_core::constants::JSONRPC_VERSION,
             "error": {
                 "code": -32602,
                 "message": "session_id mismatch"
@@ -238,7 +238,7 @@ where
             server_nonce: String::new(),
         };
         let resp = serde_json::json!({
-            "jsonrpc": "2.0",
+            "jsonrpc": rhizo_crypt_core::constants::JSONRPC_VERSION,
             "result": result,
             "id": request_id
         });
@@ -261,7 +261,7 @@ where
         server_nonce: b64.encode(server_nonce),
     };
     let resp = serde_json::json!({
-        "jsonrpc": "2.0",
+        "jsonrpc": rhizo_crypt_core::constants::JSONRPC_VERSION,
         "result": result,
         "id": request_id
     });

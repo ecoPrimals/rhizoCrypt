@@ -31,9 +31,9 @@ use super::{process_single_request, serialize_response};
 /// required" error. This follows the ecosystem first-byte auto-detect pattern
 /// (PG-35, PG-30).
 const UNAUTHENTICATED_METHODS: &[&str] = &[
-    "health.check",
-    "health.liveness",
-    "health.readiness",
+    rhizo_crypt_core::constants::HEALTH_CHECK,
+    rhizo_crypt_core::constants::HEALTH_LIVENESS,
+    rhizo_crypt_core::constants::HEALTH_READINESS,
     "health",
     "ping",
     "status",

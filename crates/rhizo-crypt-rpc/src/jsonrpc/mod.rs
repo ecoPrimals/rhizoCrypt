@@ -279,7 +279,7 @@ async fn process_single_request(
         }
     };
 
-    if request.jsonrpc != "2.0" {
+    if request.jsonrpc != rhizo_crypt_core::constants::JSONRPC_VERSION {
         return serialize_response(&error_response(
             request.id,
             codes::INVALID_REQUEST,

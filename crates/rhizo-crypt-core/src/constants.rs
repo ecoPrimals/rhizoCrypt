@@ -484,6 +484,33 @@ pub const NEURAL_API_CONNECT_TIMEOUT_SECS: u64 = 2;
 pub const NEURAL_API_READ_TIMEOUT_SECS: u64 = 5;
 
 // ============================================================================
+// GENETICS-LAYER SIGNAL CONSTANTS (Eukaryotic Model)
+// ============================================================================
+
+/// Mito-beacon signal byte: shared/copyable relay access, mesh transport.
+///
+/// Part of the eukaryotic genetics model. The first byte of a 2-byte signal
+/// prefix on UDS connections. `BearDog` owns the signal namespace.
+/// `FAMILY_SEED` is mito-beacon material (legacy naming).
+pub const MITO_BEACON_SIGNAL: u8 = 0xEC;
+
+/// Mito-beacon extended signal byte: relay-mesh variant.
+pub const MITO_BEACON_EXTENDED: u8 = 0xED;
+
+/// Nuclear lineage signal byte: per-user permissions, tiered access.
+///
+/// BearDog-spawned, non-fungible. Wave 115+ evolution — primals should
+/// recognize but not yet act on this signal.
+pub const NUCLEAR_LINEAGE_SIGNAL: u8 = 0xEE;
+
+/// Check whether a byte is a recognized genetics-layer signal.
+#[inline]
+#[must_use]
+pub const fn is_genetics_signal(byte: u8) -> bool {
+    byte == MITO_BEACON_SIGNAL || byte == MITO_BEACON_EXTENDED || byte == NUCLEAR_LINEAGE_SIGNAL
+}
+
+// ============================================================================
 // JSON-RPC WIRE CONSTANTS
 // ============================================================================
 
@@ -498,6 +525,25 @@ pub const PROVENANCE_RECORD_DEHYDRATION_METHOD: &str = "contribution.record_dehy
 
 /// Provenance RPC method: record a provenance event.
 pub const PROVENANCE_RECORD_PROVENANCE_METHOD: &str = "contribution.record_provenance";
+
+// ============================================================================
+// HEALTH METHOD FQNs (dispatch SSOT — matches METHOD_CATALOG in niche.rs)
+// ============================================================================
+
+/// Health check method (full status).
+pub const HEALTH_CHECK: &str = "health.check";
+
+/// Health liveness probe (minimal alive signal).
+pub const HEALTH_LIVENESS: &str = "health.liveness";
+
+/// Health readiness probe (service ready for traffic).
+pub const HEALTH_READINESS: &str = "health.readiness";
+
+/// Health metrics endpoint.
+pub const HEALTH_METRICS: &str = "health.metrics";
+
+/// Public method prefix for health domain (gating/allowlist SSOT).
+pub const HEALTH_METHOD_PREFIX: &str = "health.";
 
 /// Default metrics endpoint path.
 pub const METRICS_PATH: &str = "/metrics";

@@ -41,7 +41,9 @@ pub async fn dispatch_tools_call(
         "dag.dehydration.trigger" | "dag.dehydrate" => {
             dehydration::dispatch_dehydrate(server, arguments).await
         }
-        "health.check" | "status" => health::dispatch_health(server).await,
+        rhizo_crypt_core::constants::HEALTH_CHECK | "status" => {
+            health::dispatch_health(server).await
+        }
         "capabilities.list" => capabilities::dispatch_capability_list(server).await,
         _ => Err(HandlerError::MethodNotFound(format!("tool not found: {tool_name}").into())),
     }

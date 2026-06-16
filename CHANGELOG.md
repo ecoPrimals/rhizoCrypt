@@ -5,6 +5,17 @@ All notable changes to rhizoCrypt will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.17] - 2026-06-16
+
+### Changed
+
+#### Wave 116: Genetics-Layer Mito-Beacon + SSOT Completion (Jun 16, 2026)
+
+- **Mito-beacon signal acceptance (genetics-layer wiring)**: Evolved `riboCipher` prefix handling from exact `[0xEC, 0x01]` match to full mito-beacon signal family. Now accepts any 2-byte prefix starting with `0xEC` (mito-beacon) or `0xED` (mito-beacon extended). Signal constants (`MITO_BEACON_SIGNAL`, `MITO_BEACON_EXTENDED`, `NUCLEAR_LINEAGE_SIGNAL`, `is_genetics_signal()`) centralized in `constants.rs` for ecosystem SSOT. `0xEE` (nuclear lineage) recognized but not yet acted on (Wave 115+ evolution). Addresses Wave 114 "BTSP reject" status — rhizoCrypt now accepts mito-beacon signals per the eukaryotic genetics model.
+- **JSONRPC_VERSION SSOT completed**: Wired `constants::JSONRPC_VERSION` into all remaining 9 production hardcoding sites: `types.rs` (success/error response construction), `mod.rs` (protocol validation), `phase3.rs` (3 BTSP negotiate responses), `registry.rs` (discovery resolve), `loamspine_http/mod.rs` + `wire_types.rs` (HTTP adapter), `unix_socket.rs` (UDS adapter), and `neural_api.rs` (primal announce). Only exception: inline fallback error JSON in `newline.rs` (panic-path, intentionally self-contained).
+- **Health method SSOT**: Added `HEALTH_CHECK`, `HEALTH_LIVENESS`, `HEALTH_READINESS`, `HEALTH_METRICS`, and `HEALTH_METHOD_PREFIX` constants. Wired into handler dispatch (`handler/mod.rs`, `handler/tools.rs`), method gating (`method_gate.rs::PUBLIC_METHOD_PREFIXES`), unauthenticated allowlist (`newline.rs::UNAUTHENTICATED_METHODS`), and health probe (`unix_socket.rs::is_healthy`).
+- **Test terminology evolved**: Renamed `test_ribocipher_*` test functions and comments to `test_mito_beacon_*` across `uds_tests.rs` to match production naming. Added 2 new tests: `test_mito_beacon_extended_signal_accepted` (`0xED`) and `test_mito_beacon_subtype_02_accepted` (`0xEC, 0x02`).
+
 ## [0.14.16] - 2026-06-15
 
 ### Changed

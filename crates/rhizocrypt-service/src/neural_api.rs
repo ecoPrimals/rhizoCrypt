@@ -34,7 +34,7 @@ pub async fn announce_to_biomeos(socket_path: &std::path::Path) {
     );
 
     let request = serde_json::json!({
-        "jsonrpc": "2.0",
+        "jsonrpc": rhizo_crypt_core::constants::JSONRPC_VERSION,
         "method": "primal.announce",
         "params": params,
         "id": 1,

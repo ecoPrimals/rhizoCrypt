@@ -206,7 +206,7 @@ impl LoamSpineHttpClient {
     ) -> std::result::Result<R, NegotiableError> {
         let request_id = self.next_request_id();
         let request = JsonRpcRequest {
-            jsonrpc: "2.0",
+            jsonrpc: crate::constants::JSONRPC_VERSION,
             method,
             params,
             id: request_id,

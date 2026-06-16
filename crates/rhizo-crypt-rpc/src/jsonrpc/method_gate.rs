@@ -49,7 +49,7 @@ pub enum MethodAccessLevel {
 }
 
 /// Methods whose prefix marks them as public.
-const PUBLIC_METHOD_PREFIXES: &[&str] = &["health."];
+const PUBLIC_METHOD_PREFIXES: &[&str] = &[rhizo_crypt_core::constants::HEALTH_METHOD_PREFIX];
 
 /// Exact method names that are always public.
 const PUBLIC_METHODS: &[&str] = &[

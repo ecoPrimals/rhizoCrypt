@@ -128,9 +128,10 @@ impl<T> JsonRpcResponse<T> {
         id: u64,
         expected_id: u64,
     ) -> std::result::Result<(), NegotiableError> {
-        if jsonrpc != "2.0" {
+        if jsonrpc != crate::constants::JSONRPC_VERSION {
             return Err(NegotiableError::Other(RhizoCryptError::integration(format!(
-                "Invalid JSON-RPC version: expected \"2.0\", got \"{jsonrpc}\""
+                "Invalid JSON-RPC version: expected \"{}\", got \"{jsonrpc}\"",
+                crate::constants::JSONRPC_VERSION
             ))));
         }
         if id != expected_id {

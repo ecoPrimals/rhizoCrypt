@@ -216,7 +216,7 @@ impl DiscoveryRegistry {
         let capability_name = capability.to_string();
 
         let request_body = serde_json::json!({
-            "jsonrpc": "2.0",
+            "jsonrpc": crate::constants::JSONRPC_VERSION,
             "method": "discovery.resolve",
             "params": {
                 "capability": capability_name,
