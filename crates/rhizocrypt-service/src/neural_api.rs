@@ -28,77 +28,156 @@ pub async fn announce_to_biomeos(socket_path: &std::path::Path) {
         return;
     };
 
-    let params = rhizo_crypt_core::niche::announce_payload(
-        &socket_path.display().to_string(),
-        Some(std::process::id()),
-    );
-
-    let request = serde_json::json!({
-        "jsonrpc": rhizo_crypt_core::constants::JSONRPC_VERSION,
-        "method": "primal.announce",
-        "params": params,
-        "id": 1,
-    });
+    let request =
+        build_announce_request(&socket_path.display().to_string(), Some(std::process::id()));
 
     match send_jsonrpc_uds(&neural_socket, &request).await {
-        Ok(resp) => {
-            if let Some(result) = resp.get("result") {
-                let caps = result
-                    .get("capabilities_registered")
-                    .and_then(serde_json::Value::as_u64)
-                    .unwrap_or(0);
-                let methods = result
-                    .get("methods_registered")
-                    .and_then(serde_json::Value::as_u64)
-                    .unwrap_or(0);
-                info!(capabilities = caps, methods = methods, "Announced to biomeOS Neural API");
-            } else if let Some(err) = resp.get("error") {
+        Ok(resp) => match parse_announce_response(&resp) {
+            AnnounceResponseOutcome::Registered {
+                capabilities,
+                methods,
+            } => {
+                info!(capabilities, methods, "Announced to biomeOS Neural API");
+            }
+            AnnounceResponseOutcome::Rejected(err) => {
                 warn!(error = %err, "biomeOS Neural API rejected announce");
             }
-        }
+            AnnounceResponseOutcome::NoResult => {}
+        },
         Err(e) => {
             debug!(error = %e, socket = %neural_socket.display(), "biomeOS Neural API announce failed (non-fatal)");
         }
     }
 }
 
-/// Discover the biomeOS neural-api UDS socket via tiered lookup.
-///
-/// 1. `$NEURAL_API_SOCKET` env override
-/// 2. `$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.sock`
-/// 3. `/tmp/biomeos/neural-api-{family}.sock`
+/// Outcome of a `primal.announce` JSON-RPC response.
 #[cfg(unix)]
-fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AnnounceResponseOutcome {
+    /// Announce succeeded with registration counts.
+    Registered {
+        /// Capabilities registered with biomeOS.
+        capabilities: u64,
+        /// Methods registered with biomeOS.
+        methods: u64,
+    },
+    /// biomeOS returned a JSON-RPC error object.
+    Rejected(serde_json::Value),
+    /// Response lacked both `result` and `error`.
+    NoResult,
+}
+
+/// Parse a `primal.announce` JSON-RPC response envelope.
+#[cfg(unix)]
+#[must_use]
+fn parse_announce_response(resp: &serde_json::Value) -> AnnounceResponseOutcome {
+    if let Some(result) = resp.get("result") {
+        let capabilities =
+            result.get("capabilities_registered").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let methods =
+            result.get("methods_registered").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        return AnnounceResponseOutcome::Registered {
+            capabilities,
+            methods,
+        };
+    }
+
+    if let Some(err) = resp.get("error") {
+        return AnnounceResponseOutcome::Rejected(err.clone());
+    }
+
+    AnnounceResponseOutcome::NoResult
+}
+
+/// Build the full `primal.announce` JSON-RPC request envelope.
+#[cfg(unix)]
+#[must_use]
+fn build_announce_request(socket_path: &str, pid: Option<u32>) -> serde_json::Value {
+    let params = rhizo_crypt_core::niche::announce_payload(socket_path, pid);
+
+    serde_json::json!({
+        "jsonrpc": rhizo_crypt_core::constants::JSONRPC_VERSION,
+        "method": "primal.announce",
+        "params": params,
+        "id": 1,
+    })
+}
+
+/// Ordered candidate paths for the biomeOS neural-api socket (tiers 2–3).
+///
+/// Tier 1 (`$NEURAL_API_SOCKET`) is handled separately in
+/// [`resolve_neural_api_socket`].
+#[cfg(unix)]
+#[must_use]
+fn neural_api_socket_candidates(
+    family_id: &str,
+    xdg_runtime_dir: Option<&str>,
+) -> Vec<std::path::PathBuf> {
     use std::path::PathBuf;
 
-    if let Some(path) = SafeEnv::get_optional(SafeEnv::NEURAL_API_SOCKET) {
-        let p = PathBuf::from(&path);
-        if p.exists() {
-            return Some(p);
+    let socket_name = format!("neural-api-{family_id}.sock");
+    let mut candidates = Vec::with_capacity(2);
+
+    if let Some(xdg) = xdg_runtime_dir {
+        candidates
+            .push(PathBuf::from(xdg).join(constants::BIOMEOS_SOCKET_SUBDIR).join(&socket_name));
+    }
+
+    candidates.push(
+        PathBuf::from(constants::POSIX_FALLBACK_TMPDIR)
+            .join(constants::BIOMEOS_SOCKET_SUBDIR)
+            .join(socket_name),
+    );
+
+    candidates
+}
+
+/// Resolve the biomeOS neural-api UDS socket via tiered lookup.
+///
+/// 1. `$NEURAL_API_SOCKET` env override (when `neural_api_socket_env` is set)
+/// 2. `$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.sock`
+/// 3. `/tmp/biomeos/neural-api-{family}.sock`
+///
+/// The `exists` predicate is injectable for unit tests.
+#[cfg(unix)]
+#[must_use]
+fn resolve_neural_api_socket<E>(
+    neural_api_socket_env: Option<&str>,
+    family_id: &str,
+    xdg_runtime_dir: Option<&str>,
+    exists: E,
+) -> Option<std::path::PathBuf>
+where
+    E: Fn(&std::path::Path) -> bool,
+{
+    use std::path::PathBuf;
+
+    if let Some(path) = neural_api_socket_env {
+        let candidate = PathBuf::from(path);
+        if exists(&candidate) {
+            return Some(candidate);
         }
     }
 
+    neural_api_socket_candidates(family_id, xdg_runtime_dir)
+        .into_iter()
+        .find(|candidate| exists(candidate))
+}
+
+/// Discover the biomeOS neural-api UDS socket via tiered lookup.
+#[cfg(unix)]
+fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
     let family = SafeEnv::get_or_default(
         SafeEnv::ECOPRIMALS_FAMILY_ID,
         rhizo_crypt_core::constants::DEFAULT_FAMILY_ID,
     );
-    let socket_name = format!("neural-api-{family}.sock");
 
-    if let Some(xdg) = SafeEnv::get_optional(SafeEnv::XDG_RUNTIME_DIR) {
-        let p = PathBuf::from(xdg).join(constants::BIOMEOS_SOCKET_SUBDIR).join(&socket_name);
-        if p.exists() {
-            return Some(p);
-        }
-    }
-
-    let p = PathBuf::from(constants::POSIX_FALLBACK_TMPDIR)
-        .join(constants::BIOMEOS_SOCKET_SUBDIR)
-        .join(&socket_name);
-    if p.exists() {
-        return Some(p);
-    }
-
-    None
+    resolve_neural_api_socket(
+        SafeEnv::get_optional(SafeEnv::NEURAL_API_SOCKET).as_deref(),
+        &family,
+        SafeEnv::get_optional(SafeEnv::XDG_RUNTIME_DIR).as_deref(),
+        std::path::Path::exists,
+    )
 }
 
 /// Send a single JSON-RPC request over a UDS and read the response.
@@ -140,3 +219,8 @@ async fn send_jsonrpc_uds(
     serde_json::from_str(line.trim())
         .map_err(|e| ServiceError::Discovery(format!("neural-api parse: {e}")))
 }
+
+#[cfg(all(test, unix))]
+#[expect(clippy::unwrap_used, reason = "test code")]
+#[path = "neural_api_tests.rs"]
+mod tests;

@@ -298,10 +298,7 @@ impl ProtocolAdapter for UnixSocketAdapter {
     fn is_healthy(&self) -> BoxFuture<'_, bool> {
         Box::pin(async move {
             self.socket_path.exists()
-                && self
-                    .call_json(crate::constants::HEALTH_CHECK, "{}")
-                    .await
-                    .is_ok()
+                && self.call_json(crate::constants::HEALTH_CHECK, "{}").await.is_ok()
         })
     }
 

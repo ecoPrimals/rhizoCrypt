@@ -43,7 +43,12 @@ impl PrimalLifecycle for RhizoCrypt {
                 }
                 #[cfg(feature = "redb")]
                 StorageBackend::Redb => {
-                    let path = self.config.storage.path.as_deref().unwrap_or(crate::constants::DEFAULT_REDB_FILENAME);
+                    let path = self
+                        .config
+                        .storage
+                        .path
+                        .as_deref()
+                        .unwrap_or(crate::constants::DEFAULT_REDB_FILENAME);
                     tracing::info!(path = %path, "using redb DAG store");
                     let store = crate::store_redb::RedbDagStore::open(path).map_err(|e| {
                         PrimalError::StartupFailed(format!("redb open failed: {e}"))

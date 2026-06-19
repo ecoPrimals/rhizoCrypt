@@ -6,7 +6,10 @@
 use super::*;
 
 /// Collect all `EventType` variants for exhaustive testing.
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "exhaustive variant list requires enumerating all 32 EventType variants"
+)]
 fn all_event_types() -> Vec<EventType> {
     vec![
         EventType::SessionStart,

@@ -193,7 +193,7 @@ async fn handle_uds_connection(
     use crate::btsp::BtspServer;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    let gate = super::method_gate::MethodGate::from_env();
+    let gate = super::method_gate::MethodGate::for_primal(server.primal());
     let caller = super::method_gate::CallerContext::unix();
 
     let leftover = consume_mito_beacon_prefix(&mut stream).await?;
@@ -214,7 +214,11 @@ async fn handle_uds_connection(
             }
             first[0]
         };
-        let extra = if leftover.len() > 1 { &leftover[1..] } else { &[] };
+        let extra = if leftover.len() > 1 {
+            &leftover[1..]
+        } else {
+            &[]
+        };
 
         if first_byte == b'{' {
             detect_btsp_or_jsonrpc(stream, extra, seed, &server, &gate, &caller).await
@@ -287,8 +291,7 @@ async fn detect_btsp_or_jsonrpc(
         }
     }
 
-    let json_end =
-        first_line.iter().rposition(|&b| b != b'\n' && b != b'\r').map_or(0, |i| i + 1);
+    let json_end = first_line.iter().rposition(|&b| b != b'\n' && b != b'\r').map_or(0, |i| i + 1);
     let json_bytes = &first_line[..json_end];
 
     let is_btsp = serde_json::from_slice::<serde_json::Value>(json_bytes)
@@ -303,10 +306,7 @@ async fn detect_btsp_or_jsonrpc(
         let mut rw = tokio::io::join(reader, writer);
         match BtspServer::accept_handshake_jsonline(&mut rw, seed, json_bytes).await {
             Ok(session) => {
-                debug!(
-                    cipher = session.cipher.as_str(),
-                    "BTSP JSON-line handshake complete"
-                );
+                debug!(cipher = session.cipher.as_str(), "BTSP JSON-line handshake complete");
                 serve_after_handshake(rw, server, session).await
             }
             Err(e) => {
@@ -415,13 +415,13 @@ where
             }
             Ok(None) => {
                 debug!("BTSP Phase 3 declined (null cipher), serving plaintext JSON-RPC");
-                let gate = super::method_gate::MethodGate::from_env();
+                let gate = super::method_gate::MethodGate::for_primal(server.primal());
                 let caller = super::method_gate::CallerContext::unix();
                 super::newline::handle_newline_connection(stream, server, &gate, &caller).await
             }
             Err(e) => {
                 warn!(error = %e, "BTSP Phase 3 negotiate failed");
-                let gate = super::method_gate::MethodGate::from_env();
+                let gate = super::method_gate::MethodGate::for_primal(server.primal());
                 let caller = super::method_gate::CallerContext::unix();
                 super::newline::handle_newline_connection(stream, server, &gate, &caller).await
             }
@@ -441,7 +441,7 @@ async fn chain_and_serve<S>(
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
-    let gate = super::method_gate::MethodGate::from_env();
+    let gate = super::method_gate::MethodGate::for_primal(server.primal());
     let caller = super::method_gate::CallerContext::unix();
     let mut prepend = first_line;
     prepend.push(b'\n');
@@ -466,6 +466,9 @@ where
 {
     use crate::btsp::framing;
     use tokio::io::AsyncWriteExt;
+
+    let gate = super::method_gate::MethodGate::for_primal(server.primal());
+    let caller = super::method_gate::CallerContext::unix();
 
     loop {
         let frame = match framing::read_frame(&mut stream).await {
@@ -501,10 +504,7 @@ where
             }
         };
 
-        let gate = super::method_gate::MethodGate::from_env();
-        let caller = super::method_gate::CallerContext::unix();
-        let response =
-            super::process_single_request(server, value, &gate, &caller).await;
+        let response = super::process_single_request(server, value, &gate, &caller).await;
         let resp_bytes = serde_json::to_vec(&response)
             .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
         let encrypted = keys
@@ -551,6 +551,21 @@ pub fn default_socket_path() -> PathBuf {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
+#[path = "uds_tests_support.rs"]
+mod tests_support;
+
+#[cfg(test)]
 #[path = "uds_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "uds_tests_btsp.rs"]
+mod tests_btsp;
+
+#[cfg(test)]
+#[path = "uds_tests_jsonrpc.rs"]
+mod tests_jsonrpc;
+
+#[cfg(test)]
+#[path = "uds_tests_mito_beacon.rs"]
+mod tests_mito_beacon;

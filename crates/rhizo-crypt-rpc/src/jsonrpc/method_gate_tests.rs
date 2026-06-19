@@ -143,6 +143,60 @@ fn presence_verifier_rejects_empty() {
     assert!(v.verify("").is_none());
 }
 
+// ── Capability verifier response parsing ─────────────────────────
+
+#[test]
+fn parse_verify_ionic_success_response() {
+    let line = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+            "valid": true,
+            "scopes": ["dag.*", "crypto.*"],
+            "claims": {
+                "sub": "alice",
+                "scope": ["dag.*", "crypto.*"],
+                "exp": 4_000_000_000u64
+            }
+        }
+    });
+    let claims = parse_verify_ionic_response(&line.to_string()).unwrap();
+    assert_eq!(claims.subject, "alice");
+    assert_eq!(claims.scopes, vec!["dag.*", "crypto.*"]);
+}
+
+#[test]
+fn parse_verify_ionic_rejects_invalid_token() {
+    let line = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": { "valid": false, "scopes": [] }
+    });
+    assert!(parse_verify_ionic_response(&line.to_string()).is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn capability_verifier_falls_back_without_provider() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+    use std::sync::Arc;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    let verifier = CapabilityVerifier::new(registry);
+    let claims = verifier.verify_async("some-token").await.unwrap();
+    assert_eq!(claims.subject, "unverified");
+    assert_eq!(claims.scopes, vec!["*"]);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn capability_verifier_rejects_empty_token() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+    use std::sync::Arc;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    let verifier = CapabilityVerifier::new(registry);
+    assert!(verifier.verify_async("").await.is_none());
+}
+
 // ── Bearer token extraction ──────────────────────────────────────
 
 #[test]

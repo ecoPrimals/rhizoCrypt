@@ -460,8 +460,11 @@ mod tests {
         let registry = DiscoveryRegistry::new("test-rhizocrypt");
 
         let addr: SocketAddr = "127.0.0.1:9600".parse().unwrap();
-        let endpoint =
-            ServiceEndpoint::new("storage-zfs".to_string(), addr.into(), vec![Capability::PayloadStorage]);
+        let endpoint = ServiceEndpoint::new(
+            "storage-zfs".to_string(),
+            addr.into(),
+            vec![Capability::PayloadStorage],
+        );
         registry.register_endpoint(endpoint).await;
 
         let client = StorageClient::discover(&registry).await.unwrap();

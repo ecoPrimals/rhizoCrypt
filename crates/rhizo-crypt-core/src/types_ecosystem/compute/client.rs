@@ -405,10 +405,7 @@ mod tests {
         client.set_connected(addr).await;
 
         // Verify endpoint and state
-        assert_eq!(
-            client.endpoint().await,
-            Some(TransportEndpoint::tcp("127.0.0.1", 9800))
-        );
+        assert_eq!(client.endpoint().await, Some(TransportEndpoint::tcp("127.0.0.1", 9800)));
         assert_eq!(client.state().await, ClientState::Connected);
         assert!(client.is_connected().await);
     }

@@ -121,16 +121,13 @@ where
                 }
                 let mut results = Vec::with_capacity(arr.len());
                 for item in arr {
-                    results.push(
-                        process_single_request(server, item, gate, caller).await,
-                    );
+                    results.push(process_single_request(server, item, gate, caller).await);
                 }
                 let batch = serde_json::json!(results);
                 write_response(&mut writer, &batch).await?;
             }
             value => {
-                let response =
-                    process_single_request(server, value, gate, caller).await;
+                let response = process_single_request(server, value, gate, caller).await;
                 write_response(&mut writer, &response).await?;
             }
         }
@@ -198,7 +195,7 @@ where
                     map.get("id").and_then(|v| serde_json::from_value::<JsonRpcId>(v.clone()).ok());
                 if let Some(m) = method {
                     if UNAUTHENTICATED_METHODS.contains(&m) {
-                        let gate = MethodGate::from_env();
+                        let gate = MethodGate::for_primal(server.primal());
                         let caller = CallerContext::loopback();
                         process_single_request(server, value, &gate, &caller).await
                     } else {
@@ -257,21 +254,23 @@ mod tests {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, duplex};
 
     fn test_server() -> crate::service::RhizoCryptRpcServer {
-        crate::service::RhizoCryptRpcServer::new(Arc::new(
-            RhizoCrypt::new(RhizoCryptConfig::default()),
-        ))
+        crate::service::RhizoCryptRpcServer::new(Arc::new(RhizoCrypt::new(
+            RhizoCryptConfig::default(),
+        )))
     }
 
     /// Write lines to a duplex client, close the write half, then read
     /// all response lines from the read half.
-    async fn roundtrip(rpc_server: crate::service::RhizoCryptRpcServer, input: &[u8]) -> Vec<serde_json::Value> {
+    async fn roundtrip(
+        rpc_server: crate::service::RhizoCryptRpcServer,
+        input: &[u8],
+    ) -> Vec<serde_json::Value> {
         let (mut client, server) = duplex(8192);
         let gate = MethodGate::with_noop(EnforcementMode::Permissive);
         let caller = CallerContext::unix();
-        let handle =
-            tokio::spawn(
-                async move { handle_newline_connection(server, &rpc_server, &gate, &caller).await },
-            );
+        let handle = tokio::spawn(async move {
+            handle_newline_connection(server, &rpc_server, &gate, &caller).await
+        });
 
         AsyncWriteExt::write_all(&mut client, input).await.unwrap();
         AsyncWriteExt::shutdown(&mut client).await.unwrap();
@@ -348,9 +347,13 @@ mod tests {
         assert!(results[0]["result"].is_object());
     }
 
-    async fn liveness_roundtrip(rpc_server: crate::service::RhizoCryptRpcServer, input: &[u8]) -> Vec<serde_json::Value> {
+    async fn liveness_roundtrip(
+        rpc_server: crate::service::RhizoCryptRpcServer,
+        input: &[u8],
+    ) -> Vec<serde_json::Value> {
         let (mut client, server) = duplex(8192);
-        let handle = tokio::spawn(async move { handle_liveness_connection(server, &rpc_server).await });
+        let handle =
+            tokio::spawn(async move { handle_liveness_connection(server, &rpc_server).await });
 
         AsyncWriteExt::write_all(&mut client, input).await.unwrap();
         AsyncWriteExt::shutdown(&mut client).await.unwrap();

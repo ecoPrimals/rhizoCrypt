@@ -156,11 +156,13 @@ impl DiscoveryRegistry {
         }
 
         // Try to discover via discovery source
-        let source = self.discovery_source.read().await;
-        let Some(source_endpoint) = source.clone() else {
+        let source_endpoint = {
+            let source = self.discovery_source.read().await;
+            source.as_ref().cloned()
+        };
+        let Some(source_endpoint) = source_endpoint else {
             return DiscoveryStatus::Unavailable;
         };
-        drop(source);
 
         // Query discovery adapter for the capability
         match self.query_discovery_source(&source_endpoint, capability).await {
@@ -229,9 +231,16 @@ impl DiscoveryRegistry {
             serde_json::to_vec(&request_body).map_err(DiscoveryQueryError::SerializeRequest)?;
 
         let host_header = match source {
-            TransportEndpoint::Tcp { host, port } => format!("{host}:{port}"),
-            TransportEndpoint::Uds { path } => path.clone(),
-            TransportEndpoint::MeshRelay { .. } => "mesh-relay".to_string(),
+            TransportEndpoint::Tcp {
+                host,
+                port,
+            } => format!("{host}:{port}"),
+            TransportEndpoint::Uds {
+                path,
+            } => path.as_str().to_owned(),
+            TransportEndpoint::MeshRelay {
+                ..
+            } => "mesh-relay".to_string(),
         };
 
         let header = format!(
@@ -258,14 +267,8 @@ impl DiscoveryRegistry {
 
         let (mut reader, mut writer) = tokio::io::split(stream);
 
-        writer
-            .write_all(header.as_bytes())
-            .await
-            .map_err(DiscoveryQueryError::WriteFailed)?;
-        writer
-            .write_all(&body_bytes)
-            .await
-            .map_err(DiscoveryQueryError::WriteFailed)?;
+        writer.write_all(header.as_bytes()).await.map_err(DiscoveryQueryError::WriteFailed)?;
+        writer.write_all(&body_bytes).await.map_err(DiscoveryQueryError::WriteFailed)?;
 
         let mut response_buf = Vec::with_capacity(DISCOVERY_RESPONSE_BUFFER_SIZE);
         tokio::time::timeout(timeout, reader.read_to_end(&mut response_buf))
@@ -404,7 +407,7 @@ fn extract_from_object(map: &serde_json::Map<String, serde_json::Value>) -> Vec<
         return extract_capabilities(inner);
     }
     match map.get("name") {
-        Some(serde_json::Value::String(name)) => vec![name.clone()],
+        Some(serde_json::Value::String(name)) => vec![name.to_owned()],
         _ => Vec::new(),
     }
 }
@@ -416,7 +419,7 @@ fn extract_from_array(arr: &[serde_json::Value]) -> Vec<String> {
             serde_json::Value::String(s) => caps.push(s.clone()),
             serde_json::Value::Object(map) => {
                 if let Some(serde_json::Value::String(name)) = map.get("name") {
-                    caps.push(name.clone());
+                    caps.push(name.to_owned());
                 }
             }
             _ => {}
@@ -451,7 +454,7 @@ where
             while let Some(item) = seq.next_element::<serde_json::Value>()? {
                 match item {
                     serde_json::Value::String(s) => caps.push(s),
-                    serde_json::Value::Object(ref map) => {
+                    serde_json::Value::Object(map) => {
                         if let Some(serde_json::Value::String(name)) = map.get("name") {
                             caps.push(name.clone());
                         }

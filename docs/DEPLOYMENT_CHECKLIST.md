@@ -1,7 +1,7 @@
-# DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.7
+# DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.17
 
-**Date**: Jun 10, 2026
-**Version**: 0.14.7
+**Date**: Jun 19, 2026
+**Version**: 0.14.17
 **Status**: PRODUCTION READY
 
 ---
@@ -83,14 +83,14 @@ non-root user (UID 1000).
 
 ```bash
 # Build Docker image (multi-stage musl-static)
-docker build -t rhizocrypt:0.14.7 .
+docker build -t rhizocrypt:0.14.17 .
 
 # Run container
 docker run -d \
   --name rhizocrypt \
   -p 9400:9400 \
   -e RHIZOCRYPT_ENV=production \
-  rhizocrypt:0.14.7
+  rhizocrypt:0.14.17
 
 # Health check (built-in HEALTHCHECK in Dockerfile)
 docker inspect --format='{{.State.Health.Status}}' rhizocrypt
@@ -101,7 +101,7 @@ docker inspect --format='{{.State.Health.Status}}' rhizocrypt
 version: '3.8'
 services:
   rhizocrypt:
-    image: rhizocrypt:0.14.7
+    image: rhizocrypt:0.14.17
     ports:
       - "9400:9400"
     environment:
@@ -130,7 +130,7 @@ spec:
     spec:
       containers:
         - name: rhizocrypt
-          image: rhizocrypt:0.14.7
+          image: rhizocrypt:0.14.17
           ports:
             - containerPort: 9400
           env:
@@ -257,4 +257,4 @@ rhizocrypt doctor --comprehensive
 
 **Created**: December 27, 2025
 **Last Updated**: May 29, 2026
-**Version**: rhizoCrypt 0.14.7
+**Version**: rhizoCrypt 0.14.17

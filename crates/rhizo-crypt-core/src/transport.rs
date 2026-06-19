@@ -241,7 +241,10 @@ impl TransportEndpoint {
     #[must_use]
     pub fn tcp_addr(&self) -> Option<(&str, u16)> {
         match self {
-            Self::Tcp { host, port } => Some((host, *port)),
+            Self::Tcp {
+                host,
+                port,
+            } => Some((host, *port)),
             _ => None,
         }
     }
@@ -249,7 +252,9 @@ impl TransportEndpoint {
     /// Construct a UDS endpoint.
     #[must_use]
     pub fn uds(path: impl Into<String>) -> Self {
-        Self::Uds { path: path.into() }
+        Self::Uds {
+            path: path.into(),
+        }
     }
 
     /// Try to parse an address string into a `TransportEndpoint`.
@@ -306,8 +311,13 @@ impl From<std::net::SocketAddr> for TransportEndpoint {
 impl std::fmt::Display for TransportEndpoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Uds { path } => write!(f, "unix://{path}"),
-            Self::Tcp { host, port } => write!(f, "tcp://{host}:{port}"),
+            Self::Uds {
+                path,
+            } => write!(f, "unix://{path}"),
+            Self::Tcp {
+                host,
+                port,
+            } => write!(f, "tcp://{host}:{port}"),
             Self::MeshRelay {
                 peer_id,
                 capability,
@@ -392,16 +402,23 @@ impl tokio::io::AsyncWrite for TransportStream {
 pub async fn connect_transport(endpoint: &TransportEndpoint) -> std::io::Result<TransportStream> {
     match endpoint {
         #[cfg(unix)]
-        TransportEndpoint::Uds { path } => {
+        TransportEndpoint::Uds {
+            path,
+        } => {
             let stream = tokio::net::UnixStream::connect(path).await?;
             Ok(TransportStream::Unix(stream))
         }
         #[cfg(not(unix))]
-        TransportEndpoint::Uds { path } => Err(std::io::Error::new(
+        TransportEndpoint::Uds {
+            path,
+        } => Err(std::io::Error::new(
             std::io::ErrorKind::Unsupported,
             format!("UDS not available on this platform for {path}"),
         )),
-        TransportEndpoint::Tcp { host, port } => {
+        TransportEndpoint::Tcp {
+            host,
+            port,
+        } => {
             let addr = format!("{host}:{port}");
             let stream = tokio::net::TcpStream::connect(&addr).await?;
             Ok(TransportStream::Tcp(stream))
@@ -518,14 +535,9 @@ pub async fn send_jsonrpc_request(
 
     let (reader, mut writer) = tokio::io::split(stream);
 
-    let payload = format!(
-        "{}\n",
-        serde_json::to_string(request).map_err(JsonRpcTransportError::Serialize)?
-    );
-    writer
-        .write_all(payload.as_bytes())
-        .await
-        .map_err(JsonRpcTransportError::Write)?;
+    let payload =
+        format!("{}\n", serde_json::to_string(request).map_err(JsonRpcTransportError::Serialize)?);
+    writer.write_all(payload.as_bytes()).await.map_err(JsonRpcTransportError::Write)?;
     writer.flush().await.map_err(JsonRpcTransportError::Write)?;
 
     let mut buf_reader = BufReader::new(reader);

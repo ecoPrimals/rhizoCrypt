@@ -159,24 +159,28 @@ impl LoamSpineHttpClient {
     ///
     /// Tries the native method name first. If the server returns "method not found"
     /// (-32601), retries with the compatibility name and caches the result.
-    async fn call_negotiated<T: Serialize + Clone, R: for<'de> Deserialize<'de>>(
+    async fn call_negotiated<T, R>(
         &self,
         native_method: &'static str,
         compat_method: &'static str,
         params: T,
-    ) -> Result<R> {
+    ) -> Result<R>
+    where
+        T: Serialize + Send + Sync,
+        R: for<'de> Deserialize<'de>,
+    {
         let method = self.resolve_method(native_method, compat_method);
 
-        // Fast path: server preference already cached — no clone needed
+        // Fast path: server preference already cached
         if method != native_method {
             return self
-                .call_jsonrpc_raw(method, params)
+                .call_jsonrpc_raw(method, &params)
                 .await
                 .map_err(NegotiableError::into_rhizo_error);
         }
 
-        // Negotiation path: clone only when retry is possible
-        match self.call_jsonrpc_raw(method, params.clone()).await {
+        // Negotiation path: retry with compat name on method-not-found
+        match self.call_jsonrpc_raw(method, &params).await {
             Ok(result) => {
                 self.record_support(MethodSupport::Native);
                 Ok(result)
@@ -188,7 +192,7 @@ impl LoamSpineHttpClient {
                     "Native method not supported, falling back to compat"
                 );
                 self.record_support(MethodSupport::Compat);
-                self.call_jsonrpc_raw(compat_method, params)
+                self.call_jsonrpc_raw(compat_method, &params)
                     .await
                     .map_err(NegotiableError::into_rhizo_error)
             }
@@ -199,11 +203,15 @@ impl LoamSpineHttpClient {
     /// Raw JSON-RPC 2.0 call, returning negotiable errors.
     ///
     /// Validates response protocol version ("2.0") and request/response ID matching.
-    async fn call_jsonrpc_raw<T: Serialize, R: for<'de> Deserialize<'de>>(
+    async fn call_jsonrpc_raw<T, R>(
         &self,
         method: &str,
-        params: T,
-    ) -> std::result::Result<R, NegotiableError> {
+        params: &T,
+    ) -> std::result::Result<R, NegotiableError>
+    where
+        T: Serialize + Sync,
+        R: for<'de> Deserialize<'de>,
+    {
         let request_id = self.next_request_id();
         let request = JsonRpcRequest {
             jsonrpc: crate::constants::JSONRPC_VERSION,
@@ -320,7 +328,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
         }
 
         let request = VerifyRequest {
-            spine_id: commit_ref.spine_id.clone(),
+            spine_id: commit_ref.spine_id.as_str().to_owned(),
             entry_hash: hex::encode(commit_ref.entry_hash),
             index: commit_ref.index,
         };
@@ -369,7 +377,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
         }
 
         let request = GetCommitRequest {
-            spine_id: commit_ref.spine_id.clone(),
+            spine_id: commit_ref.spine_id.as_str().to_owned(),
             entry_hash: hex::encode(commit_ref.entry_hash),
             index: commit_ref.index,
         };
@@ -434,7 +442,7 @@ impl PermanentStorageProvider for LoamSpineHttpClient {
 
         let request = ResolveSliceRequest {
             slice_id: slice.id.to_string(),
-            spine_id: slice.origin.spine_id.clone(),
+            spine_id: slice.origin.spine_id.as_str().to_owned(),
             entry_hash: hex::encode(slice.origin.entry_hash),
             outcome: format!("{outcome:?}"),
             route: "return_to_origin".to_string(),

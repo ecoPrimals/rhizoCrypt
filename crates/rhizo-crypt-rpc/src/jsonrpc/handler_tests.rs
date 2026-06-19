@@ -187,8 +187,7 @@ async fn test_event_append_with_metadata_array() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -211,8 +210,7 @@ async fn test_event_append_with_payload_ref() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -242,8 +240,7 @@ async fn test_event_append_with_agent() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -693,8 +690,7 @@ async fn test_capability_list_aliases() {
     let server = create_test_server().await;
     for method in &["capabilities.list", "capability.list", "primal.capabilities"] {
         let req = make_request(method, None);
-        let result =
-            handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+        let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
         assert!(
             result.get("provided_capabilities").is_some(),
             "capabilities.list alias '{method}' should return Format E wrapper"

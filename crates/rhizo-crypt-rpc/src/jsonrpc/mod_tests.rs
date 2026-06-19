@@ -17,7 +17,7 @@ async fn create_test_primal() -> Arc<RhizoCrypt> {
 #[test]
 fn test_create_router() {
     let primal = Arc::new(RhizoCrypt::new(RhizoCryptConfig::default()));
-    let router = JsonRpcServer::router(primal);
+    let router = JsonRpcServer::router(&primal);
     assert_eq!(rhizo_crypt_core::constants::JSON_RPC_PATH, "/rpc");
     // Router is created successfully (no panic)
     drop(router);
@@ -26,7 +26,7 @@ fn test_create_router() {
 #[tokio::test]
 async fn test_jsonrpc_endpoint_health() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let request_body = serde_json::json!({
         "jsonrpc": "2.0",
@@ -61,7 +61,7 @@ async fn test_jsonrpc_endpoint_health() {
 #[tokio::test]
 async fn test_jsonrpc_endpoint_session_create() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let request_body = serde_json::json!({
         "jsonrpc": "2.0",
@@ -93,7 +93,7 @@ async fn test_jsonrpc_endpoint_session_create() {
 #[tokio::test]
 async fn test_jsonrpc_endpoint_method_not_found() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let request_body = serde_json::json!({
         "jsonrpc": "2.0",
@@ -125,7 +125,7 @@ async fn test_jsonrpc_endpoint_method_not_found() {
 #[tokio::test]
 async fn test_jsonrpc_error_invalid_json() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let response = app
         .oneshot(
@@ -153,14 +153,14 @@ fn test_jsonrpc_server_creation() {
     let primal = Arc::new(RhizoCrypt::new(config.clone()));
     let addr: SocketAddr = "127.0.0.1:0".parse().expect("parse");
     let _server = JsonRpcServer::new(primal, addr);
-    let _router = JsonRpcServer::router(Arc::new(RhizoCrypt::new(config)));
+    let _router = JsonRpcServer::router(&Arc::new(RhizoCrypt::new(config)));
     assert_eq!(rhizo_crypt_core::constants::JSON_RPC_PATH, "/rpc");
 }
 
 #[tokio::test]
 async fn test_jsonrpc_invalid_utf8() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let response = app
         .oneshot(
@@ -184,7 +184,7 @@ async fn test_jsonrpc_invalid_utf8() {
 #[tokio::test]
 async fn test_jsonrpc_empty_batch() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let response = app
         .oneshot(
@@ -208,7 +208,7 @@ async fn test_jsonrpc_empty_batch() {
 #[tokio::test]
 async fn test_jsonrpc_batch_request() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let batch = serde_json::json!([
         {"jsonrpc": "2.0", "method": "health.check", "params": {}, "id": 1},
@@ -239,7 +239,7 @@ async fn test_jsonrpc_batch_request() {
 #[tokio::test]
 async fn test_jsonrpc_wrong_version() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let request_body = serde_json::json!({
         "jsonrpc": "1.0",
@@ -270,7 +270,7 @@ async fn test_jsonrpc_wrong_version() {
 #[tokio::test]
 async fn test_jsonrpc_missing_id() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let request_body = serde_json::json!({
         "jsonrpc": "2.0",
@@ -300,7 +300,7 @@ async fn test_jsonrpc_missing_id() {
 #[tokio::test]
 async fn test_jsonrpc_invalid_params() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let request_body = serde_json::json!({
         "jsonrpc": "2.0",
@@ -331,7 +331,7 @@ async fn test_jsonrpc_invalid_params() {
 #[tokio::test]
 async fn test_jsonrpc_not_an_object_request() {
     let primal = create_test_primal().await;
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let response = app
         .oneshot(
@@ -428,7 +428,7 @@ async fn test_dual_mode_http_client() {
 #[tokio::test]
 async fn test_not_ready_returns_32002_error_code() {
     let primal = Arc::new(RhizoCrypt::new(RhizoCryptConfig::default()));
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let request_body = serde_json::json!({
         "jsonrpc": "2.0",
@@ -461,7 +461,7 @@ async fn test_not_ready_returns_32002_error_code() {
 #[tokio::test]
 async fn test_health_liveness_works_when_not_ready() {
     let primal = Arc::new(RhizoCrypt::new(RhizoCryptConfig::default()));
-    let app = JsonRpcServer::router(primal);
+    let app = JsonRpcServer::router(&primal);
 
     let request_body = serde_json::json!({
         "jsonrpc": "2.0",

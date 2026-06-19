@@ -173,7 +173,10 @@ impl RhizoCrypt {
     /// Returns an error if the primal is not running.
     pub async fn dag_store(&self) -> Result<Arc<DagBackend>> {
         let store = self.dag_store.read().await;
-        store.as_ref().map(Arc::clone).ok_or_else(|| RhizoCryptError::internal("primal not running"))
+        store
+            .as_ref()
+            .map(Arc::clone)
+            .ok_or_else(|| RhizoCryptError::internal("primal not running"))
     }
 
     /// Get the payload store (if running).
@@ -185,7 +188,10 @@ impl RhizoCrypt {
     /// Returns an error if the primal is not running.
     pub async fn payload_store(&self) -> Result<Arc<InMemoryPayloadStore>> {
         let store = self.payload_store.read().await;
-        store.as_ref().map(Arc::clone).ok_or_else(|| RhizoCryptError::internal("primal not running"))
+        store
+            .as_ref()
+            .map(Arc::clone)
+            .ok_or_else(|| RhizoCryptError::internal("primal not running"))
     }
 
     /// Get uptime in seconds.
@@ -343,10 +349,8 @@ impl RhizoCrypt {
     ///
     /// Returns an error if the slice is not found or already resolved.
     pub fn resolve_slice(&self, slice_id: SliceId, outcome: ResolutionOutcome) -> Result<()> {
-        let mut slice_entry = self
-            .slices
-            .get_mut(&slice_id)
-            .ok_or(RhizoCryptError::SliceNotFound(slice_id))?;
+        let mut slice_entry =
+            self.slices.get_mut(&slice_id).ok_or(RhizoCryptError::SliceNotFound(slice_id))?;
 
         {
             let slice = slice_entry.value_mut();

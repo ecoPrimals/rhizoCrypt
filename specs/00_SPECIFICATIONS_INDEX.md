@@ -1,7 +1,7 @@
 # 🔐 RhizoCrypt — Specifications Index
 
 **Last Updated**: Jun 10, 2026  
-**Version**: 0.14.7  
+**Version**: 0.14.17  
 **Status**: Active Development
 
 ---

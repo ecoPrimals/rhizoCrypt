@@ -14,8 +14,7 @@ async fn test_partial_dehydrate_all_vertices() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     for i in 0..3 {
@@ -39,8 +38,7 @@ async fn test_partial_dehydrate_all_vertices() {
     assert_eq!(resp["merkle_root"].as_str().unwrap().len(), 64);
 
     let req = make_request("dag.merkle.root", Some(json!({"session_id": session_id})));
-    let full_root =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let full_root = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert_eq!(
         resp["merkle_root"].as_str().unwrap(),
         full_root.as_str().unwrap(),
@@ -53,8 +51,7 @@ async fn test_partial_dehydrate_subset() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let mut vertex_ids = Vec::new();
@@ -90,8 +87,7 @@ async fn test_partial_dehydrate_does_not_close_session() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -119,8 +115,7 @@ async fn test_partial_dehydrate_via_provenance_alias() {
     let server = create_test_server().await;
 
     let req = make_request("provenance.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -143,8 +138,7 @@ async fn test_partial_dehydrate_empty_session() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request("dag.partial_dehydrate", Some(json!({"session_id": session_id})));
@@ -177,8 +171,7 @@ async fn test_partial_dehydrate_idempotent() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(

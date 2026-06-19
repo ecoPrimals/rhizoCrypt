@@ -6,10 +6,12 @@
 //! Extracted from `service.rs` to keep production modules under 700L.
 //! Included via `#[path]` in `service.rs`.
 
-use crate::service::{parse_payload_ref, sign_vertex_if_available, RhizoCryptRpcServer};
-use crate::service_types::{AppendEventRequest, QueryRequest};
 use crate::error::RpcError;
-use rhizo_crypt_core::{DagStore, MerkleProof, MerkleRoot, SessionId, Vertex, VertexBuilder, VertexId};
+use crate::service::{RhizoCryptRpcServer, parse_payload_ref, sign_vertex_if_available};
+use crate::service_types::{AppendEventRequest, QueryRequest};
+use rhizo_crypt_core::{
+    DagStore, MerkleProof, MerkleRoot, SessionId, Vertex, VertexBuilder, VertexId,
+};
 
 impl RhizoCryptRpcServer {
     pub(crate) async fn impl_append_event(
@@ -135,10 +137,7 @@ impl RhizoCryptRpcServer {
         self.primal.generate_merkle_proof(session_id, vertex_id).await.map_err(RpcError::from)
     }
 
-    pub(crate) async fn impl_verify_proof(
-        &self,
-        proof: MerkleProof,
-    ) -> Result<bool, RpcError> {
+    pub(crate) async fn impl_verify_proof(&self, proof: MerkleProof) -> Result<bool, RpcError> {
         let session_id = self
             .primal
             .session_for_vertex(proof.vertex_id)

@@ -39,8 +39,7 @@ async fn test_readiness_gate_rejects_dag_methods_when_not_running() {
 
     for method in dag_methods {
         let req = make_request(method, None);
-        let err =
-            handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap_err();
+        let err = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap_err();
         assert!(
             matches!(err, HandlerError::NotReady),
             "{method} should return NotReady when primal is not running"
@@ -64,13 +63,8 @@ async fn test_readiness_gate_allows_health_probes_when_not_running() {
     ];
 
     for method in allowed_methods {
-        let result = handle_request(
-            &server,
-            make_request(method, None),
-            &test_gate(),
-            &test_caller(),
-        )
-        .await;
+        let result =
+            handle_request(&server, make_request(method, None), &test_gate(), &test_caller()).await;
         assert!(
             result.is_ok(),
             "{method} should succeed even when primal is not running, got: {result:?}"

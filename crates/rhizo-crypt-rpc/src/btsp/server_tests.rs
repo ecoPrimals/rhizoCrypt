@@ -77,9 +77,10 @@ async fn full_handshake_round_trip() {
     let family_seed = b"test-family-seed-for-btsp-test!!";
     let (mut client_stream, mut server_stream) = duplex(8192);
 
-    let server_handle = tokio::spawn(async move {
-        BtspServer::accept_handshake(&mut server_stream, family_seed).await
-    });
+    let server_handle =
+        tokio::spawn(
+            async move { BtspServer::accept_handshake(&mut server_stream, family_seed).await },
+        );
 
     let client_result = client_handshake(&mut client_stream, family_seed).await;
     let server_result = server_handle.await.expect("server join");

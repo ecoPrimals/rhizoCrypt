@@ -69,8 +69,11 @@ fn test_discovery_status() {
     let failed = DiscoveryStatus::Failed("test error".to_string());
     assert!(!failed.is_available());
 
-    let endpoint =
-        ServiceEndpoint::new("test", TransportEndpoint::tcp("127.0.0.1", 9000), vec![Capability::Signing]);
+    let endpoint = ServiceEndpoint::new(
+        "test",
+        TransportEndpoint::tcp("127.0.0.1", 9000),
+        vec![Capability::Signing],
+    );
     let available = DiscoveryStatus::Available(vec![endpoint]);
     assert!(available.is_available());
     assert!(available.first_endpoint().is_some());
@@ -594,8 +597,11 @@ async fn test_discover_unhealthy_then_empty_rpc_returns_unavailable() {
     tokio::spawn(serve_one_http_json_response(listener, body, None));
 
     let registry = DiscoveryRegistry::new("rhizoCrypt");
-    let mut endpoint =
-        ServiceEndpoint::new("stale", TransportEndpoint::tcp("127.0.0.1", 9000), vec![Capability::Signing]);
+    let mut endpoint = ServiceEndpoint::new(
+        "stale",
+        TransportEndpoint::tcp("127.0.0.1", 9000),
+        vec![Capability::Signing],
+    );
     endpoint.last_healthy =
         std::time::Instant::now().checked_sub(std::time::Duration::from_secs(300)).unwrap();
     registry.register_endpoint(endpoint).await;

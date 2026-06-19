@@ -19,9 +19,10 @@
 //! ## Token verification (JH-1 ready)
 //!
 //! The [`TokenVerifier`] trait abstracts token validation. The default
-//! [`NoopVerifier`] accepts any token (presence-only check); the production
-//! [`PresenceVerifier`] provides the same semantics until JH-11 key
-//! distribution ships a real cryptographic verifier.
+//! [`NoopVerifier`] accepts any token (presence-only check); production
+//! uses [`CapabilityVerifier`] when a [`DiscoveryRegistry`] is available,
+//! falling back to [`PresenceVerifier`] when no `crypto:signing` provider
+//! is discoverable.
 //!
 //! ## Bearer token extraction
 //!
@@ -33,7 +34,14 @@
 //! Follows the ecosystem-standard pattern from primalSpring v0.9.25
 //! `wateringHole/METHOD_GATE_STANDARD.md`.
 
+use rhizo_crypt_core::constants::{PROVENANCE_CONNECTION_TIMEOUT, PROVENANCE_RESPONSE_TIMEOUT};
+use rhizo_crypt_core::discovery::{Capability, DiscoveryRegistry, ServiceEndpoint};
+use rhizo_crypt_core::transport::{JsonRpcTransportError, send_jsonrpc_request};
 use serde_json::Value;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 
 // ============================================================================
 // METHOD CLASSIFICATION
@@ -128,12 +136,22 @@ pub struct VerifiedClaims {
 }
 
 /// Abstraction over token verification so tests can use [`NoopVerifier`]
-/// and production uses [`PresenceVerifier`] (or any future provider).
+/// and production uses [`CapabilityVerifier`] (or [`PresenceVerifier`] fallback).
 pub trait TokenVerifier: Send + Sync + std::fmt::Debug {
     /// Verify a bearer token string and return the embedded claims.
     ///
     /// Returns `None` if the token is invalid, expired, or unverifiable.
     fn verify(&self, token: &str) -> Option<VerifiedClaims>;
+
+    /// Async verification — preferred on Tokio runtimes to avoid blocking.
+    ///
+    /// Default implementation delegates to [`Self::verify`].
+    fn verify_async<'a>(
+        &'a self,
+        token: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Option<VerifiedClaims>> + Send + 'a>> {
+        Box::pin(std::future::ready(self.verify(token)))
+    }
 }
 
 /// Accepts any non-empty token as valid with wildcard scope.
@@ -175,6 +193,227 @@ impl TokenVerifier for PresenceVerifier {
             expires_in: None,
         })
     }
+}
+
+// ============================================================================
+// CAPABILITY-BASED VERIFIER
+// ============================================================================
+
+/// TTL for cached `crypto:signing` provider endpoint lookups.
+const SIGNING_PROVIDER_CACHE_TTL: Duration = Duration::from_secs(30);
+
+/// JSON-RPC method invoked on discovered signing providers for ionic verification.
+const AUTH_VERIFY_IONIC_METHOD: &str = "auth.verify_ionic";
+
+/// Errors during capability-discovered token verification (internal only).
+#[derive(Debug, thiserror::Error)]
+enum CapabilityVerifyError {
+    /// No `crypto:signing` provider could be discovered.
+    #[error("no signing provider available")]
+    NoProvider,
+    /// JSON-RPC transport to the signing provider failed.
+    #[error("transport error: {0}")]
+    Transport(#[from] JsonRpcTransportError),
+    /// Response body could not be parsed into claims.
+    #[error("invalid verify response: {0}")]
+    InvalidResponse(String),
+}
+
+/// Cached signing-provider endpoint from discovery.
+#[derive(Debug, Clone)]
+struct CachedSigningProvider {
+    endpoint: ServiceEndpoint,
+    fetched_at: Instant,
+}
+
+/// Runtime capability-discovered token verifier.
+///
+/// Discovers any primal advertising `crypto:signing` via [`DiscoveryRegistry`],
+/// then delegates ionic token validation to `auth.verify_ionic` over JSON-RPC.
+/// When no provider is available, falls back to [`PresenceVerifier`] with an
+/// explicit warning log.
+#[derive(Debug)]
+pub struct CapabilityVerifier {
+    registry: Arc<DiscoveryRegistry>,
+    cached_provider: RwLock<Option<CachedSigningProvider>>,
+    presence_fallback: PresenceVerifier,
+}
+
+impl CapabilityVerifier {
+    /// Create a verifier backed by the given discovery registry.
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn, reason = "Arc parameter is not const-constructible")]
+    pub fn new(registry: Arc<DiscoveryRegistry>) -> Self {
+        Self {
+            registry,
+            cached_provider: RwLock::new(None),
+            presence_fallback: PresenceVerifier,
+        }
+    }
+
+    async fn verify_via_capability(&self, token: &str) -> Option<VerifiedClaims> {
+        if token.is_empty() {
+            return None;
+        }
+
+        match self.verify_with_provider(token).await {
+            Ok(claims) => Some(claims),
+            Err(CapabilityVerifyError::NoProvider) => {
+                tracing::warn!(
+                    capability = %Capability::Signing,
+                    "method gate: no crypto:signing provider — falling back to presence-only verification"
+                );
+                self.presence_fallback.verify(token)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "method gate: capability token verification failed");
+                None
+            }
+        }
+    }
+
+    async fn verify_with_provider(
+        &self,
+        token: &str,
+    ) -> Result<VerifiedClaims, CapabilityVerifyError> {
+        let endpoint = self.resolve_signing_endpoint().await?;
+        let transport = endpoint.endpoint.clone();
+
+        let request = serde_json::json!({
+            "jsonrpc": rhizo_crypt_core::constants::JSONRPC_VERSION,
+            "method": AUTH_VERIFY_IONIC_METHOD,
+            "params": { "token": token },
+            "id": 1
+        });
+
+        let response_line = send_jsonrpc_request(
+            &transport,
+            &request,
+            PROVENANCE_CONNECTION_TIMEOUT,
+            PROVENANCE_RESPONSE_TIMEOUT,
+        )
+        .await?;
+
+        parse_verify_ionic_response(&response_line).map_err(CapabilityVerifyError::InvalidResponse)
+    }
+
+    async fn resolve_signing_endpoint(&self) -> Result<ServiceEndpoint, CapabilityVerifyError> {
+        if let Ok(guard) = self.cached_provider.read()
+            && let Some(cached) = guard.as_ref()
+            && cached.fetched_at.elapsed() < SIGNING_PROVIDER_CACHE_TTL
+        {
+            return Ok(cached.endpoint.clone());
+        }
+
+        let status = self.registry.discover(&Capability::Signing).await;
+        let endpoint = match status {
+            rhizo_crypt_core::discovery::DiscoveryStatus::Available(mut endpoints) => {
+                endpoints.pop().ok_or(CapabilityVerifyError::NoProvider)?
+            }
+            rhizo_crypt_core::discovery::DiscoveryStatus::Unavailable
+            | rhizo_crypt_core::discovery::DiscoveryStatus::Discovering => {
+                return Err(CapabilityVerifyError::NoProvider);
+            }
+            rhizo_crypt_core::discovery::DiscoveryStatus::Failed(err) => {
+                tracing::debug!(error = %err, "signing provider discovery failed");
+                return Err(CapabilityVerifyError::NoProvider);
+            }
+        };
+
+        if let Ok(mut guard) = self.cached_provider.write() {
+            *guard = Some(CachedSigningProvider {
+                endpoint: endpoint.clone(),
+                fetched_at: Instant::now(),
+            });
+        }
+
+        Ok(endpoint)
+    }
+}
+
+impl TokenVerifier for CapabilityVerifier {
+    fn verify(&self, token: &str) -> Option<VerifiedClaims> {
+        if token.is_empty() {
+            return None;
+        }
+        tokio::runtime::Handle::try_current().map_or_else(
+            |_| {
+                tracing::debug!(
+                    "method gate: no Tokio runtime for async verification — using presence fallback"
+                );
+                self.presence_fallback.verify(token)
+            },
+            |handle| handle.block_on(self.verify_via_capability(token)),
+        )
+    }
+
+    fn verify_async<'a>(
+        &'a self,
+        token: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Option<VerifiedClaims>> + Send + 'a>> {
+        Box::pin(self.verify_via_capability(token))
+    }
+}
+
+/// Parse a JSON-RPC `auth.verify_ionic` response into [`VerifiedClaims`].
+fn parse_verify_ionic_response(response_line: &str) -> Result<VerifiedClaims, String> {
+    let envelope: Value =
+        serde_json::from_str(response_line).map_err(|e| format!("not valid JSON: {e}"))?;
+
+    if envelope.get("error").is_some() {
+        return Err("JSON-RPC error response".to_owned());
+    }
+
+    let result = envelope.get("result").ok_or_else(|| "missing result field".to_owned())?;
+
+    let valid = result.get("valid").and_then(Value::as_bool).unwrap_or(false);
+    if !valid {
+        return Err("token marked invalid by provider".to_owned());
+    }
+
+    let claims = result.get("claims").ok_or_else(|| "missing claims".to_owned())?;
+
+    let subject = claims
+        .get("sub")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| "missing subject (sub)".to_owned())?;
+
+    let scopes = extract_scope_list(result).ok_or_else(|| "missing scopes".to_owned())?;
+
+    let expires_in = expires_in_from_claims(claims);
+
+    Ok(VerifiedClaims {
+        subject,
+        scopes,
+        expires_in,
+    })
+}
+
+/// Extract scope patterns from an `auth.verify_ionic` result object.
+fn extract_scope_list(result: &Value) -> Option<Vec<String>> {
+    for key in ["scopes", "scope"] {
+        if let Some(arr) = result.get(key).and_then(Value::as_array) {
+            let scopes: Vec<String> =
+                arr.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect();
+            if !scopes.is_empty() {
+                return Some(scopes);
+            }
+        }
+    }
+    result
+        .get("claims")
+        .and_then(|c| c.get("scope").or_else(|| c.get("scopes")))
+        .and_then(Value::as_array)
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect())
+        .filter(|v: &Vec<String>| !v.is_empty())
+}
+
+/// Compute seconds until token expiry from JWT-style `exp` claim.
+fn expires_in_from_claims(claims: &Value) -> Option<u64> {
+    let exp = claims.get("exp")?.as_u64()?;
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
+    exp.checked_sub(now)
 }
 
 // ============================================================================
@@ -265,9 +504,17 @@ impl CallerContext {
         }
     }
 
-    /// Run token verification and populate `verified_claims`.
+    /// Run token verification and populate `verified_claims` (sync).
     pub fn verify_token(&mut self, verifier: &dyn TokenVerifier) {
         self.verified_claims = self.bearer_token.as_deref().and_then(|t| verifier.verify(t));
+    }
+
+    /// Run token verification asynchronously (preferred on Tokio runtimes).
+    pub async fn verify_token_async(&mut self, verifier: &dyn TokenVerifier) {
+        self.verified_claims = match self.bearer_token.as_deref() {
+            Some(t) => verifier.verify_async(t).await,
+            None => None,
+        };
     }
 
     /// Whether the token has been verified (not just present).
@@ -295,13 +542,11 @@ impl EnforcementMode {
     /// Defaults to `Permissive` if unset or unrecognized.
     #[must_use]
     pub fn from_env() -> Self {
-        rhizo_crypt_core::SafeEnv::get_optional(rhizo_crypt_core::SafeEnv::RHIZOCRYPT_AUTH_MODE).map_or(
-            Self::Permissive,
-            |v| match v.to_lowercase().as_str() {
+        rhizo_crypt_core::SafeEnv::get_optional(rhizo_crypt_core::SafeEnv::RHIZOCRYPT_AUTH_MODE)
+            .map_or(Self::Permissive, |v| match v.to_lowercase().as_str() {
                 "enforced" | "enforce" | "strict" => Self::Enforced,
                 _ => Self::Permissive,
-            },
-        )
+            })
     }
 
     /// Human-readable label for diagnostics and `auth.mode` responses.
@@ -342,11 +587,35 @@ impl MethodGate {
 
     /// Create a gate from the environment (`RHIZOCRYPT_AUTH_MODE`).
     ///
-    /// Uses [`PresenceVerifier`] as the default verifier (presence-only
-    /// until JH-11 key distribution is available).
+    /// Without a discovery registry this uses [`PresenceVerifier`]. Prefer
+    /// [`Self::from_env_with_registry`] or [`Self::with_discovery`] when a
+    /// [`DiscoveryRegistry`] is available.
     #[must_use]
     pub fn from_env() -> Self {
-        Self::new(EnforcementMode::from_env(), Box::new(PresenceVerifier))
+        Self::from_env_with_registry(None)
+    }
+
+    /// Create a gate from the environment, wiring [`CapabilityVerifier`] when
+    /// a discovery registry is provided.
+    #[must_use]
+    pub fn from_env_with_registry(registry: Option<Arc<DiscoveryRegistry>>) -> Self {
+        let mode = EnforcementMode::from_env();
+        registry.map_or_else(
+            || Self::new(mode, Box::new(PresenceVerifier)),
+            |reg| Self::with_discovery(mode, reg),
+        )
+    }
+
+    /// Create a gate with capability-discovered token verification.
+    #[must_use]
+    pub fn with_discovery(mode: EnforcementMode, registry: Arc<DiscoveryRegistry>) -> Self {
+        Self::new(mode, Box::new(CapabilityVerifier::new(registry)))
+    }
+
+    /// Create a gate from the environment using a primal's discovery registry.
+    #[must_use]
+    pub fn for_primal(primal: &rhizo_crypt_core::RhizoCrypt) -> Self {
+        Self::from_env_with_registry(Some(Arc::clone(primal.discovery_registry())))
     }
 
     /// Create a gate with a specific verifier (useful for testing).

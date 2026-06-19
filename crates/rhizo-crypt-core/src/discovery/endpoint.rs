@@ -93,11 +93,8 @@ mod tests {
 
     #[test]
     fn test_service_endpoint_health_interval() {
-        let mut ep = ServiceEndpoint::new(
-            "test",
-            tcp_ep("127.0.0.1:9000"),
-            vec![Capability::Signing],
-        );
+        let mut ep =
+            ServiceEndpoint::new("test", tcp_ep("127.0.0.1:9000"), vec![Capability::Signing]);
 
         assert_eq!(ep.health_interval, crate::constants::DEFAULT_HEALTH_CHECK_INTERVAL);
 
@@ -127,11 +124,8 @@ mod tests {
 
     #[test]
     fn test_endpoint_static_service_id() {
-        let ep = ServiceEndpoint::new(
-            "static-id",
-            tcp_ep("127.0.0.1:9003"),
-            vec![Capability::Signing],
-        );
+        let ep =
+            ServiceEndpoint::new("static-id", tcp_ep("127.0.0.1:9003"), vec![Capability::Signing]);
         assert_eq!(ep.service_id.as_ref(), "static-id");
     }
 
@@ -146,7 +140,9 @@ mod tests {
     fn test_uds_endpoint() {
         let ep = ServiceEndpoint::new(
             "uds-service",
-            TransportEndpoint::Uds { path: "/run/biomeos/test.sock".into() },
+            TransportEndpoint::Uds {
+                path: "/run/biomeos/test.sock".into(),
+            },
             vec![Capability::Signing],
         );
         assert!(matches!(ep.endpoint, TransportEndpoint::Uds { .. }));

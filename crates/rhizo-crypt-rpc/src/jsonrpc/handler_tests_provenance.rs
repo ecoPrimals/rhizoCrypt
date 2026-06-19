@@ -28,8 +28,7 @@ async fn test_provenance_event_append_alias() {
     let server = create_test_server().await;
 
     let req = make_request("provenance.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -51,8 +50,7 @@ async fn test_provenance_dehydrate_alias() {
     let server = create_test_server().await;
 
     let req = make_request("provenance.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -76,8 +74,7 @@ async fn test_provenance_full_pipeline_via_aliases() {
     let server = create_test_server().await;
 
     let req = make_request("provenance.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -111,8 +108,7 @@ async fn test_session_get_returns_summary_fields() {
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "summary-test"})),
     );
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(

@@ -161,8 +161,7 @@ async fn test_event_append_invalid_event_type() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -181,8 +180,7 @@ async fn test_event_append_missing_event_type() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request("dag.event.append", Some(json!({"session_id": session_id})));
@@ -519,8 +517,7 @@ async fn test_slice_checkout_missing_entry_index() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(

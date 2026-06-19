@@ -295,8 +295,7 @@ impl ProtocolAdapter for TarpcAdapter {
                     client
                 };
 
-                let call_future =
-                    client.call(tarpc::context::current(), method_owned, args_owned);
+                let call_future = client.call(tarpc::context::current(), method_owned, args_owned);
 
                 let result = timeout(self.timeout_duration, call_future).await.map_err(|_| {
                     RhizoCryptError::integration(format!(

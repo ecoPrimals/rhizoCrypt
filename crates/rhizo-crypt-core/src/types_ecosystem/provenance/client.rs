@@ -83,16 +83,15 @@ impl ProvenanceNotifier {
         }
 
         if let Some(ref addr) = self.config.push_address {
-            let transport = serde_json::from_str::<TransportEndpoint>(addr)
-                .or_else(|_| {
-                    addr.parse::<std::net::SocketAddr>()
-                        .map(|sa| TransportEndpoint::tcp(sa.ip().to_string(), sa.port()))
-                        .map_err(|e| {
-                            RhizoCryptError::integration(format!(
-                                "Invalid provenance provider address '{addr}': {e}"
-                            ))
-                        })
-                })?;
+            let transport = serde_json::from_str::<TransportEndpoint>(addr).or_else(|_| {
+                addr.parse::<std::net::SocketAddr>()
+                    .map(|sa| TransportEndpoint::tcp(sa.ip().to_string(), sa.port()))
+                    .map_err(|e| {
+                        RhizoCryptError::integration(format!(
+                            "Invalid provenance provider address '{addr}': {e}"
+                        ))
+                    })
+            })?;
 
             debug!(endpoint = %transport, "Connecting to provenance provider");
             *self.endpoint.write().await = Some(transport);
@@ -500,10 +499,7 @@ mod tests {
         let result = notifier.connect().await;
         assert!(result.is_ok());
         assert_eq!(notifier.state().await, ClientState::Connected);
-        let expected = crate::transport::TransportEndpoint::tcp(
-            addr.ip().to_string(),
-            addr.port(),
-        );
+        let expected = crate::transport::TransportEndpoint::tcp(addr.ip().to_string(), addr.port());
         assert_eq!(notifier.endpoint().await, Some(expected));
     }
 

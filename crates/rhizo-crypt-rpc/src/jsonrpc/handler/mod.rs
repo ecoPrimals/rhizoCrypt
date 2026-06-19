@@ -124,12 +124,8 @@ pub async fn handle_request(
         rhizo_crypt_core::constants::HEALTH_LIVENESS | "ping" | "health" => {
             Ok(health::dispatch_liveness(server))
         }
-        rhizo_crypt_core::constants::HEALTH_READINESS => {
-            health::dispatch_readiness(server).await
-        }
-        rhizo_crypt_core::constants::HEALTH_METRICS => {
-            health::dispatch_metrics(server).await
-        }
+        rhizo_crypt_core::constants::HEALTH_READINESS => health::dispatch_readiness(server).await,
+        rhizo_crypt_core::constants::HEALTH_METRICS => health::dispatch_metrics(server).await,
         "identity.get" => Ok(capabilities::dispatch_identity_get()),
         "capabilities.list" | "capability.list" | "primal.capabilities" => {
             capabilities::dispatch_capability_list(server).await
@@ -172,6 +168,10 @@ mod tests_provenance;
 #[cfg(test)]
 #[path = "../handler_tests_dehydrate.rs"]
 mod tests_dehydrate;
+
+#[cfg(test)]
+#[path = "../handler_tests_mesh.rs"]
+mod tests_mesh;
 
 #[cfg(test)]
 #[path = "../handler_proptests.rs"]

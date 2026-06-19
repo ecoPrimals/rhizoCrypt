@@ -102,8 +102,8 @@ impl PermanentStorageClient {
     pub async fn commit(&self, summary: &DehydrationSummary) -> Result<CommitRef> {
         tracing::debug!("Committing dehydration summary to permanent storage");
 
-        let request = CommitRequest {
-            summary: summary.clone(),
+        let request = CommitRequestRef {
+            summary,
         };
 
         let response: CommitResponse = self.adapter.call(wire::COMMIT_SESSION, request).await?;
@@ -117,8 +117,8 @@ impl PermanentStorageClient {
     ///
     /// Returns an error if the RPC call fails.
     pub async fn verify_commit(&self, commit_ref: &CommitRef) -> Result<bool> {
-        let request = VerifyCommitRequest {
-            commit_ref: commit_ref.clone(),
+        let request = VerifyCommitRequestRef {
+            commit_ref,
         };
 
         let response: VerifyCommitResponse =
@@ -133,8 +133,8 @@ impl PermanentStorageClient {
     ///
     /// Returns an error if the RPC call fails.
     pub async fn get_commit(&self, commit_ref: &CommitRef) -> Result<Option<DehydrationSummary>> {
-        let request = GetCommitRequest {
-            commit_ref: commit_ref.clone(),
+        let request = GetCommitRequestRef {
+            commit_ref,
         };
 
         let response: GetCommitResponse = self.adapter.call(wire::COMMIT_GET, request).await?;
@@ -153,10 +153,10 @@ impl PermanentStorageClient {
         entry_hash: &[u8; 32],
         holder: &Did,
     ) -> Result<SliceOrigin> {
-        let request = CheckoutSliceRequest {
-            spine_id: spine_id.to_string(),
+        let request = CheckoutSliceRequestRef {
+            spine_id,
             entry_hash: *entry_hash,
-            holder: holder.clone(),
+            holder,
         };
 
         let response: CheckoutSliceResponse =
@@ -171,9 +171,9 @@ impl PermanentStorageClient {
     ///
     /// Returns an error if the RPC call fails.
     pub async fn resolve_slice(&self, slice: &Slice, outcome: &ResolutionOutcome) -> Result<()> {
-        let request = ResolveSliceRequest {
-            slice: slice.clone(),
-            outcome: outcome.clone(),
+        let request = ResolveSliceRequestRef {
+            slice,
+            outcome,
         };
 
         let _response: ResolveSliceResponse =
@@ -204,6 +204,35 @@ impl PermanentStorageClient {
 // Request/Response DTOs
 // ============================================================================
 
+#[derive(Serialize)]
+struct CommitRequestRef<'a> {
+    summary: &'a DehydrationSummary,
+}
+
+#[derive(Serialize)]
+struct VerifyCommitRequestRef<'a> {
+    commit_ref: &'a CommitRef,
+}
+
+#[derive(Serialize)]
+struct GetCommitRequestRef<'a> {
+    commit_ref: &'a CommitRef,
+}
+
+#[derive(Serialize)]
+struct CheckoutSliceRequestRef<'a> {
+    spine_id: &'a str,
+    entry_hash: [u8; 32],
+    holder: &'a Did,
+}
+
+#[derive(Serialize)]
+struct ResolveSliceRequestRef<'a> {
+    slice: &'a Slice,
+    outcome: &'a ResolutionOutcome,
+}
+
+#[cfg(test)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CommitRequest {
     summary: DehydrationSummary,
@@ -214,6 +243,7 @@ struct CommitResponse {
     commit_ref: CommitRef,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct VerifyCommitRequest {
     commit_ref: CommitRef,
@@ -224,6 +254,7 @@ struct VerifyCommitResponse {
     valid: bool,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct GetCommitRequest {
     commit_ref: CommitRef,
@@ -234,6 +265,7 @@ struct GetCommitResponse {
     summary: Option<DehydrationSummary>,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CheckoutSliceRequest {
     spine_id: String,
@@ -246,6 +278,7 @@ struct CheckoutSliceResponse {
     origin: SliceOrigin,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ResolveSliceRequest {
     slice: Slice,
@@ -501,8 +534,11 @@ mod tests {
         registry.register_endpoint(endpoint1).await;
 
         let addr2: SocketAddr = "127.0.0.1:9701".parse().unwrap();
-        let endpoint2 =
-            ServiceEndpoint::new("ledger-secondary", addr2.into(), vec![Capability::PermanentCommit]);
+        let endpoint2 = ServiceEndpoint::new(
+            "ledger-secondary",
+            addr2.into(),
+            vec![Capability::PermanentCommit],
+        );
         registry.register_endpoint(endpoint2).await;
 
         // Should discover one of them

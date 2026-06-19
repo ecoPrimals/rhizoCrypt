@@ -180,8 +180,9 @@ impl SongbirdClient {
                 client
             };
 
+            let service_id = registration.service_id.clone();
             let rpc_result = client
-                .register(tarpc::context::current(), registration.clone())
+                .register(tarpc::context::current(), registration)
                 .await
                 .map_err(|e| RhizoCryptError::integration(format!("tarpc error: {e}")))?;
 
@@ -189,7 +190,7 @@ impl SongbirdClient {
                 success: rpc_result.success,
                 message: rpc_result.message,
                 service_id: if rpc_result.success {
-                    Some(registration.service_id)
+                    Some(service_id)
                 } else {
                     None
                 },
@@ -404,24 +405,23 @@ impl SongbirdClient {
     ///
     /// Returns `RhizoCryptError::Integration` if unregistration fails.
     pub async fn unregister(&self) -> Result<()> {
-        let service_id = self.service_id.read().await.clone();
+        let Some(id) = self.service_id.write().await.take() else {
+            return Ok(());
+        };
 
-        if let Some(id) = service_id {
-            info!(service_id = %id, "Unregistering from Songbird mesh");
+        info!(service_id = %id, "Unregistering from Songbird mesh");
 
-            #[cfg(feature = "live-clients")]
+        #[cfg(feature = "live-clients")]
+        {
+            let client_guard = self.tarpc_client.read().await;
+            if let Some(client) = client_guard.as_ref()
+                && let Err(e) = client.unregister(tarpc::context::current(), id.clone()).await
             {
-                let client_guard = self.tarpc_client.read().await;
-                if let Some(client) = client_guard.as_ref()
-                    && let Err(e) = client.unregister(tarpc::context::current(), id.clone()).await
-                {
-                    warn!(error = %e, service_id = %id, "Failed to unregister from Songbird");
-                }
+                warn!(error = %e, service_id = %id, "Failed to unregister from Songbird");
             }
-
-            *self.service_id.write().await = None;
-            *self.state.write().await = ClientState::Connected;
         }
+
+        *self.state.write().await = ClientState::Connected;
 
         Ok(())
     }

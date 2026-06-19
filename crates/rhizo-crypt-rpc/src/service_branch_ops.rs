@@ -5,12 +5,12 @@
 //!
 //! Extracted from `service.rs` to keep production modules under 700L.
 
-use crate::service::{sign_vertex_if_available, RhizoCryptRpcServer};
+use crate::error::RpcError;
+use crate::service::{RhizoCryptRpcServer, sign_vertex_if_available};
 use crate::service_types::{
     BranchRequest, BranchResponse, DiffRequest, DiffResponse, FederateRequest, FederateResponse,
     MergeRequest,
 };
-use crate::error::RpcError;
 use rhizo_crypt_core::{VertexBuilder, VertexId};
 
 impl RhizoCryptRpcServer {

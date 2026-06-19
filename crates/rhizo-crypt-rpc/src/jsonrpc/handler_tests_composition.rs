@@ -17,8 +17,7 @@ async fn test_composition_skunkbat_security_event_forwarding() {
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "security-audit-pipeline"})),
     );
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -49,8 +48,7 @@ async fn test_composition_security_event_batch_forwarding() {
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "batch-audit"})),
     );
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let events = vec![
@@ -91,8 +89,7 @@ async fn test_composition_provenance_trio_full_pipeline() {
         "dag.session.create",
         Some(json!({"session_type": "General", "description": "provenance-trio-pipeline"})),
     );
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -144,8 +141,7 @@ async fn test_composition_provenance_trio_full_pipeline() {
     assert_eq!(root_hex.len(), 64, "Merkle root should be 64-char hex (32 bytes)");
 
     let session_req = make_request("dag.session.get", Some(json!({"session_id": session_id})));
-    let info =
-        handle_request(&server, session_req, &test_gate(), &test_caller()).await.unwrap();
+    let info = handle_request(&server, session_req, &test_gate(), &test_caller()).await.unwrap();
     assert_eq!(info["vertex_count"], 3);
 }
 
@@ -154,8 +150,7 @@ async fn test_composition_payload_ref_hex_hash() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let hex_hash = "a".repeat(64);
@@ -186,8 +181,7 @@ async fn test_composition_dehydrate_produces_loamspine_compatible_root() {
     let server = create_test_server().await;
 
     let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
-    let session_id =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     let session_id = session_id.as_str().unwrap();
 
     let req = make_request(
@@ -210,8 +204,7 @@ async fn test_composition_dehydrate_produces_loamspine_compatible_root() {
     );
 
     let req = make_request("dag.merkle.root", Some(json!({"session_id": session_id})));
-    let merkle_root =
-        handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let merkle_root = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
     assert_eq!(
         root_hex,
         merkle_root.as_str().unwrap(),

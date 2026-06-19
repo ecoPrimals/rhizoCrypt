@@ -28,7 +28,7 @@
 //!
 //! ## Lifecycle
 //!
-//! Started in [`PrimalLifecycle::start()`] after provenance notifier.
+//! Started in [`crate::PrimalLifecycle::start()`] after provenance notifier.
 //! Non-fatal — mesh event recording is optional.
 
 mod listener;

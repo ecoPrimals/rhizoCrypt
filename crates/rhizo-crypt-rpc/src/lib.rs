@@ -62,9 +62,9 @@ mod metrics;
 mod rate_limit;
 pub mod server;
 mod service;
-mod service_vertex_ops;
 mod service_branch_ops;
 pub(crate) mod service_types;
+mod service_vertex_ops;
 pub mod streaming;
 
 pub use client::RpcClient;

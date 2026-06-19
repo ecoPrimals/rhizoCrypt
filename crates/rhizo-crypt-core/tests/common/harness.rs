@@ -14,7 +14,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// Test configuration.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "fields used selectively by different integration test suites")]
 #[derive(Debug, Clone)]
 pub struct TestConfig {
     /// Base port for test RPC server.
@@ -27,7 +27,7 @@ pub struct TestConfig {
     pub max_sessions: usize,
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "default constructor used selectively by integration test suites")]
 impl Default for TestConfig {
     fn default() -> Self {
         Self {
@@ -42,7 +42,7 @@ impl Default for TestConfig {
 /// Test harness for rhizoCrypt.
 ///
 /// Manages lifecycle of a test primal instance.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "harness struct used by different integration test suites")]
 pub struct TestHarness {
     /// The primal under test.
     primal: Arc<RwLock<RhizoCrypt>>,
@@ -50,7 +50,7 @@ pub struct TestHarness {
     config: TestConfig,
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "harness methods used selectively by different test suites")]
 impl TestHarness {
     /// Create a new test harness.
     pub fn new(config: TestConfig) -> Self {

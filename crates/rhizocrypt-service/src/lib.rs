@@ -247,7 +247,9 @@ pub async fn run_server_with_ready(
         warn!("BIOMEOS_INSECURE=1 — running in development mode (no BTSP handshake)");
     }
 
-    if let Some(fid) = rhizo_crypt_core::transport::read_family_id(rhizo_crypt_core::niche::ENV_PREFIX) {
+    if let Some(fid) =
+        rhizo_crypt_core::transport::read_family_id(rhizo_crypt_core::niche::ENV_PREFIX)
+    {
         info!(family_id = %fid, "BTSP Phase 1: family-scoped socket naming active");
     }
 
@@ -389,7 +391,9 @@ async fn serve_with_tcp(
 
         // Bootstrap the lazy-resolution fallback so capability clients can
         // query Songbird on demand for peers not yet in the registry.
-        if let Some(ep) = rhizo_crypt_core::transport::TransportEndpoint::try_parse_address(&discovery_addr) {
+        if let Some(ep) =
+            rhizo_crypt_core::transport::TransportEndpoint::try_parse_address(&discovery_addr)
+        {
             primal.discovery_registry().set_discovery_source(ep).await;
             info!("Discovery source bootstrapped for peer capability resolution");
         }

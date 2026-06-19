@@ -118,7 +118,7 @@ impl MeshEventListener {
     /// Record a mesh trust event.
     ///
     /// Stores the event in the internal log and returns the mapped
-    /// [`EventType`] for the caller to append to a DAG session.
+    /// [`crate::event::EventType`] for the caller to append to a DAG session.
     pub async fn record_event(&self, event: MeshTrustEvent) -> crate::event::EventType {
         let event_type = event.clone().into_event_type();
 

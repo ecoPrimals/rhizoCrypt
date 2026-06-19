@@ -108,10 +108,8 @@ impl JsonRpcServer {
             notify.notify_one();
         }
 
-        let app = Self::router(Arc::clone(&self.primal));
-        let server = Arc::new(crate::service::RhizoCryptRpcServer::new(
-            Arc::clone(&self.primal),
-        ));
+        let app = Self::router(&self.primal);
+        let server = Arc::new(crate::service::RhizoCryptRpcServer::new(Arc::clone(&self.primal)));
         let semaphore = Arc::new(Semaphore::new(DEFAULT_MAX_CONNECTIONS));
 
         loop {
@@ -145,11 +143,12 @@ impl JsonRpcServer {
     /// Build the axum router for embedding in larger applications.
     ///
     /// Serves JSON-RPC at the path from [`rhizo_crypt_core::constants::JSON_RPC_PATH`].
-    pub fn router(primal: Arc<RhizoCrypt>) -> Router {
-        let server = crate::service::RhizoCryptRpcServer::new(primal);
+    pub fn router(primal: &Arc<RhizoCrypt>) -> Router {
+        let gate = Arc::new(method_gate::MethodGate::for_primal(primal.as_ref()));
+        let server = crate::service::RhizoCryptRpcServer::new(Arc::clone(primal));
         let state = JsonRpcState {
             server,
-            gate: Arc::new(method_gate::MethodGate::from_env()),
+            gate,
         };
         let cors = CorsLayer::new()
             .allow_origin(Any)
@@ -182,7 +181,7 @@ async fn handle_tcp_connection(
 
     if n > 0 && (probe[0] == b'{' || probe[0] == b'[') {
         debug!(peer = %peer, "detected newline JSON-RPC");
-        let gate = method_gate::MethodGate::from_env();
+        let gate = method_gate::MethodGate::for_primal(server.primal());
         let caller = method_gate::CallerContext::loopback();
         newline::handle_newline_connection(stream, server, &gate, &caller).await?;
     } else {
@@ -243,8 +242,7 @@ async fn handle_jsonrpc(
             let mut results = Vec::with_capacity(arr.len());
             for item in arr {
                 let response =
-                    process_single_request(&state.server, item, &state.gate, &caller)
-                        .await;
+                    process_single_request(&state.server, item, &state.gate, &caller).await;
                 results.push(response);
             }
             (StatusCode::OK, Json(serde_json::json!(results))).into_response()
@@ -288,22 +286,19 @@ async fn process_single_request(
         ));
     }
 
-    let id = match &request.id {
-        Some(i) => i.clone(),
-        None => {
-            return serialize_response(&error_response(
-                None,
-                codes::INVALID_REQUEST,
-                "id is required (notifications not supported)",
-                None,
-            ));
-        }
+    let Some(id) = request.id.take() else {
+        return serialize_response(&error_response(
+            None,
+            codes::INVALID_REQUEST,
+            "id is required (notifications not supported)",
+            None,
+        ));
     };
 
     let token = request.params.as_mut().and_then(method_gate::extract_bearer_token);
 
     let mut caller = method_gate::CallerContext::with_bearer_token(token, connection_caller.origin);
-    caller.verify_token(gate.verifier());
+    caller.verify_token_async(gate.verifier()).await;
 
     match handler::handle_request(server, request, gate, &caller).await {
         Ok(result) => serialize_response(&success(id, result)),
