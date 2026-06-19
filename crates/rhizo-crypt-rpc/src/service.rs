@@ -249,7 +249,7 @@ pub fn parse_payload_ref(s: &str) -> Option<PayloadRef> {
 /// Gracefully degrades: if no provider is discovered or signing fails, the vertex
 /// remains unsigned (matching standalone / pre-composition behavior).
 pub async fn sign_vertex_if_available(primal: &rhizo_crypt_core::RhizoCrypt, vertex: &mut Vertex) {
-    let Some(agent) = vertex.agent.clone() else {
+    let Some(ref agent) = vertex.agent else {
         return;
     };
 
@@ -257,7 +257,7 @@ pub async fn sign_vertex_if_available(primal: &rhizo_crypt_core::RhizoCrypt, ver
         return;
     };
 
-    match client.sign_vertex(vertex, &agent).await {
+    match client.sign_vertex(vertex, agent).await {
         Ok(sig) => {
             tracing::trace!(agent = %agent, "Vertex signed via delegated crypto provider");
             vertex.signature = Some(sig);

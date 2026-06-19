@@ -68,6 +68,49 @@ pub enum MeshTrustEventKind {
 }
 
 impl MeshTrustEvent {
+    /// Map this wire event to an [`EventType`] for DAG recording without consuming it.
+    #[must_use]
+    pub fn to_event_type(&self) -> EventType {
+        match &self.kind {
+            MeshTrustEventKind::TrustIssuerRegistered {
+                issuer_fingerprint,
+            } => EventType::TrustIssuerRegistered {
+                issuer_fingerprint: issuer_fingerprint.clone(),
+                registering_gate: self.source_gate.clone(),
+            },
+            MeshTrustEventKind::KeyExchangeCompleted {
+                remote_gate,
+                method,
+            } => EventType::KeyExchangeCompleted {
+                local_gate: self.source_gate.clone(),
+                remote_gate: remote_gate.clone(),
+                method: method.clone(),
+            },
+            MeshTrustEventKind::FamilyEnrollment {
+                family_id,
+                primal_count,
+            } => EventType::FamilyEnrollment {
+                family_id: family_id.clone(),
+                gate: self.source_gate.clone(),
+                primal_count: *primal_count,
+            },
+            MeshTrustEventKind::MeshJoin {
+                mesh_id,
+            } => EventType::MeshJoin {
+                gate: self.source_gate.clone(),
+                mesh_id: mesh_id.clone(),
+            },
+            MeshTrustEventKind::MeshLeave {
+                mesh_id,
+                reason,
+            } => EventType::MeshLeave {
+                gate: self.source_gate.clone(),
+                mesh_id: mesh_id.clone(),
+                reason: reason.clone(),
+            },
+        }
+    }
+
     /// Convert this wire event into an [`EventType`] for DAG recording.
     #[must_use]
     pub fn into_event_type(self) -> EventType {

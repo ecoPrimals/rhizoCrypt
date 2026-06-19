@@ -268,17 +268,7 @@ impl SongbirdClient {
         }
 
         // Clone self for the async task
-        let client = Self {
-            config: self.config.clone(),
-            state: Arc::clone(&self.state),
-            service_id: Arc::clone(&self.service_id),
-            discovered_services: Arc::clone(&self.discovered_services),
-            resolved_endpoint: Arc::clone(&self.resolved_endpoint),
-            #[cfg(feature = "live-clients")]
-            tarpc_client: Arc::clone(&self.tarpc_client),
-            our_endpoint: Arc::clone(&self.our_endpoint),
-            heartbeat_handle: Arc::clone(&self.heartbeat_handle),
-        };
+        let client = self.clone();
 
         let interval = client.config.heartbeat_interval;
         let handle = tokio::spawn(async move {
@@ -415,9 +405,9 @@ impl SongbirdClient {
         {
             let client_guard = self.tarpc_client.read().await;
             if let Some(client) = client_guard.as_ref()
-                && let Err(e) = client.unregister(tarpc::context::current(), id.clone()).await
+                && let Err(e) = client.unregister(tarpc::context::current(), id).await
             {
-                warn!(error = %e, service_id = %id, "Failed to unregister from Songbird");
+                warn!(error = %e, "Failed to unregister from Songbird");
             }
         }
 

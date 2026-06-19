@@ -569,3 +569,7 @@ mod tests_jsonrpc;
 #[cfg(test)]
 #[path = "uds_tests_mito_beacon.rs"]
 mod tests_mito_beacon;
+
+#[cfg(test)]
+#[path = "uds_tests_errors.rs"]
+mod tests_errors;

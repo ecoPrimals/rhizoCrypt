@@ -120,14 +120,13 @@ impl MeshEventListener {
     /// Stores the event in the internal log and returns the mapped
     /// [`crate::event::EventType`] for the caller to append to a DAG session.
     pub async fn record_event(&self, event: MeshTrustEvent) -> crate::event::EventType {
-        let event_type = event.clone().into_event_type();
-
         debug!(
             kind = ?event.kind,
             source = %event.source_gate,
             "Recording mesh trust event"
         );
 
+        let event_type = event.to_event_type();
         self.event_log.write().await.push(event);
 
         event_type
@@ -175,12 +174,12 @@ impl MeshEventListener {
             ))
         })?;
 
-        let events = parsed
+        let Some(events_arr) = parsed
             .get("result")
             .and_then(|r| r.get("events"))
-            .and_then(serde_json::Value::as_array);
-
-        let Some(events_arr) = events else {
+            .and_then(serde_json::Value::as_array)
+            .cloned()
+        else {
             return Ok(0);
         };
 
@@ -188,7 +187,7 @@ impl MeshEventListener {
         let mut max_timestamp = since;
 
         for event_val in events_arr {
-            match serde_json::from_value::<MeshTrustEvent>(event_val.clone()) {
+            match serde_json::from_value::<MeshTrustEvent>(event_val) {
                 Ok(event) => {
                     if event.timestamp > max_timestamp {
                         max_timestamp = event.timestamp;

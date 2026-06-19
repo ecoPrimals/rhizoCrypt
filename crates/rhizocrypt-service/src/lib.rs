@@ -612,3 +612,8 @@ pub fn print_status() {
 #[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
+#[path = "lib_tests_startup.rs"]
+mod tests_startup;

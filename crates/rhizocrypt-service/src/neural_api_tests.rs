@@ -170,3 +170,92 @@ fn parse_announce_response_empty_envelope() {
         AnnounceResponseOutcome::NoResult
     );
 }
+
+#[cfg(unix)]
+mod announce_integration {
+    use super::super::announce_to_biomeos;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+    use tokio::net::UnixListener;
+
+    #[test]
+    fn announce_to_biomeos_registered_response() {
+        let dir = tempfile::tempdir().unwrap();
+        let neural_sock = dir.path().join("neural-api-mock.sock");
+        let rhizo_sock = dir.path().join("rhizocrypt.sock");
+
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "result": {
+                "capabilities_registered": 5,
+                "methods_registered": 20
+            },
+            "id": 1
+        });
+
+        temp_env::with_var("NEURAL_API_SOCKET", Some(neural_sock.to_str().unwrap()), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let listener = UnixListener::bind(&neural_sock).unwrap();
+                let mock = tokio::spawn(async move {
+                    if let Ok((stream, _)) = listener.accept().await {
+                        let (reader, mut writer) = tokio::io::split(stream);
+                        let mut lines = tokio::io::BufReader::new(reader).lines();
+                        let _ = lines.next_line().await;
+                        let body = format!("{response}\n");
+                        let _ = writer.write_all(body.as_bytes()).await;
+                    }
+                });
+                announce_to_biomeos(&rhizo_sock).await;
+                mock.abort();
+            });
+        });
+    }
+
+    #[test]
+    fn announce_to_biomeos_rejected_response() {
+        let dir = tempfile::tempdir().unwrap();
+        let neural_sock = dir.path().join("neural-api-reject.sock");
+        let rhizo_sock = dir.path().join("rhizocrypt.sock");
+
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": { "code": -32600, "message": "invalid announce" },
+            "id": 1
+        });
+
+        temp_env::with_var("NEURAL_API_SOCKET", Some(neural_sock.to_str().unwrap()), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let listener = UnixListener::bind(&neural_sock).unwrap();
+                let mock = tokio::spawn(async move {
+                    if let Ok((stream, _)) = listener.accept().await {
+                        let (reader, mut writer) = tokio::io::split(stream);
+                        let mut lines = tokio::io::BufReader::new(reader).lines();
+                        let _ = lines.next_line().await;
+                        let body = format!("{response}\n");
+                        let _ = writer.write_all(body.as_bytes()).await;
+                    }
+                });
+                announce_to_biomeos(&rhizo_sock).await;
+                mock.abort();
+            });
+        });
+    }
+
+    #[test]
+    fn announce_to_biomeos_socket_not_found_is_non_fatal() {
+        let dir = tempfile::tempdir().unwrap();
+        let rhizo_sock = dir.path().join("rhizocrypt.sock");
+
+        temp_env::with_vars(
+            [
+                ("NEURAL_API_SOCKET", None::<&str>),
+                ("XDG_RUNTIME_DIR", Some("/nonexistent/xdg/path")),
+            ],
+            || {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(announce_to_biomeos(&rhizo_sock));
+            },
+        );
+    }
+}
