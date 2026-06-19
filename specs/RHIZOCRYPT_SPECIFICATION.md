@@ -1198,13 +1198,13 @@ paths:
 - [x] `DispatchOutcome<T>` for structured error handling
 
 ### Phase 7: Quality & Hardening — Active
-- [x] 1,540+ tests, clippy-clean, fmt-clean, docs-clean
+- [x] 1,748 tests, clippy-clean, fmt-clean, docs-clean
 - [x] 3 fuzz targets (merkle, session builder, vertex CBOR)
 - [x] 5 chaos test suites
 - [x] proptest for IPC protocol invariants
 - [x] `#[forbid(unsafe_code)]` (non-test), `#[deny(unwrap_used, expect_used)]`
 - [x] `cargo-deny` supply chain audit
-- [x] Achieve 90%+ line coverage (CI gated) — 93.88%
+- [x] Achieve 90%+ line coverage (CI gated) — 93.37%
 - [x] Streaming/NDJSON for long-running operations (`StreamItem`, `event.append_batch`)
 - [ ] `Arc<str>` for hot-path identifiers (zero-copy evolution)
 

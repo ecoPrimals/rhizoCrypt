@@ -1,291 +1,76 @@
-# 🚀 Standalone Service Mode
+# rhizocrypt-service
 
-rhizoCrypt v0.14.1 supports **dual-mode operation**:
-1. **Library Mode** - Embed directly into other primals
-2. **Service Mode** - Standalone RPC service for BiomeOS coordination
+Standalone RPC service for rhizoCrypt v0.14.17 — Ephemeral DAG Engine.
+
+## Dual-Mode Operation
+
+1. **Library Mode** — Embed `rhizo-crypt-core` directly into other primals
+2. **Service Mode** — Standalone UniBin binary for biomeOS coordination
 
 ---
 
-## 🎯 Standalone Service Binary
-
-### Building
+## Running
 
 ```bash
-# Development run
+# Development (UDS-only, default)
 cargo run -p rhizocrypt-service -- server
 
-# Production: use plasmidBin-built binary
+# Development with TCP opt-in
+cargo run -p rhizocrypt-service -- server --port 9400
+
+# Production (plasmidBin-built binary)
 rhizocrypt server --socket /run/biomeos/rhizocrypt.sock
 ```
 
-### Running
-
-```bash
-# Default configuration (port 9400)
-rhizocrypt server
-
-# Custom port
-rhizocrypt server --port 9400
-
-# With discovery registration
-RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500 \
-rhizocrypt server --port 9400
-```
-
-### Environment Variables
+## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RHIZOCRYPT_PORT` | 9400 | RPC server port |
-| `RHIZOCRYPT_HOST` | 0.0.0.0 | Bind address |
-| `RHIZOCRYPT_DISCOVERY_ADAPTER` | None | Discovery service for registration |
-| `RHIZOCRYPT_ENV` | production | Environment mode |
+| `RHIZOCRYPT_PORT` | *(none)* | TCP port (opt-in) |
+| `RHIZOCRYPT_HOST` | `0.0.0.0` | Bind address |
+| `RHIZOCRYPT_ENV` | `production` | Environment mode |
+| `DISCOVERY_ENDPOINT` | *(none)* | Discovery adapter for registration |
+| `FAMILY_ID` | *(none)* | BTSP family-scoped socket naming |
+| `BIOMEOS_INSECURE` | *(none)* | Set `1` to bypass BTSP handshake (dev only) |
+
+See [docs/ENV_VARS.md](../../docs/ENV_VARS.md) for the full reference.
 
 ---
 
-## 🌱 Primal Sovereignty
+## Transport Model
 
-The standalone service embodies **Primal Sovereignty** principles:
+- **UDS**: Unconditional on Unix (`$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock`)
+- **TCP**: Opt-in via `--port` or env vars (tarpc + JSON-RPC dual-mode)
+- **BTSP Phase 3**: X25519 handshake + ChaCha20-Poly1305 encrypted channel
+- **JSON-RPC 2.0**: 37 methods across 7 domains, HTTP + newline-delimited
 
-✅ **Fully Standalone** - Independently deployable service  
-✅ **Discoverable** - Registers with BiomeOS via Songbird  
-✅ **Zero Dependencies** - No hardcoded knowledge of other primals  
-✅ **BiomeOS Coordination** - BiomeOS coordinates, doesn't embed
+## Subcommands
 
----
-
-## 📡 Service Capabilities
-
-The standalone service exposes **24 RPC methods**:
-
-### Session Management
-- `create_session` - Initialize new DAG session
-- `list_sessions` - List all active sessions
-- `get_session` - Get session details
-- `drop_session` - Clean up session
-
-### Vertex Operations
-- `add_vertex` - Add vertex to DAG
-- `get_vertex` - Retrieve vertex by hash
-- `list_vertices` - List all vertices in session
-
-### DAG Queries
-- `get_parents` - Get parent vertices
-- `get_children` - Get child vertices
-- `topological_sort` - Get DAG topological order
-
-### Merkle Proofs
-- `compute_merkle_root` - Compute session Merkle root
-- `verify_merkle_proof` - Verify vertex inclusion proof
-
-### Dehydration
-- `dehydrate` - Commit ephemeral → permanent storage
-- `get_dehydration_summary` - Get dehydration results
-
-### Slice Operations
-- `checkout_slice` - Checkout permanent state
-- `resolve_slice` - Resolve slice back to permanent
+| Command | Description |
+|---------|-------------|
+| `server` | Start the RPC service |
+| `client health` | Check server health |
+| `client list-sessions` | List active sessions |
+| `client metrics` | Get service metrics |
+| `doctor` | Run diagnostics |
+| `doctor --comprehensive` | Include connectivity probes |
+| `status` | Print connection status |
+| `version` | Print version info |
 
 ---
 
-## 🔧 Service Architecture
-
-```
-┌──────────────────────────────────────────────┐
-│ rhizocrypt Binary                            │
-│                                              │
-│  ┌────────────────────────────────────────┐ │
-│  │ tarpc RPC Server (port 9400)           │ │
-│  │  - 24 methods                          │ │
-│  │  - Rate limiting                       │ │
-│  │  - Metrics                             │ │
-│  └────────────────────────────────────────┘ │
-│                    │                         │
-│                    ▼                         │
-│  ┌────────────────────────────────────────┐ │
-│  │ rhizo-crypt-core Library               │ │
-│  │  - DAG engine                          │ │
-│  │  - Session management                  │ │
-│  │  - Merkle proofs                       │ │
-│  └────────────────────────────────────────┘ │
-└──────────────────────────────────────────────┘
-                    │
-                    ▼
-          ┌─────────────────────┐
-          │ Discovery Service   │
-          │ (Songbird)          │
-          └─────────────────────┘
-```
-
----
-
-## 🎯 Use Cases
-
-### 1. BiomeOS Coordination
+## Docker (musl-static + scratch)
 
 ```bash
-# BiomeOS discovers and coordinates rhizoCrypt
-export RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.internal:7500
-rhizocrypt server
-
-# BiomeOS can now:
-# - Discover rhizoCrypt via capability query
-# - Route DAG operations to this service
-# - Scale independently of other primals
+docker build -t rhizocrypt:0.14.17 .
+docker run -d --name rhizocrypt -p 9400:9400 rhizocrypt:0.14.17
 ```
 
-### 2. Microservice Architecture
-
-```bash
-# Deploy as independent microservice
-docker run -p 9400:9400 \
-  -e RHIZOCRYPT_DISCOVERY_ADAPTER=songbird:7500 \
-  rhizocrypt
-
-# Kubernetes deployment
-kubectl apply -f rhizocrypt-deployment.yaml
-```
-
-### 3. Development & Testing
-
-```bash
-# Local development server
-rhizocrypt server --port 9400 &
-
-# Test RPC calls
-# (use tarpc client to call methods)
-```
+See root `Dockerfile` for the multi-stage musl-static build (ecoBin compliant,
+`FROM scratch`, non-root UID 1000).
 
 ---
 
-## 🆚 Library Mode vs Service Mode
+## License
 
-### Library Mode (Embedded)
-
-```rust
-// Other primals embed rhizoCrypt directly
-use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig};
-
-let config = RhizoCryptConfig::default();
-let dag = RhizoCrypt::new(config);
-
-// Direct method calls (no RPC overhead)
-let session = dag.create_session(...).await?;
-```
-
-**Pros**:
-- No network overhead
-- Tight integration
-- Shared memory
-
-**Cons**:
-- Coupled lifecycle
-- Can't scale independently
-- BiomeOS can't coordinate
-
-### Service Mode (Standalone)
-
-```rust
-// BiomeOS discovers rhizoCrypt via capabilities
-use rhizo_crypt_rpc::client::RpcClient;
-
-let client = RpcClient::connect("localhost:9400").await?;
-
-// RPC method calls
-let session = client.create_session(...).await?;
-```
-
-**Pros**:
-- Independent deployment
-- BiomeOS coordination
-- Independent scaling
-- Discoverable
-
-**Cons**:
-- Network overhead
-- RPC serialization
-
----
-
-## 📊 Performance
-
-The standalone service uses:
-- **tarpc RPC** - Compile-time type safety, fast binary protocol
-- **tokio async** - High concurrency, low overhead
-- **Zero-copy** - Efficient data handling where possible
-
-**Benchmark** (local network):
-- RPC overhead: ~50-100μs per call
-- Throughput: 10,000+ ops/sec
-- Latency: p50 < 1ms, p99 < 5ms
-
----
-
-## 🔍 Monitoring
-
-The service logs key events:
-
-```
-INFO rhizocrypt_service: 🔐 Starting rhizoCrypt service...
-INFO rhizocrypt_service: 📡 Binding to 0.0.0.0:9400
-INFO rhizocrypt_service: 🔐 rhizoCrypt DAG engine initialized
-INFO rhizocrypt_service: ✨ rhizoCrypt service ready
-INFO rhizo_crypt_rpc::server: rhizoCrypt RPC server listening on 0.0.0.0:9400
-```
-
-Set log level via `RUST_LOG`:
-```bash
-RUST_LOG=debug rhizocrypt server
-RUST_LOG=rhizocrypt_service=trace rhizocrypt server
-```
-
----
-
-## 🐳 Docker Deployment
-
-```dockerfile
-# Multi-stage musl-static build (ecoBin compliant)
-FROM rust:1.87-slim AS builder
-RUN apt-get update && apt-get install -y --no-install-recommends musl-tools \
-    && rm -rf /var/lib/apt/lists/*
-RUN rustup target add x86_64-unknown-linux-musl
-WORKDIR /build
-COPY Cargo.toml Cargo.lock ./
-COPY .cargo/ ./.cargo/
-COPY crates/ ./crates/
-RUN cargo build --release --target x86_64-unknown-linux-musl -p rhizocrypt-service \
-    && strip /build/target/x86_64-unknown-linux-musl/release/rhizocrypt
-
-FROM scratch
-COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/rhizocrypt /rhizocrypt
-USER 1000:1000
-EXPOSE 9400
-ENTRYPOINT ["/rhizocrypt"]
-CMD ["server"]
-```
-
-Build and run:
-```bash
-docker build -t rhizocrypt .
-docker run -p 9400:9400 -e RHIZOCRYPT_DISCOVERY_ADAPTER=songbird:7500 rhizocrypt
-```
-
----
-
-## 🎊 Summary
-
-rhizoCrypt v0.14.1 is now:
-- ✅ **Library** - Embed directly for tight integration
-- ✅ **Service** - Deploy standalone for BiomeOS coordination
-- ✅ **Discoverable** - Registers with capability-based discovery
-- ✅ **Sovereign** - Fully independent primal
-
-**The best of both worlds!** 🌱
-
----
-
-For more details, see:
-- [README.md](../../README.md) — Project overview
-- [CHANGELOG.md](../../CHANGELOG.md) — Version history
-- [docs/ENV_VARS.md](../../docs/ENV_VARS.md) — Environment variable reference
-
+AGPL-3.0-or-later

@@ -69,11 +69,11 @@ Three workspace crates:
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,684 passing (all features) |
-| Coverage | 93.88% lines (last measured) |
+| Tests | 1,748 passing (all features) |
+| Coverage | 93.37% lines (llvm-cov, Jun 19 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
-| Source files | 186 `.rs`, ~55,506 lines |
-| Max file size | ~660 lines production (`loamspine_http.rs`, limit: 700) |
+| Source files | 190 `.rs`, ~58,642 lines |
+| Max file size | ~756 lines production (`method_gate.rs`, limit: 800) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |

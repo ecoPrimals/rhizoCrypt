@@ -9,8 +9,8 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,684 tests passing** (all features), 0 failures
-- [x] **93.88% line coverage** (last measured)
+- [x] **1,748 tests passing** (all features), 0 failures
+- [x] **93.37% line coverage** (llvm-cov, Jun 19 2026)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all production files under 700 lines)
@@ -30,8 +30,8 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,684 tests)
-- [x] **CHANGELOG.md** (version history through Wave 76)
+- [x] **README.md** (current metrics — 1,748 tests)
+- [x] **CHANGELOG.md** (version history through Wave 118)
 - [x] **showcase/** — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`
 - [x] **specs/** (12 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
@@ -256,5 +256,5 @@ rhizocrypt doctor --comprehensive
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: May 29, 2026
+**Last Updated**: Jun 19, 2026
 **Version**: rhizoCrypt 0.14.17
