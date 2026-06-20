@@ -331,6 +331,7 @@ impl std::fmt::Display for TransportEndpoint {
 // ============================================================================
 
 /// A transport-agnostic connected stream implementing `AsyncRead + AsyncWrite`.
+#[derive(Debug)]
 pub enum TransportStream {
     /// Connected Unix domain socket.
     #[cfg(unix)]
@@ -428,7 +429,7 @@ pub async fn connect_transport(endpoint: &TransportEndpoint) -> std::io::Result<
             capability,
         } => Err(std::io::Error::new(
             std::io::ErrorKind::Unsupported,
-            format!("mesh relay ({peer_id}/{capability}) requires Songbird routing"),
+            format!("mesh relay ({peer_id}/{capability}) requires discovery routing"),
         )),
     }
 }

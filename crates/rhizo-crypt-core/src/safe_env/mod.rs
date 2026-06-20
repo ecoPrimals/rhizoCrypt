@@ -120,6 +120,20 @@ impl SafeEnv {
     /// Legacy Songbird port (paired with [`Self::SONGBIRD_HOST`]).
     pub const SONGBIRD_PORT: &'static str = "SONGBIRD_PORT";
 
+    /// Mesh event poller interval override (seconds).
+    pub const RHIZOCRYPT_MESH_POLL_INTERVAL_SECS: &'static str =
+        "RHIZOCRYPT_MESH_POLL_INTERVAL_SECS";
+
+    /// Discovery heartbeat interval override (seconds).
+    pub const RHIZOCRYPT_HEARTBEAT_INTERVAL_SECS: &'static str =
+        "RHIZOCRYPT_HEARTBEAT_INTERVAL_SECS";
+
+    /// Circuit breaker failure threshold override.
+    pub const RHIZOCRYPT_CB_FAILURE_THRESHOLD: &'static str = "RHIZOCRYPT_CB_FAILURE_THRESHOLD";
+
+    /// Circuit breaker cooldown override (seconds).
+    pub const RHIZOCRYPT_CB_COOLDOWN_SECS: &'static str = "RHIZOCRYPT_CB_COOLDOWN_SECS";
+
     /// Compute provider connection timeout in milliseconds.
     pub const COMPUTE_TIMEOUT_MS: &'static str = "COMPUTE_TIMEOUT_MS";
 
@@ -138,6 +152,23 @@ impl SafeEnv {
     #[must_use]
     pub fn get_optional(key: &str) -> Option<String> {
         std::env::var(key).ok()
+    }
+
+    /// Read an env var as seconds and return a [`std::time::Duration`], falling back to `default`.
+    ///
+    /// Useful for making hardcoded timeout/interval constants operator-tunable
+    /// without changing the type at the call site.
+    #[must_use]
+    pub fn get_duration_secs(key: &str, default: std::time::Duration) -> std::time::Duration {
+        std::env::var(key)
+            .ok()
+            .and_then(|s| {
+                s.parse::<u64>().ok().or_else(|| {
+                    tracing::warn!(key, value = %s, "Failed to parse duration (seconds), using default");
+                    None
+                })
+            })
+            .map_or(default, std::time::Duration::from_secs)
     }
 
     /// Parse an environment variable or return the default.

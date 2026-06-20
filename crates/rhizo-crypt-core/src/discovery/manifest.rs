@@ -290,8 +290,8 @@ mod tests {
         assert!(manifests.is_empty());
     }
 
-    #[tokio::test]
-    async fn manifest_dir_resolves_biomeos_subdir() {
+    #[test]
+    fn manifest_dir_resolves_biomeos_subdir() {
         let dir = tempfile::tempdir().unwrap();
         temp_env::with_var("XDG_RUNTIME_DIR", Some(dir.path().to_str().unwrap()), || {
             let result = manifest_dir();
@@ -301,8 +301,8 @@ mod tests {
         });
     }
 
-    #[tokio::test]
-    async fn manifest_dir_falls_back_without_xdg() {
+    #[test]
+    fn manifest_dir_falls_back_without_xdg() {
         temp_env::with_var_unset("XDG_RUNTIME_DIR", || {
             let result = manifest_dir();
             if cfg!(target_os = "android") || cfg!(target_os = "windows") {
@@ -361,8 +361,8 @@ mod tests {
         assert!(!path.exists());
     }
 
-    #[tokio::test]
-    async fn publish_manifest_uses_fallback_without_xdg() {
+    #[test]
+    fn publish_manifest_uses_fallback_without_xdg() {
         let result = temp_env::with_var_unset("XDG_RUNTIME_DIR", manifest_dir);
         if cfg!(target_os = "android") || cfg!(target_os = "windows") {
             assert!(result.is_none(), "manifest_dir should return None on Android/Windows");

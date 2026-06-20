@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
+//! Lock-free histogram for latency and size distributions.
+//!
+//! Provides a fixed-bucket histogram backed by atomic counters, suitable for
+//! recording JSON-RPC method latencies and payload sizes without contention.
+
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Histogram bucket boundaries for latency (in seconds).

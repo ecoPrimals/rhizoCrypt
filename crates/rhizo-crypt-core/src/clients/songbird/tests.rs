@@ -113,7 +113,7 @@ async fn test_connect_invalid_address() {
 
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert!(err.to_string().contains("Invalid Songbird address"));
+    assert!(err.to_string().contains("Invalid discovery address"));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

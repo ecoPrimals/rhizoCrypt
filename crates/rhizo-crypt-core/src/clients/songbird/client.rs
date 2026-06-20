@@ -149,14 +149,14 @@ impl SongbirdClient {
     pub async fn register(&self, our_endpoint: &str) -> Result<RegistrationResult> {
         if !self.is_connected().await {
             return Err(RhizoCryptError::integration(
-                "Not connected to Songbird - call connect() first",
+                "Not connected to discovery service — call connect() first",
             ));
         }
 
         info!(
             service = %self.config.service_name,
             endpoint = %our_endpoint,
-            "Registering with Songbird mesh"
+            "Registering with discovery mesh"
         );
 
         // Build registration request
@@ -217,7 +217,7 @@ impl SongbirdClient {
             *self.service_id.write().await = Some(id.clone());
             *self.state.write().await = ClientState::Registered;
             *self.our_endpoint.write().await = Some(our_endpoint.to_string());
-            info!(service_id = %id, "Registered with Songbird mesh");
+            info!(service_id = %id, "Registered with discovery mesh");
         }
 
         Ok(result)
@@ -322,7 +322,7 @@ impl SongbirdClient {
             RhizoCryptError::integration("No endpoint saved - cannot refresh registration")
         })?;
 
-        debug!(endpoint = %endpoint, "Refreshing Songbird registration");
+        debug!(endpoint = %endpoint, "Refreshing discovery registration");
 
         let result = self.register(&endpoint).await?;
 
@@ -351,7 +351,7 @@ impl SongbirdClient {
     /// - Status query fails (network / tarpc error)
     pub async fn federation_status(&self) -> Result<FederationStatus> {
         if !self.is_connected().await {
-            return Err(RhizoCryptError::integration("Not connected to Songbird"));
+            return Err(RhizoCryptError::integration("Not connected to discovery service"));
         }
 
         #[cfg(feature = "live-clients")]
@@ -399,7 +399,7 @@ impl SongbirdClient {
             return Ok(());
         };
 
-        info!(service_id = %id, "Unregistering from Songbird mesh");
+        info!(service_id = %id, "Unregistering from discovery mesh");
 
         #[cfg(feature = "live-clients")]
         {
@@ -407,7 +407,7 @@ impl SongbirdClient {
             if let Some(client) = client_guard.as_ref()
                 && let Err(e) = client.unregister(tarpc::context::current(), id).await
             {
-                warn!(error = %e, "Failed to unregister from Songbird");
+                warn!(error = %e, "Failed to unregister from discovery mesh");
             }
         }
 
@@ -425,7 +425,7 @@ impl SongbirdClient {
         }
         *self.resolved_endpoint.write().await = None;
         *self.state.write().await = ClientState::Disconnected;
-        info!("Disconnected from Songbird");
+        info!("Disconnected from discovery service");
     }
 
     /// Get our registered service ID.

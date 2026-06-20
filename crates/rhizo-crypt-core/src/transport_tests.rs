@@ -541,3 +541,283 @@ fn test_family_scoped_socket_primal_override() {
         },
     );
 }
+
+// ── TransportEndpoint constructors & accessors ───────────────────
+
+#[test]
+fn test_transport_endpoint_tcp_constructor() {
+    let ep = TransportEndpoint::tcp("myhost", 9400);
+    assert_eq!(ep.tcp_addr(), Some(("myhost", 9400)));
+}
+
+#[test]
+fn test_transport_endpoint_tcp_addr_returns_none_for_uds() {
+    let ep = TransportEndpoint::uds("/run/test.sock");
+    assert!(ep.tcp_addr().is_none());
+}
+
+#[test]
+fn test_transport_endpoint_tcp_addr_returns_none_for_mesh_relay() {
+    let ep = TransportEndpoint::MeshRelay {
+        peer_id: "peer".into(),
+        capability: "cap".into(),
+    };
+    assert!(ep.tcp_addr().is_none());
+}
+
+#[test]
+fn test_transport_endpoint_uds_constructor() {
+    let ep = TransportEndpoint::uds("/tmp/my.sock");
+    match ep {
+        TransportEndpoint::Uds {
+            path,
+        } => assert_eq!(path, "/tmp/my.sock"),
+        _ => panic!("expected UDS"),
+    }
+}
+
+// ── TransportEndpoint::try_parse_address ─────────────────────────
+
+#[test]
+fn test_try_parse_address_absolute_path() {
+    let ep = TransportEndpoint::try_parse_address("/run/eco/rhizocrypt.sock").unwrap();
+    assert!(matches!(ep, TransportEndpoint::Uds { path } if path == "/run/eco/rhizocrypt.sock"));
+}
+
+#[test]
+fn test_try_parse_address_sock_suffix() {
+    let ep = TransportEndpoint::try_parse_address("rhizocrypt.sock").unwrap();
+    assert!(matches!(ep, TransportEndpoint::Uds { path } if path == "rhizocrypt.sock"));
+}
+
+#[test]
+fn test_try_parse_address_sock_suffix_case_insensitive() {
+    let ep = TransportEndpoint::try_parse_address("myService.SOCK").unwrap();
+    assert!(matches!(ep, TransportEndpoint::Uds { .. }));
+}
+
+#[test]
+fn test_try_parse_address_host_port() {
+    let ep = TransportEndpoint::try_parse_address("192.168.1.1:9300").unwrap();
+    assert_eq!(ep.tcp_addr(), Some(("192.168.1.1", 9300)));
+}
+
+#[test]
+fn test_try_parse_address_localhost_port() {
+    let ep = TransportEndpoint::try_parse_address("localhost:7700").unwrap();
+    assert_eq!(ep.tcp_addr(), Some(("localhost", 7700)));
+}
+
+#[test]
+fn test_try_parse_address_empty_host_returns_none() {
+    assert!(TransportEndpoint::try_parse_address(":8080").is_none());
+}
+
+#[test]
+fn test_try_parse_address_no_port_returns_none() {
+    assert!(TransportEndpoint::try_parse_address("just-a-hostname").is_none());
+}
+
+#[test]
+fn test_try_parse_address_invalid_port_returns_none() {
+    assert!(TransportEndpoint::try_parse_address("host:notaport").is_none());
+}
+
+// ── TransportEndpoint::parse_address ─────────────────────────────
+
+#[test]
+fn test_parse_address_tcp() {
+    let ep = TransportEndpoint::parse_address("myhost:9400");
+    assert_eq!(ep.tcp_addr(), Some(("myhost", 9400)));
+}
+
+#[test]
+fn test_parse_address_uds_with_slash() {
+    let ep = TransportEndpoint::parse_address("/run/eco/test.sock");
+    assert!(matches!(ep, TransportEndpoint::Uds { .. }));
+}
+
+#[test]
+fn test_parse_address_sock_suffix_without_slash() {
+    let ep = TransportEndpoint::parse_address("mysvc.sock");
+    assert!(matches!(ep, TransportEndpoint::Uds { .. }));
+}
+
+#[test]
+fn test_parse_address_unrecognized_falls_back_to_uds() {
+    let ep = TransportEndpoint::parse_address("garbage");
+    assert!(matches!(ep, TransportEndpoint::Uds { path } if path == "garbage"));
+}
+
+// ── TransportEndpoint Display ────────────────────────────────────
+
+#[test]
+fn test_display_uds() {
+    let ep = TransportEndpoint::uds("/run/eco/test.sock");
+    assert_eq!(ep.to_string(), "unix:///run/eco/test.sock");
+}
+
+#[test]
+fn test_display_tcp() {
+    let ep = TransportEndpoint::tcp("127.0.0.1", 9300);
+    assert_eq!(ep.to_string(), "tcp://127.0.0.1:9300");
+}
+
+#[test]
+fn test_display_mesh_relay() {
+    let ep = TransportEndpoint::MeshRelay {
+        peer_id: "strand-gate".into(),
+        capability: "security".into(),
+    };
+    assert_eq!(ep.to_string(), "mesh://strand-gate/security");
+}
+
+// ── TransportEndpoint From<SocketAddr> ───────────────────────────
+
+#[test]
+fn test_from_socket_addr() {
+    let addr: std::net::SocketAddr = "192.168.1.100:7700".parse().unwrap();
+    let ep = TransportEndpoint::from(addr);
+    assert_eq!(ep.tcp_addr(), Some(("192.168.1.100", 7700)));
+}
+
+// ── TransportEndpoint serde roundtrip ────────────────────────────
+
+#[test]
+fn test_serde_roundtrip_uds() {
+    let ep = TransportEndpoint::uds("/run/eco/test.sock");
+    let json = serde_json::to_string(&ep).unwrap();
+    let back: TransportEndpoint = serde_json::from_str(&json).unwrap();
+    assert_eq!(ep, back);
+}
+
+#[test]
+fn test_serde_roundtrip_tcp() {
+    let ep = TransportEndpoint::tcp("localhost", 9300);
+    let json = serde_json::to_string(&ep).unwrap();
+    let back: TransportEndpoint = serde_json::from_str(&json).unwrap();
+    assert_eq!(ep, back);
+}
+
+#[test]
+fn test_serde_roundtrip_mesh_relay() {
+    let ep = TransportEndpoint::MeshRelay {
+        peer_id: "peer-1".into(),
+        capability: "storage".into(),
+    };
+    let json = serde_json::to_string(&ep).unwrap();
+    let back: TransportEndpoint = serde_json::from_str(&json).unwrap();
+    assert_eq!(ep, back);
+}
+
+// ── connect_transport: MeshRelay returns Unsupported ─────────────
+
+#[tokio::test]
+async fn test_connect_transport_mesh_relay_returns_unsupported() {
+    let ep = TransportEndpoint::MeshRelay {
+        peer_id: "test-peer".into(),
+        capability: "dag".into(),
+    };
+    let err = connect_transport(&ep).await.unwrap_err();
+    assert_eq!(err.kind(), std::io::ErrorKind::Unsupported);
+    assert!(err.to_string().contains("discovery routing"));
+}
+
+// ── connect_transport: UDS success ───────────────────────────────
+
+#[cfg(unix)]
+#[tokio::test]
+async fn test_connect_transport_uds_success() {
+    let dir = tempfile::tempdir().unwrap();
+    let sock_path = dir.path().join("test.sock");
+
+    let listener = tokio::net::UnixListener::bind(&sock_path).unwrap();
+    let ep = TransportEndpoint::uds(sock_path.to_str().unwrap());
+
+    let (stream_result, _accept) =
+        tokio::join!(connect_transport(&ep), async { listener.accept().await.unwrap() });
+    assert!(stream_result.is_ok());
+}
+
+// ── connect_transport: UDS failure ───────────────────────────────
+
+#[cfg(unix)]
+#[tokio::test]
+async fn test_connect_transport_uds_no_listener() {
+    let ep = TransportEndpoint::uds("/tmp/nonexistent_rhizo_test_9999.sock");
+    assert!(connect_transport(&ep).await.is_err());
+}
+
+// ── socket_is_alive ──────────────────────────────────────────────
+
+#[cfg(unix)]
+#[tokio::test]
+async fn test_socket_is_alive_with_listener() {
+    let dir = tempfile::tempdir().unwrap();
+    let sock_path = dir.path().join("alive.sock");
+    let _listener = tokio::net::UnixListener::bind(&sock_path).unwrap();
+    assert!(socket_is_alive(&sock_path));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_socket_is_alive_missing_path() {
+    assert!(!socket_is_alive(std::path::Path::new("/tmp/does_not_exist_rhizo.sock")));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_socket_is_alive_stale_socket() {
+    let dir = tempfile::tempdir().unwrap();
+    let sock_path = dir.path().join("stale.sock");
+    std::fs::write(&sock_path, b"").unwrap();
+    assert!(!socket_is_alive(&sock_path));
+}
+
+// ── JsonRpcTransportError Display ────────────────────────────────
+
+#[test]
+fn test_jsonrpc_transport_error_display_connect_timeout() {
+    let err = JsonRpcTransportError::ConnectTimeout;
+    assert_eq!(err.to_string(), "connection timed out");
+    assert!(std::error::Error::source(&err).is_none());
+}
+
+#[test]
+fn test_jsonrpc_transport_error_display_connect_failed() {
+    let io_err = std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "refused");
+    let err = JsonRpcTransportError::ConnectFailed(io_err);
+    assert!(err.to_string().contains("connection failed"));
+    assert!(std::error::Error::source(&err).is_some());
+}
+
+#[test]
+fn test_jsonrpc_transport_error_display_response_timeout() {
+    let err = JsonRpcTransportError::ResponseTimeout;
+    assert_eq!(err.to_string(), "response timed out");
+    assert!(std::error::Error::source(&err).is_none());
+}
+
+#[test]
+fn test_jsonrpc_transport_error_display_write() {
+    let io_err = std::io::Error::new(std::io::ErrorKind::BrokenPipe, "broken");
+    let err = JsonRpcTransportError::Write(io_err);
+    assert!(err.to_string().contains("write failed"));
+    assert!(std::error::Error::source(&err).is_some());
+}
+
+#[test]
+fn test_jsonrpc_transport_error_display_read() {
+    let io_err = std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "eof");
+    let err = JsonRpcTransportError::Read(io_err);
+    assert!(err.to_string().contains("read failed"));
+    assert!(std::error::Error::source(&err).is_some());
+}
+
+#[test]
+fn test_jsonrpc_transport_error_display_serialize() {
+    let serde_err = serde_json::from_str::<serde_json::Value>("bad").unwrap_err();
+    let err = JsonRpcTransportError::Serialize(serde_err);
+    assert!(err.to_string().contains("serialize failed"));
+    assert!(std::error::Error::source(&err).is_some());
+}

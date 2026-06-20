@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
+//! Prometheus exposition format renderer.
+//!
+//! Serialises internal metrics (counters, histograms) into the Prometheus
+//! text exposition format for scraping by monitoring infrastructure.
+
 use std::fmt::Write;
 
 use super::{ERROR_TYPE_COUNT, ErrorType, MetricsCollector, RPC_METHOD_COUNT, RpcMethod};

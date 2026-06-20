@@ -424,7 +424,10 @@ impl RhizoCrypt {
         use crate::vertex::VertexBuilder;
 
         let primal = Arc::clone(self);
-        let interval = crate::constants::MESH_POLL_INTERVAL;
+        let interval = crate::SafeEnv::get_duration_secs(
+            crate::SafeEnv::RHIZOCRYPT_MESH_POLL_INTERVAL_SECS,
+            crate::constants::MESH_POLL_INTERVAL,
+        );
 
         tokio::spawn(async move {
             let mut ticker = tokio::time::interval(interval);

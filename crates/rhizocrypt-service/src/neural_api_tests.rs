@@ -173,7 +173,10 @@ fn parse_announce_response_empty_envelope() {
 
 #[cfg(unix)]
 mod announce_integration {
-    use super::super::announce_to_biomeos;
+    use super::super::{
+        AnnounceResponseOutcome, announce_to_biomeos, build_announce_request,
+        parse_announce_response, send_jsonrpc_uds,
+    };
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
     use tokio::net::UnixListener;
 
@@ -257,5 +260,102 @@ mod announce_integration {
                 rt.block_on(announce_to_biomeos(&rhizo_sock));
             },
         );
+    }
+
+    #[test]
+    fn build_announce_request_without_pid() {
+        let request = build_announce_request("/run/biomeos/rhizocrypt.sock", None);
+        let params = request.get("params").expect("params object");
+        assert!(params.get("pid").is_none() || params.get("pid").unwrap().is_null());
+    }
+
+    #[test]
+    fn parse_announce_response_no_result_no_error() {
+        let resp = serde_json::json!({ "jsonrpc": "2.0", "id": 1 });
+        assert_eq!(parse_announce_response(&resp), AnnounceResponseOutcome::NoResult);
+    }
+
+    #[test]
+    fn parse_announce_response_result_missing_fields_defaults_zero() {
+        let resp = serde_json::json!({
+            "jsonrpc": "2.0", "id": 1,
+            "result": {}
+        });
+        assert_eq!(
+            parse_announce_response(&resp),
+            AnnounceResponseOutcome::Registered {
+                capabilities: 0,
+                methods: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn announce_to_biomeos_send_failure_is_non_fatal() {
+        use tokio::net::UnixListener;
+
+        let dir = tempfile::tempdir().unwrap();
+        let rhizo_sock = dir.path().join("rhizocrypt.sock");
+        let neural_sock = dir.path().join("neural-api.sock");
+
+        temp_env::with_var("NEURAL_API_SOCKET", Some(neural_sock.to_str().unwrap()), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let listener = UnixListener::bind(&neural_sock).unwrap();
+                let mock = tokio::spawn(async move {
+                    if let Ok((stream, _)) = listener.accept().await {
+                        drop(stream);
+                    }
+                });
+                announce_to_biomeos(&rhizo_sock).await;
+                mock.abort();
+            });
+        });
+    }
+
+    #[test]
+    fn send_jsonrpc_uds_connect_failure() {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(send_jsonrpc_uds(
+            std::path::Path::new("/tmp/nonexistent_neural_api_rhizo_test.sock"),
+            &serde_json::json!({"jsonrpc": "2.0", "method": "test", "id": 1}),
+        ));
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("neural-api connect"), "got: {err}");
+    }
+
+    #[test]
+    fn send_jsonrpc_uds_invalid_json_response() {
+        use tokio::io::AsyncWriteExt;
+        use tokio::net::UnixListener;
+
+        let dir = tempfile::tempdir().unwrap();
+        let neural_sock = dir.path().join("neural-bad-json.sock");
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let sock_clone = neural_sock.clone();
+        rt.block_on(async {
+            let listener = UnixListener::bind(&sock_clone).unwrap();
+            let mock = tokio::spawn(async move {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let (reader, mut writer) = tokio::io::split(stream);
+                    let mut lines = tokio::io::BufReader::new(reader);
+                    let mut line = String::new();
+                    let _ = tokio::io::AsyncBufReadExt::read_line(&mut lines, &mut line).await;
+                    let _ = writer.write_all(b"not-json\n").await;
+                }
+            });
+
+            let result = send_jsonrpc_uds(
+                &sock_clone,
+                &serde_json::json!({"jsonrpc": "2.0", "method": "test", "id": 1}),
+            )
+            .await;
+            assert!(result.is_err());
+            let err = result.unwrap_err().to_string();
+            assert!(err.contains("neural-api parse"), "got: {err}");
+            mock.abort();
+        });
     }
 }

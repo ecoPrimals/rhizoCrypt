@@ -423,3 +423,29 @@ fn test_get_socket_path_none() {
         },
     );
 }
+
+// ── get_duration_secs ────────────────────────────────────────────
+
+#[test]
+fn test_get_duration_secs_uses_default_when_unset() {
+    let default = std::time::Duration::from_secs(42);
+    temp_env::with_var_unset("RHIZOCRYPT_TEST_DURATION", || {
+        assert_eq!(SafeEnv::get_duration_secs("RHIZOCRYPT_TEST_DURATION", default), default);
+    });
+}
+
+#[test]
+fn test_get_duration_secs_parses_env() {
+    temp_env::with_var("RHIZOCRYPT_TEST_DURATION", Some("120"), || {
+        let d = SafeEnv::get_duration_secs("RHIZOCRYPT_TEST_DURATION", std::time::Duration::from_secs(1));
+        assert_eq!(d, std::time::Duration::from_secs(120));
+    });
+}
+
+#[test]
+fn test_get_duration_secs_falls_back_on_invalid() {
+    let default = std::time::Duration::from_secs(30);
+    temp_env::with_var("RHIZOCRYPT_TEST_DURATION", Some("not-a-number"), || {
+        assert_eq!(SafeEnv::get_duration_secs("RHIZOCRYPT_TEST_DURATION", default), default);
+    });
+}

@@ -158,9 +158,9 @@ impl ToadStoolHttpClient {
     /// Returns error if health check fails.
     pub async fn health(&self) -> std::result::Result<HealthStatus, ToadStoolHttpError> {
         let url = format!("{}/health", self.base_url);
-        debug!(%url, "Checking ToadStool service health");
+        debug!(%url, "Checking compute provider health");
         let health: HealthStatus = self.get_json(&url).await?;
-        info!(status = %health.status, "ToadStool health check passed");
+        info!(status = %health.status, "Compute provider health check passed");
         Ok(health)
     }
 
@@ -171,7 +171,7 @@ impl ToadStoolHttpClient {
     /// Returns error if health check fails.
     pub async fn byob_health(&self) -> std::result::Result<ByobHealthResponse, ToadStoolHttpError> {
         let url = format!("{}/byob/health", self.base_url);
-        debug!(%url, "Checking ToadStool BYOB API health");
+        debug!(%url, "Checking BYOB API health");
         let health: ByobHealthResponse = self.get_json(&url).await?;
         info!(status = %health.status, "BYOB API health check passed");
         Ok(health)
@@ -359,12 +359,11 @@ pub async fn create_http_client(endpoint: std::net::SocketAddr) -> Result<ToadSt
         .map_err(|e| RhizoCryptError::integration(format!("Failed to create HTTP client: {e}")))?;
 
     // Verify connectivity
-    http_client
-        .health()
-        .await
-        .map_err(|e| RhizoCryptError::integration(format!("ToadStool health check failed: {e}")))?;
+    http_client.health().await.map_err(|e| {
+        RhizoCryptError::integration(format!("Compute provider health check failed: {e}"))
+    })?;
 
-    info!(%endpoint, "Connected to ToadStool BYOB server via HTTP");
+    info!(%endpoint, "Connected to BYOB compute server via HTTP");
     Ok(http_client)
 }
 

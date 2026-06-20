@@ -120,8 +120,8 @@ impl CapabilityEnv {
             .or_else(|| {
                 SafeEnv::get_optional(SafeEnv::SONGBIRD_ADDRESS).inspect(|_| {
                     tracing::info!(
-                        "Using SONGBIRD_ADDRESS for discovery. \
-                         Consider migrating to RHIZOCRYPT_DISCOVERY_ADAPTER for consistency."
+                        "Using legacy SONGBIRD_ADDRESS for discovery — \
+                         migrate to RHIZOCRYPT_DISCOVERY_ADAPTER for consistency."
                     );
                 })
             })

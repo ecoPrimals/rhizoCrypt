@@ -34,19 +34,20 @@ impl SongbirdClient {
         // Check for unconfigured address
         if !self.config.is_configured() {
             return Err(RhizoCryptError::integration(
-                "Songbird address not configured. Set SONGBIRD_ADDRESS environment variable \
-                 or use SongbirdConfig::with_address() for explicit configuration. \
+                "Discovery address not configured. Set RHIZOCRYPT_DISCOVERY_ADAPTER or \
+                 SONGBIRD_ADDRESS environment variable, or use \
+                 SongbirdConfig::with_address() for explicit configuration. \
                  For development, set RHIZOCRYPT_ENV=development to use localhost fallback.",
             ));
         }
 
         *self.state.write().await = ClientState::Connecting;
-        info!(address = %self.config.address, "Connecting to Songbird orchestrator");
+        info!(address = %self.config.address, "Connecting to discovery orchestrator");
 
         // Parse address
         let addr: SocketAddr = self.config.address.parse().map_err(|e| {
             RhizoCryptError::integration(format!(
-                "Invalid Songbird address '{}': {e}",
+                "Invalid discovery address '{}': {e}",
                 self.config.address
             ))
         })?;
@@ -64,18 +65,18 @@ impl SongbirdClient {
                 Ok(Ok(())) => {
                     *self.resolved_endpoint.write().await = Some(addr);
                     *self.state.write().await = ClientState::Connected;
-                    info!(address = %addr, "Connected to Songbird orchestrator (scaffolded mode)");
+                    info!(address = %addr, "Connected to discovery orchestrator (scaffolded mode)");
                     Ok(())
                 }
                 Ok(Err(e)) => {
                     *self.state.write().await = ClientState::Failed;
-                    error!(error = %e, "Failed to connect to Songbird");
+                    error!(error = %e, "Failed to connect to discovery service");
                     Err(e)
                 }
                 Err(_) => {
                     *self.state.write().await = ClientState::Failed;
-                    error!("Connection to Songbird timed out");
-                    Err(RhizoCryptError::integration("Songbird connection timeout"))
+                    error!("Connection to discovery service timed out");
+                    Err(RhizoCryptError::integration("Discovery service connection timeout"))
                 }
             }
         }
@@ -93,18 +94,18 @@ impl SongbirdClient {
                     *self.resolved_endpoint.write().await = Some(addr);
                     *self.tarpc_client.write().await = Some(client);
                     *self.state.write().await = ClientState::Connected;
-                    info!(address = %addr, "Connected to Songbird orchestrator (live tarpc)");
+                    info!(address = %addr, "Connected to discovery orchestrator (live tarpc)");
                     Ok(())
                 }
                 Ok(Err(e)) => {
                     *self.state.write().await = ClientState::Failed;
-                    error!(error = %e, "Failed to connect to Songbird");
+                    error!(error = %e, "Failed to connect to discovery service");
                     Err(e)
                 }
                 Err(_) => {
                     *self.state.write().await = ClientState::Failed;
-                    error!("Connection to Songbird timed out");
-                    Err(RhizoCryptError::integration("Songbird connection timeout"))
+                    error!("Connection to discovery service timed out");
+                    Err(RhizoCryptError::integration("Discovery service connection timeout"))
                 }
             }
         }
@@ -119,9 +120,9 @@ impl SongbirdClient {
                 debug!(addr = %addr, "TCP connection established (scaffolded mode)");
                 Ok(())
             }
-            Err(e) => {
-                Err(RhizoCryptError::integration(format!("Cannot reach Songbird at {addr}: {e}")))
-            }
+            Err(e) => Err(RhizoCryptError::integration(format!(
+                "Cannot reach discovery service at {addr}: {e}"
+            ))),
         }
     }
 
@@ -131,11 +132,11 @@ impl SongbirdClient {
         use tarpc::client;
         use tarpc::tokio_serde::formats::Bincode;
 
-        debug!(addr = %addr, "Establishing tarpc connection to Songbird");
+        debug!(addr = %addr, "Establishing tarpc connection to discovery service");
 
         // Connect TCP stream
         let stream = tokio::net::TcpStream::connect(addr).await.map_err(|e| {
-            RhizoCryptError::integration(format!("Cannot reach Songbird at {addr}: {e}"))
+            RhizoCryptError::integration(format!("Cannot reach discovery service at {addr}: {e}"))
         })?;
 
         // Create tarpc transport
@@ -144,7 +145,7 @@ impl SongbirdClient {
         // Create tarpc client
         let client = SongbirdRpcClient::new(client::Config::default(), transport).spawn();
 
-        info!(addr = %addr, "tarpc connection established to Songbird");
+        info!(addr = %addr, "tarpc connection established to discovery service");
         Ok(client)
     }
 }

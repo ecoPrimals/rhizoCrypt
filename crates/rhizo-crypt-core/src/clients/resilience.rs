@@ -67,12 +67,18 @@ impl CircuitBreaker {
         }
     }
 
-    /// Create with defaults from canonical constants.
+    /// Create with defaults from canonical constants, overridable via env vars.
     #[must_use]
     pub fn default_ipc() -> Self {
         Self::new(
-            crate::constants::CIRCUIT_BREAKER_FAILURE_THRESHOLD,
-            crate::constants::CIRCUIT_BREAKER_COOLDOWN,
+            crate::SafeEnv::parse(
+                crate::SafeEnv::RHIZOCRYPT_CB_FAILURE_THRESHOLD,
+                crate::constants::CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+            ),
+            crate::SafeEnv::get_duration_secs(
+                crate::SafeEnv::RHIZOCRYPT_CB_COOLDOWN_SECS,
+                crate::constants::CIRCUIT_BREAKER_COOLDOWN,
+            ),
         )
     }
 

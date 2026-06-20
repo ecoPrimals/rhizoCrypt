@@ -63,7 +63,10 @@ impl SongbirdConfig {
             metadata: HashMap::new(),
             timeout_ms: crate::constants::DEFAULT_CAPABILITY_TIMEOUT_MS,
             auto_reconnect: true,
-            heartbeat_interval: crate::constants::DEFAULT_HEARTBEAT_INTERVAL,
+            heartbeat_interval: crate::SafeEnv::get_duration_secs(
+                crate::SafeEnv::RHIZOCRYPT_HEARTBEAT_INTERVAL_SECS,
+                crate::constants::DEFAULT_HEARTBEAT_INTERVAL,
+            ),
         }
     }
 

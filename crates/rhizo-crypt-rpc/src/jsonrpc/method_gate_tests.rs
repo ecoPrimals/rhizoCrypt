@@ -392,3 +392,311 @@ fn auth_peer_info_response() {
     assert_eq!(resp["origin"], "Unix");
     assert_eq!(resp["has_token"], false);
 }
+
+#[test]
+fn auth_peer_info_response_loopback_with_token() {
+    let gate = test_gate();
+    let caller =
+        CallerContext::with_bearer_token(Some("tok".to_owned()), ConnectionOrigin::Loopback);
+    let resp = gate.auth_peer_info_response(&caller);
+    assert_eq!(resp["origin"], "Loopback");
+    assert_eq!(resp["has_token"], true);
+}
+
+#[test]
+fn auth_peer_info_response_remote() {
+    let gate = test_gate();
+    let caller = CallerContext::with_bearer_token(None, ConnectionOrigin::Remote);
+    let resp = gate.auth_peer_info_response(&caller);
+    assert_eq!(resp["origin"], "Remote");
+    assert_eq!(resp["has_token"], false);
+}
+
+// ── Parse verify_ionic error branches ────────────────────────────
+
+#[test]
+fn parse_verify_ionic_rejects_invalid_json() {
+    let result = parse_verify_ionic_response("not-json");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("not valid JSON"));
+}
+
+#[test]
+fn parse_verify_ionic_rejects_error_response() {
+    let line = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "error": { "code": -32600, "message": "bad request" }
+    });
+    let err = parse_verify_ionic_response(&line.to_string()).unwrap_err();
+    assert!(err.contains("error response"), "got: {err}");
+}
+
+#[test]
+fn parse_verify_ionic_rejects_missing_result() {
+    let line = serde_json::json!({ "jsonrpc": "2.0", "id": 1 });
+    let err = parse_verify_ionic_response(&line.to_string()).unwrap_err();
+    assert!(err.contains("missing result"), "got: {err}");
+}
+
+#[test]
+fn parse_verify_ionic_rejects_missing_claims() {
+    let line = serde_json::json!({
+        "jsonrpc": "2.0", "id": 1,
+        "result": { "valid": true, "scopes": ["*"] }
+    });
+    let err = parse_verify_ionic_response(&line.to_string()).unwrap_err();
+    assert!(err.contains("missing claims"), "got: {err}");
+}
+
+#[test]
+fn parse_verify_ionic_rejects_missing_subject() {
+    let line = serde_json::json!({
+        "jsonrpc": "2.0", "id": 1,
+        "result": {
+            "valid": true,
+            "scopes": ["*"],
+            "claims": { "scope": ["*"] }
+        }
+    });
+    let err = parse_verify_ionic_response(&line.to_string()).unwrap_err();
+    assert!(err.contains("missing subject"), "got: {err}");
+}
+
+#[test]
+fn parse_verify_ionic_rejects_missing_scopes() {
+    let line = serde_json::json!({
+        "jsonrpc": "2.0", "id": 1,
+        "result": {
+            "valid": true,
+            "claims": { "sub": "alice" }
+        }
+    });
+    let err = parse_verify_ionic_response(&line.to_string()).unwrap_err();
+    assert!(err.contains("missing scopes"), "got: {err}");
+}
+
+// ── extract_scope_list alternate keys ────────────────────────────
+
+#[test]
+fn extract_scope_list_from_result_scope_key() {
+    let result = serde_json::json!({
+        "valid": true,
+        "scope": ["dag.*"],
+        "claims": { "sub": "bob" }
+    });
+    let scopes = extract_scope_list(&result).unwrap();
+    assert_eq!(scopes, vec!["dag.*"]);
+}
+
+#[test]
+fn extract_scope_list_from_claims_scope_key() {
+    let result = serde_json::json!({
+        "valid": true,
+        "claims": {
+            "sub": "carol",
+            "scope": ["crypto.*"]
+        }
+    });
+    let scopes = extract_scope_list(&result).unwrap();
+    assert_eq!(scopes, vec!["crypto.*"]);
+}
+
+#[test]
+fn extract_scope_list_from_claims_scopes_key() {
+    let result = serde_json::json!({
+        "valid": true,
+        "claims": {
+            "sub": "dave",
+            "scopes": ["mesh.*", "dag.*"]
+        }
+    });
+    let scopes = extract_scope_list(&result).unwrap();
+    assert_eq!(scopes, vec!["mesh.*", "dag.*"]);
+}
+
+#[test]
+fn extract_scope_list_empty_arrays_return_none() {
+    let result = serde_json::json!({
+        "valid": true,
+        "scopes": [],
+        "scope": [],
+        "claims": { "sub": "eve", "scopes": [], "scope": [] }
+    });
+    assert!(extract_scope_list(&result).is_none());
+}
+
+#[test]
+fn extract_scope_list_skips_non_string_entries() {
+    let result = serde_json::json!({
+        "valid": true,
+        "scopes": ["dag.*", 42, null, "crypto.*"]
+    });
+    let scopes = extract_scope_list(&result).unwrap();
+    assert_eq!(scopes, vec!["dag.*", "crypto.*"]);
+}
+
+// ── expires_in_from_claims ───────────────────────────────────────
+
+#[test]
+fn expires_in_from_claims_future_exp() {
+    let future_exp =
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
+            + 3600;
+    let claims = serde_json::json!({ "sub": "x", "exp": future_exp });
+    let remaining = expires_in_from_claims(&claims);
+    assert!(remaining.is_some());
+    assert!(remaining.unwrap() > 3500 && remaining.unwrap() <= 3600);
+}
+
+#[test]
+fn expires_in_from_claims_past_exp_returns_none() {
+    let claims = serde_json::json!({ "sub": "x", "exp": 100 });
+    assert!(expires_in_from_claims(&claims).is_none());
+}
+
+#[test]
+fn expires_in_from_claims_no_exp() {
+    let claims = serde_json::json!({ "sub": "x" });
+    assert!(expires_in_from_claims(&claims).is_none());
+}
+
+#[test]
+fn expires_in_from_claims_non_numeric_exp() {
+    let claims = serde_json::json!({ "sub": "x", "exp": "not-a-number" });
+    assert!(expires_in_from_claims(&claims).is_none());
+}
+
+// ── CallerContext constructors & async verify ────────────────────
+
+#[test]
+fn caller_context_loopback_constructor() {
+    let ctx = CallerContext::loopback();
+    assert_eq!(ctx.origin, ConnectionOrigin::Loopback);
+    assert!(ctx.bearer_token.is_none());
+    assert!(!ctx.is_verified());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn caller_context_verify_token_async() {
+    let verifier = NoopVerifier;
+    let mut ctx = CallerContext::with_bearer_token(Some("tok".to_owned()), ConnectionOrigin::Unix);
+    ctx.verify_token_async(&verifier).await;
+    assert!(ctx.is_verified());
+    assert_eq!(ctx.verified_claims.as_ref().unwrap().subject, "unknown");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn caller_context_verify_token_async_without_token() {
+    let verifier = NoopVerifier;
+    let mut ctx = CallerContext::unix();
+    ctx.verify_token_async(&verifier).await;
+    assert!(!ctx.is_verified());
+}
+
+// ── MethodGate constructors & accessors ──────────────────────────
+
+#[test]
+fn method_gate_mode_accessor() {
+    let gate = test_gate();
+    assert_eq!(gate.mode(), EnforcementMode::Permissive);
+    let gate = enforced_gate();
+    assert_eq!(gate.mode(), EnforcementMode::Enforced);
+}
+
+#[test]
+fn method_gate_verifier_accessor() {
+    let gate = test_gate();
+    let _verifier = gate.verifier();
+    assert!(gate.verifier().verify("tok").is_some());
+}
+
+#[test]
+fn method_gate_debug_format() {
+    let gate = test_gate();
+    let debug = format!("{gate:?}");
+    assert!(debug.contains("MethodGate"));
+    assert!(debug.contains("Permissive"));
+}
+
+#[test]
+fn method_gate_from_env_defaults_to_permissive() {
+    let gate = MethodGate::from_env();
+    assert_eq!(gate.mode(), EnforcementMode::Permissive);
+}
+
+#[test]
+fn method_gate_from_env_with_registry() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    let gate = MethodGate::from_env_with_registry(Some(registry));
+    assert_eq!(gate.mode(), EnforcementMode::Permissive);
+}
+
+#[test]
+fn method_gate_with_discovery() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    let gate = MethodGate::with_discovery(EnforcementMode::Enforced, registry);
+    assert_eq!(gate.mode(), EnforcementMode::Enforced);
+}
+
+// ── Gate check: permissive with unverified token on protected ────
+
+#[test]
+fn gate_permissive_rejects_failed_token() {
+    let gate = test_gate();
+    let caller = CallerContext::with_bearer_token(Some("bad".to_owned()), ConnectionOrigin::Remote);
+    let result = gate.check("dag.session.create", &caller);
+    assert!(result.is_err());
+}
+
+// ── CapabilityVerifier: sync verify path ─────────────────────────
+
+#[test]
+fn capability_verifier_sync_verify_empty_token() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test"));
+    let verifier = CapabilityVerifier::new(registry);
+    assert!(verifier.verify("").is_none());
+}
+
+// ── EnforcementMode::from_env variants ───────────────────────────
+
+#[test]
+fn enforcement_mode_from_env_enforce_variant() {
+    temp_env::with_var("RHIZOCRYPT_AUTH_MODE", Some("enforce"), || {
+        assert_eq!(EnforcementMode::from_env(), EnforcementMode::Enforced);
+    });
+}
+
+#[test]
+fn enforcement_mode_from_env_strict_variant() {
+    temp_env::with_var("RHIZOCRYPT_AUTH_MODE", Some("strict"), || {
+        assert_eq!(EnforcementMode::from_env(), EnforcementMode::Enforced);
+    });
+}
+
+#[test]
+fn enforcement_mode_from_env_enforced_variant() {
+    temp_env::with_var("RHIZOCRYPT_AUTH_MODE", Some("Enforced"), || {
+        assert_eq!(EnforcementMode::from_env(), EnforcementMode::Enforced);
+    });
+}
+
+#[test]
+fn enforcement_mode_from_env_unrecognized_defaults_permissive() {
+    temp_env::with_var("RHIZOCRYPT_AUTH_MODE", Some("banana"), || {
+        assert_eq!(EnforcementMode::from_env(), EnforcementMode::Permissive);
+    });
+}
+
+#[test]
+fn enforcement_mode_from_env_unset_defaults_permissive() {
+    temp_env::with_var_unset("RHIZOCRYPT_AUTH_MODE", || {
+        assert_eq!(EnforcementMode::from_env(), EnforcementMode::Permissive);
+    });
+}

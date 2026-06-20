@@ -22,7 +22,7 @@ impl SongbirdClient {
     /// - Discovery query fails
     pub async fn discover(&self, capability: &str) -> Result<Vec<ServiceInfo>> {
         if !self.is_connected().await {
-            return Err(RhizoCryptError::integration("Not connected to Songbird"));
+            return Err(RhizoCryptError::integration("Not connected to discovery service"));
         }
 
         debug!(capability = %capability, "Discovering services");
@@ -122,7 +122,7 @@ impl SongbirdClient {
     /// - Discovery fails
     pub async fn populate_registry(&self, registry: &DiscoveryRegistry) -> Result<()> {
         if !self.is_connected().await {
-            return Err(RhizoCryptError::integration("Not connected to Songbird"));
+            return Err(RhizoCryptError::integration("Not connected to discovery service"));
         }
 
         let capability_mappings: &[(&str, &[Capability])] = &[
