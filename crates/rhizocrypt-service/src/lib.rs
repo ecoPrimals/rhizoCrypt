@@ -570,17 +570,17 @@ pub async fn register_with_discovery(
     client
         .connect()
         .await
-        .map_err(|e| ServiceError::Discovery(format!("songbird connect: {e}")))?;
+        .map_err(|e| ServiceError::Discovery(format!("discovery adapter connect: {e}")))?;
 
     let our_endpoint = format!("{}://{our_addr}", constants::DISCOVERY_ENDPOINT_SCHEME);
     let result = client
         .register(&our_endpoint)
         .await
-        .map_err(|e| ServiceError::Discovery(format!("songbird register: {e}")))?;
+        .map_err(|e| ServiceError::Discovery(format!("discovery adapter register: {e}")))?;
 
     if !result.success {
         return Err(ServiceError::Discovery(format!(
-            "songbird registration rejected: {}",
+            "discovery registration rejected: {}",
             result.message
         )));
     }
@@ -588,7 +588,7 @@ pub async fn register_with_discovery(
     client
         .start_heartbeat()
         .await
-        .map_err(|e| ServiceError::Discovery(format!("songbird heartbeat: {e}")))?;
+        .map_err(|e| ServiceError::Discovery(format!("discovery adapter heartbeat: {e}")))?;
 
     Ok(client)
 }

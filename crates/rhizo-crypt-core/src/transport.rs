@@ -551,6 +551,19 @@ pub async fn send_jsonrpc_request(
     Ok(response)
 }
 
+/// Probe whether a Unix domain socket is alive by attempting a connection.
+///
+/// A `connect()` on a live listener succeeds in microseconds; a stale socket
+/// file from a crashed process returns `ECONNREFUSED` immediately. This is
+/// the ecosystem-standard liveness check (v1.1.5) — prefer over
+/// `Path::exists` which cannot distinguish live from stale sockets.
+#[cfg(unix)]
+#[must_use]
+pub fn socket_is_alive(path: &std::path::Path) -> bool {
+    use std::os::unix::net::UnixStream;
+    path.exists() && UnixStream::connect(path).is_ok()
+}
+
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 #[path = "transport_tests.rs"]

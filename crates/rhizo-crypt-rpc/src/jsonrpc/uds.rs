@@ -78,6 +78,7 @@ impl UdsJsonRpcServer {
         self.prepare_socket_path()?;
 
         let listener = UnixListener::bind(&self.socket_path)?;
+        self.create_capability_symlink();
         info!(path = %self.socket_path.display(), "JSON-RPC 2.0 UDS listening");
 
         if let Some(notify) = ready {
@@ -138,9 +139,56 @@ impl UdsJsonRpcServer {
         Ok(())
     }
 
-    /// Remove the socket file (idempotent).
+    /// Remove the socket file and capability symlink (idempotent).
     pub fn cleanup(&self) {
+        self.remove_capability_symlink();
         cleanup_socket_at(&self.socket_path);
+    }
+
+    /// Create a `{domain}.sock` symlink pointing to the primal socket.
+    ///
+    /// Enables Tier 3 capability-domain discovery: consumers looking for
+    /// `dag.sock` will find the rhizoCrypt socket without knowing the
+    /// primal name (ecosystem standard v1.3.0).
+    fn create_capability_symlink(&self) {
+        #[cfg(unix)]
+        if let Some(parent) = self.socket_path.parent() {
+            let domain = rhizo_crypt_core::niche::DOMAIN;
+            let symlink_path = parent
+                .join(format!("{domain}{}", rhizo_crypt_core::constants::SOCKET_FILE_EXTENSION));
+            if symlink_path.exists() {
+                let _ = std::fs::remove_file(&symlink_path);
+            }
+            if let Err(e) = std::os::unix::fs::symlink(&self.socket_path, &symlink_path) {
+                debug!(
+                    symlink = %symlink_path.display(),
+                    target = %self.socket_path.display(),
+                    error = %e,
+                    "failed to create capability symlink (discovery degraded)"
+                );
+            } else {
+                debug!(
+                    symlink = %symlink_path.display(),
+                    "capability domain symlink created"
+                );
+            }
+        }
+    }
+
+    /// Remove the capability domain symlink if it points to our socket.
+    fn remove_capability_symlink(&self) {
+        #[cfg(unix)]
+        if let Some(parent) = self.socket_path.parent() {
+            let domain = rhizo_crypt_core::niche::DOMAIN;
+            let symlink_path = parent
+                .join(format!("{domain}{}", rhizo_crypt_core::constants::SOCKET_FILE_EXTENSION));
+            if symlink_path.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink())
+                && std::fs::read_link(&symlink_path).is_ok_and(|t| t == self.socket_path)
+            {
+                let _ = std::fs::remove_file(&symlink_path);
+                debug!(symlink = %symlink_path.display(), "capability symlink removed");
+            }
+        }
     }
 
     /// Socket path this server will bind to.

@@ -165,6 +165,10 @@ where
 }
 
 /// Discover the biomeOS neural-api UDS socket via tiered lookup.
+///
+/// Uses connect-probe (`socket_is_alive`) instead of `Path::exists` to
+/// distinguish live listeners from stale socket files left by crashed
+/// processes (ecosystem standard v1.1.5).
 #[cfg(unix)]
 fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
     let family = SafeEnv::get_or_default(
@@ -176,7 +180,7 @@ fn discover_neural_api_socket() -> Option<std::path::PathBuf> {
         SafeEnv::get_optional(SafeEnv::NEURAL_API_SOCKET).as_deref(),
         &family,
         SafeEnv::get_optional(SafeEnv::XDG_RUNTIME_DIR).as_deref(),
-        std::path::Path::exists,
+        rhizo_crypt_core::transport::socket_is_alive,
     )
 }
 

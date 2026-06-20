@@ -33,14 +33,13 @@ async fn setup_server_client(
 
     let server_handle = tokio::spawn(async move { server.serve().await });
 
-    // Retry connection until server is ready (no sleep, pure async retry)
     let client = async {
-        for attempt in 0..50 {
+        for attempt in 0..100 {
             if let Ok(client) = RpcClient::connect(addr).await {
                 return Ok(client);
             }
-            if attempt < 49 {
-                tokio::task::yield_now().await;
+            if attempt < 99 {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             }
         }
         Err("Failed to connect to server after retries")
@@ -74,8 +73,8 @@ async fn test_rpc_server_client_connection() {
             if let Ok(client) = RpcClient::connect(addr).await {
                 return Ok(client);
             }
-            if attempt < 49 {
-                tokio::task::yield_now().await;
+            if attempt < 99 {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             }
         }
         Err("Failed to connect")
@@ -126,14 +125,13 @@ async fn test_rpc_vertex_operations() {
 
     let server_handle = tokio::spawn(async move { server.serve().await });
 
-    // Retry connection
     let client = async {
-        for attempt in 0..50 {
+        for attempt in 0..100 {
             if let Ok(client) = RpcClient::connect(addr).await {
                 return Ok(client);
             }
-            if attempt < 49 {
-                tokio::task::yield_now().await;
+            if attempt < 99 {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             }
         }
         Err("Failed to connect")
@@ -190,14 +188,13 @@ async fn test_rpc_health_metrics() {
 
     let server_handle = tokio::spawn(async move { server.serve().await });
 
-    // Retry connection
     let client = async {
-        for attempt in 0..50 {
+        for attempt in 0..100 {
             if let Ok(client) = RpcClient::connect(addr).await {
                 return Ok(client);
             }
-            if attempt < 49 {
-                tokio::task::yield_now().await;
+            if attempt < 99 {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             }
         }
         Err("Failed to connect")
