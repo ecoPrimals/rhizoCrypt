@@ -1,6 +1,6 @@
 # DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.17
 
-**Date**: Jun 19, 2026
+**Date**: Jun 20, 2026
 **Version**: 0.14.17
 **Status**: PRODUCTION READY
 
@@ -9,11 +9,11 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,748 tests passing** (all features), 0 failures
+- [x] **1,825 tests passing** (all features), 0 failures
 - [x] **93.37% line coverage** (llvm-cov, Jun 19 2026)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
-- [x] **100% file size compliance** (all production files under 700 lines)
+- [x] **100% file size compliance** (all production files under 800 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
 - [x] **AGPL-3.0-or-later** SPDX header on all 186 `.rs` files
 
@@ -30,9 +30,8 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,748 tests)
-- [x] **CHANGELOG.md** (version history through Wave 118)
-- [x] **showcase/** — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`
+- [x] **README.md** (current metrics — 1,825 tests)
+- [x] **CHANGELOG.md** (version history through Wave 120)
 - [x] **specs/** (12 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
 
@@ -69,7 +68,7 @@ curl -s -X POST http://localhost:9400/rpc \
 ```bash
 export RHIZOCRYPT_PORT=9400
 export RHIZOCRYPT_ENV=production
-export RHIZOCRYPT_LOG_LEVEL=info
+export RUST_LOG=info
 export RHIZOCRYPT_DISCOVERY_ADAPTER=songbird.local:7500  # Optional: for registration
 ```
 
@@ -106,7 +105,7 @@ services:
       - "9400:9400"
     environment:
       - RHIZOCRYPT_ENV=production
-      - RHIZOCRYPT_LOG_LEVEL=info
+      - RUST_LOG=info
 ```
 
 ---
@@ -188,7 +187,7 @@ rhizocrypt doctor --comprehensive
 
 ### Optional
 - `RHIZOCRYPT_DISCOVERY_ADAPTER` — Discovery service endpoint (primary)
-- `RHIZOCRYPT_LOG_LEVEL` — Logging level (default: `info`)
+- `RUST_LOG` — Logging level filter (default: `info`)
 - `SIGNING_ENDPOINT` — Direct signing provider
 - `PERMANENT_STORAGE_ENDPOINT` — Direct permanent storage
 - `PAYLOAD_STORAGE_ENDPOINT` — Direct payload storage
@@ -251,10 +250,8 @@ rhizocrypt doctor --comprehensive
 - [CHANGELOG.md](../CHANGELOG.md) — Version history
 - [ENV_VARS.md](./ENV_VARS.md) — Environment variable reference
 - [specs/](../specs/) — Formal specifications
-- [showcase/](../showcase/) — Fossilized (Wave 49)
-
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: Jun 19, 2026
+**Last Updated**: Jun 20, 2026
 **Version**: rhizoCrypt 0.14.17

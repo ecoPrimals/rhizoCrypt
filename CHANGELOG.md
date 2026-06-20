@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Wave 120: Adapter-Agnostic Messaging + Coverage Expansion + Env Tuning (Jun 20, 2026)
+
+- **Adapter-agnostic runtime messaging**: All hardcoded "Songbird" error/log strings replaced with "discovery service/mesh" across client.rs, connection.rs, discovery.rs, transport.rs. ToadStool runtime messages replaced with "compute provider" / "BYOB compute server". Primal adapter names remain in type names and doc comments (correct for adapter modules), but runtime-facing strings are now capability-based.
+- **Coverage expansion (1,748 → 1,825 tests, +77)**: method_gate.rs (+27 tests covering all parse_verify_ionic error branches, scope extraction, expires_in_from_claims, CapabilityVerifier sync path, EnforcementMode::from_env), transport.rs (+30 tests for try_parse_address, Display, serde roundtrip, connect_transport UDS/MeshRelay, socket_is_alive, JsonRpcTransportError), neural_api.rs (+6 tests for pid=None, NoResult, send failures), safe_env (+3 tests for get_duration_secs).
+- **Env-configurable operational tuning**: New `SafeEnv::get_duration_secs` helper. 4 new env vars: `RHIZOCRYPT_MESH_POLL_INTERVAL_SECS` (30s), `RHIZOCRYPT_HEARTBEAT_INTERVAL_SECS` (45s), `RHIZOCRYPT_CB_FAILURE_THRESHOLD` (5), `RHIZOCRYPT_CB_COOLDOWN_SECS` (30s).
+- **Test isolation**: 3 `temp_env` tests in discovery/manifest.rs converted from `#[tokio::test]` to `#[test]` — eliminates env-var race under parallel execution.
+- **TransportStream** now derives `Debug`. Module-level docs added to `histogram.rs`, `prometheus.rs`.
+
+#### Wave 119: Connect-Probe Liveness + Capability Symlinks (Jun 19, 2026)
+
+- **Connect-probe liveness**: New `transport::socket_is_alive()` replaces `Path::exists` for UDS detection — distinguishes live listeners from stale socket files (ecosystem standard v1.1.5). Wired into neural_api discovery.
+- **Capability domain symlinks**: UDS server creates `dag.sock` symlink → `rhizocrypt.sock` on bind, removes on cleanup (ecosystem standard v1.3.0 capability-domain discovery).
+- **Adapter-agnostic service errors**: "songbird connect/register/heartbeat" → "discovery adapter connect/register/heartbeat" in service lib.rs.
+- **Flaky test fix**: `rpc_integration.rs` retry loops changed from `yield_now()` to `sleep(10ms)` with 100 attempts (up from 50).
+
+#### Wave 118: Deep Debt — Zero-Copy Audit + Coverage + Dep Evolution (Jun 19, 2026)
+
+- **Zero-copy audit**: 7 unnecessary `.clone()` calls eliminated (5 in method_gate.rs, 1 in songbird/client.rs, 1 in mesh/listener.rs via new `to_event_type(&self)`).
+- **Coverage expansion (1,689 → 1,748)**: mesh handler 100% coverage (+15 tests), neural_api coverage (+16 tests), songbird coverage tests (+6).
+- **Dependency evolution**: tokio, bytes, blake3, rand, hyper, clap, tempfile, serde_json, h2 bumped to latest stable.
+- **CapabilityVerifier**: Evolved from PresenceVerifier to full capability-discovered verifier with DiscoveryRegistry, signing provider cache, and PresenceVerifier fallback.
+- **Test file refactoring**: `uds_tests.rs` split into 5 domain-focused test modules.
+
+#### Wave 117: Doc Links + Test Coverage + Mesh Handler (Jun 19, 2026)
+
+- **Broken intra-doc links fixed**: `mesh/mod.rs` and `mesh/listener.rs` doc links corrected.
+- **Reason strings**: Added to all `#[allow(dead_code)]` and `#[allow(clippy::too_many_lines)]` attributes.
+- **Mesh handler 100% coverage**: 15 new tests in `handler_tests_mesh.rs`.
+- **Neural API testability**: Refactored for injectable predicates, 13 new tests.
+- **License completion**: `LICENSE-ORC` and `LICENSE-CC-BY-SA` files created for scyBorg triple-copyleft.
+
 #### Wave 116: Genetics-Layer Mito-Beacon + SSOT Completion (Jun 16, 2026)
 
 - **Mito-beacon signal acceptance (genetics-layer wiring)**: Evolved `riboCipher` prefix handling from exact `[0xEC, 0x01]` match to full mito-beacon signal family. Now accepts any 2-byte prefix starting with `0xEC` (mito-beacon) or `0xED` (mito-beacon extended). Signal constants (`MITO_BEACON_SIGNAL`, `MITO_BEACON_EXTENDED`, `NUCLEAR_LINEAGE_SIGNAL`, `is_genetics_signal()`) centralized in `constants.rs` for ecosystem SSOT. `0xEE` (nuclear lineage) recognized but not yet acted on (Wave 115+ evolution). Addresses Wave 114 "BTSP reject" status — rhizoCrypt now accepts mito-beacon signals per the eukaryotic genetics model.

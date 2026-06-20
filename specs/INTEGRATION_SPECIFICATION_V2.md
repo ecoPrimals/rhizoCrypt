@@ -2,7 +2,7 @@
 
 **Version**: 2.0.0 🥇  
 **Status**: Current (Capability-Based Architecture)  
-**Last Updated**: April 2026
+**Last Updated**: June 2026
 
 ---
 
@@ -462,8 +462,8 @@ assert!(mock.sign(data, &did).await.is_ok());
 | Signing | `SigningProvider` | `SigningProvider` | ✅ Complete |
 | Permanent Storage | `PermanentStorageProvider` | `PermanentStorageProvider` | ✅ Complete |
 | Payload Storage | `PayloadStorageProvider` | `PayloadStorageProvider` | ✅ Complete |
-| Compute | `ToadStoolClient` | `ComputeProvider` | 📋 Planned |
-| Provenance | `SweetGrassQueryable` | `ProvenanceProvider` | 📋 Planned |
+| Compute | `ToadStoolClient` | `ComputeProvider` | ✅ Implemented |
+| Provenance | `SweetGrassQueryable` | `ProvenanceProvider` | ✅ Implemented |
 
 **Current Version**: v2.0 (Capability-Based) 🥇  
 **Backward Compatibility**: 100% (v1.0 names still work)  
@@ -487,5 +487,5 @@ assert!(mock.sign(data, &did).await.is_ok());
 **Version**: 2.0.0 🥇  
 **Status**: Production Ready - Ecosystem Leader  
 **Philosophy**: Request capabilities, not vendors  
-**Last Updated**: April 2026
+**Last Updated**: June 2026
 

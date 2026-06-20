@@ -63,16 +63,16 @@ Three workspace crates:
 | BTSP Phase 3 | Server-side handshake + ChaCha20-Poly1305 encrypted channel via `btsp.negotiate` |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 186 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 199 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
 | Tests | 1,825 passing (all features) |
-| Coverage | 93.37% lines (llvm-cov, Jun 19 2026) |
+| Coverage | 93.70% lines (llvm-cov, Jun 20 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
-| Source files | 190 `.rs`, ~58,642 lines |
+| Source files | 199 `.rs`, ~59,472 lines |
 | Max file size | ~756 lines production (`method_gate.rs`, limit: 800) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
@@ -89,8 +89,6 @@ Three workspace crates:
 - `config/capability_registry.toml` — Capability method registry (37 methods in `METHOD_CATALOG`, 7 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
 - `specs/` — 12 specification documents (incl. `CRYPTO_MODEL.md` — signing provider crypto delegation)
-- `showcase/` — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`
-
 ## Part of ecoPrimals
 
 Part of the [ecoPrimals](https://github.com/ecoPrimals) sovereign computing

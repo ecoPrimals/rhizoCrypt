@@ -22,7 +22,7 @@
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 186 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 199 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `config/capability_registry.toml` (37 methods, 7 domains, stability tiers, `provenance.*` → `dag.*` wire aliases) |
@@ -241,7 +241,6 @@ See [docs/ENV_VARS.md](docs/ENV_VARS.md) for the complete list.
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — Environment variable reference
 - [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) — Production deployment
 - [specs/](specs/) — Formal specifications (architecture, data model, protocols, experiments)
-- [showcase/](showcase/) — Fossilized (Wave 49); archived to `fossilRecord/primals/rhizoCrypt/showcase_wave49/`
 - [specs/CRYPTO_MODEL.md](specs/CRYPTO_MODEL.md) — Canonical crypto delegation pattern (signing provider IPC)
 - [CHANGELOG.md](CHANGELOG.md) — Version history
 - [deny.toml](deny.toml) — Dependency audit policy (`cargo-deny`)

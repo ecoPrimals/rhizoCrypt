@@ -337,7 +337,6 @@ rhizoCrypt/
 │       └── Cargo.toml
 │
 ├── specs/                        # 12 specification documents
-├── showcase/                     # Fossilized (Wave 49) — archived to fossilRecord
 ├── docs/                         # Operational docs (ENV_VARS, DEPLOYMENT_CHECKLIST)
 └── graphs/                       # biomeOS deploy graph
 ```
