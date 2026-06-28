@@ -1,6 +1,6 @@
 # `dag.event.append` — Event Type Reference
 
-**Date**: June 20, 2026
+**Date**: June 28, 2026
 **Version**: 0.14.17
 **Canonical source**: `crates/rhizo-crypt-core/src/event.rs` → `pub enum EventType`
 

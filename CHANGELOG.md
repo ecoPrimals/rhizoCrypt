@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Wave 128c: Fail-Closed Auth + Mesh Hardening + Constants Split (Jun 28, 2026)
+
+- **CapabilityVerifier fail-closed in Enforced mode**: `fail_open` parameter wired from `EnforcementMode`. In Enforced mode, tokens are treated as unverified when no `crypto:signing` provider exists — previously fell back to `PresenceVerifier` granting wildcard `*` scope. Permissive mode retains backward-compatible fallback.
+- **Mesh listener error escalation**: Transport errors in `poll_events` tracked via `AtomicU32`. First 3 failures log at `debug`, then escalate to `warn` ("signing provider may be unavailable"). Counter resets on successful poll.
+- **Dehydration fallback visibility**: "No signing provider" skip upgraded from `debug` to `warn`. Local-only commit reference message clarifies data will not reach the ledger.
+- **Adapter-agnostic docs**: All "bearDog" references in `mesh/types.rs` and `mesh/listener.rs` replaced with "signing provider" / "crypto:signing provider". Discovery config warning leads with `DISCOVERY_ENDPOINT`.
+- **`constants.rs` split**: 662-line monolith → `constants/` module with 5 submodules (network, ipc, methods, mesh, crypto). Flat re-exports preserve `crate::constants::NAME` API.
+
+#### Wave 128: Coverage Expansion + CI Gate + Clippy 1.94 Fixes (Jun 28, 2026)
+
+- **Coverage expansion (1,825 → 1,866, +41)**: `method_gate.rs` (+10 tests: mock signing provider TCP server, verify_with_provider success/transport-error/invalid-response/discovery-failed/cache-TTL, sync verify, CallerContext async verify, end-to-end gate). `uds.rs` (+12 tests: capability symlink lifecycle, BTSP production mode, length-prefixed handshake, EOF edges). `lib.rs` service (+19 tests: bind addr, TCP conflict, discovery register, graceful shutdown, run_client ops).
+- **CI coverage gate**: Wired `cargo-llvm-cov --fail-under-lines 90` into `.github/workflows/ci.yml`.
+- **Clippy 1.94 compliance**: `byte_str`, `items_after_statements`, `expect_used`, `redundant_clone`, `err_expect`, `cast_possible_wrap`.
+- **Adapter-agnostic**: Last `SongbirdConfig::with_address()` reference in `connection.rs` error message replaced with generic wording.
+
 #### Wave 120: Adapter-Agnostic Messaging + Coverage Expansion + Env Tuning (Jun 20, 2026)
 
 - **Adapter-agnostic runtime messaging**: All hardcoded "Songbird" error/log strings replaced with "discovery service/mesh" across client.rs, connection.rs, discovery.rs, transport.rs. ToadStool runtime messages replaced with "compute provider" / "BYOB compute server". Primal adapter names remain in type names and doc comments (correct for adapter modules), but runtime-facing strings are now capability-based.
