@@ -6,6 +6,7 @@
 #![expect(clippy::unwrap_used, reason = "test code")]
 
 use super::*;
+use std::sync::Arc;
 
 fn test_gate() -> MethodGate {
     MethodGate::with_noop(EnforcementMode::Permissive)
@@ -20,6 +21,81 @@ fn verified_caller(token: &str) -> CallerContext {
     let mut ctx = CallerContext::with_bearer_token(Some(token.to_owned()), ConnectionOrigin::Unix);
     ctx.verify_token(&verifier);
     ctx
+}
+
+async fn unused_tcp_port() -> u16 {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    listener.local_addr().unwrap().port()
+}
+
+async fn spawn_verify_ionic_mock_server(
+    result: serde_json::Value,
+    max_requests: u32,
+) -> (std::net::SocketAddr, Arc<std::sync::atomic::AtomicU32>) {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+
+    let hits = Arc::new(AtomicU32::new(0));
+    let hits_bg = Arc::clone(&hits);
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    tokio::spawn(async move {
+        for _ in 0..max_requests {
+            let Ok((stream, _)) = listener.accept().await else {
+                break;
+            };
+            hits_bg.fetch_add(1, Ordering::SeqCst);
+            let (reader, mut writer) = tokio::io::split(stream);
+            let mut buf_reader = tokio::io::BufReader::new(reader);
+            let mut line = String::new();
+            let _ = buf_reader.read_line(&mut line).await;
+            let response = serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": result,
+            });
+            let payload = format!("{response}\n");
+            let _ = writer.write_all(payload.as_bytes()).await;
+            let _ = writer.flush().await;
+        }
+    });
+
+    (addr, hits)
+}
+
+async fn spawn_verify_ionic_raw_response_server(response_line: &str) -> std::net::SocketAddr {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let response = format!("{response_line}\n");
+
+    tokio::spawn(async move {
+        if let Ok((stream, _)) = listener.accept().await {
+            let (reader, mut writer) = tokio::io::split(stream);
+            let mut buf_reader = tokio::io::BufReader::new(reader);
+            let mut line = String::new();
+            let _ = buf_reader.read_line(&mut line).await;
+            let _ = writer.write_all(response.as_bytes()).await;
+            let _ = writer.flush().await;
+        }
+    });
+
+    addr
+}
+
+async fn register_signing_provider(registry: &DiscoveryRegistry, addr: std::net::SocketAddr) {
+    use rhizo_crypt_core::discovery::{Capability, ServiceEndpoint};
+    use rhizo_crypt_core::transport::TransportEndpoint;
+
+    registry
+        .register_endpoint(ServiceEndpoint::new(
+            "mock-signer",
+            TransportEndpoint::tcp("127.0.0.1", addr.port()),
+            vec![Capability::Signing],
+        ))
+        .await;
 }
 
 // ── Classification ───────────────────────────────────────────────
@@ -662,6 +738,198 @@ fn capability_verifier_sync_verify_empty_token() {
     let registry = Arc::new(DiscoveryRegistry::new("test"));
     let verifier = CapabilityVerifier::new(registry);
     assert!(verifier.verify("").is_none());
+}
+
+// ── CapabilityVerifier: provider discovery + verify paths ────────
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_capability_verifier_verify_with_provider_success() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let result = serde_json::json!({
+        "valid": true,
+        "scopes": ["dag.*"],
+        "claims": { "sub": "provider-alice", "scope": ["dag.*"] }
+    });
+    let (addr, hits) = spawn_verify_ionic_mock_server(result, 1).await;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    register_signing_provider(&registry, addr).await;
+    let verifier = CapabilityVerifier::new(registry);
+
+    let claims = verifier.verify_async("ionic-token").await.unwrap();
+    assert_eq!(claims.subject, "provider-alice");
+    assert_eq!(claims.scopes, vec!["dag.*"]);
+    assert_eq!(hits.load(std::sync::atomic::Ordering::SeqCst), 1);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_capability_verifier_transport_error_returns_none() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let dead_port = unused_tcp_port().await;
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    register_signing_provider(&registry, format!("127.0.0.1:{dead_port}").parse().unwrap()).await;
+    let verifier = CapabilityVerifier::new(registry);
+
+    assert!(verifier.verify_async("ionic-token").await.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_capability_verifier_invalid_provider_response_returns_none() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let addr = spawn_verify_ionic_raw_response_server("not-valid-json").await;
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    register_signing_provider(&registry, addr).await;
+    let verifier = CapabilityVerifier::new(registry);
+
+    assert!(verifier.verify_async("ionic-token").await.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_capability_verifier_discovery_failed_falls_back_to_presence() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+    use std::net::SocketAddr;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    registry.set_discovery_source("127.0.0.1:1".parse::<SocketAddr>().unwrap()).await;
+    let verifier = CapabilityVerifier::new(registry);
+
+    let claims = verifier.verify_async("ionic-token").await.unwrap();
+    assert_eq!(claims.subject, "unverified");
+    assert_eq!(claims.scopes, vec!["*"]);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_capability_verifier_cached_endpoint_used_within_ttl() {
+    use rhizo_crypt_core::discovery::{Capability, DiscoveryRegistry, ServiceEndpoint};
+    use rhizo_crypt_core::transport::TransportEndpoint;
+
+    let result = serde_json::json!({
+        "valid": true,
+        "scopes": ["*"],
+        "claims": { "sub": "cached-subject", "scope": ["*"] }
+    });
+    let (addr, hits) = spawn_verify_ionic_mock_server(result, 2).await;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    register_signing_provider(&registry, addr).await;
+    let verifier = CapabilityVerifier::new(Arc::clone(&registry));
+
+    let first = verifier.verify_async("token-a").await.unwrap();
+    assert_eq!(first.subject, "cached-subject");
+
+    let stale_port = unused_tcp_port().await;
+    registry
+        .register_endpoint(ServiceEndpoint::new(
+            "stale-signer",
+            TransportEndpoint::tcp("127.0.0.1", stale_port),
+            vec![Capability::Signing],
+        ))
+        .await;
+
+    let second = verifier.verify_async("token-b").await.unwrap();
+    assert_eq!(second.subject, "cached-subject");
+    assert_eq!(hits.load(std::sync::atomic::Ordering::SeqCst), 2);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_capability_verifier_sync_verify_with_runtime_uses_provider() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let result = serde_json::json!({
+        "valid": true,
+        "scopes": ["crypto.*"],
+        "claims": { "sub": "sync-subject", "scope": ["crypto.*"] }
+    });
+    let (addr, _) = spawn_verify_ionic_mock_server(result, 1).await;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    register_signing_provider(&registry, addr).await;
+    let verifier = CapabilityVerifier::new(registry);
+
+    let claims =
+        tokio::task::spawn_blocking(move || verifier.verify("ionic-token")).await.unwrap().unwrap();
+    assert_eq!(claims.subject, "sync-subject");
+    assert_eq!(claims.scopes, vec!["crypto.*"]);
+}
+
+#[test]
+fn test_capability_verifier_sync_without_runtime_falls_back_to_presence() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    let verifier = CapabilityVerifier::new(registry);
+
+    let claims = verifier.verify("ionic-token").unwrap();
+    assert_eq!(claims.subject, "unverified");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_caller_context_verify_token_async_with_capability_verifier() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let result = serde_json::json!({
+        "valid": true,
+        "scopes": ["dag.*"],
+        "claims": { "sub": "ctx-subject", "scope": ["dag.*"] }
+    });
+    let (addr, _) = spawn_verify_ionic_mock_server(result, 1).await;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    register_signing_provider(&registry, addr).await;
+    let verifier = CapabilityVerifier::new(registry);
+
+    let mut ctx = CallerContext::with_bearer_token(
+        Some("ionic-token".to_owned()),
+        ConnectionOrigin::Loopback,
+    );
+    ctx.verify_token_async(&verifier).await;
+
+    assert!(ctx.is_verified());
+    let claims = ctx.verified_claims.as_ref().unwrap();
+    assert_eq!(claims.subject, "ctx-subject");
+    assert_eq!(claims.scopes, vec!["dag.*"]);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_gate_with_discovery_verifier_allows_scoped_method() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let result = serde_json::json!({
+        "valid": true,
+        "scopes": ["dag.*"],
+        "claims": { "sub": "gate-subject", "scope": ["dag.*"] }
+    });
+    let (addr, _) = spawn_verify_ionic_mock_server(result, 1).await;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    register_signing_provider(&registry, addr).await;
+    let gate = MethodGate::with_discovery(EnforcementMode::Enforced, registry);
+
+    let mut caller =
+        CallerContext::with_bearer_token(Some("ionic-token".to_owned()), ConnectionOrigin::Remote);
+    caller.verify_token_async(gate.verifier()).await;
+
+    assert!(gate.check("dag.session.create", &caller).is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_gate_with_discovery_verifier_rejects_failed_verification() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let dead_port = unused_tcp_port().await;
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    register_signing_provider(&registry, format!("127.0.0.1:{dead_port}").parse().unwrap()).await;
+    let gate = MethodGate::with_discovery(EnforcementMode::Enforced, registry);
+
+    let mut caller =
+        CallerContext::with_bearer_token(Some("ionic-token".to_owned()), ConnectionOrigin::Remote);
+    caller.verify_token_async(gate.verifier()).await;
+
+    assert!(!caller.is_verified());
+    assert!(gate.check("dag.session.create", &caller).is_err());
 }
 
 // ── EnforcementMode::from_env variants ───────────────────────────

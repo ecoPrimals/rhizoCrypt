@@ -437,7 +437,10 @@ fn test_get_duration_secs_uses_default_when_unset() {
 #[test]
 fn test_get_duration_secs_parses_env() {
     temp_env::with_var("RHIZOCRYPT_TEST_DURATION", Some("120"), || {
-        let d = SafeEnv::get_duration_secs("RHIZOCRYPT_TEST_DURATION", std::time::Duration::from_secs(1));
+        let d = SafeEnv::get_duration_secs(
+            "RHIZOCRYPT_TEST_DURATION",
+            std::time::Duration::from_secs(1),
+        );
         assert_eq!(d, std::time::Duration::from_secs(120));
     });
 }

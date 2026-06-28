@@ -112,3 +112,61 @@ pub async fn client_phase2_handshake(
 
     (session_id, handshake_key)
 }
+
+/// Complete the Phase 2 length-prefixed BTSP handshake on the client side.
+pub async fn client_length_prefixed_handshake(
+    client: &mut tokio::net::UnixStream,
+    family_seed: &[u8],
+) -> Result<(), crate::btsp::HandshakeError> {
+    use crate::btsp::framing;
+    use crate::btsp::types::{
+        BTSP_VERSION, BtspCipher, ChallengeResponse, ClientHello, HANDSHAKE_HKDF_INFO,
+        HANDSHAKE_HKDF_SALT,
+    };
+    use hkdf::Hkdf;
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    use x25519_dalek::{EphemeralSecret, PublicKey};
+
+    type HmacSha256 = Hmac<Sha256>;
+
+    let hk = Hkdf::<Sha256>::new(Some(HANDSHAKE_HKDF_SALT), family_seed);
+    let mut handshake_key = [0u8; 32];
+    hk.expand(HANDSHAKE_HKDF_INFO, &mut handshake_key)
+        .map_err(|e| crate::btsp::HandshakeError::KeyDerivation(format!("handshake HKDF: {e}")))?;
+
+    let client_secret = EphemeralSecret::random_from_rng(rand::thread_rng());
+    let client_public = PublicKey::from(&client_secret);
+
+    let hello = ClientHello {
+        version: BTSP_VERSION,
+        client_ephemeral_pub: *client_public.as_bytes(),
+    };
+    let hello_bytes = serde_json::to_vec(&hello)?;
+    framing::write_frame(client, &hello_bytes).await?;
+
+    let sh_bytes = framing::read_frame(client).await?;
+    let server_hello: crate::btsp::types::ServerHello = serde_json::from_slice(&sh_bytes)?;
+
+    let mut mac = HmacSha256::new_from_slice(&handshake_key)
+        .map_err(|e| crate::btsp::HandshakeError::KeyDerivation(format!("HMAC init: {e}")))?;
+    mac.update(&server_hello.challenge);
+    mac.update(client_public.as_bytes());
+    mac.update(&server_hello.server_ephemeral_pub);
+    let hmac_result = mac.finalize().into_bytes();
+
+    let mut response_bytes = [0u8; 32];
+    response_bytes.copy_from_slice(&hmac_result);
+
+    let cr = ChallengeResponse {
+        response: response_bytes,
+        preferred_cipher: BtspCipher::Null,
+    };
+    let cr_bytes = serde_json::to_vec(&cr)?;
+    framing::write_frame(client, &cr_bytes).await?;
+
+    let complete_bytes = framing::read_frame(client).await?;
+    let _complete: crate::btsp::types::HandshakeComplete = serde_json::from_slice(&complete_bytes)?;
+
+    Ok(())
+}

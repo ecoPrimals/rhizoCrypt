@@ -6,7 +6,8 @@
 #![expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 
 use super::tests_support::{
-    client_phase2_handshake, encrypted_roundtrip, read_json_line_raw, test_primal,
+    client_length_prefixed_handshake, client_phase2_handshake, encrypted_roundtrip,
+    read_json_line_raw, test_primal,
 };
 use super::*;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -255,4 +256,37 @@ async fn test_btsp_jsonline_invalid_key_returns_error() {
 
     let server_result = server_handle.await.unwrap();
     assert!(server_result.is_err(), "server should report handshake failure");
+}
+
+#[tokio::test]
+async fn test_length_prefixed_btsp_handshake_success_over_uds() {
+    let family_seed = b"integration-test-family-seed-ok!";
+    let primal = test_primal().await;
+    let server = crate::service::RhizoCryptRpcServer::new(primal);
+
+    let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
+    server_raw.set_nonblocking(true).unwrap();
+    client_raw.set_nonblocking(true).unwrap();
+    let server_stream = tokio::net::UnixStream::from_std(server_raw).unwrap();
+    let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
+
+    let server_handle = tokio::spawn(async move {
+        handle_uds_connection(server_stream, server, true, Some(family_seed)).await
+    });
+
+    client_length_prefixed_handshake(&mut client, family_seed)
+        .await
+        .expect("length-prefixed handshake");
+
+    let req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":5}"#;
+    client.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+    client.shutdown().await.unwrap();
+
+    let mut buf = vec![0u8; 4096];
+    let resp = read_json_line_raw(&mut client, &mut buf).await;
+    assert_eq!(resp["id"], 5);
+    assert!(resp["result"].is_object());
+
+    let server_result = server_handle.await.unwrap();
+    assert!(server_result.is_ok());
 }

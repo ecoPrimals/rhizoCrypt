@@ -225,6 +225,6 @@ async fn send_jsonrpc_uds(
 }
 
 #[cfg(all(test, unix))]
-#[expect(clippy::unwrap_used, reason = "test code")]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "neural_api_tests.rs"]
 mod tests;

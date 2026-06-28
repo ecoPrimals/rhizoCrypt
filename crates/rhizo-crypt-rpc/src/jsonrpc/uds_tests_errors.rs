@@ -119,7 +119,7 @@ async fn test_dev_mode_chains_probe_bytes_back_into_stream() {
 #[tokio::test]
 async fn test_consume_mito_beacon_partial_single_byte_eof() {
     let (mut client, handle) = spawn_handler(false, None).await;
-    client.write_all(&[b'X']).await.unwrap();
+    client.write_all(b"X").await.unwrap();
     client.shutdown().await.unwrap();
 
     let server_result = handle.await.unwrap();
@@ -257,12 +257,13 @@ async fn test_phase3_negotiate_session_mismatch_fallback() {
 
 #[tokio::test]
 async fn test_encrypted_connection_malformed_json_returns_parse_error() {
+    use base64::Engine;
+
     let family_seed = b"integration-test-family-seed-ok!";
     let (mut client, handle) = spawn_handler(true, Some(family_seed)).await;
 
     let (session_id, handshake_key) = client_phase2_handshake(&mut client, family_seed).await;
 
-    use base64::Engine;
     let b64 = base64::engine::general_purpose::STANDARD;
     let client_nonce = {
         let mut n = [0u8; 32];
@@ -384,4 +385,239 @@ async fn test_uds_serve_without_ready_notify() {
     let result = handle.await.unwrap();
     assert!(result.is_ok());
     assert!(!sock.exists(), "socket cleaned up after serve()");
+}
+
+fn capability_symlink_path(dir: &std::path::Path) -> std::path::PathBuf {
+    dir.join(format!(
+        "{}{}",
+        rhizo_crypt_core::niche::DOMAIN,
+        rhizo_crypt_core::constants::SOCKET_FILE_EXTENSION
+    ))
+}
+
+#[test]
+fn test_uds_remove_capability_symlink_skips_foreign_target() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("server.sock");
+    let symlink = capability_symlink_path(dir.path());
+    let other = dir.path().join("other.sock");
+    std::fs::write(&other, "").unwrap();
+    std::os::unix::fs::symlink(&other, &symlink).unwrap();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let primal = rt.block_on(test_primal());
+    let server = UdsJsonRpcServer::new(primal, sock);
+    server.cleanup();
+
+    assert!(symlink.exists(), "foreign capability symlink must not be removed");
+    assert_eq!(std::fs::read_link(&symlink).unwrap(), other);
+}
+
+#[tokio::test]
+async fn test_uds_capability_symlink_creation_fails_when_dag_sock_is_directory() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("rhizocrypt-test.sock");
+    let symlink = capability_symlink_path(dir.path());
+    std::fs::create_dir(&symlink).unwrap();
+
+    let primal = test_primal().await;
+    let server = UdsJsonRpcServer::new(primal, sock.clone());
+    let (shutdown_tx, shutdown_rx) = watch::channel(false);
+    let ready = Arc::new(tokio::sync::Notify::new());
+    let ready_rx = Arc::clone(&ready);
+
+    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+    ready.notified().await;
+
+    assert!(sock.exists(), "primary socket should bind even when symlink creation fails");
+    assert!(symlink.is_dir(), "blocked dag.sock path should remain a directory");
+
+    let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
+    drop(stream);
+
+    let _ = shutdown_tx.send(true);
+    let _ = handle.await;
+}
+
+#[test]
+fn test_uds_serve_btsp_production_mode_with_family_seed() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("btsp-prod.sock");
+
+    temp_env::with_vars(
+        [
+            ("BIOMEOS_INSECURE", None::<&str>),
+            ("FAMILY_ID", Some("test-family")),
+            ("FAMILY_SEED", Some("integration-test-family-seed-ok!")),
+            ("RHIZOCRYPT_FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_SEED", None::<&str>),
+        ],
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let primal = test_primal().await;
+                let server = UdsJsonRpcServer::new(primal, sock.clone());
+                let (shutdown_tx, shutdown_rx) = watch::channel(false);
+                let ready = Arc::new(tokio::sync::Notify::new());
+                let ready_rx = Arc::clone(&ready);
+
+                let handle =
+                    tokio::spawn(
+                        async move { server.serve_with_ready(shutdown_rx, ready_rx).await },
+                    );
+                ready.notified().await;
+
+                let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
+                let (reader, mut writer) = stream.into_split();
+                let req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
+                writer.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+                writer.shutdown().await.unwrap();
+
+                let mut lines = BufReader::new(reader).lines();
+                let line = lines.next_line().await.unwrap().expect("response");
+                let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+                assert!(resp["result"].is_object());
+
+                let _ = shutdown_tx.send(true);
+                let _ = handle.await;
+            });
+        },
+    );
+}
+
+#[test]
+fn test_uds_serve_btsp_production_mode_warns_missing_family_seed() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("btsp-no-seed.sock");
+
+    temp_env::with_vars(
+        [
+            ("BIOMEOS_INSECURE", None::<&str>),
+            ("FAMILY_ID", Some("test-family")),
+            ("FAMILY_SEED", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_SEED", None::<&str>),
+        ],
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let primal = test_primal().await;
+                let server = UdsJsonRpcServer::new(primal, sock.clone());
+                let (shutdown_tx, shutdown_rx) = watch::channel(false);
+                let ready = Arc::new(tokio::sync::Notify::new());
+                let ready_rx = Arc::clone(&ready);
+
+                let handle =
+                    tokio::spawn(
+                        async move { server.serve_with_ready(shutdown_rx, ready_rx).await },
+                    );
+                ready.notified().await;
+
+                let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
+                drop(stream);
+
+                let _ = shutdown_tx.send(true);
+                let _ = handle.await;
+            });
+        },
+    );
+}
+
+#[test]
+fn test_uds_serve_rejects_connection_when_btsp_required_without_seed() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("btsp-reject.sock");
+
+    temp_env::with_vars(
+        [
+            ("BIOMEOS_INSECURE", None::<&str>),
+            ("FAMILY_ID", Some("test-family")),
+            ("FAMILY_SEED", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_SEED", None::<&str>),
+        ],
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let primal = test_primal().await;
+                let server = UdsJsonRpcServer::new(primal, sock.clone());
+                let (shutdown_tx, shutdown_rx) = watch::channel(false);
+                let ready = Arc::new(tokio::sync::Notify::new());
+                let ready_rx = Arc::clone(&ready);
+
+                let handle =
+                    tokio::spawn(
+                        async move { server.serve_with_ready(shutdown_rx, ready_rx).await },
+                    );
+                ready.notified().await;
+
+                let mut client = tokio::net::UnixStream::connect(&sock).await.expect("connect");
+                let req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
+                client.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+                client.shutdown().await.unwrap();
+
+                let _ = shutdown_tx.send(true);
+                let _ = handle.await;
+            });
+        },
+    );
+}
+
+#[tokio::test]
+async fn test_btsp_required_empty_connection_eof() {
+    let (client, handle) = spawn_handler(true, Some(b"integration-test-family-seed-ok!")).await;
+    drop(client);
+
+    let server_result = handle.await.unwrap();
+    assert!(server_result.is_ok(), "immediate EOF with seed should be clean: {server_result:?}");
+}
+
+#[tokio::test]
+async fn test_detect_btsp_json_line_eof_before_newline() {
+    let family_seed = b"integration-test-family-seed-ok!";
+    let (mut client, handle) = spawn_handler(true, Some(family_seed)).await;
+
+    client.write_all(b"{").await.unwrap();
+    client.shutdown().await.unwrap();
+
+    let server_result = handle.await.unwrap();
+    assert!(server_result.is_ok(), "EOF mid-line should be clean: {server_result:?}");
+}
+
+#[tokio::test]
+async fn test_phase3_negotiate_invalid_client_nonce_fallback() {
+    let family_seed = b"integration-test-family-seed-ok!";
+    let (mut client, handle) = spawn_handler(true, Some(family_seed)).await;
+
+    let (session_id, _handshake_key) = client_phase2_handshake(&mut client, family_seed).await;
+
+    let negotiate_req = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "btsp.negotiate",
+        "params": {
+            "session_id": session_id,
+            "ciphers": ["chacha20-poly1305"],
+            "client_nonce": "not-valid-base64!!!",
+        },
+        "id": 1
+    });
+    client.write_all(format!("{negotiate_req}\n").as_bytes()).await.unwrap();
+
+    let req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":2}"#;
+    client.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+    client.shutdown().await.unwrap();
+
+    let mut lines = BufReader::new(&mut client).lines();
+    let mut responses = Vec::new();
+    while let Some(line) = lines.next_line().await.unwrap() {
+        responses.push(serde_json::from_str::<serde_json::Value>(&line).unwrap());
+    }
+    let health = responses
+        .iter()
+        .find(|r| r.get("id") == Some(&serde_json::json!(2)))
+        .expect("plaintext health.check after negotiate parse error fallback");
+    assert!(health["result"].is_object());
+
+    let server_result = handle.await.unwrap();
+    assert!(server_result.is_ok());
 }

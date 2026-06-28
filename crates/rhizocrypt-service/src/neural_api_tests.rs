@@ -334,9 +334,8 @@ mod announce_integration {
         let neural_sock = dir.path().join("neural-bad-json.sock");
 
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let sock_clone = neural_sock.clone();
         rt.block_on(async {
-            let listener = UnixListener::bind(&sock_clone).unwrap();
+            let listener = UnixListener::bind(&neural_sock).unwrap();
             let mock = tokio::spawn(async move {
                 if let Ok((stream, _)) = listener.accept().await {
                     let (reader, mut writer) = tokio::io::split(stream);
@@ -348,7 +347,7 @@ mod announce_integration {
             });
 
             let result = send_jsonrpc_uds(
-                &sock_clone,
+                &neural_sock,
                 &serde_json::json!({"jsonrpc": "2.0", "method": "test", "id": 1}),
             )
             .await;

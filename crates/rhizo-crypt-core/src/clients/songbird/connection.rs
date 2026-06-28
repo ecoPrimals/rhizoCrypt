@@ -35,8 +35,8 @@ impl SongbirdClient {
         if !self.config.is_configured() {
             return Err(RhizoCryptError::integration(
                 "Discovery address not configured. Set RHIZOCRYPT_DISCOVERY_ADAPTER or \
-                 SONGBIRD_ADDRESS environment variable, or use \
-                 SongbirdConfig::with_address() for explicit configuration. \
+                 the legacy SONGBIRD_ADDRESS environment variable, or use explicit \
+                 discovery config via with_address(). \
                  For development, set RHIZOCRYPT_ENV=development to use localhost fallback.",
             ));
         }

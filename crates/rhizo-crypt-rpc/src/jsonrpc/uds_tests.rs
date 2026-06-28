@@ -159,3 +159,60 @@ async fn test_uds_serve_creates_parent_dirs() {
     let _ = shutdown_tx.send(true);
     let _ = handle.await;
 }
+
+fn capability_symlink_path(dir: &std::path::Path) -> std::path::PathBuf {
+    dir.join(format!(
+        "{}{}",
+        rhizo_crypt_core::niche::DOMAIN,
+        rhizo_crypt_core::constants::SOCKET_FILE_EXTENSION
+    ))
+}
+
+#[tokio::test]
+async fn test_uds_capability_symlink_created_and_removed_on_shutdown() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("rhizocrypt-test.sock");
+    let symlink = capability_symlink_path(dir.path());
+    let primal = test_primal().await;
+
+    let server = UdsJsonRpcServer::new(primal, sock.clone());
+    let (shutdown_tx, shutdown_rx) = watch::channel(false);
+    let ready = Arc::new(tokio::sync::Notify::new());
+    let ready_rx = Arc::clone(&ready);
+
+    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+    ready.notified().await;
+
+    assert!(symlink.is_symlink(), "capability symlink should exist during serve");
+    assert_eq!(std::fs::read_link(&symlink).unwrap(), sock);
+
+    let _ = shutdown_tx.send(true);
+    let _ = handle.await;
+    assert!(!symlink.exists(), "capability symlink should be removed on shutdown");
+    assert!(!sock.exists(), "primary socket should be removed on shutdown");
+}
+
+#[tokio::test]
+async fn test_uds_capability_symlink_replaces_stale_existing() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("rhizocrypt-test.sock");
+    let symlink = capability_symlink_path(dir.path());
+    let other = dir.path().join("other.sock");
+    std::fs::write(&other, "").unwrap();
+    std::os::unix::fs::symlink(&other, &symlink).unwrap();
+    assert_eq!(std::fs::read_link(&symlink).unwrap(), other);
+
+    let primal = test_primal().await;
+    let server = UdsJsonRpcServer::new(primal, sock.clone());
+    let (shutdown_tx, shutdown_rx) = watch::channel(false);
+    let ready = Arc::new(tokio::sync::Notify::new());
+    let ready_rx = Arc::clone(&ready);
+
+    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
+    ready.notified().await;
+
+    assert_eq!(std::fs::read_link(&symlink).unwrap(), sock);
+
+    let _ = shutdown_tx.send(true);
+    let _ = handle.await;
+}

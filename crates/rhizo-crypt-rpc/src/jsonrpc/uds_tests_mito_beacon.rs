@@ -10,37 +10,54 @@ use super::*;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 
 /// Mito-beacon `[0xEC, 0x01]` signal before plain JSON-RPC (dev mode).
-#[tokio::test]
-async fn test_mito_beacon_signal_jsonrpc_over_uds() {
+#[test]
+fn test_mito_beacon_signal_jsonrpc_over_uds() {
     let dir = tempfile::tempdir().expect("tempdir");
     let sock = dir.path().join("mito-beacon-test.sock");
-    let primal = test_primal().await;
 
-    let server = UdsJsonRpcServer::new(primal, sock.clone());
-    let (shutdown_tx, shutdown_rx) = watch::channel(false);
-    let ready = Arc::new(tokio::sync::Notify::new());
-    let ready_rx = Arc::clone(&ready);
+    temp_env::with_vars(
+        [
+            ("BIOMEOS_INSECURE", Some("1")),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+        ],
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let primal = test_primal().await;
 
-    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
-    ready.notified().await;
+                let server = UdsJsonRpcServer::new(primal, sock.clone());
+                let (shutdown_tx, shutdown_rx) = watch::channel(false);
+                let ready = Arc::new(tokio::sync::Notify::new());
+                let ready_rx = Arc::clone(&ready);
 
-    let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
-    let (reader, mut writer) = stream.into_split();
+                let handle =
+                    tokio::spawn(
+                        async move { server.serve_with_ready(shutdown_rx, ready_rx).await },
+                    );
+                ready.notified().await;
 
-    writer.write_all(&[0xEC, 0x01]).await.unwrap();
-    let req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
-    writer.write_all(format!("{req}\n").as_bytes()).await.unwrap();
-    writer.shutdown().await.unwrap();
+                let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
+                let (reader, mut writer) = stream.into_split();
 
-    let mut lines = BufReader::new(reader).lines();
-    let line = lines.next_line().await.unwrap().expect("response after mito-beacon signal");
-    let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
-    assert_eq!(resp["jsonrpc"], "2.0");
-    assert!(resp["result"].is_object());
-    assert_eq!(resp["id"], 1);
+                writer.write_all(&[0xEC, 0x01]).await.unwrap();
+                let req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
+                writer.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+                writer.shutdown().await.unwrap();
 
-    let _ = shutdown_tx.send(true);
-    let _ = handle.await;
+                let mut lines = BufReader::new(reader).lines();
+                let line =
+                    lines.next_line().await.unwrap().expect("response after mito-beacon signal");
+                let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+                assert_eq!(resp["jsonrpc"], "2.0");
+                assert!(resp["result"].is_object());
+                assert_eq!(resp["id"], 1);
+
+                let _ = shutdown_tx.send(true);
+                let _ = handle.await;
+            });
+        },
+    );
 }
 
 /// Mito-beacon signal followed by plain JSON-RPC on BTSP-enforced UDS.
@@ -126,35 +143,52 @@ async fn test_mito_beacon_extended_signal_accepted() {
 }
 
 /// Mito-beacon with different sub-type `[0xEC, 0x02]` accepted.
-#[tokio::test]
-async fn test_mito_beacon_subtype_02_accepted() {
+#[test]
+fn test_mito_beacon_subtype_02_accepted() {
     let dir = tempfile::tempdir().expect("tempdir");
     let sock = dir.path().join("mito-subtype-test.sock");
-    let primal = test_primal().await;
 
-    let server = UdsJsonRpcServer::new(primal, sock.clone());
-    let (shutdown_tx, shutdown_rx) = watch::channel(false);
-    let ready = Arc::new(tokio::sync::Notify::new());
-    let ready_rx = Arc::clone(&ready);
+    temp_env::with_vars(
+        [
+            ("BIOMEOS_INSECURE", Some("1")),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+        ],
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let primal = test_primal().await;
 
-    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
-    ready.notified().await;
+                let server = UdsJsonRpcServer::new(primal, sock.clone());
+                let (shutdown_tx, shutdown_rx) = watch::channel(false);
+                let ready = Arc::new(tokio::sync::Notify::new());
+                let ready_rx = Arc::clone(&ready);
 
-    let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
-    let (reader, mut writer) = stream.into_split();
+                let handle =
+                    tokio::spawn(
+                        async move { server.serve_with_ready(shutdown_rx, ready_rx).await },
+                    );
+                ready.notified().await;
 
-    writer.write_all(&[0xEC, 0x02]).await.unwrap();
-    let req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
-    writer.write_all(format!("{req}\n").as_bytes()).await.unwrap();
-    writer.shutdown().await.unwrap();
+                let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
+                let (reader, mut writer) = stream.into_split();
 
-    let mut lines = BufReader::new(reader).lines();
-    let line = lines.next_line().await.unwrap().expect("response after 0xEC 0x02 signal");
-    let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
-    assert_eq!(resp["jsonrpc"], "2.0");
-    assert!(resp["result"].is_object());
-    assert_eq!(resp["id"], 1);
+                writer.write_all(&[0xEC, 0x02]).await.unwrap();
+                let req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
+                writer.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+                writer.shutdown().await.unwrap();
 
-    let _ = shutdown_tx.send(true);
-    let _ = handle.await;
+                let mut lines = BufReader::new(reader).lines();
+                let line =
+                    lines.next_line().await.unwrap().expect("response after 0xEC 0x02 signal");
+                let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+                assert_eq!(resp["jsonrpc"], "2.0");
+                assert!(resp["result"].is_object());
+                assert_eq!(resp["id"], 1);
+
+                let _ = shutdown_tx.send(true);
+                let _ = handle.await;
+            });
+        },
+    );
 }

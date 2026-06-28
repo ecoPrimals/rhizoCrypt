@@ -1712,10 +1712,12 @@ name = "rhizocrypt-service"
 version = "0.14.17"
 dependencies = [
  "clap",
+ "futures-util",
  "nix",
  "rhizo-crypt-core",
  "rhizo-crypt-rpc",
  "serde_json",
+ "tarpc",
  "temp-env",
  "tempfile",
  "thiserror",

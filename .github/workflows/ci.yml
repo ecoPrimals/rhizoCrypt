@@ -32,7 +32,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: rustfmt, clippy, llvm-tools-preview
 
       - uses: Swatinem/rust-cache@v2
 
@@ -49,3 +49,8 @@ jobs:
 
       - name: Test
         run: cargo test --workspace --all-features
+
+      - name: Coverage gate (90% lines)
+        run: |
+          cargo install cargo-llvm-cov --locked || true
+          cargo llvm-cov --workspace --all-features --fail-under-lines 90
