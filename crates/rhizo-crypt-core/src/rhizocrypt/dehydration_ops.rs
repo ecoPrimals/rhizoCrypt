@@ -235,7 +235,7 @@ impl RhizoCrypt {
         {
             Ok(client) => client,
             Err(e) => {
-                tracing::debug!(error = %e, "No signing provider available, skipping attestations");
+                tracing::warn!(error = %e, "No signing provider available — skipping attestations (dehydration will proceed unsigned)");
                 return Vec::new();
             }
         };
@@ -293,7 +293,8 @@ impl RhizoCrypt {
                 tracing::warn!(
                     session_id = %summary.session_id,
                     error = %e,
-                    "No permanent storage provider available, creating local reference"
+                    "No permanent storage provider available — creating local-only commit reference \
+                     (data will not be dehydrated to the ledger until a provider is available)"
                 );
 
                 Ok(CommitRef {

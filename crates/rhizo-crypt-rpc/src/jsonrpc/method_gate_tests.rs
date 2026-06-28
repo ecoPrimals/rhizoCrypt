@@ -257,7 +257,7 @@ async fn capability_verifier_falls_back_without_provider() {
     use std::sync::Arc;
 
     let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
-    let verifier = CapabilityVerifier::new(registry);
+    let verifier = CapabilityVerifier::new(registry, true);
     let claims = verifier.verify_async("some-token").await.unwrap();
     assert_eq!(claims.subject, "unverified");
     assert_eq!(claims.scopes, vec!["*"]);
@@ -269,7 +269,7 @@ async fn capability_verifier_rejects_empty_token() {
     use std::sync::Arc;
 
     let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
-    let verifier = CapabilityVerifier::new(registry);
+    let verifier = CapabilityVerifier::new(registry, true);
     assert!(verifier.verify_async("").await.is_none());
 }
 
@@ -736,7 +736,7 @@ fn capability_verifier_sync_verify_empty_token() {
     use rhizo_crypt_core::discovery::DiscoveryRegistry;
 
     let registry = Arc::new(DiscoveryRegistry::new("test"));
-    let verifier = CapabilityVerifier::new(registry);
+    let verifier = CapabilityVerifier::new(registry, true);
     assert!(verifier.verify("").is_none());
 }
 
@@ -755,7 +755,7 @@ async fn test_capability_verifier_verify_with_provider_success() {
 
     let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
     register_signing_provider(&registry, addr).await;
-    let verifier = CapabilityVerifier::new(registry);
+    let verifier = CapabilityVerifier::new(registry, true);
 
     let claims = verifier.verify_async("ionic-token").await.unwrap();
     assert_eq!(claims.subject, "provider-alice");
@@ -770,7 +770,7 @@ async fn test_capability_verifier_transport_error_returns_none() {
     let dead_port = unused_tcp_port().await;
     let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
     register_signing_provider(&registry, format!("127.0.0.1:{dead_port}").parse().unwrap()).await;
-    let verifier = CapabilityVerifier::new(registry);
+    let verifier = CapabilityVerifier::new(registry, true);
 
     assert!(verifier.verify_async("ionic-token").await.is_none());
 }
@@ -782,7 +782,7 @@ async fn test_capability_verifier_invalid_provider_response_returns_none() {
     let addr = spawn_verify_ionic_raw_response_server("not-valid-json").await;
     let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
     register_signing_provider(&registry, addr).await;
-    let verifier = CapabilityVerifier::new(registry);
+    let verifier = CapabilityVerifier::new(registry, true);
 
     assert!(verifier.verify_async("ionic-token").await.is_none());
 }
@@ -794,7 +794,7 @@ async fn test_capability_verifier_discovery_failed_falls_back_to_presence() {
 
     let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
     registry.set_discovery_source("127.0.0.1:1".parse::<SocketAddr>().unwrap()).await;
-    let verifier = CapabilityVerifier::new(registry);
+    let verifier = CapabilityVerifier::new(registry, true);
 
     let claims = verifier.verify_async("ionic-token").await.unwrap();
     assert_eq!(claims.subject, "unverified");
@@ -815,7 +815,7 @@ async fn test_capability_verifier_cached_endpoint_used_within_ttl() {
 
     let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
     register_signing_provider(&registry, addr).await;
-    let verifier = CapabilityVerifier::new(Arc::clone(&registry));
+    let verifier = CapabilityVerifier::new(Arc::clone(&registry), true);
 
     let first = verifier.verify_async("token-a").await.unwrap();
     assert_eq!(first.subject, "cached-subject");
@@ -847,7 +847,7 @@ async fn test_capability_verifier_sync_verify_with_runtime_uses_provider() {
 
     let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
     register_signing_provider(&registry, addr).await;
-    let verifier = CapabilityVerifier::new(registry);
+    let verifier = CapabilityVerifier::new(registry, true);
 
     let claims =
         tokio::task::spawn_blocking(move || verifier.verify("ionic-token")).await.unwrap().unwrap();
@@ -860,7 +860,7 @@ fn test_capability_verifier_sync_without_runtime_falls_back_to_presence() {
     use rhizo_crypt_core::discovery::DiscoveryRegistry;
 
     let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
-    let verifier = CapabilityVerifier::new(registry);
+    let verifier = CapabilityVerifier::new(registry, true);
 
     let claims = verifier.verify("ionic-token").unwrap();
     assert_eq!(claims.subject, "unverified");
@@ -879,7 +879,7 @@ async fn test_caller_context_verify_token_async_with_capability_verifier() {
 
     let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
     register_signing_provider(&registry, addr).await;
-    let verifier = CapabilityVerifier::new(registry);
+    let verifier = CapabilityVerifier::new(registry, true);
 
     let mut ctx = CallerContext::with_bearer_token(
         Some("ionic-token".to_owned()),
@@ -967,4 +967,57 @@ fn enforcement_mode_from_env_unset_defaults_permissive() {
     temp_env::with_var_unset("RHIZOCRYPT_AUTH_MODE", || {
         assert_eq!(EnforcementMode::from_env(), EnforcementMode::Permissive);
     });
+}
+
+#[tokio::test]
+async fn test_capability_verifier_fail_closed_no_provider_returns_none() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    let verifier = CapabilityVerifier::new(registry, false);
+
+    let result = verifier.verify_async("ionic-token").await;
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_capability_verifier_fail_open_no_provider_returns_presence() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    let verifier = CapabilityVerifier::new(registry, true);
+
+    let claims = verifier.verify_async("ionic-token").await.unwrap();
+    assert_eq!(claims.subject, "unverified");
+    assert_eq!(claims.scopes, vec!["*"]);
+}
+
+#[tokio::test]
+async fn test_gate_enforced_with_discovery_rejects_when_no_provider() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    let gate = MethodGate::with_discovery(EnforcementMode::Enforced, registry);
+
+    let mut caller =
+        CallerContext::with_bearer_token(Some("some-token".into()), ConnectionOrigin::Remote);
+    caller.verify_token_async(gate.verifier()).await;
+    assert!(!caller.is_verified());
+    let result = gate.check("dag.append", &caller);
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_gate_permissive_with_discovery_allows_when_no_provider() {
+    use rhizo_crypt_core::discovery::DiscoveryRegistry;
+
+    let registry = Arc::new(DiscoveryRegistry::new("test-gate"));
+    let gate = MethodGate::with_discovery(EnforcementMode::Permissive, registry);
+
+    let mut caller =
+        CallerContext::with_bearer_token(Some("some-token".into()), ConnectionOrigin::Remote);
+    caller.verify_token_async(gate.verifier()).await;
+    assert!(caller.is_verified());
+    let result = gate.check("dag.append", &caller);
+    assert!(result.is_ok());
 }

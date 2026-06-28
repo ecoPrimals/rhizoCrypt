@@ -3,7 +3,7 @@
 
 //! Wire DTOs for cross-gate mesh trust events.
 //!
-//! These types model the JSON-RPC payloads that bearDog w135+ emits
+//! These types model the JSON-RPC payloads that a `crypto:signing` provider emits
 //! when trust establishment events occur. rhizoCrypt deserializes
 //! these into [`MeshTrustEvent`] and maps them to [`EventType`]
 //! variants for DAG recording.
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::event::{EventType, MeshLeaveReason};
 
-/// A trust event received from a cross-gate auth provider (bearDog).
+/// A trust event received from a cross-gate `crypto:signing` provider.
 ///
 /// Deserialized from JSON-RPC notification payloads on the signing
 /// endpoint. Each variant maps 1:1 to an [`EventType`] mesh variant.
@@ -26,11 +26,11 @@ pub struct MeshTrustEvent {
     pub timestamp: u64,
 }
 
-/// Discriminated event kinds from bearDog's auth subsystem.
+/// Discriminated event kinds from the signing provider's auth subsystem.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload")]
 pub enum MeshTrustEventKind {
-    /// A trusted issuer was registered (bearDog `auth.trust_issuer`).
+    /// A trusted issuer was registered (`auth.trust_issuer`).
     TrustIssuerRegistered {
         /// Ed25519 public key fingerprint (hex-encoded).
         issuer_fingerprint: String,

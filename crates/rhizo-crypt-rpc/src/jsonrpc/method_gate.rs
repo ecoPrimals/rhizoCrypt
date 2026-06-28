@@ -230,24 +230,35 @@ struct CachedSigningProvider {
 ///
 /// Discovers any primal advertising `crypto:signing` via [`DiscoveryRegistry`],
 /// then delegates ionic token validation to `auth.verify_ionic` over JSON-RPC.
-/// When no provider is available, falls back to [`PresenceVerifier`] with an
-/// explicit warning log.
+///
+/// Fallback behavior depends on `fail_open`:
+/// - **`true`** (Permissive): falls back to [`PresenceVerifier`] when no
+///   signing provider is discovered — grants `scopes: ["*"]` to any token.
+/// - **`false`** (Enforced): returns `None` when no provider is available,
+///   meaning the token is treated as unverified and `MethodGate::check()`
+///   will reject the call.
 #[derive(Debug)]
 pub struct CapabilityVerifier {
     registry: Arc<DiscoveryRegistry>,
     cached_provider: RwLock<Option<CachedSigningProvider>>,
     presence_fallback: PresenceVerifier,
+    fail_open: bool,
 }
 
 impl CapabilityVerifier {
     /// Create a verifier backed by the given discovery registry.
+    ///
+    /// `fail_open` controls fallback when no `crypto:signing` provider is
+    /// discovered: `true` falls back to presence-only verification (permissive),
+    /// `false` treats the token as unverified (enforced / fail-closed).
     #[must_use]
     #[allow(clippy::missing_const_for_fn, reason = "Arc parameter is not const-constructible")]
-    pub fn new(registry: Arc<DiscoveryRegistry>) -> Self {
+    pub fn new(registry: Arc<DiscoveryRegistry>, fail_open: bool) -> Self {
         Self {
             registry,
             cached_provider: RwLock::new(None),
             presence_fallback: PresenceVerifier,
+            fail_open,
         }
     }
 
@@ -258,12 +269,19 @@ impl CapabilityVerifier {
 
         match self.verify_with_provider(token).await {
             Ok(claims) => Some(claims),
-            Err(CapabilityVerifyError::NoProvider) => {
+            Err(CapabilityVerifyError::NoProvider) if self.fail_open => {
                 tracing::warn!(
                     capability = %Capability::Signing,
-                    "method gate: no crypto:signing provider — falling back to presence-only verification"
+                    "method gate: no crypto:signing provider — falling back to presence-only verification (permissive)"
                 );
                 self.presence_fallback.verify(token)
+            }
+            Err(CapabilityVerifyError::NoProvider) => {
+                tracing::error!(
+                    capability = %Capability::Signing,
+                    "method gate: no crypto:signing provider — token unverified (fail-closed)"
+                );
+                None
             }
             Err(e) => {
                 tracing::warn!(error = %e, "method gate: capability token verification failed");
@@ -338,10 +356,17 @@ impl TokenVerifier for CapabilityVerifier {
         }
         tokio::runtime::Handle::try_current().map_or_else(
             |_| {
-                tracing::debug!(
-                    "method gate: no Tokio runtime for async verification — using presence fallback"
-                );
-                self.presence_fallback.verify(token)
+                if self.fail_open {
+                    tracing::debug!(
+                        "method gate: no Tokio runtime — using presence fallback (permissive)"
+                    );
+                    self.presence_fallback.verify(token)
+                } else {
+                    tracing::error!(
+                        "method gate: no Tokio runtime — token unverified (fail-closed)"
+                    );
+                    None
+                }
             },
             |handle| handle.block_on(self.verify_via_capability(token)),
         )
@@ -607,9 +632,14 @@ impl MethodGate {
     }
 
     /// Create a gate with capability-discovered token verification.
+    ///
+    /// In `Enforced` mode the verifier is fail-closed: tokens are rejected
+    /// when no signing provider is available. In `Permissive` mode the
+    /// verifier falls back to presence-only verification.
     #[must_use]
     pub fn with_discovery(mode: EnforcementMode, registry: Arc<DiscoveryRegistry>) -> Self {
-        Self::new(mode, Box::new(CapabilityVerifier::new(registry)))
+        let fail_open = mode == EnforcementMode::Permissive;
+        Self::new(mode, Box::new(CapabilityVerifier::new(registry, fail_open)))
     }
 
     /// Create a gate from the environment using a primal's discovery registry.

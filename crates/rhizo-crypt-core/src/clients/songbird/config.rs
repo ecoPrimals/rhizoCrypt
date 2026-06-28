@@ -103,7 +103,8 @@ impl SongbirdConfig {
         } else {
             warn!(
                 "No discovery endpoint configured. \
-                 Set DISCOVERY_ENDPOINT, SONGBIRD_ADDRESS, or SONGBIRD_HOST+SONGBIRD_PORT"
+                 Set DISCOVERY_ENDPOINT or RHIZOCRYPT_DISCOVERY_ADAPTER. \
+                 Legacy SONGBIRD_ADDRESS / SONGBIRD_HOST+SONGBIRD_PORT also accepted."
             );
         }
 

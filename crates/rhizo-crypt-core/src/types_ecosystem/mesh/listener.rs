@@ -3,13 +3,13 @@
 
 //! Cross-gate mesh event listener with polling support.
 //!
-//! Discovers the signing provider endpoint (bearDog) via the capability
-//! registry and polls `auth.events.poll` for trust establishment events.
+//! Discovers the signing provider endpoint via the `crypto:signing`
+//! capability registry and polls `auth.events.poll` for trust events.
 //!
 //! ## IPC Trigger Path
 //!
-//! 1. bearDog fires `auth.trust_issuer` (or `key_exchange`, etc.)
-//! 2. bearDog's `AuthEventBus` records the event
+//! 1. The signing provider fires `auth.trust_issuer` (or `key_exchange`, etc.)
+//! 2. The provider's `AuthEventBus` records the event
 //! 3. `MeshEventListener` polls `auth.events.poll` with `since_timestamp`
 //! 4. Deserializes response into [`MeshTrustEvent`] vec
 //! 5. Maps each to [`EventType`] via `record_event()`
@@ -45,7 +45,7 @@ pub enum ListenerState {
 
 /// Listener for cross-gate mesh trust events.
 ///
-/// Discovers bearDog (or any signing provider) via the capability
+/// Discovers any signing provider via the `crypto:signing` capability
 /// registry, connects at startup, and provides both manual
 /// `record_event()` and automatic `poll_events()` for ingesting
 /// trust events.
@@ -65,6 +65,8 @@ pub struct MeshEventListener {
     event_log: Arc<RwLock<Vec<MeshTrustEvent>>>,
     /// Last poll timestamp (unix seconds) for incremental polling.
     last_poll_timestamp: Arc<RwLock<u64>>,
+    /// Consecutive transport errors (escalates log severity).
+    consecutive_errors: std::sync::atomic::AtomicU32,
 }
 
 impl MeshEventListener {
@@ -77,6 +79,7 @@ impl MeshEventListener {
             state: Arc::new(RwLock::new(ListenerState::Disconnected)),
             event_log: Arc::new(RwLock::new(Vec::new())),
             last_poll_timestamp: Arc::new(RwLock::new(0)),
+            consecutive_errors: std::sync::atomic::AtomicU32::new(0),
         }
     }
 
@@ -132,7 +135,7 @@ impl MeshEventListener {
         event_type
     }
 
-    /// Poll bearDog's `auth.events.poll` for new trust events.
+    /// Poll the signing provider's `auth.events.poll` for new trust events.
     ///
     /// Sends a JSON-RPC request with `since_timestamp` and deserializes
     /// the response into `MeshTrustEvent` entries. Each event is recorded
@@ -163,10 +166,17 @@ impl MeshEventListener {
         let response = match Self::send_jsonrpc(&transport, &request).await {
             Ok(resp) => resp,
             Err(e) => {
-                debug!(error = %e, "Mesh event poll failed (non-fatal)");
+                let count =
+                    self.consecutive_errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                if count <= 3 {
+                    debug!(error = %e, consecutive = count, "Mesh event poll failed (non-fatal)");
+                } else {
+                    warn!(error = %e, consecutive = count, "Mesh event poll failing repeatedly — signing provider may be unavailable");
+                }
                 return Ok(0);
             }
         };
+        self.consecutive_errors.store(0, std::sync::atomic::Ordering::Relaxed);
 
         let parsed: serde_json::Value = serde_json::from_str(&response).map_err(|e| {
             crate::error::RhizoCryptError::integration(format!(
