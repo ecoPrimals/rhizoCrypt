@@ -404,18 +404,13 @@ async fn serve_with_tcp(
     info!("rhizoCrypt service ready (UDS + TCP)");
 
     let shutdown_tx = server.shutdown_sender();
-    let is_running = server.running_flag();
+    let server_ready = server.ready_notifier();
     let serve_handle = tokio::spawn(async move { server.serve().await });
 
     if let Some(notify) = ready {
         tokio::spawn(async move {
-            loop {
-                if is_running.load(std::sync::atomic::Ordering::SeqCst) {
-                    notify.notify_one();
-                    break;
-                }
-                tokio::task::yield_now().await;
-            }
+            server_ready.notified().await;
+            notify.notify_one();
         });
     }
 
@@ -617,3 +612,8 @@ mod tests;
 #[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "lib_tests_startup.rs"]
 mod tests_startup;
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
+#[path = "lib_tests_lifecycle.rs"]
+mod tests_lifecycle;

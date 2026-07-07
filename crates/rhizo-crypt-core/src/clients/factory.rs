@@ -251,40 +251,9 @@ impl CapabilityClientFactory {
 
 #[cfg(any(test, feature = "test-utils"))]
 impl CapabilityClientFactory {
-    /// Create a factory with mock clients for testing.
-    ///
-    /// This bypasses discovery and returns pre-configured mock clients.
-    ///
-    /// # Panics
-    ///
     /// Create a factory with an empty registry for testing.
-    ///
-    /// This creates a factory with a mock-friendly registry that can be
-    /// populated with test services.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use rhizo_crypt_core::clients::CapabilityClientFactory;
-    /// # use rhizo_crypt_core::discovery::{DiscoveryRegistry, ServiceEndpoint, Capability};
-    /// # use rhizo_crypt_core::transport::TransportEndpoint;
-    /// # use std::sync::Arc;
-    /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-    /// let registry = Arc::new(DiscoveryRegistry::new("doc-test"));
-    /// // Register mock services
-    /// registry.register_endpoint(ServiceEndpoint::new(
-    ///     "mock-signer",
-    ///     TransportEndpoint::tcp("127.0.0.1", 9999),
-    ///     vec![Capability::Signing],
-    /// )).await;
-    ///
-    /// let factory = CapabilityClientFactory::new(registry);
-    /// # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
-    /// # });
-    /// ```
     #[must_use]
     pub fn with_mocks() -> Self {
-        // Return a factory with an empty registry for test setup
         Self::new(Arc::new(DiscoveryRegistry::new("rhizoCrypt-test")))
     }
 }

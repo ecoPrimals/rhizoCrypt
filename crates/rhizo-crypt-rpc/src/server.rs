@@ -55,7 +55,7 @@ impl RpcServer {
         info!("rhizoCrypt RPC server listening on {}", local_addr);
 
         self.is_running.store(true, Ordering::SeqCst);
-        self.ready_notify.notify_waiters();
+        self.ready_notify.notify_one();
         let is_running = Arc::clone(&self.is_running);
         let mut shutdown_rx = self.shutdown_rx.clone();
 

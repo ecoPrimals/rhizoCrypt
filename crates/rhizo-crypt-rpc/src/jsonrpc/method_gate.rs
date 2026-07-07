@@ -784,3 +784,7 @@ pub struct GateRejection {
 #[cfg(test)]
 #[path = "method_gate_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "method_gate_tests_provider.rs"]
+mod tests_provider;
