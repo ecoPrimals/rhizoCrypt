@@ -323,7 +323,8 @@ fn test_run_server_tcp_via_jsonrpc_port_env() {
             let sock = dir.path().join("tcp-env.sock");
             let sock_str = sock.to_string_lossy().to_string();
             let handle = rt.spawn(async move {
-                let _ = run_server_with_ready(None, None, Some(sock_str), Some(ready_clone)).await;
+                let _ =
+                    run_server_with_ready(Some(0), None, Some(sock_str), Some(ready_clone)).await;
             });
             rt.block_on(async {
                 tokio::time::timeout(Duration::from_secs(10), ready.notified())
@@ -486,7 +487,7 @@ fn test_run_server_host_override_enables_tcp() {
             let ready_clone = Arc::clone(&ready);
             let handle = rt.spawn(async move {
                 let _ = run_server_with_ready(
-                    None,
+                    Some(0),
                     Some("127.0.0.1".to_string()),
                     None,
                     Some(ready_clone),
