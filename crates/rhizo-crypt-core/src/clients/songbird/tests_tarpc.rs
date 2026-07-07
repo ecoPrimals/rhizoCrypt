@@ -8,14 +8,14 @@
 //! not HTTP, so `WireMock` cannot be used here.
 
 #[cfg(feature = "live-clients")]
-use super::{SongbirdClient, SongbirdConfig};
+use super::{DiscoveryClient, DiscoveryConfig};
 #[cfg(feature = "live-clients")]
-use crate::clients::songbird_types::ClientState;
+use crate::clients::discovery_types::ClientState;
 
 #[cfg(feature = "live-clients")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn tarpc_register_success() {
-    use crate::clients::songbird_rpc::{MockSongbirdServer, SongbirdRpc};
+    use crate::clients::discovery_rpc::{DiscoveryRpc, MockDiscoveryServer};
     use futures_util::StreamExt;
     use tarpc::server::{self, Channel};
     use tarpc::tokio_serde::formats::Bincode;
@@ -23,7 +23,7 @@ async fn tarpc_register_success() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
 
-    let server = MockSongbirdServer;
+    let server = MockDiscoveryServer;
 
     let _accept_handle = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
@@ -37,8 +37,8 @@ async fn tarpc_register_success() {
             .await;
     });
 
-    let config = SongbirdConfig::with_address(addr.to_string());
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address(addr.to_string());
+    let client = DiscoveryClient::new(config);
     client.connect().await.unwrap();
 
     let result = client.register("127.0.0.1:9400").await.unwrap();
@@ -50,7 +50,7 @@ async fn tarpc_register_success() {
 #[cfg(feature = "live-clients")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn tarpc_discover_signing() {
-    use crate::clients::songbird_rpc::{MockSongbirdServer, SongbirdRpc};
+    use crate::clients::discovery_rpc::{DiscoveryRpc, MockDiscoveryServer};
     use futures_util::StreamExt;
     use tarpc::server::{self, Channel};
     use tarpc::tokio_serde::formats::Bincode;
@@ -58,7 +58,7 @@ async fn tarpc_discover_signing() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
 
-    let server = MockSongbirdServer;
+    let server = MockDiscoveryServer;
 
     let _accept_handle = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
@@ -72,8 +72,8 @@ async fn tarpc_discover_signing() {
             .await;
     });
 
-    let config = SongbirdConfig::with_address(addr.to_string());
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address(addr.to_string());
+    let client = DiscoveryClient::new(config);
     client.connect().await.unwrap();
 
     let services = client.discover("signing").await.unwrap();
@@ -85,7 +85,7 @@ async fn tarpc_discover_signing() {
 #[cfg(feature = "live-clients")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn tarpc_discover_empty_for_unknown_capability() {
-    use crate::clients::songbird_rpc::{MockSongbirdServer, SongbirdRpc};
+    use crate::clients::discovery_rpc::{DiscoveryRpc, MockDiscoveryServer};
     use futures_util::StreamExt;
     use tarpc::server::{self, Channel};
     use tarpc::tokio_serde::formats::Bincode;
@@ -93,7 +93,7 @@ async fn tarpc_discover_empty_for_unknown_capability() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
 
-    let server = MockSongbirdServer;
+    let server = MockDiscoveryServer;
 
     let _accept_handle = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
@@ -107,8 +107,8 @@ async fn tarpc_discover_empty_for_unknown_capability() {
             .await;
     });
 
-    let config = SongbirdConfig::with_address(addr.to_string());
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address(addr.to_string());
+    let client = DiscoveryClient::new(config);
     client.connect().await.unwrap();
 
     let services = client.discover("unknown-capability").await.unwrap();
@@ -118,7 +118,7 @@ async fn tarpc_discover_empty_for_unknown_capability() {
 #[cfg(feature = "live-clients")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn tarpc_register_then_discover_signing_provider() {
-    use crate::clients::songbird_rpc::{MockSongbirdServer, SongbirdRpc};
+    use crate::clients::discovery_rpc::{DiscoveryRpc, MockDiscoveryServer};
     use futures_util::StreamExt;
     use tarpc::server::{self, Channel};
     use tarpc::tokio_serde::formats::Bincode;
@@ -126,7 +126,7 @@ async fn tarpc_register_then_discover_signing_provider() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
 
-    let server = MockSongbirdServer;
+    let server = MockDiscoveryServer;
 
     let _accept_handle = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
@@ -140,8 +140,8 @@ async fn tarpc_register_then_discover_signing_provider() {
             .await;
     });
 
-    let config = SongbirdConfig::with_address(addr.to_string());
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address(addr.to_string());
+    let client = DiscoveryClient::new(config);
     client.connect().await.unwrap();
     client.register("127.0.0.1:9400").await.unwrap();
 

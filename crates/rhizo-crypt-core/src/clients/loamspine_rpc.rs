@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 /// This trait provides the subset of `LoamSpine` RPC used by `rhizoCrypt`
 /// for dehydration (session commit) operations.
 #[tarpc::service]
-pub trait LoamSpineRpc {
+pub trait PermanentStorageRpc {
     /// Commit a rhizoCrypt session to permanent storage.
     async fn commit_session(request: RpcCommitSessionRequest) -> RpcCommitSessionResponse;
 

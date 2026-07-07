@@ -117,18 +117,18 @@ pub struct HttpHealthResponse {
 
 /// HTTP client for `BearDog` API (pure Rust — hyper/tower stack).
 #[derive(Clone)]
-pub struct BearDogHttpClient {
+pub struct SigningHttpClient {
     client: crate::clients::adapters::http::EcoHttpClient,
     base_url: String,
 }
 
-impl BearDogHttpClient {
+impl SigningHttpClient {
     /// Create a new HTTP client for `BearDog`.
     ///
     /// # Errors
     ///
     /// Returns an error if the base URL is invalid.
-    pub fn new(base_url: impl Into<String>, timeout_ms: u64) -> Result<Self, BearDogHttpError> {
+    pub fn new(base_url: impl Into<String>, timeout_ms: u64) -> Result<Self, SigningHttpError> {
         let base_url = base_url.into();
         let client = crate::clients::adapters::http::EcoHttpClient::new(
             std::time::Duration::from_millis(timeout_ms),
@@ -146,7 +146,7 @@ impl BearDogHttpClient {
     /// # Errors
     ///
     /// Returns error if the HTTP request fails or response cannot be parsed.
-    pub async fn sign(&self, data: &[u8]) -> Result<bytes::Bytes, BearDogHttpError> {
+    pub async fn sign(&self, data: &[u8]) -> Result<bytes::Bytes, SigningHttpError> {
         use base64::{Engine, engine::general_purpose::STANDARD};
 
         let request = HttpSignRequest {
@@ -155,30 +155,30 @@ impl BearDogHttpClient {
         };
 
         let body = serde_json::to_string(&request).map_err(|e| {
-            BearDogHttpError::Transport(format!("Failed to serialize request: {e}"))
+            SigningHttpError::Transport(format!("Failed to serialize request: {e}"))
         })?;
 
         let (status, text) = self
             .client
             .post_json(&format!("{}/ai/sign", self.base_url), &body)
             .await
-            .map_err(|e| BearDogHttpError::Transport(e.to_string()))?;
+            .map_err(|e| SigningHttpError::Transport(e.to_string()))?;
 
         if !(200..300).contains(&status) {
-            return Err(BearDogHttpError::Status(status));
+            return Err(SigningHttpError::Status(status));
         }
 
         let sign_response: HttpSignResponse =
-            serde_json::from_str(&text).map_err(|e| BearDogHttpError::Parse(e.to_string()))?;
+            serde_json::from_str(&text).map_err(|e| SigningHttpError::Parse(e.to_string()))?;
 
         if !sign_response.success {
-            return Err(BearDogHttpError::SigningFailed);
+            return Err(SigningHttpError::SigningFailed);
         }
 
         STANDARD
             .decode(&sign_response.signature)
             .map(bytes::Bytes::from)
-            .map_err(|_| BearDogHttpError::InvalidSignature)
+            .map_err(|_| SigningHttpError::InvalidSignature)
     }
 
     /// Verify a signature using `BearDog`.
@@ -186,7 +186,7 @@ impl BearDogHttpClient {
     /// # Errors
     ///
     /// Returns error if the HTTP request fails or response cannot be parsed.
-    pub async fn verify(&self, data: &[u8], signature: &[u8]) -> Result<bool, BearDogHttpError> {
+    pub async fn verify(&self, data: &[u8], signature: &[u8]) -> Result<bool, SigningHttpError> {
         use base64::{Engine, engine::general_purpose::STANDARD};
 
         let request = HttpVerifyRequest {
@@ -195,21 +195,21 @@ impl BearDogHttpClient {
         };
 
         let body = serde_json::to_string(&request).map_err(|e| {
-            BearDogHttpError::Transport(format!("Failed to serialize request: {e}"))
+            SigningHttpError::Transport(format!("Failed to serialize request: {e}"))
         })?;
 
         let (status, text) = self
             .client
             .post_json(&format!("{}/ai/verify", self.base_url), &body)
             .await
-            .map_err(|e| BearDogHttpError::Transport(e.to_string()))?;
+            .map_err(|e| SigningHttpError::Transport(e.to_string()))?;
 
         if !(200..300).contains(&status) {
-            return Err(BearDogHttpError::Status(status));
+            return Err(SigningHttpError::Status(status));
         }
 
         let verify_response: HttpVerifyResponse =
-            serde_json::from_str(&text).map_err(|e| BearDogHttpError::Parse(e.to_string()))?;
+            serde_json::from_str(&text).map_err(|e| SigningHttpError::Parse(e.to_string()))?;
 
         Ok(verify_response.valid)
     }
@@ -219,24 +219,24 @@ impl BearDogHttpClient {
     /// # Errors
     ///
     /// Returns error if the health check fails.
-    pub async fn health(&self) -> Result<HttpHealthResponse, BearDogHttpError> {
+    pub async fn health(&self) -> Result<HttpHealthResponse, SigningHttpError> {
         let (status, text) = self
             .client
             .get(&format!("{}/ai/health", self.base_url))
             .await
-            .map_err(|e| BearDogHttpError::Transport(e.to_string()))?;
+            .map_err(|e| SigningHttpError::Transport(e.to_string()))?;
 
         if !(200..300).contains(&status) {
-            return Err(BearDogHttpError::Status(status));
+            return Err(SigningHttpError::Status(status));
         }
 
-        serde_json::from_str(&text).map_err(|e| BearDogHttpError::Parse(e.to_string()))
+        serde_json::from_str(&text).map_err(|e| SigningHttpError::Parse(e.to_string()))
     }
 }
 
 /// Errors from `BearDog` HTTP client.
 #[derive(Debug, thiserror::Error)]
-pub enum BearDogHttpError {
+pub enum SigningHttpError {
     /// HTTP transport error.
     #[error("HTTP transport: {0}")]
     Transport(String),

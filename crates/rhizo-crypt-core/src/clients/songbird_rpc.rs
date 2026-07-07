@@ -22,7 +22,7 @@ use std::collections::HashMap;
 ///
 /// This trait mirrors the Songbird orchestrator's RPC interface.
 #[tarpc::service]
-pub trait SongbirdRpc {
+pub trait DiscoveryRpc {
     /// Discover services by capability.
     async fn discover(capability: String) -> Vec<RpcServiceInfo>;
 
@@ -116,13 +116,13 @@ pub struct RpcVersionInfo {
 
 /// Mock Songbird RPC server for integration tests.
 ///
-/// Implements `SongbirdRpc` with canned responses for register, discover, etc.
+/// Implements `DiscoveryRpc` with canned responses for register, discover, etc.
 #[cfg(all(test, feature = "live-clients"))]
 #[derive(Clone)]
-pub struct MockSongbirdServer;
+pub struct MockDiscoveryServer;
 
 #[cfg(all(test, feature = "live-clients"))]
-impl SongbirdRpc for MockSongbirdServer {
+impl DiscoveryRpc for MockDiscoveryServer {
     async fn discover(self, _: tarpc::context::Context, capability: String) -> Vec<RpcServiceInfo> {
         if capability == "signing" {
             vec![RpcServiceInfo {
@@ -269,15 +269,15 @@ mod tests {
     }
 
     // ------------------------------------------------------------------------
-    // MockSongbirdServer direct-call tests (live-clients only)
+    // MockDiscoveryServer direct-call tests (live-clients only)
     // ------------------------------------------------------------------------
 
     #[cfg(all(test, feature = "live-clients"))]
     #[tokio::test]
     async fn mock_discover_signing_returns_service() {
-        use super::{MockSongbirdServer, SongbirdRpc};
+        use super::{DiscoveryRpc, MockDiscoveryServer};
 
-        let server = MockSongbirdServer;
+        let server = MockDiscoveryServer;
         let services = server.discover(tarpc::context::current(), "signing".to_string()).await;
         assert_eq!(services.len(), 1);
         assert_eq!(services[0].id, "mock-signing-1");
@@ -289,9 +289,9 @@ mod tests {
     #[cfg(all(test, feature = "live-clients"))]
     #[tokio::test]
     async fn mock_discover_unknown_capability_returns_empty() {
-        use super::{MockSongbirdServer, SongbirdRpc};
+        use super::{DiscoveryRpc, MockDiscoveryServer};
 
-        let server = MockSongbirdServer;
+        let server = MockDiscoveryServer;
         let services = server.discover(tarpc::context::current(), "unknown".to_string()).await;
         assert!(services.is_empty());
     }
@@ -299,9 +299,9 @@ mod tests {
     #[cfg(all(test, feature = "live-clients"))]
     #[tokio::test]
     async fn mock_discover_all_returns_empty() {
-        use super::{MockSongbirdServer, SongbirdRpc};
+        use super::{DiscoveryRpc, MockDiscoveryServer};
 
-        let server = MockSongbirdServer;
+        let server = MockDiscoveryServer;
         let services = server.discover_all(tarpc::context::current()).await;
         assert!(services.is_empty());
     }
@@ -309,9 +309,9 @@ mod tests {
     #[cfg(all(test, feature = "live-clients"))]
     #[tokio::test]
     async fn mock_register_success() {
-        use super::{MockSongbirdServer, RpcServiceRegistration, SongbirdRpc};
+        use super::{DiscoveryRpc, MockDiscoveryServer, RpcServiceRegistration};
 
-        let server = MockSongbirdServer;
+        let server = MockDiscoveryServer;
         let reg = RpcServiceRegistration {
             service_id: "test-svc-1".to_string(),
             service_name: "TestService".to_string(),
@@ -327,9 +327,9 @@ mod tests {
     #[cfg(all(test, feature = "live-clients"))]
     #[tokio::test]
     async fn mock_unregister_success() {
-        use super::{MockSongbirdServer, SongbirdRpc};
+        use super::{DiscoveryRpc, MockDiscoveryServer};
 
-        let server = MockSongbirdServer;
+        let server = MockDiscoveryServer;
         let result = server.unregister(tarpc::context::current(), "test-svc-1".to_string()).await;
         assert!(result.success);
         assert_eq!(result.message, "Unregistered");
@@ -338,9 +338,9 @@ mod tests {
     #[cfg(all(test, feature = "live-clients"))]
     #[tokio::test]
     async fn mock_health_returns_status() {
-        use super::{MockSongbirdServer, SongbirdRpc};
+        use super::{DiscoveryRpc, MockDiscoveryServer};
 
-        let server = MockSongbirdServer;
+        let server = MockDiscoveryServer;
         let health = server.health(tarpc::context::current()).await;
         assert_eq!(health.status, "healthy");
         assert_eq!(health.version, "0.1.0-test");
@@ -350,9 +350,9 @@ mod tests {
     #[cfg(all(test, feature = "live-clients"))]
     #[tokio::test]
     async fn mock_version_returns_info() {
-        use super::{MockSongbirdServer, SongbirdRpc};
+        use super::{DiscoveryRpc, MockDiscoveryServer};
 
-        let server = MockSongbirdServer;
+        let server = MockDiscoveryServer;
         let version = server.version(tarpc::context::current()).await;
         assert_eq!(version.version, "0.1.0-test");
         assert_eq!(version.protocol, "tarpc-1.0");

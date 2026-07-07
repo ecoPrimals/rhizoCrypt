@@ -1,23 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Songbird client submodules.
+//! Discovery adapter client — ecosystem service discovery and registration.
+//!
+//! This module provides the universal discovery adapter used to bootstrap
+//! capability-based service resolution. The client sends generic `register`
+//! and `heartbeat` JSON-RPC calls to whichever discovery service is deployed.
 
 mod client;
 mod config;
 mod connection;
 mod discovery;
 
-// Re-export main types (same public API)
-pub use client::SongbirdClient;
-pub use config::SongbirdConfig;
+pub use client::DiscoveryClient;
+pub use config::DiscoveryConfig;
 
-/// Capability-neutral alias for the ecosystem discovery adapter.
-///
-/// Service code should import `DiscoveryClient` so it never depends on a
-/// specific primal name. The underlying client sends generic `register` +
-/// `heartbeat` JSON-RPC calls.
-pub type DiscoveryClient = SongbirdClient;
+/// Deprecated alias — use [`DiscoveryClient`] instead.
+#[deprecated(since = "0.14.18", note = "use DiscoveryClient (capability-neutral)")]
+pub type SongbirdClient = DiscoveryClient;
 
-/// Capability-neutral alias for [`SongbirdConfig`].
-pub type DiscoveryConfig = SongbirdConfig;
+/// Deprecated alias — use [`DiscoveryConfig`] instead.
+#[deprecated(since = "0.14.18", note = "use DiscoveryConfig (capability-neutral)")]
+pub type SongbirdConfig = DiscoveryConfig;

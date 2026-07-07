@@ -7,7 +7,7 @@ use super::*;
 
 #[test]
 fn test_client_new() {
-    let client = BearDogHttpClient::new("http://localhost:8080", 5000).unwrap();
+    let client = SigningHttpClient::new("http://localhost:8080", 5000).unwrap();
     assert_eq!(client.base_url, "http://localhost:8080");
 }
 
@@ -121,17 +121,17 @@ fn test_health_response_default_version() {
 
 #[test]
 fn test_error_display() {
-    assert_eq!(BearDogHttpError::Status(401).to_string(), "HTTP status 401");
-    assert_eq!(BearDogHttpError::SigningFailed.to_string(), "Signing operation failed");
-    assert_eq!(BearDogHttpError::InvalidSignature.to_string(), "Invalid signature format");
+    assert_eq!(SigningHttpError::Status(401).to_string(), "HTTP status 401");
+    assert_eq!(SigningHttpError::SigningFailed.to_string(), "Signing operation failed");
+    assert_eq!(SigningHttpError::InvalidSignature.to_string(), "Invalid signature format");
 }
 
 #[test]
 fn test_error_source() {
     use std::error::Error;
-    assert!(BearDogHttpError::SigningFailed.source().is_none());
-    assert!(BearDogHttpError::InvalidSignature.source().is_none());
-    assert!(BearDogHttpError::Status(500).source().is_none());
+    assert!(SigningHttpError::SigningFailed.source().is_none());
+    assert!(SigningHttpError::InvalidSignature.source().is_none());
+    assert!(SigningHttpError::Status(500).source().is_none());
 }
 
 #[test]
@@ -171,7 +171,7 @@ async fn wiremock_sign_success() {
         .mount(&mock_server)
         .await;
 
-    let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+    let client = SigningHttpClient::new(base_url, 5000).unwrap();
     let data = b"hello world";
     let signature = client.sign(data).await.unwrap();
     assert_eq!(&signature[..], b"mock-signature-bytes");
@@ -194,7 +194,7 @@ async fn wiremock_verify_success() {
         .mount(&mock_server)
         .await;
 
-    let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+    let client = SigningHttpClient::new(base_url, 5000).unwrap();
     let valid = client.verify(b"data", b"sig").await.unwrap();
     assert!(valid);
 }
@@ -216,7 +216,7 @@ async fn wiremock_verify_invalid() {
         .mount(&mock_server)
         .await;
 
-    let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+    let client = SigningHttpClient::new(base_url, 5000).unwrap();
     let valid = client.verify(b"data", b"sig").await.unwrap();
     assert!(!valid);
 }
@@ -239,7 +239,7 @@ async fn wiremock_health_success() {
         .mount(&mock_server)
         .await;
 
-    let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+    let client = SigningHttpClient::new(base_url, 5000).unwrap();
     let health = client.health().await.unwrap();
     assert_eq!(health.status, "healthy");
     assert_eq!(health.version, "0.2.0");
@@ -260,9 +260,9 @@ async fn wiremock_sign_status_error() {
         .mount(&mock_server)
         .await;
 
-    let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+    let client = SigningHttpClient::new(base_url, 5000).unwrap();
     let err = client.sign(b"data").await.unwrap_err();
-    assert!(matches!(err, BearDogHttpError::Status(500)));
+    assert!(matches!(err, SigningHttpError::Status(500)));
 }
 
 #[cfg(feature = "live-clients")]
@@ -283,9 +283,9 @@ async fn wiremock_sign_failure_response() {
         .mount(&mock_server)
         .await;
 
-    let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+    let client = SigningHttpClient::new(base_url, 5000).unwrap();
     let err = client.sign(b"data").await.unwrap_err();
-    assert!(matches!(err, BearDogHttpError::SigningFailed));
+    assert!(matches!(err, SigningHttpError::SigningFailed));
 }
 
 #[cfg(feature = "live-clients")]
@@ -306,9 +306,9 @@ async fn wiremock_sign_invalid_signature_base64() {
         .mount(&mock_server)
         .await;
 
-    let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+    let client = SigningHttpClient::new(base_url, 5000).unwrap();
     let err = client.sign(b"data").await.unwrap_err();
-    assert!(matches!(err, BearDogHttpError::InvalidSignature));
+    assert!(matches!(err, SigningHttpError::InvalidSignature));
 }
 
 #[cfg(feature = "live-clients")]
@@ -326,7 +326,7 @@ async fn wiremock_health_status_error() {
         .mount(&mock_server)
         .await;
 
-    let client = BearDogHttpClient::new(base_url, 5000).unwrap();
+    let client = SigningHttpClient::new(base_url, 5000).unwrap();
     let err = client.health().await.unwrap_err();
-    assert!(matches!(err, BearDogHttpError::Status(503)));
+    assert!(matches!(err, SigningHttpError::Status(503)));
 }

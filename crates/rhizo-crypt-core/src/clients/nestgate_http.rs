@@ -100,18 +100,18 @@ pub struct HttpHealthResponse {
 
 /// HTTP client for `NestGate` API (pure Rust — hyper/tower stack).
 #[derive(Clone)]
-pub struct NestGateHttpClient {
+pub struct StorageHttpClient {
     client: crate::clients::adapters::http::EcoHttpClient,
     base_url: String,
 }
 
-impl NestGateHttpClient {
+impl StorageHttpClient {
     /// Create a new HTTP client for `NestGate`.
     ///
     /// # Errors
     ///
     /// Returns an error if the base URL is invalid.
-    pub fn new(base_url: impl Into<String>, timeout_ms: u64) -> Result<Self, NestGateHttpError> {
+    pub fn new(base_url: impl Into<String>, timeout_ms: u64) -> Result<Self, StorageHttpError> {
         let base_url = base_url.into();
         let client = crate::clients::adapters::http::EcoHttpClient::new(
             std::time::Duration::from_millis(timeout_ms),
@@ -131,7 +131,7 @@ impl NestGateHttpClient {
         &self,
         data: &[u8],
         content_type: Option<&str>,
-    ) -> Result<String, NestGateHttpError> {
+    ) -> Result<String, StorageHttpError> {
         use base64::{Engine, engine::general_purpose::STANDARD};
 
         let request = HttpStoreBlobRequest {
@@ -141,7 +141,7 @@ impl NestGateHttpClient {
         };
 
         let body = serde_json::to_string(&request)
-            .map_err(|e| NestGateHttpError::Transport(format!("Serialize: {e}")))?;
+            .map_err(|e| StorageHttpError::Transport(format!("Serialize: {e}")))?;
 
         let (status, text) = self
             .client
@@ -150,17 +150,17 @@ impl NestGateHttpClient {
                 &body,
             )
             .await
-            .map_err(|e| NestGateHttpError::Transport(e.to_string()))?;
+            .map_err(|e| StorageHttpError::Transport(e.to_string()))?;
 
         if !(200..300).contains(&status) {
-            return Err(NestGateHttpError::Status(status));
+            return Err(StorageHttpError::Status(status));
         }
 
         let store_response: HttpStoreBlobResponse =
-            serde_json::from_str(&text).map_err(|e| NestGateHttpError::Parse(e.to_string()))?;
+            serde_json::from_str(&text).map_err(|e| StorageHttpError::Parse(e.to_string()))?;
 
         if !store_response.success {
-            return Err(NestGateHttpError::StoreFailed);
+            return Err(StorageHttpError::StoreFailed);
         }
 
         Ok(store_response.reference)
@@ -171,7 +171,7 @@ impl NestGateHttpClient {
     /// # Errors
     ///
     /// Returns error if the HTTP request fails, blob not found, or response cannot be parsed.
-    pub async fn retrieve(&self, reference: &str) -> Result<bytes::Bytes, NestGateHttpError> {
+    pub async fn retrieve(&self, reference: &str) -> Result<bytes::Bytes, StorageHttpError> {
         use base64::{Engine, engine::general_purpose::STANDARD};
 
         let url = format!(
@@ -182,22 +182,22 @@ impl NestGateHttpClient {
         );
 
         let (status, text) =
-            self.client.get(&url).await.map_err(|e| NestGateHttpError::Transport(e.to_string()))?;
+            self.client.get(&url).await.map_err(|e| StorageHttpError::Transport(e.to_string()))?;
 
         if status == 404 {
-            return Err(NestGateHttpError::NotFound);
+            return Err(StorageHttpError::NotFound);
         }
         if !(200..300).contains(&status) {
-            return Err(NestGateHttpError::Status(status));
+            return Err(StorageHttpError::Status(status));
         }
 
         let retrieve_response: HttpRetrieveBlobResponse =
-            serde_json::from_str(&text).map_err(|e| NestGateHttpError::Parse(e.to_string()))?;
+            serde_json::from_str(&text).map_err(|e| StorageHttpError::Parse(e.to_string()))?;
 
         STANDARD
             .decode(&retrieve_response.data)
             .map(bytes::Bytes::from)
-            .map_err(|_| NestGateHttpError::InvalidData)
+            .map_err(|_| StorageHttpError::InvalidData)
     }
 
     /// Check if a blob exists (GET + status check).
@@ -205,7 +205,7 @@ impl NestGateHttpClient {
     /// # Errors
     ///
     /// Returns error if the HTTP request fails.
-    pub async fn exists(&self, reference: &str) -> Result<bool, NestGateHttpError> {
+    pub async fn exists(&self, reference: &str) -> Result<bool, StorageHttpError> {
         let url = format!(
             "{}{}/blobs/{}",
             self.base_url,
@@ -213,7 +213,7 @@ impl NestGateHttpClient {
             reference
         );
         let (status, _) =
-            self.client.get(&url).await.map_err(|e| NestGateHttpError::Transport(e.to_string()))?;
+            self.client.get(&url).await.map_err(|e| StorageHttpError::Transport(e.to_string()))?;
         Ok((200..300).contains(&status))
     }
 
@@ -222,7 +222,7 @@ impl NestGateHttpClient {
     /// # Errors
     ///
     /// Returns error if the HTTP request fails or blob not found.
-    pub async fn metadata(&self, reference: &str) -> Result<HttpBlobMetadata, NestGateHttpError> {
+    pub async fn metadata(&self, reference: &str) -> Result<HttpBlobMetadata, StorageHttpError> {
         let url = format!(
             "{}{}/blobs/{}/metadata",
             self.base_url,
@@ -230,16 +230,16 @@ impl NestGateHttpClient {
             reference
         );
         let (status, text) =
-            self.client.get(&url).await.map_err(|e| NestGateHttpError::Transport(e.to_string()))?;
+            self.client.get(&url).await.map_err(|e| StorageHttpError::Transport(e.to_string()))?;
 
         if status == 404 {
-            return Err(NestGateHttpError::NotFound);
+            return Err(StorageHttpError::NotFound);
         }
         if !(200..300).contains(&status) {
-            return Err(NestGateHttpError::Status(status));
+            return Err(StorageHttpError::Status(status));
         }
 
-        serde_json::from_str(&text).map_err(|e| NestGateHttpError::Parse(e.to_string()))
+        serde_json::from_str(&text).map_err(|e| StorageHttpError::Parse(e.to_string()))
     }
 
     /// Check `NestGate` health.
@@ -247,22 +247,22 @@ impl NestGateHttpClient {
     /// # Errors
     ///
     /// Returns error if the health check fails.
-    pub async fn health(&self) -> Result<HttpHealthResponse, NestGateHttpError> {
+    pub async fn health(&self) -> Result<HttpHealthResponse, StorageHttpError> {
         let url = format!("{}{}", self.base_url, crate::constants::HEALTH_CHECK_PATH);
         let (status, text) =
-            self.client.get(&url).await.map_err(|e| NestGateHttpError::Transport(e.to_string()))?;
+            self.client.get(&url).await.map_err(|e| StorageHttpError::Transport(e.to_string()))?;
 
         if !(200..300).contains(&status) {
-            return Err(NestGateHttpError::Status(status));
+            return Err(StorageHttpError::Status(status));
         }
 
-        serde_json::from_str(&text).map_err(|e| NestGateHttpError::Parse(e.to_string()))
+        serde_json::from_str(&text).map_err(|e| StorageHttpError::Parse(e.to_string()))
     }
 }
 
 /// Errors from `NestGate` HTTP client.
 #[derive(Debug, thiserror::Error)]
-pub enum NestGateHttpError {
+pub enum StorageHttpError {
     /// HTTP transport error.
     #[error("HTTP transport: {0}")]
     Transport(String),

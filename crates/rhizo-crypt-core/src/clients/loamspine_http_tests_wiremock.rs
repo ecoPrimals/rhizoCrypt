@@ -37,7 +37,7 @@ async fn test_wiremock_health_check_success() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health_check().await;
     assert!(result.is_ok());
     let hc = result.unwrap();
@@ -57,7 +57,7 @@ async fn test_wiremock_health_check_http_error() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health_check().await;
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("500"));
@@ -74,7 +74,7 @@ async fn test_wiremock_health_check_parse_error() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health_check().await;
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("parse"));
@@ -95,7 +95,7 @@ async fn test_wiremock_health_check_version_mismatch() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health_check().await;
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("JSON-RPC version"));
@@ -116,7 +116,7 @@ async fn test_wiremock_health_check_id_mismatch() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health_check().await;
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("ID mismatch"));
@@ -149,7 +149,7 @@ async fn test_wiremock_method_negotiation_native_to_compat() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health_check().await;
     assert!(result.is_ok());
     let hc = result.unwrap();
@@ -177,7 +177,7 @@ async fn test_wiremock_commit_session_success() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let summary = DehydrationSummaryBuilder::new(
         SessionId::now(),
         "test",
@@ -214,7 +214,7 @@ async fn test_wiremock_commit_session_rejected() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let summary = DehydrationSummaryBuilder::new(
         SessionId::now(),
         "test",
@@ -243,7 +243,7 @@ async fn test_wiremock_verify_commit_success() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let commit_ref = CommitRef {
         spine_id: "spine-1".to_string(),
         entry_hash: [1u8; 32],
@@ -295,7 +295,7 @@ async fn test_wiremock_verify_commit_fallback_to_health() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let commit_ref = CommitRef {
         spine_id: "spine-1".to_string(),
         entry_hash: [1u8; 32],
@@ -334,7 +334,7 @@ async fn test_wiremock_get_commit_success() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let commit_ref = CommitRef {
         spine_id: "spine-1".to_string(),
         entry_hash: [1u8; 32],
@@ -364,7 +364,7 @@ async fn test_wiremock_get_commit_not_found_returns_none() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let commit_ref = CommitRef {
         spine_id: "spine-1".to_string(),
         entry_hash: [1u8; 32],
@@ -396,7 +396,7 @@ async fn test_wiremock_checkout_slice_success() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let spine_id = "spine-checkout";
     let entry_hash = [0u8; 32];
     let holder = Did::new("did:key:holder");
@@ -425,7 +425,7 @@ async fn test_wiremock_resolve_slice_success() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let origin = SliceOrigin {
         spine_id: "spine-resolve".to_string(),
         entry_hash: [0u8; 32],
@@ -464,7 +464,7 @@ async fn test_wiremock_resolve_slice_endpoint_unavailable_returns_ok() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let origin = SliceOrigin {
         spine_id: "spine-resolve".to_string(),
         entry_hash: [0u8; 32],
@@ -503,7 +503,7 @@ async fn test_wiremock_jsonrpc_other_error() {
         .mount(&mock_server)
         .await;
 
-    let client = LoamSpineHttpClient::new(mock_server.uri()).unwrap();
+    let client = PermanentHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health_check().await;
     assert!(result.is_err());
     let err = result.unwrap_err();

@@ -447,3 +447,8 @@ pub static CAPABILITIES: LazyLock<Vec<&'static str>> =
 #[expect(clippy::expect_used, reason = "test code")]
 #[path = "niche_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test code")]
+#[path = "niche_derived_tests.rs"]
+mod tests_derived;

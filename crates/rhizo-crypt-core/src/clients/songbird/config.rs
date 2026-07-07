@@ -14,7 +14,7 @@ use tracing::warn;
 /// Songbird is special: it's the bootstrap for discovery, so its address
 /// is the only one that should be configured directly.
 #[derive(Debug, Clone)]
-pub struct SongbirdConfig {
+pub struct DiscoveryConfig {
     /// Songbird orchestrator address.
     /// This is the bootstrap address - discovered from environment or config.
     pub address: Cow<'static, str>,
@@ -39,13 +39,13 @@ pub struct SongbirdConfig {
     pub heartbeat_interval: Duration,
 }
 
-impl Default for SongbirdConfig {
+impl Default for DiscoveryConfig {
     fn default() -> Self {
         Self::from_env()
     }
 }
 
-impl SongbirdConfig {
+impl DiscoveryConfig {
     /// Create a new config with no address configured.
     ///
     /// This is the preferred constructor - requires explicit address configuration.
@@ -77,7 +77,7 @@ impl SongbirdConfig {
     }
 }
 
-impl SongbirdConfig {
+impl DiscoveryConfig {
     /// Create config from environment variables.
     ///
     /// Environment variables (checked in order):
@@ -130,40 +130,40 @@ mod tests {
 
     #[test]
     fn test_new_has_empty_address() {
-        let config = SongbirdConfig::new();
+        let config = DiscoveryConfig::new();
         assert!(config.address.is_empty());
         assert!(!config.is_configured());
     }
 
     #[test]
     fn test_new_uses_primal_name() {
-        let config = SongbirdConfig::new();
+        let config = DiscoveryConfig::new();
         assert_eq!(config.service_name.as_ref(), crate::constants::PRIMAL_NAME);
     }
 
     #[test]
     fn test_new_has_advertised_capabilities() {
-        let config = SongbirdConfig::new();
+        let config = DiscoveryConfig::new();
         assert!(!config.capabilities.is_empty());
         assert_eq!(config.capabilities[0].as_ref(), crate::constants::ADVERTISED_CAPABILITIES[0]);
     }
 
     #[test]
     fn test_with_address_sets_address() {
-        let config = SongbirdConfig::with_address("127.0.0.1:9500");
+        let config = DiscoveryConfig::with_address("127.0.0.1:9500");
         assert!(config.is_configured());
         assert_eq!(config.address.as_ref(), "127.0.0.1:9500");
     }
 
     #[test]
     fn test_heartbeat_uses_constant() {
-        let config = SongbirdConfig::new();
+        let config = DiscoveryConfig::new();
         assert_eq!(config.heartbeat_interval, crate::constants::DEFAULT_HEARTBEAT_INTERVAL);
     }
 
     #[test]
     fn test_auto_reconnect_default_true() {
-        let config = SongbirdConfig::new();
+        let config = DiscoveryConfig::new();
         assert!(config.auto_reconnect);
     }
 
@@ -178,7 +178,7 @@ mod tests {
                 ("SONGBIRD_PORT", None::<&str>),
             ],
             || {
-                let config = SongbirdConfig::from_env();
+                let config = DiscoveryConfig::from_env();
                 assert!(!config.is_configured());
             },
         );
@@ -195,7 +195,7 @@ mod tests {
                 ("SONGBIRD_PORT", Some("9500")),
             ],
             || {
-                let config = SongbirdConfig::from_env();
+                let config = DiscoveryConfig::from_env();
                 assert!(config.is_configured());
                 assert_eq!(config.address.as_ref(), "10.0.0.1:9500");
             },
@@ -214,7 +214,7 @@ mod tests {
                 ("RHIZOCRYPT_SERVICE_NAME", Some("custom-name")),
             ],
             || {
-                let config = SongbirdConfig::from_env();
+                let config = DiscoveryConfig::from_env();
                 assert_eq!(config.service_name.as_ref(), "custom-name");
             },
         );

@@ -7,29 +7,29 @@
 //! Discovery tests are in `tests_discovery.rs`, config/type tests in
 //! `tests_config.rs`, and tarpc integration tests in `tests_tarpc.rs`.
 
-use super::{SongbirdClient, SongbirdConfig};
-use crate::clients::songbird_types::ClientState;
+use super::{DiscoveryClient, DiscoveryConfig};
+use crate::clients::discovery_types::ClientState;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_client_initial_state() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     assert_eq!(client.state().await, ClientState::Disconnected);
     assert!(!client.is_connected().await);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_register_without_connection() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     let result = client.register("127.0.0.1:9400").await;
     assert!(result.is_err());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_connect_without_config_fails() {
-    let config = SongbirdConfig::new();
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::new();
+    let client = DiscoveryClient::new(config);
     let result = client.connect().await;
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
@@ -38,8 +38,8 @@ async fn test_connect_without_config_fails() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_heartbeat_requires_registration() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     let result = client.start_heartbeat().await;
     assert!(result.is_err());
@@ -49,8 +49,8 @@ async fn test_heartbeat_requires_registration() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_heartbeat_lifecycle() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     *client.state.write().await = ClientState::Registered;
     *client.service_id.write().await = Some("test-id".to_string());
@@ -74,9 +74,9 @@ async fn test_heartbeat_lifecycle() {
 
 #[tokio::test(start_paused = true)]
 async fn test_heartbeat_stops_when_unregistered() {
-    let mut config = SongbirdConfig::with_address("127.0.0.1:8091");
+    let mut config = DiscoveryConfig::with_address("127.0.0.1:8091");
     config.heartbeat_interval = std::time::Duration::from_millis(50);
-    let client = SongbirdClient::new(config);
+    let client = DiscoveryClient::new(config);
 
     *client.state.write().await = ClientState::Registered;
     *client.service_id.write().await = Some("test-id".to_string());
@@ -94,8 +94,8 @@ async fn test_heartbeat_stops_when_unregistered() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_client_clone() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client1 = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client1 = DiscoveryClient::new(config);
     *client1.state.write().await = ClientState::Connected;
 
     let client2 = client1.clone();
@@ -107,8 +107,8 @@ async fn test_client_clone() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_connect_invalid_address() {
-    let config = SongbirdConfig::with_address("invalid-address-no-port");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("invalid-address-no-port");
+    let client = DiscoveryClient::new(config);
     let result = client.connect().await;
 
     assert!(result.is_err());
@@ -118,8 +118,8 @@ async fn test_connect_invalid_address() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_connect_already_connected() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     *client.state.write().await = ClientState::Connected;
 
@@ -129,8 +129,8 @@ async fn test_connect_already_connected() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_connect_already_registered() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     *client.state.write().await = ClientState::Registered;
 
@@ -142,8 +142,8 @@ async fn test_connect_already_registered() {
 async fn test_connect_success() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
-    let config = SongbirdConfig::with_address(addr.to_string());
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address(addr.to_string());
+    let client = DiscoveryClient::new(config);
 
     let accept_handle = tokio::spawn(async move {
         let _ = listener.accept().await;
@@ -159,9 +159,9 @@ async fn test_connect_success() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_connect_timeout() {
-    let mut config = SongbirdConfig::with_address("192.0.2.1:9999");
+    let mut config = DiscoveryConfig::with_address("192.0.2.1:9999");
     config.timeout_ms = 1;
-    let client = SongbirdClient::new(config);
+    let client = DiscoveryClient::new(config);
 
     let result = client.connect().await;
     assert!(result.is_err());
@@ -175,8 +175,8 @@ async fn test_connect_timeout() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_connect_connection_refused() {
-    let config = SongbirdConfig::with_address("127.0.0.1:49151");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:49151");
+    let client = DiscoveryClient::new(config);
 
     let result = client.connect().await;
     assert!(result.is_err());
@@ -185,8 +185,8 @@ async fn test_connect_connection_refused() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_register_not_connected() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     let result = client.register("127.0.0.1:9400").await;
     assert!(result.is_err());
@@ -196,8 +196,8 @@ async fn test_register_not_connected() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_federation_status_not_connected() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     let result = client.federation_status().await;
     assert!(result.is_err());
@@ -207,8 +207,8 @@ async fn test_federation_status_not_connected() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_federation_status_requires_live_clients() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     #[cfg(not(feature = "live-clients"))]
@@ -222,8 +222,8 @@ async fn test_federation_status_requires_live_clients() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_unregister_without_registration() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     let result = client.unregister().await;
     assert!(result.is_ok());
@@ -231,8 +231,8 @@ async fn test_unregister_without_registration() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_unregister_with_registration() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Registered;
     *client.service_id.write().await = Some("test-service-id".to_string());
 
@@ -245,8 +245,8 @@ async fn test_unregister_with_registration() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_disconnect() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Registered;
     *client.service_id.write().await = Some("test-id".to_string());
 
@@ -259,8 +259,8 @@ async fn test_disconnect() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_state_transitions() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     assert_eq!(client.state().await, ClientState::Disconnected);
 
@@ -276,8 +276,8 @@ async fn test_state_transitions() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_disconnect_idempotent_when_already_disconnected() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     client.disconnect().await;
 
@@ -287,16 +287,16 @@ async fn test_disconnect_idempotent_when_already_disconnected() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_endpoint_none_when_disconnected() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     assert!(client.endpoint().await.is_none());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_service_id_some_when_registered() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Registered;
     *client.service_id.write().await = Some("my-service-123".to_string());
 
@@ -306,8 +306,8 @@ async fn test_service_id_some_when_registered() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_register_fails_when_disconnected() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     let result = client.register("127.0.0.1:9400").await;
     assert!(result.is_err(), "register should fail when not connected");
@@ -315,8 +315,8 @@ async fn test_register_fails_when_disconnected() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_stop_heartbeat_when_not_running() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
 
     client.stop_heartbeat().await;
 }

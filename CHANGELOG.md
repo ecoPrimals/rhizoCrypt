@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Wave 133e-b: Vendor Decoupling + Transport Split + Niche Coverage (Jul 7, 2026)
+
+- **Songbird → DiscoveryClient decoupling**: `SongbirdClient` → `DiscoveryClient`, `SongbirdConfig` → `DiscoveryConfig`, `SongbirdRpc` → `DiscoveryRpc`, `MockSongbirdServer` → `MockDiscoveryServer`. Deprecated type aliases added for backward compat. Module docs updated to capability-neutral language. `songbird_rpc`/`songbird_types` re-exported as `discovery_rpc`/`discovery_types` via `#[path]`.
+- **Vendor HTTP client type renames**: `BearDogHttpClient` → `SigningHttpClient`, `ToadStoolHttpClient` → `ComputeHttpClient`, `NestGateHttpClient` → `StorageHttpClient`, `LoamSpineHttpClient` → `PermanentHttpClient`, `LoamSpineRpc` → `PermanentStorageRpc`. All error types renamed accordingly.
+- **`transport_tests.rs` split (823L → 6 submodules)**: Socket paths, platform hints, family/BTSP, endpoint, connect/liveness, error display — each in a focused file under `transport_tests/`.
+- **Niche derived coverage (+25 tests)**: `normalize_method`, `cost_tier`, `health_liveness`, `health_readiness`, `identity_get`, `announce_payload`, `mcp_tools`, `capability_list`, `method_locality_counts`, `SEMANTIC_MAPPINGS`, `CONSUMED_CAPABILITIES`, `DEPENDENCIES`.
+- **Test count 1,869 → 1,894 (+25)**. Zero files over 800L. Zero clippy warnings.
+
 #### Wave 128c: Fail-Closed Auth + Mesh Hardening + Constants Split (Jun 28, 2026)
 
 - **CapabilityVerifier fail-closed in Enforced mode**: `fail_open` parameter wired from `EnforcementMode`. In Enforced mode, tokens are treated as unverified when no `crypto:signing` provider exists — previously fell back to `PresenceVerifier` granting wildcard `*` scope. Permissive mode retains backward-compatible fallback.

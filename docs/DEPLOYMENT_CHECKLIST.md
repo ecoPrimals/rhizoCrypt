@@ -9,13 +9,13 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,870 tests passing** (all features), 0 failures
+- [x] **1,894 tests passing** (all features), 0 failures
 - [x] **93.70% line coverage** (llvm-cov, Jun 28 2026)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all production files under 800 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 186 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 213 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
@@ -30,7 +30,7 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,870 tests)
+- [x] **README.md** (current metrics — 1,894 tests)
 - [x] **CHANGELOG.md** (version history through Wave 128c)
 - [x] **specs/** (12 specification documents)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)

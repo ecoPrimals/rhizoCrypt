@@ -567,5 +567,5 @@ pub fn socket_is_alive(path: &std::path::Path) -> bool {
 
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test code")]
-#[path = "transport_tests.rs"]
+#[path = "transport_tests/mod.rs"]
 mod tests;

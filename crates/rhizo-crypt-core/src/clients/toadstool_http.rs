@@ -28,14 +28,14 @@ use crate::types_ecosystem::compute::{ComputeEvent, TaskId};
 
 /// HTTP client for `ToadStool` BYOB API (pure Rust — hyper/tower stack).
 #[derive(Clone, Debug)]
-pub struct ToadStoolHttpClient {
+pub struct ComputeHttpClient {
     client: crate::clients::adapters::http::EcoHttpClient,
     base_url: String,
 }
 
 /// Error from `ToadStool` HTTP operations.
 #[derive(Debug, thiserror::Error)]
-pub enum ToadStoolHttpError {
+pub enum ComputeHttpError {
     /// HTTP transport error.
     #[error("HTTP transport: {0}")]
     Transport(String),
@@ -133,7 +133,7 @@ pub struct StopDeploymentResponse {
     pub message: String,
 }
 
-impl ToadStoolHttpClient {
+impl ComputeHttpClient {
     /// Create a new HTTP client for `ToadStool` BYOB server.
     ///
     /// # Arguments
@@ -143,7 +143,7 @@ impl ToadStoolHttpClient {
     /// # Errors
     ///
     /// Returns error if client creation fails.
-    pub fn new(base_url: impl Into<String>) -> std::result::Result<Self, ToadStoolHttpError> {
+    pub fn new(base_url: impl Into<String>) -> std::result::Result<Self, ComputeHttpError> {
         let client = crate::clients::adapters::http::EcoHttpClient::new(CONNECTION_TIMEOUT);
         Ok(Self {
             client,
@@ -156,7 +156,7 @@ impl ToadStoolHttpClient {
     /// # Errors
     ///
     /// Returns error if health check fails.
-    pub async fn health(&self) -> std::result::Result<HealthStatus, ToadStoolHttpError> {
+    pub async fn health(&self) -> std::result::Result<HealthStatus, ComputeHttpError> {
         let url = format!("{}/health", self.base_url);
         debug!(%url, "Checking compute provider health");
         let health: HealthStatus = self.get_json(&url).await?;
@@ -169,7 +169,7 @@ impl ToadStoolHttpClient {
     /// # Errors
     ///
     /// Returns error if health check fails.
-    pub async fn byob_health(&self) -> std::result::Result<ByobHealthResponse, ToadStoolHttpError> {
+    pub async fn byob_health(&self) -> std::result::Result<ByobHealthResponse, ComputeHttpError> {
         let url = format!("{}/byob/health", self.base_url);
         debug!(%url, "Checking BYOB API health");
         let health: ByobHealthResponse = self.get_json(&url).await?;
@@ -184,7 +184,7 @@ impl ToadStoolHttpClient {
     /// Returns error if request fails.
     pub async fn list_deployments(
         &self,
-    ) -> std::result::Result<Vec<DeploymentResponse>, ToadStoolHttpError> {
+    ) -> std::result::Result<Vec<DeploymentResponse>, ComputeHttpError> {
         let url = format!("{}/byob/deployments", self.base_url);
         debug!(%url, "Listing BYOB deployments");
         self.get_json(&url).await
@@ -198,7 +198,7 @@ impl ToadStoolHttpClient {
     pub async fn get_deployment(
         &self,
         deployment_id: &str,
-    ) -> std::result::Result<DeploymentResponse, ToadStoolHttpError> {
+    ) -> std::result::Result<DeploymentResponse, ComputeHttpError> {
         let url = format!("{}/byob/deployments/{}", self.base_url, deployment_id);
         debug!(%url, "Getting deployment status");
         self.get_json(&url).await
@@ -212,7 +212,7 @@ impl ToadStoolHttpClient {
     pub async fn stop_deployment(
         &self,
         deployment_id: &str,
-    ) -> std::result::Result<StopDeploymentResponse, ToadStoolHttpError> {
+    ) -> std::result::Result<StopDeploymentResponse, ComputeHttpError> {
         let url = format!("{}/byob/deployments/{}/stop", self.base_url, deployment_id);
         debug!(%url, "Stopping deployment");
         let resp: StopDeploymentResponse = self.post_empty_json(&url).await?;
@@ -228,7 +228,7 @@ impl ToadStoolHttpClient {
     pub async fn get_resource_usage(
         &self,
         deployment_id: &str,
-    ) -> std::result::Result<ResourceUsage, ToadStoolHttpError> {
+    ) -> std::result::Result<ResourceUsage, ComputeHttpError> {
         let url = format!("{}/byob/deployments/{}/usage", self.base_url, deployment_id);
         debug!(%url, "Getting resource usage");
         self.get_json(&url).await
@@ -238,35 +238,35 @@ impl ToadStoolHttpClient {
     async fn get_json<T: for<'de> serde::Deserialize<'de>>(
         &self,
         url: &str,
-    ) -> std::result::Result<T, ToadStoolHttpError> {
+    ) -> std::result::Result<T, ComputeHttpError> {
         let (status, text) =
-            self.client.get(url).await.map_err(|e| ToadStoolHttpError::Transport(e.to_string()))?;
+            self.client.get(url).await.map_err(|e| ComputeHttpError::Transport(e.to_string()))?;
         if !(200..300).contains(&status) {
-            return Err(ToadStoolHttpError::Server {
+            return Err(ComputeHttpError::Server {
                 status,
                 message: text,
             });
         }
-        serde_json::from_str(&text).map_err(|e| ToadStoolHttpError::InvalidResponse(e.to_string()))
+        serde_json::from_str(&text).map_err(|e| ComputeHttpError::InvalidResponse(e.to_string()))
     }
 
     /// POST empty body to URL and deserialize JSON response.
     async fn post_empty_json<T: for<'de> serde::Deserialize<'de>>(
         &self,
         url: &str,
-    ) -> std::result::Result<T, ToadStoolHttpError> {
+    ) -> std::result::Result<T, ComputeHttpError> {
         let (status, text) = self
             .client
             .post_json(url, "{}")
             .await
-            .map_err(|e| ToadStoolHttpError::Transport(e.to_string()))?;
+            .map_err(|e| ComputeHttpError::Transport(e.to_string()))?;
         if !(200..300).contains(&status) {
-            return Err(ToadStoolHttpError::Server {
+            return Err(ComputeHttpError::Server {
                 status,
                 message: text,
             });
         }
-        serde_json::from_str(&text).map_err(|e| ToadStoolHttpError::InvalidResponse(e.to_string()))
+        serde_json::from_str(&text).map_err(|e| ComputeHttpError::InvalidResponse(e.to_string()))
     }
 
     /// Convert deployment response to compute event.
@@ -353,9 +353,9 @@ fn parse_deployment_id(id: &str) -> Option<TaskId> {
 /// # Errors
 ///
 /// Returns error if connection fails.
-pub async fn create_http_client(endpoint: std::net::SocketAddr) -> Result<ToadStoolHttpClient> {
+pub async fn create_http_client(endpoint: std::net::SocketAddr) -> Result<ComputeHttpClient> {
     let base_url = format!("http://{endpoint}");
-    let http_client = ToadStoolHttpClient::new(&base_url)
+    let http_client = ComputeHttpClient::new(&base_url)
         .map_err(|e| RhizoCryptError::integration(format!("Failed to create HTTP client: {e}")))?;
 
     // Verify connectivity
@@ -373,7 +373,7 @@ pub async fn create_http_client(endpoint: std::net::SocketAddr) -> Result<ToadSt
 /// runtime, identifying the compute provider that owns these deployments.
 #[must_use]
 pub fn poll_events_from_deployments(
-    http_client: &ToadStoolHttpClient,
+    http_client: &ComputeHttpClient,
     deployments: &[DeploymentResponse],
     requester: &Did,
     worker: &Did,

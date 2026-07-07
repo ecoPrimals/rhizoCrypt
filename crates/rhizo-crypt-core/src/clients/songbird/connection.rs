@@ -9,13 +9,13 @@ use tracing::{debug, error, info};
 
 use crate::error::{Result, RhizoCryptError};
 
-use super::super::songbird_types::ClientState;
-use super::client::SongbirdClient;
+use super::super::discovery_types::ClientState;
+use super::client::DiscoveryClient;
 
 #[cfg(feature = "live-clients")]
-use super::super::songbird_rpc::SongbirdRpcClient;
+use super::super::discovery_rpc::DiscoveryRpcClient;
 
-impl SongbirdClient {
+impl DiscoveryClient {
     /// Connect to the Songbird orchestrator.
     ///
     /// # Errors
@@ -128,7 +128,7 @@ impl SongbirdClient {
 
     /// Internal connection attempt with tarpc client establishment.
     #[cfg(feature = "live-clients")]
-    async fn try_connect_tarpc(addr: SocketAddr) -> Result<SongbirdRpcClient> {
+    async fn try_connect_tarpc(addr: SocketAddr) -> Result<DiscoveryRpcClient> {
         use tarpc::client;
         use tarpc::tokio_serde::formats::Bincode;
 
@@ -143,7 +143,7 @@ impl SongbirdClient {
         let transport = tarpc::serde_transport::Transport::from((stream, Bincode::default()));
 
         // Create tarpc client
-        let client = SongbirdRpcClient::new(client::Config::default(), transport).spawn();
+        let client = DiscoveryRpcClient::new(client::Config::default(), transport).spawn();
 
         info!(addr = %addr, "tarpc connection established to discovery service");
         Ok(client)

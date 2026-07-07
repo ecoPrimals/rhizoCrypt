@@ -9,10 +9,10 @@ use crate::discovery::{Capability, DiscoveryRegistry, ServiceEndpoint};
 use crate::error::{Result, RhizoCryptError};
 use crate::transport::TransportEndpoint;
 
-use super::super::songbird_types::ServiceInfo;
-use super::client::SongbirdClient;
+use super::super::discovery_types::ServiceInfo;
+use super::client::DiscoveryClient;
 
-impl SongbirdClient {
+impl DiscoveryClient {
     /// Discover services by capability.
     ///
     /// # Errors

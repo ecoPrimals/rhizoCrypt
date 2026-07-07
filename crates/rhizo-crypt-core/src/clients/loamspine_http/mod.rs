@@ -68,7 +68,7 @@ mod methods {
 /// Supports method negotiation: tries native method names first (`LoamSpine` v0.8.0+),
 /// falling back to compatibility names for older versions.
 #[derive(Debug, Clone)]
-pub struct LoamSpineHttpClient {
+pub struct PermanentHttpClient {
     /// Base URL for `LoamSpine` JSON-RPC endpoint.
     base_url: String,
     /// HTTP client with timeout (pure Rust — hyper/tower stack).
@@ -80,7 +80,7 @@ pub struct LoamSpineHttpClient {
     native_methods: std::sync::Arc<std::sync::atomic::AtomicU8>,
 }
 
-impl LoamSpineHttpClient {
+impl PermanentHttpClient {
     /// Create a new `LoamSpine` HTTP client.
     ///
     /// # Arguments
@@ -264,7 +264,7 @@ impl LoamSpineHttpClient {
     }
 }
 
-impl PermanentStorageProvider for LoamSpineHttpClient {
+impl PermanentStorageProvider for PermanentHttpClient {
     async fn commit(&self, summary: &DehydrationSummary) -> Result<CommitRef> {
         let request = CommitSessionRequest {
             session_id: summary.session_id.to_string(),

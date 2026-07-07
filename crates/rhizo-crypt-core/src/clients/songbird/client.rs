@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Songbird Client - Service Discovery and Registration
+//! Discovery Client — Service Discovery and Registration
 //!
-//! Connects rhizoCrypt to the Songbird service mesh for:
+//! Connects rhizoCrypt to the ecosystem discovery service for:
 //! - Primal registration (advertise our capabilities)
 //! - Service discovery (find sibling primals)
 //! - Federation status monitoring
 //!
 //! ## Bootstrap Architecture
 //!
-//! Songbird is the discovery bootstrap - the one address you must configure.
-//! All other primals are discovered through Songbird at runtime.
+//! The discovery adapter is the bootstrap — the one address you must configure.
+//! All other primals are discovered through the discovery service at runtime.
 //!
 //! ```text
 //! ┌─────────────────────────────────────────────────────────────────┐
 //! │                     rhizoCrypt Bootstrap                        │
 //! │                                                                 │
-//! │  SONGBIRD_ADDRESS (env/config)                                  │
+//! │  DISCOVERY_ENDPOINT / RHIZOCRYPT_DISCOVERY_ADAPTER (env)        │
 //! │         │                                                       │
 //! │         ▼                                                       │
 //! │    ┌─────────┐                                                  │
@@ -40,13 +40,13 @@ use tracing::{debug, error, info, warn};
 
 use crate::error::{Result, RhizoCryptError};
 
-use super::super::songbird_types::{
+use super::super::discovery_types::{
     ClientState, FederationStatus, RegistrationResult, ServiceInfo,
 };
-use super::config::SongbirdConfig;
+use super::config::DiscoveryConfig;
 
 #[cfg(feature = "live-clients")]
-use super::super::songbird_rpc::{RpcServiceRegistration, SongbirdRpcClient};
+use super::super::discovery_rpc::{DiscoveryRpcClient, RpcServiceRegistration};
 
 /// Songbird client for service mesh integration.
 ///
@@ -56,10 +56,10 @@ use super::super::songbird_rpc::{RpcServiceRegistration, SongbirdRpcClient};
 /// ## Usage
 ///
 /// ```no_run
-/// # use rhizo_crypt_core::clients::SongbirdClient;
+/// # use rhizo_crypt_core::clients::DiscoveryClient;
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
 /// // Create from environment (production)
-/// let client = SongbirdClient::from_env();
+/// let client = DiscoveryClient::from_env();
 /// client.connect().await?;
 /// client.register("127.0.0.1:9400").await?;
 ///
@@ -81,8 +81,8 @@ use super::super::songbird_rpc::{RpcServiceRegistration, SongbirdRpcClient};
 ///
 /// When compiled with `--features live-clients`, this client uses
 /// actual tarpc connections to the Songbird orchestrator.
-pub struct SongbirdClient {
-    pub(crate) config: SongbirdConfig,
+pub struct DiscoveryClient {
+    pub(crate) config: DiscoveryConfig,
     pub(crate) state: Arc<RwLock<ClientState>>,
     pub(crate) service_id: Arc<RwLock<Option<String>>>,
     pub(crate) discovered_services: Arc<RwLock<HashMap<String, Vec<ServiceInfo>>>>,
@@ -90,17 +90,17 @@ pub struct SongbirdClient {
     pub(crate) resolved_endpoint: Arc<RwLock<Option<SocketAddr>>>,
     /// tarpc client (when live-clients feature is enabled).
     #[cfg(feature = "live-clients")]
-    pub(crate) tarpc_client: Arc<RwLock<Option<SongbirdRpcClient>>>,
+    pub(crate) tarpc_client: Arc<RwLock<Option<DiscoveryRpcClient>>>,
     /// Our registered endpoint (for heartbeat refreshes).
     pub(crate) our_endpoint: Arc<RwLock<Option<String>>>,
     /// Heartbeat task handle (if running).
     pub(crate) heartbeat_handle: Arc<RwLock<Option<tokio::task::JoinHandle<()>>>>,
 }
 
-impl SongbirdClient {
+impl DiscoveryClient {
     /// Create a new Songbird client.
     #[must_use]
-    pub fn new(config: SongbirdConfig) -> Self {
+    pub fn new(config: DiscoveryConfig) -> Self {
         Self {
             config,
             state: Arc::new(RwLock::new(ClientState::Disconnected)),
@@ -120,13 +120,13 @@ impl SongbirdClient {
     /// for the localhost fallback.
     #[must_use]
     pub fn with_defaults() -> Self {
-        Self::new(SongbirdConfig::from_env())
+        Self::new(DiscoveryConfig::from_env())
     }
 
     /// Create a client from environment configuration.
     #[must_use]
     pub fn from_env() -> Self {
-        Self::new(SongbirdConfig::from_env())
+        Self::new(DiscoveryConfig::from_env())
     }
 
     /// Get current connection state.
@@ -237,9 +237,9 @@ impl SongbirdClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use rhizo_crypt_core::clients::SongbirdClient;
+    /// # use rhizo_crypt_core::clients::DiscoveryClient;
     /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-    /// let client = SongbirdClient::from_env();
+    /// let client = DiscoveryClient::from_env();
     /// client.connect().await?;
     /// client.register("127.0.0.1:9400").await?;
     ///
@@ -439,7 +439,7 @@ impl SongbirdClient {
     }
 }
 
-impl Clone for SongbirdClient {
+impl Clone for DiscoveryClient {
     fn clone(&self) -> Self {
         Self {
             config: self.config.clone(),
@@ -477,13 +477,13 @@ mod tests_tarpc;
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests_coverage {
-    use super::{SongbirdClient, SongbirdConfig};
-    use crate::clients::songbird_types::ClientState;
+    use super::{DiscoveryClient, DiscoveryConfig};
+    use crate::clients::discovery_types::ClientState;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_register_scaffolded_when_connected() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
+        let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+        let client = DiscoveryClient::new(config);
         *client.state.write().await = ClientState::Connected;
 
         #[cfg(not(feature = "live-clients"))]
@@ -499,8 +499,8 @@ mod tests_coverage {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_refresh_registration_no_endpoint() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
+        let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+        let client = DiscoveryClient::new(config);
         *client.state.write().await = ClientState::Registered;
         *client.service_id.write().await = Some("test-id".to_string());
 
@@ -512,8 +512,8 @@ mod tests_coverage {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_refresh_registration_with_endpoint_scaffolded() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
+        let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+        let client = DiscoveryClient::new(config);
         *client.state.write().await = ClientState::Connected;
 
         #[cfg(not(feature = "live-clients"))]
@@ -525,8 +525,8 @@ mod tests_coverage {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_disconnect_when_connected_not_registered() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
+        let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+        let client = DiscoveryClient::new(config);
         *client.state.write().await = ClientState::Connected;
         *client.resolved_endpoint.write().await = Some("127.0.0.1:8091".parse().unwrap());
 
@@ -537,16 +537,16 @@ mod tests_coverage {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_failed_state_not_connected() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
+        let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+        let client = DiscoveryClient::new(config);
         *client.state.write().await = ClientState::Failed;
         assert!(!client.is_connected().await);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_connecting_state_not_connected() {
-        let config = SongbirdConfig::with_address("127.0.0.1:8091");
-        let client = SongbirdClient::new(config);
+        let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+        let client = DiscoveryClient::new(config);
         *client.state.write().await = ClientState::Connecting;
         assert!(!client.is_connected().await);
     }

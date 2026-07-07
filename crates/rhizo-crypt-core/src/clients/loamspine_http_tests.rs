@@ -7,19 +7,19 @@ use super::*;
 
 #[test]
 fn test_client_creation() {
-    let client = LoamSpineHttpClient::new("http://localhost:8080").unwrap();
+    let client = PermanentHttpClient::new("http://localhost:8080").unwrap();
     assert_eq!(client.base_url, "http://localhost:8080/rpc");
 
-    let client2 = LoamSpineHttpClient::new("http://localhost:8080/").unwrap();
+    let client2 = PermanentHttpClient::new("http://localhost:8080/").unwrap();
     assert_eq!(client2.base_url, "http://localhost:8080/rpc");
 
-    let client3 = LoamSpineHttpClient::new("http://localhost:8080/rpc").unwrap();
+    let client3 = PermanentHttpClient::new("http://localhost:8080/rpc").unwrap();
     assert_eq!(client3.base_url, "http://localhost:8080/rpc");
 }
 
 #[test]
 fn test_request_id_increment() {
-    let client = LoamSpineHttpClient::new("http://localhost:8080").unwrap();
+    let client = PermanentHttpClient::new("http://localhost:8080").unwrap();
     assert_eq!(client.next_request_id(), 1);
     assert_eq!(client.next_request_id(), 2);
     assert_eq!(client.next_request_id(), 3);
@@ -27,7 +27,7 @@ fn test_request_id_increment() {
 
 #[test]
 fn test_method_negotiation_state() {
-    let client = LoamSpineHttpClient::new("http://localhost:8080").unwrap();
+    let client = PermanentHttpClient::new("http://localhost:8080").unwrap();
 
     assert_eq!(
         MethodSupport::from_u8(client.native_methods.load(Ordering::Relaxed)),
@@ -78,7 +78,7 @@ fn test_compat_method_names() {
 
 #[tokio::test]
 async fn test_health_check_unavailable() {
-    let client = LoamSpineHttpClient::new("http://invalid-endpoint-12345:99999").unwrap();
+    let client = PermanentHttpClient::new("http://invalid-endpoint-12345:99999").unwrap();
     let result = client.health_check().await;
     assert!(result.is_err());
 }

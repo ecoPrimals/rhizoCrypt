@@ -294,7 +294,7 @@ pub const DEFAULT_RATE_LIMIT_EXPENSIVE_RPS: u32 = 10;
 
 /// Capability domains this primal advertises for discovery registration.
 ///
-/// Used by `SongbirdConfig` default and capability descriptors. Aligned
+/// Used by `DiscoveryConfig` default and capability descriptors. Aligned
 /// with `config/capability_registry.toml` provider entries for `rhizocrypt`.
 pub const ADVERTISED_CAPABILITIES: &[&str] =
     &["dag-engine", "session-management", "merkle-proofs", "slice-checkout", "dehydration"];

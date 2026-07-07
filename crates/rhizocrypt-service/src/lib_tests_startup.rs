@@ -13,7 +13,7 @@ use std::time::Duration;
 #[cfg(feature = "live-clients")]
 pub(super) async fn spawn_tarpc_discovery_server<S>(server: S) -> SocketAddr
 where
-    S: rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc + Clone + Send + Sync + 'static,
+    S: rhizo_crypt_core::clients::discovery_rpc::DiscoveryRpc + Clone + Send + Sync + 'static,
 {
     use futures_util::StreamExt;
     use tarpc::server::{self, Channel};
@@ -44,14 +44,14 @@ where
 pub(super) struct AcceptingDiscoveryServer;
 
 #[cfg(feature = "live-clients")]
-impl rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc for AcceptingDiscoveryServer {
+impl rhizo_crypt_core::clients::discovery_rpc::DiscoveryRpc for AcceptingDiscoveryServer {
     async fn discover(
         self,
         _: tarpc::context::Context,
         capability: String,
-    ) -> Vec<rhizo_crypt_core::clients::songbird_rpc::RpcServiceInfo> {
+    ) -> Vec<rhizo_crypt_core::clients::discovery_rpc::RpcServiceInfo> {
         if capability == "signing" {
-            vec![rhizo_crypt_core::clients::songbird_rpc::RpcServiceInfo {
+            vec![rhizo_crypt_core::clients::discovery_rpc::RpcServiceInfo {
                 id: "mock-signing-1".to_string(),
                 capability: "signing".to_string(),
                 endpoint: "127.0.0.1:9500".to_string(),
@@ -66,16 +66,16 @@ impl rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc for AcceptingDiscovery
     async fn discover_all(
         self,
         _: tarpc::context::Context,
-    ) -> Vec<rhizo_crypt_core::clients::songbird_rpc::RpcServiceInfo> {
+    ) -> Vec<rhizo_crypt_core::clients::discovery_rpc::RpcServiceInfo> {
         vec![]
     }
 
     async fn register(
         self,
         _: tarpc::context::Context,
-        registration: rhizo_crypt_core::clients::songbird_rpc::RpcServiceRegistration,
-    ) -> rhizo_crypt_core::clients::songbird_rpc::RpcRegistrationResult {
-        rhizo_crypt_core::clients::songbird_rpc::RpcRegistrationResult {
+        registration: rhizo_crypt_core::clients::discovery_rpc::RpcServiceRegistration,
+    ) -> rhizo_crypt_core::clients::discovery_rpc::RpcRegistrationResult {
+        rhizo_crypt_core::clients::discovery_rpc::RpcRegistrationResult {
             success: true,
             message: format!("Registered {}", registration.service_id),
         }
@@ -85,8 +85,8 @@ impl rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc for AcceptingDiscovery
         self,
         _: tarpc::context::Context,
         _service_id: String,
-    ) -> rhizo_crypt_core::clients::songbird_rpc::RpcRegistrationResult {
-        rhizo_crypt_core::clients::songbird_rpc::RpcRegistrationResult {
+    ) -> rhizo_crypt_core::clients::discovery_rpc::RpcRegistrationResult {
+        rhizo_crypt_core::clients::discovery_rpc::RpcRegistrationResult {
             success: true,
             message: "Unregistered".to_string(),
         }
@@ -95,8 +95,8 @@ impl rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc for AcceptingDiscovery
     async fn health(
         self,
         _: tarpc::context::Context,
-    ) -> rhizo_crypt_core::clients::songbird_rpc::RpcHealthStatus {
-        rhizo_crypt_core::clients::songbird_rpc::RpcHealthStatus {
+    ) -> rhizo_crypt_core::clients::discovery_rpc::RpcHealthStatus {
+        rhizo_crypt_core::clients::discovery_rpc::RpcHealthStatus {
             status: "healthy".to_string(),
             version: "0.1.0-test".to_string(),
             uptime_seconds: 0,
@@ -107,8 +107,8 @@ impl rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc for AcceptingDiscovery
     async fn version(
         self,
         _: tarpc::context::Context,
-    ) -> rhizo_crypt_core::clients::songbird_rpc::RpcVersionInfo {
-        rhizo_crypt_core::clients::songbird_rpc::RpcVersionInfo {
+    ) -> rhizo_crypt_core::clients::discovery_rpc::RpcVersionInfo {
+        rhizo_crypt_core::clients::discovery_rpc::RpcVersionInfo {
             version: "0.1.0-test".to_string(),
             protocol: "tarpc-1.0".to_string(),
             capabilities: vec!["discovery".to_string()],
@@ -121,28 +121,28 @@ impl rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc for AcceptingDiscovery
 pub(super) struct RejectingDiscoveryServer;
 
 #[cfg(feature = "live-clients")]
-impl rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc for RejectingDiscoveryServer {
+impl rhizo_crypt_core::clients::discovery_rpc::DiscoveryRpc for RejectingDiscoveryServer {
     async fn discover(
         self,
         _: tarpc::context::Context,
         _capability: String,
-    ) -> Vec<rhizo_crypt_core::clients::songbird_rpc::RpcServiceInfo> {
+    ) -> Vec<rhizo_crypt_core::clients::discovery_rpc::RpcServiceInfo> {
         vec![]
     }
 
     async fn discover_all(
         self,
         _: tarpc::context::Context,
-    ) -> Vec<rhizo_crypt_core::clients::songbird_rpc::RpcServiceInfo> {
+    ) -> Vec<rhizo_crypt_core::clients::discovery_rpc::RpcServiceInfo> {
         vec![]
     }
 
     async fn register(
         self,
         _: tarpc::context::Context,
-        _registration: rhizo_crypt_core::clients::songbird_rpc::RpcServiceRegistration,
-    ) -> rhizo_crypt_core::clients::songbird_rpc::RpcRegistrationResult {
-        rhizo_crypt_core::clients::songbird_rpc::RpcRegistrationResult {
+        _registration: rhizo_crypt_core::clients::discovery_rpc::RpcServiceRegistration,
+    ) -> rhizo_crypt_core::clients::discovery_rpc::RpcRegistrationResult {
+        rhizo_crypt_core::clients::discovery_rpc::RpcRegistrationResult {
             success: false,
             message: "registration rejected by policy".to_string(),
         }
@@ -152,8 +152,8 @@ impl rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc for RejectingDiscovery
         self,
         _: tarpc::context::Context,
         _service_id: String,
-    ) -> rhizo_crypt_core::clients::songbird_rpc::RpcRegistrationResult {
-        rhizo_crypt_core::clients::songbird_rpc::RpcRegistrationResult {
+    ) -> rhizo_crypt_core::clients::discovery_rpc::RpcRegistrationResult {
+        rhizo_crypt_core::clients::discovery_rpc::RpcRegistrationResult {
             success: true,
             message: "Unregistered".to_string(),
         }
@@ -162,8 +162,8 @@ impl rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc for RejectingDiscovery
     async fn health(
         self,
         _: tarpc::context::Context,
-    ) -> rhizo_crypt_core::clients::songbird_rpc::RpcHealthStatus {
-        rhizo_crypt_core::clients::songbird_rpc::RpcHealthStatus {
+    ) -> rhizo_crypt_core::clients::discovery_rpc::RpcHealthStatus {
+        rhizo_crypt_core::clients::discovery_rpc::RpcHealthStatus {
             status: "healthy".to_string(),
             version: "0.1.0-test".to_string(),
             uptime_seconds: 0,
@@ -174,8 +174,8 @@ impl rhizo_crypt_core::clients::songbird_rpc::SongbirdRpc for RejectingDiscovery
     async fn version(
         self,
         _: tarpc::context::Context,
-    ) -> rhizo_crypt_core::clients::songbird_rpc::RpcVersionInfo {
-        rhizo_crypt_core::clients::songbird_rpc::RpcVersionInfo {
+    ) -> rhizo_crypt_core::clients::discovery_rpc::RpcVersionInfo {
+        rhizo_crypt_core::clients::discovery_rpc::RpcVersionInfo {
             version: "0.1.0-test".to_string(),
             protocol: "tarpc-1.0".to_string(),
             capabilities: vec!["discovery".to_string()],

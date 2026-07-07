@@ -49,26 +49,27 @@ pub mod capabilities;
 pub mod factory;
 pub mod resilience;
 
-// Primal-specific HTTP/RPC clients (hyper-based, feature-gated).
-// These are concrete adapters for named primals' REST/RPC APIs.
+// Protocol adapters — concrete implementations for specific service APIs.
 // Prefer capability-based clients (above) for new code — they discover
 // providers at runtime and work with ANY service implementing the capability.
 #[cfg(feature = "live-clients")]
 pub mod beardog_http;
+#[cfg(feature = "live-clients")]
+#[path = "songbird_rpc.rs"]
+pub mod discovery_rpc;
 #[cfg(feature = "http-clients")]
 pub mod loamspine_http;
 #[cfg(feature = "live-clients")]
 pub mod loamspine_rpc;
 #[cfg(feature = "live-clients")]
 pub mod nestgate_http;
-#[cfg(feature = "live-clients")]
-pub mod songbird_rpc;
 #[cfg(feature = "http-clients")]
 pub mod toadstool_http;
 
-// Universal adapter (bootstrap only)
+// Universal discovery adapter (bootstrap only)
+#[path = "songbird_types.rs"]
+pub mod discovery_types;
 pub mod songbird;
-pub mod songbird_types;
 
 // Re-exports (capability-based API)
 pub use capabilities::{
@@ -81,6 +82,6 @@ pub use resilience::{BreakerState, CircuitBreaker, RetryPolicy};
 // Factory for creating and caching capability clients
 pub use factory::CapabilityClientFactory;
 
-// Bootstrap/discovery (not deprecated - needed for universal adapter)
-pub use songbird::{SongbirdClient, SongbirdConfig};
-pub use songbird_types::{ClientState, FederationStatus, RegistrationResult, ServiceInfo};
+// Bootstrap/discovery — capability-neutral public API
+pub use discovery_types::{ClientState, FederationStatus, RegistrationResult, ServiceInfo};
+pub use songbird::{DiscoveryClient, DiscoveryConfig};

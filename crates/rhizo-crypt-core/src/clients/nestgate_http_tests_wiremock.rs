@@ -5,7 +5,7 @@ use super::*;
 
 #[test]
 fn test_client_new() {
-    let client = NestGateHttpClient::new("http://localhost:9200", 5000).unwrap();
+    let client = StorageHttpClient::new("http://localhost:9200", 5000).unwrap();
     assert_eq!(client.base_url, "http://localhost:9200");
 }
 
@@ -96,19 +96,19 @@ fn test_health_response_defaults() {
 
 #[test]
 fn test_error_display() {
-    assert_eq!(NestGateHttpError::Status(404).to_string(), "HTTP status 404");
-    assert_eq!(NestGateHttpError::StoreFailed.to_string(), "Store operation failed");
-    assert_eq!(NestGateHttpError::NotFound.to_string(), "Blob not found");
-    assert_eq!(NestGateHttpError::InvalidData.to_string(), "Invalid data format");
+    assert_eq!(StorageHttpError::Status(404).to_string(), "HTTP status 404");
+    assert_eq!(StorageHttpError::StoreFailed.to_string(), "Store operation failed");
+    assert_eq!(StorageHttpError::NotFound.to_string(), "Blob not found");
+    assert_eq!(StorageHttpError::InvalidData.to_string(), "Invalid data format");
 }
 
 #[test]
 fn test_error_source() {
     use std::error::Error;
-    assert!(NestGateHttpError::StoreFailed.source().is_none());
-    assert!(NestGateHttpError::NotFound.source().is_none());
-    assert!(NestGateHttpError::InvalidData.source().is_none());
-    assert!(NestGateHttpError::Status(500).source().is_none());
+    assert!(StorageHttpError::StoreFailed.source().is_none());
+    assert!(StorageHttpError::NotFound.source().is_none());
+    assert!(StorageHttpError::InvalidData.source().is_none());
+    assert!(StorageHttpError::Status(500).source().is_none());
 }
 
 #[test]
@@ -149,7 +149,7 @@ async fn wiremock_store_success() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let reference = client.store(b"hello world", None).await.unwrap();
     assert_eq!(reference, "blake3-abc123");
 }
@@ -173,7 +173,7 @@ async fn wiremock_store_with_content_type() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let reference = client.store(b"hello", Some("text/plain")).await.unwrap();
     assert_eq!(reference, "blake3-xyz");
 }
@@ -198,7 +198,7 @@ async fn wiremock_retrieve_success() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let data = client.retrieve("hash123").await.unwrap();
     assert_eq!(&data[..], b"retrieved data");
 }
@@ -218,9 +218,9 @@ async fn wiremock_retrieve_not_found() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let err = client.retrieve("nonexistent").await.unwrap_err();
-    assert!(matches!(err, NestGateHttpError::NotFound));
+    assert!(matches!(err, StorageHttpError::NotFound));
 }
 
 #[cfg(feature = "live-clients")]
@@ -238,7 +238,7 @@ async fn wiremock_exists_true() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let exists = client.exists("exists-ref").await.unwrap();
     assert!(exists);
 }
@@ -258,7 +258,7 @@ async fn wiremock_exists_false() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let exists = client.exists("missing-ref").await.unwrap();
     assert!(!exists);
 }
@@ -284,7 +284,7 @@ async fn wiremock_metadata_success() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let meta = client.metadata("ref456").await.unwrap();
     assert_eq!(meta.reference, "ref456");
     assert_eq!(meta.size, 1024);
@@ -307,9 +307,9 @@ async fn wiremock_metadata_not_found() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let err = client.metadata("missing").await.unwrap_err();
-    assert!(matches!(err, NestGateHttpError::NotFound));
+    assert!(matches!(err, StorageHttpError::NotFound));
 }
 
 #[cfg(feature = "live-clients")]
@@ -331,7 +331,7 @@ async fn wiremock_health_success() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let health = client.health().await.unwrap();
     assert_eq!(health.status, "healthy");
     assert_eq!(health.available_bytes, 1_000_000_000);
@@ -353,9 +353,9 @@ async fn wiremock_store_status_error() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let err = client.store(b"data", None).await.unwrap_err();
-    assert!(matches!(err, NestGateHttpError::Status(507)));
+    assert!(matches!(err, StorageHttpError::Status(507)));
 }
 
 #[cfg(feature = "live-clients")]
@@ -377,9 +377,9 @@ async fn wiremock_store_failure_response() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let err = client.store(b"data", None).await.unwrap_err();
-    assert!(matches!(err, NestGateHttpError::StoreFailed));
+    assert!(matches!(err, StorageHttpError::StoreFailed));
 }
 
 #[cfg(feature = "live-clients")]
@@ -401,7 +401,7 @@ async fn wiremock_retrieve_invalid_base64() {
         .mount(&mock_server)
         .await;
 
-    let client = NestGateHttpClient::new(base_url, 5000).unwrap();
+    let client = StorageHttpClient::new(base_url, 5000).unwrap();
     let err = client.retrieve("badref").await.unwrap_err();
-    assert!(matches!(err, NestGateHttpError::InvalidData));
+    assert!(matches!(err, StorageHttpError::InvalidData));
 }

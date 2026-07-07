@@ -61,13 +61,13 @@ fn test_parse_deployment_id_invalid() {
 
 #[test]
 fn test_client_new() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     assert_eq!(client.base_url, "http://localhost:8084");
 }
 
 #[test]
 fn test_deployment_to_event_pending() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
     let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
@@ -86,7 +86,7 @@ fn test_deployment_to_event_pending() {
 
 #[test]
 fn test_deployment_to_event_running() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
     let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
@@ -104,7 +104,7 @@ fn test_deployment_to_event_running() {
 
 #[test]
 fn test_deployment_to_event_completed() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
     let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
@@ -122,7 +122,7 @@ fn test_deployment_to_event_completed() {
 
 #[test]
 fn test_deployment_to_event_failed() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
     let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
@@ -148,7 +148,7 @@ fn test_deployment_to_event_failed() {
 
 #[test]
 fn test_deployment_to_event_failed_no_error_msg() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
     let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
@@ -174,7 +174,7 @@ fn test_deployment_to_event_failed_no_error_msg() {
 
 #[test]
 fn test_deployment_to_event_stopped() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
     let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
@@ -192,7 +192,7 @@ fn test_deployment_to_event_stopped() {
 
 #[test]
 fn test_deployment_to_event_invalid_id() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
     let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
@@ -209,7 +209,7 @@ fn test_deployment_to_event_invalid_id() {
 
 #[test]
 fn test_poll_events_from_deployments() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
     let worker = Did::new("did:compute:test-worker");
     let deployments = vec![
@@ -238,7 +238,7 @@ fn test_poll_events_from_deployments() {
 
 #[test]
 fn test_poll_events_empty() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
     let worker = Did::new("did:compute:test-worker");
     let events = poll_events_from_deployments(&client, &[], &did, &worker);
@@ -293,7 +293,7 @@ fn test_deployment_status_all_variants() {
 
 #[test]
 fn test_deployment_to_event_completed_no_result() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let did = Did::new("did:key:test");
     let worker = Did::new("did:compute:test-worker");
     let deployment = DeploymentResponse {
@@ -325,15 +325,15 @@ fn test_parse_deployment_id_17_hex_chars_odd() {
 
 #[test]
 fn test_client_debug() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let debug_str = format!("{client:?}");
-    assert!(debug_str.contains("ToadStoolHttpClient"));
+    assert!(debug_str.contains("ComputeHttpClient"));
     assert!(debug_str.contains("localhost:8084"));
 }
 
 #[test]
 fn test_client_clone() {
-    let client = ToadStoolHttpClient::new("http://localhost:8084").unwrap();
+    let client = ComputeHttpClient::new("http://localhost:8084").unwrap();
     let cloned = client.clone();
     assert_eq!(client.base_url, cloned.base_url);
     assert_eq!(cloned.base_url, "http://localhost:8084");
@@ -341,10 +341,10 @@ fn test_client_clone() {
 
 #[test]
 fn test_toadstool_error_display() {
-    let err = ToadStoolHttpError::InvalidResponse("bad json".to_string());
+    let err = ComputeHttpError::InvalidResponse("bad json".to_string());
     assert!(err.to_string().contains("bad json"));
 
-    let err = ToadStoolHttpError::Server {
+    let err = ComputeHttpError::Server {
         status: 500,
         message: "internal".to_string(),
     };
@@ -375,7 +375,7 @@ async fn test_wiremock_health_success() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health().await;
     assert!(result.is_ok());
     let health = result.unwrap();
@@ -398,7 +398,7 @@ async fn test_wiremock_health_http_error() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health().await;
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -420,7 +420,7 @@ async fn test_wiremock_health_parse_error() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health().await;
     assert!(result.is_err());
 }
@@ -442,7 +442,7 @@ async fn test_wiremock_byob_health_success() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.byob_health().await;
     assert!(result.is_ok());
     let health = result.unwrap();
@@ -474,7 +474,7 @@ async fn test_wiremock_list_deployments_success() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.list_deployments().await;
     assert!(result.is_ok());
     let deployments = result.unwrap();
@@ -497,7 +497,7 @@ async fn test_wiremock_list_deployments_empty() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.list_deployments().await;
     assert!(result.is_ok());
     assert!(result.unwrap().is_empty());
@@ -526,7 +526,7 @@ async fn test_wiremock_get_deployment_success() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.get_deployment(deployment_id).await;
     assert!(result.is_ok());
     let deployment = result.unwrap();
@@ -550,7 +550,7 @@ async fn test_wiremock_get_deployment_not_found() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.get_deployment(deployment_id).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -575,7 +575,7 @@ async fn test_wiremock_stop_deployment_success() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.stop_deployment(deployment_id).await;
     assert!(result.is_ok());
     let resp = result.unwrap();
@@ -598,7 +598,7 @@ async fn test_wiremock_stop_deployment_http_error() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.stop_deployment(deployment_id).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("500"));
@@ -624,7 +624,7 @@ async fn test_wiremock_get_resource_usage_success() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.get_resource_usage(deployment_id).await;
     assert!(result.is_ok());
     let usage = result.unwrap();
@@ -649,7 +649,7 @@ async fn test_wiremock_get_resource_usage_parse_error() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.get_resource_usage(deployment_id).await;
     assert!(result.is_err());
 }
@@ -718,7 +718,7 @@ async fn test_wiremock_connection_timeout() {
         .mount(&mock_server)
         .await;
 
-    let client = ToadStoolHttpClient::new(mock_server.uri()).unwrap();
+    let client = ComputeHttpClient::new(mock_server.uri()).unwrap();
     let result = client.health().await;
     assert!(result.is_err());
 }

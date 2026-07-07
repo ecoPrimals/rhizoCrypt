@@ -3,23 +3,23 @@
 
 //! Discovery, cache, and registry population tests for Songbird client.
 
-use super::{SongbirdClient, SongbirdConfig};
-use crate::clients::songbird_types::{ClientState, ServiceInfo};
+use super::{DiscoveryClient, DiscoveryConfig};
+use crate::clients::discovery_types::{ClientState, ServiceInfo};
 use crate::discovery::{Capability, DiscoveryRegistry};
 use std::collections::HashMap;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_without_connection() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     let result = client.discover("signing").await;
     assert!(result.is_err());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_cache_operations() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     let services = vec![ServiceInfo {
@@ -44,8 +44,8 @@ async fn test_cache_operations() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_populate_registry() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     client
@@ -70,8 +70,8 @@ async fn test_populate_registry() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_specific_primal() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     client
@@ -95,8 +95,8 @@ async fn test_discover_specific_primal() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_permanent_storage_provider() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     client
@@ -120,8 +120,8 @@ async fn test_discover_permanent_storage_provider() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_payload_storage_provider() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     client
@@ -145,8 +145,8 @@ async fn test_discover_payload_storage_provider() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_empty_results() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     let result = client.discover("nonexistent-capability").await;
@@ -156,8 +156,8 @@ async fn test_discover_empty_results() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_populate_registry_not_connected() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     let registry = DiscoveryRegistry::new("test-service");
 
     let result = client.populate_registry(&registry).await;
@@ -168,8 +168,8 @@ async fn test_populate_registry_not_connected() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_populate_registry_with_services() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     client
@@ -225,8 +225,8 @@ async fn test_populate_registry_with_services() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_cache_invalidation() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     client
@@ -254,8 +254,8 @@ async fn test_cache_invalidation() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_multiple_capability_discovery() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     client
@@ -286,8 +286,8 @@ async fn test_multiple_capability_discovery() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_populate_registry_skips_invalid_endpoint() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     client
@@ -312,8 +312,8 @@ async fn test_populate_registry_skips_invalid_endpoint() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_signing_provider_returns_none_when_empty() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     let signer = client.discover_signing_provider().await.unwrap();
@@ -322,8 +322,8 @@ async fn test_discover_signing_provider_returns_none_when_empty() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_permanent_storage_provider_returns_none_when_empty() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     let storage = client.discover_permanent_storage_provider().await.unwrap();
@@ -332,8 +332,8 @@ async fn test_discover_permanent_storage_provider_returns_none_when_empty() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_discover_payload_storage_provider_returns_none_when_empty() {
-    let config = SongbirdConfig::with_address("127.0.0.1:8091");
-    let client = SongbirdClient::new(config);
+    let config = DiscoveryConfig::with_address("127.0.0.1:8091");
+    let client = DiscoveryClient::new(config);
     *client.state.write().await = ClientState::Connected;
 
     let storage = client.discover_payload_storage_provider().await.unwrap();
