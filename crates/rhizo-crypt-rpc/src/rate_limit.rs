@@ -59,9 +59,9 @@ impl RateLimitConfig {
     #[must_use]
     pub const fn development() -> Self {
         Self {
-            read_rps: 10000,
-            write_rps: 1000,
-            expensive_rps: 100,
+            read_rps: constants::DEFAULT_RATE_LIMIT_DEV_READ_RPS,
+            write_rps: constants::DEFAULT_RATE_LIMIT_DEV_WRITE_RPS,
+            expensive_rps: constants::DEFAULT_RATE_LIMIT_DEV_EXPENSIVE_RPS,
             burst_multiplier: 5,
             cleanup_interval: constants::RATE_LIMIT_CLEANUP_INTERVAL_DEV,
         }

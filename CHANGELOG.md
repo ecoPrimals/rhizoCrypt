@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Wave 141b: Architecture Split + Magic Numbers + Branch/Vertex Coverage (Jul 15, 2026)
+
+- **method_gate.rs split (790L → 468L + 334L)**: Extracted `CapabilityVerifier`, `TokenVerifier` trait, `PresenceVerifier`, `NoopVerifier`, and supporting types/functions into `method_gate_verifier.rs`. Public API unchanged via `pub use verifier::*`.
+- **Magic numbers → named constants**: 5 production magic numbers replaced with `constants::*` — `DEFAULT_PROVENANCE_CACHE_TTL_SECS` (300), `PROMETHEUS_BUFFER_CAPACITY` (4096), `DEFAULT_RATE_LIMIT_DEV_{READ,WRITE,EXPENSIVE}_RPS` (10k/1k/100). `DEFAULT_EVENT_BUFFER_SIZE` already existed (reused).
+- **permanent.rs inline test extraction (650L → 260L)**: 22 tests + 5 test-only DTOs moved to `permanent_tests.rs`.
+- **provenance/client.rs inline test extraction (589L → 268L)**: 17 tests moved to `client_tests.rs`.
+- **Branch/vertex core-layer tests (+17)**: New `rhizocrypt_tests_branch_vertex.rs` with 11 branch_ops tests (branch, diff, merge, federate paths) and 6 vertex_ops tests (query filters, limit, merkle root/proof).
+- **Test count 1,894 → 1,911 (+17)**. Zero files over 800L. Zero clippy warnings.
+
 #### Wave 133e-b: Vendor Decoupling + Transport Split + Niche Coverage (Jul 7, 2026)
 
 - **Songbird → DiscoveryClient decoupling**: `SongbirdClient` → `DiscoveryClient`, `SongbirdConfig` → `DiscoveryConfig`, `SongbirdRpc` → `DiscoveryRpc`, `MockSongbirdServer` → `MockDiscoveryServer`. Deprecated type aliases added for backward compat. Module docs updated to capability-neutral language. `songbird_rpc`/`songbird_types` re-exported as `discovery_rpc`/`discovery_types` via `#[path]`.

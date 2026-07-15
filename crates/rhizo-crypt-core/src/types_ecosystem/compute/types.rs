@@ -205,7 +205,7 @@ impl Default for ComputeProviderConfig {
         Self {
             fallback_address: None, // No fallback - use discovery
             timeout_ms: crate::constants::DEFAULT_CAPABILITY_TIMEOUT_MS,
-            event_buffer_size: 1000,
+            event_buffer_size: crate::constants::DEFAULT_EVENT_BUFFER_SIZE,
             max_retries: 3,
         }
     }

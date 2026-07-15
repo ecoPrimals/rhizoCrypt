@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.14.17 |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,894 passing (`--all-features`, Jul 7, 2026) |
+| Tests | 1,911 passing (`--all-features`, Jul 15, 2026) |
 | Coverage | 93.70% lines (llvm-cov, Jun 28, 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -22,7 +22,7 @@
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 213 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 217 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `config/capability_registry.toml` (37 methods, 7 domains, stability tiers, `provenance.*` → `dag.*` wire aliases) |

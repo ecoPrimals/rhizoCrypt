@@ -8,6 +8,8 @@
 
 use std::fmt::Write;
 
+use rhizo_crypt_core::constants::PROMETHEUS_BUFFER_CAPACITY;
+
 use super::{ERROR_TYPE_COUNT, ErrorType, MetricsCollector, RPC_METHOD_COUNT, RpcMethod};
 
 const ALL_METHODS: [RpcMethod; RPC_METHOD_COUNT] = [
@@ -53,7 +55,7 @@ const ALL_ERROR_TYPES: [ErrorType; ERROR_TYPE_COUNT] = [
     reason = "crate-private helper; pub(crate) matches metrics API contract"
 )]
 pub(crate) fn export_prometheus(collector: &MetricsCollector) -> String {
-    let mut output = String::with_capacity(4096);
+    let mut output = String::with_capacity(PROMETHEUS_BUFFER_CAPACITY);
 
     output.push_str("# HELP rhizocrypt_uptime_seconds Time since service start\n");
     output.push_str("# TYPE rhizocrypt_uptime_seconds gauge\n");

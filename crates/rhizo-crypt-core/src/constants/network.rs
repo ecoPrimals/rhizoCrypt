@@ -215,6 +215,9 @@ pub const DEFAULT_EVENT_BUFFER_SIZE: usize = 1000;
 /// Default channel buffer size.
 pub const DEFAULT_CHANNEL_BUFFER_SIZE: usize = 100;
 
+/// Initial buffer capacity for Prometheus metrics exposition output.
+pub const PROMETHEUS_BUFFER_CAPACITY: usize = 4096;
+
 // ============================================================================
 // RETRY CONSTANTS
 // ============================================================================
@@ -247,6 +250,9 @@ pub const PROVENANCE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Default maximum results per provenance query.
 pub const PROVENANCE_DEFAULT_MAX_RESULTS: usize = 1000;
+
+/// Default provenance query cache TTL (seconds).
+pub const DEFAULT_PROVENANCE_CACHE_TTL_SECS: u64 = 300;
 
 // ============================================================================
 // DEFAULT FILENAMES
@@ -287,6 +293,15 @@ pub const DEFAULT_RATE_LIMIT_WRITE_RPS: u32 = 100;
 
 /// Default rate limit for expensive operations (requests per second).
 pub const DEFAULT_RATE_LIMIT_EXPENSIVE_RPS: u32 = 10;
+
+/// Development rate limit for read operations (requests per second).
+pub const DEFAULT_RATE_LIMIT_DEV_READ_RPS: u32 = 10_000;
+
+/// Development rate limit for write operations (requests per second).
+pub const DEFAULT_RATE_LIMIT_DEV_WRITE_RPS: u32 = 1_000;
+
+/// Development rate limit for expensive operations (requests per second).
+pub const DEFAULT_RATE_LIMIT_DEV_EXPENSIVE_RPS: u32 = 100;
 
 // ============================================================================
 // CAPABILITY ADVERTISEMENT
