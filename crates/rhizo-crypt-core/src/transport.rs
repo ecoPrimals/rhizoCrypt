@@ -530,8 +530,12 @@ pub async fn send_jsonrpc_request(
         .map_err(|_| JsonRpcTransportError::ConnectTimeout)?
         .map_err(JsonRpcTransportError::ConnectFailed)?;
 
-    if let TransportStream::Tcp(ref tcp) = stream {
-        let _ = tcp.set_nodelay(true);
+    match &stream {
+        TransportStream::Tcp(tcp) => {
+            let _ = tcp.set_nodelay(true);
+        }
+        #[cfg(unix)]
+        TransportStream::Unix(_) => {}
     }
 
     let (reader, mut writer) = tokio::io::split(stream);

@@ -39,6 +39,7 @@ use rhizo_crypt_core::{RhizoCrypt, RhizoCryptConfig};
 use rhizo_crypt_rpc::jsonrpc::JsonRpcServer;
 use rhizo_crypt_rpc::server::RpcServer;
 use std::net::SocketAddr;
+#[cfg(unix)]
 use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
@@ -272,6 +273,8 @@ pub async fn run_server_with_ready(
     // None = no UDS (test backward-compat), Some("") = default, Some(path) = custom.
     #[cfg(unix)]
     let (uds_shutdown_tx, uds_socket_path) = start_uds_listener(unix_socket.as_deref(), &primal);
+    #[cfg(not(unix))]
+    let _ = unix_socket;
 
     let tcp_requested =
         port_override.is_some() || host_override.is_some() || has_explicit_tcp_config();

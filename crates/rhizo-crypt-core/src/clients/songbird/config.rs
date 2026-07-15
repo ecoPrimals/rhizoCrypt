@@ -104,7 +104,7 @@ impl DiscoveryConfig {
             warn!(
                 "No discovery endpoint configured. \
                  Set DISCOVERY_ENDPOINT or RHIZOCRYPT_DISCOVERY_ADAPTER. \
-                 Legacy SONGBIRD_ADDRESS / SONGBIRD_HOST+SONGBIRD_PORT also accepted."
+                 Legacy SONGBIRD_* env vars also accepted (deprecated)."
             );
         }
 

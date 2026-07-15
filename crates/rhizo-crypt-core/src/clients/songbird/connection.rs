@@ -34,10 +34,10 @@ impl DiscoveryClient {
         // Check for unconfigured address
         if !self.config.is_configured() {
             return Err(RhizoCryptError::integration(
-                "Discovery address not configured. Set RHIZOCRYPT_DISCOVERY_ADAPTER or \
-                 the legacy SONGBIRD_ADDRESS environment variable, or use explicit \
-                 discovery config via with_address(). \
-                 For development, set RHIZOCRYPT_ENV=development to use localhost fallback.",
+                "Discovery address not configured. Set RHIZOCRYPT_DISCOVERY_ADAPTER \
+                 or DISCOVERY_ENDPOINT, or use explicit discovery config via \
+                 with_address(). For development, set RHIZOCRYPT_ENV=development \
+                 to use localhost fallback.",
             ));
         }
 

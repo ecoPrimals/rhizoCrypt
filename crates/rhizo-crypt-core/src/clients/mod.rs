@@ -76,7 +76,9 @@ pub use capabilities::{
     ComputeClient, PermanentStorageClient, ProvenanceClient, SigningClient, StorageClient,
 };
 
-pub use adapters::{AdapterFactory, ProtocolAdapter, UnixSocketAdapter};
+#[cfg(unix)]
+pub use adapters::UnixSocketAdapter;
+pub use adapters::{AdapterFactory, ProtocolAdapter};
 pub use resilience::{BreakerState, CircuitBreaker, RetryPolicy};
 
 // Factory for creating and caching capability clients

@@ -261,8 +261,12 @@ impl DiscoveryRegistry {
             .map_err(|_| DiscoveryQueryError::ConnectTimeout)?
             .map_err(DiscoveryQueryError::ConnectFailed)?;
 
-        if let TransportStream::Tcp(ref tcp) = stream {
-            let _ = tcp.set_nodelay(true);
+        match &stream {
+            TransportStream::Tcp(tcp) => {
+                let _ = tcp.set_nodelay(true);
+            }
+            #[cfg(unix)]
+            TransportStream::Unix(_) => {}
         }
 
         let (mut reader, mut writer) = tokio::io::split(stream);

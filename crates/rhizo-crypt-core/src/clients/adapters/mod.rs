@@ -46,12 +46,14 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 #[cfg(feature = "http-clients")]
 pub mod http;
 pub mod tarpc;
+#[cfg(unix)]
 pub mod unix_socket;
 
 // Re-exports
 #[cfg(feature = "http-clients")]
 pub use http::HttpAdapter;
 pub use tarpc::TarpcAdapter;
+#[cfg(unix)]
 pub use unix_socket::UnixSocketAdapter;
 
 // ============================================================================
@@ -148,13 +150,16 @@ impl<T: ProtocolAdapter + ?Sized> ProtocolAdapterExt for T {}
 
 /// Factory for creating protocol adapters.
 ///
-/// Supports three transport types:
+/// Supports platform-aware transport types:
 ///
-/// | Protocol | Transport | C deps | Use case |
-/// |----------|-----------|--------|----------|
-/// | `unix://` | Unix socket | None | Local IPC (Tower Atomic) |
-/// | `tarpc://` | TCP binary | None | High-perf binary RPC |
-/// | `http://` | HTTP/REST | ring | Legacy / remote (feature-gated) |
+/// | Protocol | Transport | Platform | Use case |
+/// |----------|-----------|----------|----------|
+/// | `unix://` | Unix socket | Unix only | Local IPC (Tower Atomic) |
+/// | `tarpc://` | TCP binary | All | High-perf binary RPC |
+/// | `http://` | HTTP/REST | All | Legacy / remote (feature-gated) |
+///
+/// On non-Unix platforms (Windows), bare paths and `unix://` endpoints fall
+/// back to tarpc over TCP loopback.
 pub struct AdapterFactory;
 
 impl AdapterFactory {
@@ -175,14 +180,26 @@ impl AdapterFactory {
     /// - Endpoint format is invalid
     /// - Adapter creation fails
     pub fn create(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
-        // Bare path → Unix socket
+        // Bare path → Unix socket (Unix) or error (non-Unix)
         if endpoint.starts_with('/') || endpoint.starts_with('.') {
+            #[cfg(unix)]
             return Ok(Box::new(UnixSocketAdapter::new(endpoint)?));
+            #[cfg(not(unix))]
+            return Err(RhizoCryptError::integration(format!(
+                "Unix socket paths not available on this platform: {endpoint}. \
+                 Use tarpc:// or http:// instead."
+            )));
         }
 
         if let Some((protocol, _)) = endpoint.split_once("://") {
             match protocol {
+                #[cfg(unix)]
                 "unix" => Ok(Box::new(UnixSocketAdapter::from_endpoint(endpoint)?)),
+                #[cfg(not(unix))]
+                "unix" => Err(RhizoCryptError::integration(
+                    "Unix socket transport not available on this platform. \
+                     Use tarpc:// or http:// instead.",
+                )),
                 "tcp" | "tarpc" => Ok(Box::new(TarpcAdapter::new(endpoint)?)),
                 #[cfg(feature = "http-clients")]
                 "http" | "https" => Ok(Box::new(HttpAdapter::new(endpoint)?)),
@@ -245,9 +262,13 @@ impl AdapterFactory {
 
     /// Create a Unix socket adapter (Tower Atomic IPC).
     ///
+    /// Only available on Unix platforms. On Windows, use `tarpc()` for local
+    /// IPC over TCP loopback.
+    ///
     /// # Errors
     ///
     /// Returns an error if the socket path is invalid.
+    #[cfg(unix)]
     pub fn unix(socket_path: &str) -> Result<Box<dyn ProtocolAdapter>> {
         Ok(Box::new(UnixSocketAdapter::new(socket_path)?))
     }
@@ -319,6 +340,7 @@ mod tests {
         assert_eq!(adapter.endpoint(), "localhost:7777");
     }
 
+    #[cfg(unix)]
     #[test]
     fn test_factory_unix_with_protocol() {
         let adapter = AdapterFactory::create("unix:///run/biomeos/signing.sock").unwrap();
@@ -326,23 +348,41 @@ mod tests {
         assert_eq!(adapter.endpoint(), "/run/biomeos/signing.sock");
     }
 
+    #[cfg(unix)]
     #[test]
     fn test_factory_unix_bare_path() {
         let adapter = AdapterFactory::create("/run/biomeos/signing.sock").unwrap();
         assert_eq!(adapter.protocol(), "unix");
     }
 
+    #[cfg(unix)]
     #[test]
     fn test_factory_unix_relative_path() {
         let adapter = AdapterFactory::create("./sockets/signing.sock").unwrap();
         assert_eq!(adapter.protocol(), "unix");
     }
 
+    #[cfg(unix)]
     #[test]
     fn test_unix_factory_method() {
         let adapter = AdapterFactory::unix("/tmp/test.sock").unwrap();
         assert_eq!(adapter.protocol(), "unix");
         assert_eq!(adapter.endpoint(), "/tmp/test.sock");
+    }
+
+    #[cfg(not(unix))]
+    #[test]
+    fn test_factory_unix_unavailable_on_non_unix() {
+        let result = AdapterFactory::create("unix:///run/biomeos/signing.sock");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not available"));
+    }
+
+    #[cfg(not(unix))]
+    #[test]
+    fn test_factory_bare_path_unavailable_on_non_unix() {
+        let result = AdapterFactory::create("/run/biomeos/signing.sock");
+        assert!(result.is_err());
     }
 
     #[cfg(feature = "http-clients")]

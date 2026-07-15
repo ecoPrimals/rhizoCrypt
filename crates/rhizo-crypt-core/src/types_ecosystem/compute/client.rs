@@ -136,8 +136,12 @@ impl ComputeProviderClient {
         .await
         {
             Ok(Ok(stream)) => {
-                if let TransportStream::Tcp(ref tcp) = stream {
-                    let _ = tcp.set_nodelay(true);
+                match &stream {
+                    TransportStream::Tcp(tcp) => {
+                        let _ = tcp.set_nodelay(true);
+                    }
+                    #[cfg(unix)]
+                    TransportStream::Unix(_) => {}
                 }
                 info!(endpoint = %ep, "Connected to compute provider");
                 *self.endpoint.write().await = Some(ep.clone());
