@@ -70,10 +70,10 @@ Three workspace crates:
 | Metric | Value |
 |--------|-------|
 | Tests | 1,911 passing (all features) |
-| Coverage | 93.70% lines (llvm-cov, Jun 20 2026) |
+| Coverage | 93.70% lines (llvm-cov, Jul 15 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
 | Source files | 217 `.rs`, ~61,860 lines |
-| Max file size | ~786 lines production (`method_gate.rs`, limit: 800) |
+| Max file size | ~468 lines production (`method_gate.rs`, limit: 800) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |
@@ -88,7 +88,7 @@ Three workspace crates:
 - `Cargo.toml` — Workspace config, lint policy, dependency pins
 - `config/capability_registry.toml` — Capability method registry (37 methods in `METHOD_CATALOG`, 7 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
-- `specs/` — 12 specification documents (incl. `CRYPTO_MODEL.md` — signing provider crypto delegation)
+- `specs/` — 10 specification documents + 2 archived (incl. `CRYPTO_MODEL.md` — signing provider crypto delegation)
 ## Part of ecoPrimals
 
 Part of the [ecoPrimals](https://github.com/ecoPrimals) sovereign computing

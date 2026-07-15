@@ -1,6 +1,6 @@
 # DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.17
 
-**Date**: Jun 28, 2026
+**Date**: Jul 15, 2026
 **Version**: 0.14.17
 **Status**: PRODUCTION READY
 
@@ -10,7 +10,7 @@
 
 ### Code Quality
 - [x] **1,911 tests passing** (all features), 0 failures
-- [x] **93.70% line coverage** (llvm-cov, Jun 28 2026)
+- [x] **93.70% line coverage** (llvm-cov, Jul 15 2026)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all production files under 800 lines)
@@ -31,8 +31,8 @@
 
 ### Documentation
 - [x] **README.md** (current metrics — 1,911 tests)
-- [x] **CHANGELOG.md** (version history through Wave 128c)
-- [x] **specs/** (12 specification documents)
+- [x] **CHANGELOG.md** (version history through Wave 141b)
+- [x] **specs/** (10 specification documents + 2 archived)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
 
 ---
@@ -253,5 +253,5 @@ rhizocrypt doctor --comprehensive
 ---
 
 **Created**: December 27, 2025
-**Last Updated**: Jun 28, 2026
+**Last Updated**: Jul 15, 2026
 **Version**: rhizoCrypt 0.14.17

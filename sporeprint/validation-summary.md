@@ -1,7 +1,7 @@
 +++
 title = "rhizoCrypt Validation Summary"
 description = "Ephemeral DAG engine — 1,911 tests, 37 methods, pure Rust, content-addressed working memory for the ecoPrimals ecosystem"
-date = 2026-06-28
+date = 2026-07-15
 
 [taxonomies]
 primals = ["rhizocrypt"]
@@ -16,7 +16,7 @@ springs = []
 - **93.37% line coverage** (CI gate: 90%)
 - **Zero `unsafe` blocks** — `unsafe_code = "deny"` workspace-wide
 - **Zero C dependencies** — ecoBin compliant, `cargo-deny` enforced
-- **Edition 2024**, Rust 1.87 MSRV
+- **Edition 2024**, Rust 1.94 MSRV
 - **BTSP Phase 3** — ChaCha20-Poly1305 encrypted channels on UDS
 
 ## Capability Domains

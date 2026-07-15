@@ -336,7 +336,7 @@ rhizoCrypt/
 │       │   └── doctor.rs         # Diagnostic health checks
 │       └── Cargo.toml
 │
-├── specs/                        # 12 specification documents
+├── specs/                        # 10 specification documents + 2 archived
 ├── docs/                         # Operational docs (ENV_VARS, DEPLOYMENT_CHECKLIST)
 └── graphs/                       # biomeOS deploy graph
 ```

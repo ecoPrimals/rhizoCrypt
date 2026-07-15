@@ -2,7 +2,7 @@
 # Multi-stage musl-static build for rhizoCrypt service
 
 # Stage 1: Builder (musl-static, ecoBin compliant)
-FROM rust:1.87-slim AS builder
+FROM rust:1.94-slim AS builder
 
 RUN rustup target add x86_64-unknown-linux-musl && \
     apt-get update && apt-get install -y musl-tools && \
