@@ -242,6 +242,24 @@ struct DeleteRequest {
 struct DeleteResponse {}
 
 // ============================================================================
+// Integration trait implementations
+// ============================================================================
+
+impl crate::integration::PayloadStorageProvider for StorageClient {
+    async fn put_payload(&self, data: bytes::Bytes) -> Result<PayloadRef> {
+        self.store(data).await
+    }
+
+    async fn get_payload(&self, payload_ref: &PayloadRef) -> Result<Option<bytes::Bytes>> {
+        self.retrieve(payload_ref).await
+    }
+
+    async fn payload_exists(&self, payload_ref: &PayloadRef) -> Result<bool> {
+        self.exists(payload_ref).await
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 

@@ -484,6 +484,45 @@ struct VerifyDidResponse {
 }
 
 // ============================================================================
+// Integration trait implementations
+// ============================================================================
+
+impl crate::integration::SigningProvider for SigningClient {
+    async fn verify_did(&self, did: &Did) -> Result<bool> {
+        self.verify_did(did).await
+    }
+
+    async fn sign(&self, data: &[u8], signer: &Did) -> Result<Signature> {
+        self.sign(data, signer).await
+    }
+
+    async fn sign_vertex(&self, vertex: &Vertex, signer: &Did) -> Result<Signature> {
+        self.sign_vertex(vertex, signer).await
+    }
+
+    async fn verify_signature(
+        &self,
+        data: &[u8],
+        signature: &Signature,
+        signer: &Did,
+    ) -> Result<bool> {
+        self.verify(data, signature, signer).await
+    }
+
+    async fn verify_vertex_signature(&self, vertex: &Vertex) -> Result<bool> {
+        self.verify_vertex(vertex).await
+    }
+
+    async fn request_attestation(
+        &self,
+        attester: &Did,
+        summary: &DehydrationSummary,
+    ) -> Result<Attestation> {
+        self.request_attestation(attester, summary).await
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 

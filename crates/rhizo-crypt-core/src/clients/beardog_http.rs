@@ -21,8 +21,9 @@ const DEFAULT_KEY_TYPE: &str = "ed25519";
 // ============================================================================
 
 /// Sign request for `BearDog` HTTP API.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpSignRequest {
+pub(crate) struct HttpSignRequest {
     /// Data to sign (base64 encoded).
     pub data: String,
     /// Key type for signing.
@@ -35,8 +36,9 @@ fn default_key_type() -> String {
 }
 
 /// Sign response from `BearDog` HTTP API.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpSignResponse {
+pub(crate) struct HttpSignResponse {
     /// Base64-encoded signature.
     pub signature: String,
     /// Whether signing succeeded.
@@ -49,8 +51,9 @@ const fn default_true() -> bool {
 }
 
 /// Verify request for `BearDog` HTTP API.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpVerifyRequest {
+pub(crate) struct HttpVerifyRequest {
     /// Data that was signed (base64 encoded).
     pub data: String,
     /// Signature to verify (base64 encoded).
@@ -58,22 +61,25 @@ pub struct HttpVerifyRequest {
 }
 
 /// Verify response from `BearDog` HTTP API.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpVerifyResponse {
+pub(crate) struct HttpVerifyResponse {
     /// Whether the signature is valid.
     pub valid: bool,
 }
 
 /// DID resolution request.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpResolveDidRequest {
+pub(crate) struct HttpResolveDidRequest {
     /// DID to resolve.
     pub did: String,
 }
 
 /// DID document from `BearDog`.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpDidDocument {
+pub(crate) struct HttpDidDocument {
     /// DID identifier.
     pub id: String,
     /// Verification methods.
@@ -87,8 +93,9 @@ pub struct HttpDidDocument {
 }
 
 /// Verification method in DID document.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpVerificationMethod {
+pub(crate) struct HttpVerificationMethod {
     /// Method ID.
     pub id: String,
     /// Method type (e.g., `Ed25519VerificationKey2020`).
@@ -102,8 +109,9 @@ pub struct HttpVerificationMethod {
 }
 
 /// Health check response.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpHealthResponse {
+pub(crate) struct HttpHealthResponse {
     /// Service status.
     pub status: String,
     /// Service version.
@@ -219,7 +227,8 @@ impl SigningHttpClient {
     /// # Errors
     ///
     /// Returns error if the health check fails.
-    pub async fn health(&self) -> Result<HttpHealthResponse, SigningHttpError> {
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) async fn health(&self) -> Result<HttpHealthResponse, SigningHttpError> {
         let (status, text) = self
             .client
             .get(&format!("{}/ai/health", self.base_url))

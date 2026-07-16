@@ -56,7 +56,7 @@ pub enum ComputeHttpError {
 
 /// Health status from `ToadStool` API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthStatus {
+pub(crate) struct HealthStatus {
     /// Service status ("healthy" or other).
     pub status: String,
     /// Service name.
@@ -68,8 +68,9 @@ pub struct HealthStatus {
 }
 
 /// BYOB API health response.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ByobHealthResponse {
+pub(crate) struct ByobHealthResponse {
     /// Service status.
     pub status: String,
     /// Health message.
@@ -77,9 +78,10 @@ pub struct ByobHealthResponse {
 }
 
 /// Deployment status from BYOB API.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum DeploymentStatus {
+pub(crate) enum DeploymentStatus {
     /// Deployment is pending.
     Pending,
     /// Deployment is running.
@@ -93,8 +95,9 @@ pub enum DeploymentStatus {
 }
 
 /// Deployment response from BYOB API.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeploymentResponse {
+pub(crate) struct DeploymentResponse {
     /// Deployment ID (UUID).
     pub deployment_id: String,
     /// Current status.
@@ -112,8 +115,9 @@ pub struct DeploymentResponse {
 }
 
 /// Resource usage from BYOB API.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceUsage {
+pub(crate) struct ResourceUsage {
     /// CPU usage (0.0 - 1.0).
     pub cpu_usage: f64,
     /// Memory usage in bytes.
@@ -125,8 +129,9 @@ pub struct ResourceUsage {
 }
 
 /// Stop deployment response.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StopDeploymentResponse {
+pub(crate) struct StopDeploymentResponse {
     /// Deployment ID that was stopped.
     pub deployment_id: String,
     /// Result message.
@@ -156,7 +161,7 @@ impl ComputeHttpClient {
     /// # Errors
     ///
     /// Returns error if health check fails.
-    pub async fn health(&self) -> std::result::Result<HealthStatus, ComputeHttpError> {
+    pub(crate) async fn health(&self) -> std::result::Result<HealthStatus, ComputeHttpError> {
         let url = format!("{}/health", self.base_url);
         debug!(%url, "Checking compute provider health");
         let health: HealthStatus = self.get_json(&url).await?;
@@ -169,7 +174,10 @@ impl ComputeHttpClient {
     /// # Errors
     ///
     /// Returns error if health check fails.
-    pub async fn byob_health(&self) -> std::result::Result<ByobHealthResponse, ComputeHttpError> {
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) async fn byob_health(
+        &self,
+    ) -> std::result::Result<ByobHealthResponse, ComputeHttpError> {
         let url = format!("{}/byob/health", self.base_url);
         debug!(%url, "Checking BYOB API health");
         let health: ByobHealthResponse = self.get_json(&url).await?;
@@ -182,7 +190,8 @@ impl ComputeHttpClient {
     /// # Errors
     ///
     /// Returns error if request fails.
-    pub async fn list_deployments(
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) async fn list_deployments(
         &self,
     ) -> std::result::Result<Vec<DeploymentResponse>, ComputeHttpError> {
         let url = format!("{}/byob/deployments", self.base_url);
@@ -195,7 +204,8 @@ impl ComputeHttpClient {
     /// # Errors
     ///
     /// Returns error if request fails or deployment not found.
-    pub async fn get_deployment(
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) async fn get_deployment(
         &self,
         deployment_id: &str,
     ) -> std::result::Result<DeploymentResponse, ComputeHttpError> {
@@ -209,7 +219,8 @@ impl ComputeHttpClient {
     /// # Errors
     ///
     /// Returns error if request fails.
-    pub async fn stop_deployment(
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) async fn stop_deployment(
         &self,
         deployment_id: &str,
     ) -> std::result::Result<StopDeploymentResponse, ComputeHttpError> {
@@ -225,7 +236,8 @@ impl ComputeHttpClient {
     /// # Errors
     ///
     /// Returns error if request fails.
-    pub async fn get_resource_usage(
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) async fn get_resource_usage(
         &self,
         deployment_id: &str,
     ) -> std::result::Result<ResourceUsage, ComputeHttpError> {
@@ -251,6 +263,7 @@ impl ComputeHttpClient {
     }
 
     /// POST empty body to URL and deserialize JSON response.
+    #[cfg_attr(not(test), allow(dead_code))]
     async fn post_empty_json<T: for<'de> serde::Deserialize<'de>>(
         &self,
         url: &str,
@@ -274,7 +287,12 @@ impl ComputeHttpClient {
     /// The `worker` DID identifies the compute provider discovered at runtime
     /// via capability-based discovery -- never hardcoded.
     #[must_use]
-    pub fn deployment_to_event(
+    #[allow(
+        clippy::unused_self,
+        reason = "instance method for API symmetry with other client methods"
+    )]
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn deployment_to_event(
         &self,
         deployment: &DeploymentResponse,
         requester: &Did,
@@ -322,6 +340,7 @@ impl ComputeHttpClient {
 }
 
 /// Parse deployment ID string to `TaskId`.
+#[cfg_attr(not(test), allow(dead_code))]
 fn parse_deployment_id(id: &str) -> Option<TaskId> {
     // Try to parse as UUID first
     if let Ok(uuid) = uuid::Uuid::parse_str(id) {
@@ -372,7 +391,8 @@ pub async fn create_http_client(endpoint: std::net::SocketAddr) -> Result<Comput
 /// The `worker` DID should be resolved from capability-based discovery at
 /// runtime, identifying the compute provider that owns these deployments.
 #[must_use]
-pub fn poll_events_from_deployments(
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn poll_events_from_deployments(
     http_client: &ComputeHttpClient,
     deployments: &[DeploymentResponse],
     requester: &Did,

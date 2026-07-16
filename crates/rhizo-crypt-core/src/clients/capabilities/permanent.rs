@@ -255,6 +255,37 @@ struct CheckoutSliceResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ResolveSliceResponse {}
 
+// ============================================================================
+// Integration trait implementations
+// ============================================================================
+
+impl crate::integration::PermanentStorageProvider for PermanentStorageClient {
+    async fn commit(&self, summary: &DehydrationSummary) -> Result<CommitRef> {
+        self.commit(summary).await
+    }
+
+    async fn verify_commit(&self, commit_ref: &CommitRef) -> Result<bool> {
+        self.verify_commit(commit_ref).await
+    }
+
+    async fn get_commit(&self, commit_ref: &CommitRef) -> Result<Option<DehydrationSummary>> {
+        self.get_commit(commit_ref).await
+    }
+
+    async fn checkout_slice(
+        &self,
+        spine_id: &str,
+        entry_hash: &[u8; 32],
+        holder: &Did,
+    ) -> Result<SliceOrigin> {
+        self.checkout_slice(spine_id, entry_hash, holder).await
+    }
+
+    async fn resolve_slice(&self, slice: &Slice, outcome: &ResolutionOutcome) -> Result<()> {
+        self.resolve_slice(slice, outcome).await
+    }
+}
+
 #[cfg(test)]
 #[path = "permanent_tests.rs"]
 mod tests;

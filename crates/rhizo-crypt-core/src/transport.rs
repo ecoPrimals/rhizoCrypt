@@ -49,6 +49,7 @@ fn unix_socket_dir_fallback() -> PathBuf {
 }
 
 /// Unix-like transport from an optional socket path (TCP when no path is available).
+#[allow(deprecated, reason = "legacy TransportHint helpers until removal")]
 fn unix_transport_from_socket_path(socket_path: Option<PathBuf>, port: u16) -> TransportHint {
     socket_path.map_or_else(
         || TransportHint::Tcp {
@@ -59,6 +60,7 @@ fn unix_transport_from_socket_path(socket_path: Option<PathBuf>, port: u16) -> T
     )
 }
 
+#[allow(deprecated, reason = "legacy TransportHint helpers until removal")]
 fn preferred_transport_with_platform(
     primal_name: &str,
     port: u16,
@@ -439,6 +441,10 @@ pub async fn connect_transport(endpoint: &TransportEndpoint) -> std::io::Result<
 // ============================================================================
 
 /// Transport hint for primal IPC, selected per-platform per ecoBin v2.0.
+#[deprecated(
+    since = "0.14.18",
+    note = "use TransportEndpoint instead — structured dispatch via AdapterFactory::from_transport"
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TransportHint {
     /// Path-based Unix domain socket.
@@ -461,6 +467,8 @@ pub enum TransportHint {
 ///   otherwise TCP with localhost.
 /// - **Android**: Abstract socket.
 /// - **Windows**: TCP with localhost.
+#[deprecated(since = "0.14.18", note = "use TransportEndpoint::try_parse_address instead")]
+#[allow(deprecated, reason = "deprecated API surface until removal")]
 #[must_use]
 pub fn preferred_transport(primal_name: &str, port: u16) -> TransportHint {
     preferred_transport_with_platform(primal_name, port, PlatformKind::current())

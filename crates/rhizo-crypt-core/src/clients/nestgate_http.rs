@@ -22,7 +22,7 @@ const DEFAULT_CONTENT_TYPE: &str = "application/octet-stream";
 
 /// Store blob request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpStoreBlobRequest {
+pub(crate) struct HttpStoreBlobRequest {
     /// Base64-encoded blob data.
     pub data: String,
     /// Content type.
@@ -39,7 +39,7 @@ fn default_content_type() -> String {
 
 /// Store blob response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpStoreBlobResponse {
+pub(crate) struct HttpStoreBlobResponse {
     /// Content-addressed reference (blake3 hash).
     pub reference: String,
     /// Size in bytes.
@@ -55,7 +55,7 @@ const fn default_true() -> bool {
 
 /// Retrieve blob response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpRetrieveBlobResponse {
+pub(crate) struct HttpRetrieveBlobResponse {
     /// Base64-encoded blob data.
     pub data: String,
     /// Content type.
@@ -65,8 +65,9 @@ pub struct HttpRetrieveBlobResponse {
 }
 
 /// Blob metadata response.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpBlobMetadata {
+pub(crate) struct HttpBlobMetadata {
     /// Content reference.
     pub reference: String,
     /// Content type.
@@ -82,8 +83,9 @@ pub struct HttpBlobMetadata {
 }
 
 /// Health check response.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpHealthResponse {
+pub(crate) struct HttpHealthResponse {
     /// Service status.
     pub status: String,
     /// Available storage in bytes.
@@ -222,7 +224,11 @@ impl StorageHttpClient {
     /// # Errors
     ///
     /// Returns error if the HTTP request fails or blob not found.
-    pub async fn metadata(&self, reference: &str) -> Result<HttpBlobMetadata, StorageHttpError> {
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) async fn metadata(
+        &self,
+        reference: &str,
+    ) -> Result<HttpBlobMetadata, StorageHttpError> {
         let url = format!(
             "{}{}/blobs/{}/metadata",
             self.base_url,
@@ -247,7 +253,8 @@ impl StorageHttpClient {
     /// # Errors
     ///
     /// Returns error if the health check fails.
-    pub async fn health(&self) -> Result<HttpHealthResponse, StorageHttpError> {
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) async fn health(&self) -> Result<HttpHealthResponse, StorageHttpError> {
         let url = format!("{}{}", self.base_url, crate::constants::HEALTH_CHECK_PATH);
         let (status, text) =
             self.client.get(&url).await.map_err(|e| StorageHttpError::Transport(e.to_string()))?;

@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 /// This trait provides the subset of `LoamSpine` RPC used by `rhizoCrypt`
 /// for dehydration (session commit) operations.
 #[tarpc::service]
-pub trait PermanentStorageRpc {
+pub(crate) trait PermanentStorageRpc {
     /// Commit a rhizoCrypt session to permanent storage.
     async fn commit_session(request: RpcCommitSessionRequest) -> RpcCommitSessionResponse;
 
@@ -39,7 +39,7 @@ pub trait PermanentStorageRpc {
 
 /// Session commit request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RpcCommitSessionRequest {
+pub(crate) struct RpcCommitSessionRequest {
     /// Session ID to commit.
     pub session_id: String,
     /// Merkle root of the session DAG.
@@ -52,7 +52,7 @@ pub struct RpcCommitSessionRequest {
 
 /// Dehydration summary.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RpcDehydrationSummary {
+pub(crate) struct RpcDehydrationSummary {
     /// Session type.
     pub session_type: String,
     /// Total vertex count.
@@ -69,7 +69,7 @@ pub struct RpcDehydrationSummary {
 
 /// Session commit response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RpcCommitSessionResponse {
+pub(crate) struct RpcCommitSessionResponse {
     /// Whether commit was accepted.
     pub accepted: bool,
     /// Commit ID for tracking.
@@ -82,7 +82,7 @@ pub struct RpcCommitSessionResponse {
 
 /// Commit status response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RpcCommitStatusResponse {
+pub(crate) struct RpcCommitStatusResponse {
     /// Commit ID.
     pub commit_id: String,
     /// Status: pending, committed, failed.
@@ -95,7 +95,7 @@ pub struct RpcCommitStatusResponse {
 
 /// Health response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RpcHealthResponse {
+pub(crate) struct RpcHealthResponse {
     /// Service status.
     pub status: String,
     /// Service version.

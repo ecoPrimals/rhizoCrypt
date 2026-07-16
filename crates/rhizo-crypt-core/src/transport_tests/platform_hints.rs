@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
+#![allow(deprecated, reason = "testing deprecated TransportHint API until removal")]
+
 //! Tests for `TransportHint`, `PlatformKind`, and `preferred_transport`.
 
 use super::*;
