@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Wave 142b-2: Integration Trait Wiring + Legacy Deprecation (Jul 16, 2026)
+
+- **Integration trait wiring (P0 architectural debt)**: `SigningClient` now implements `SigningProvider` (6 methods), `StorageClient` implements `PayloadStorageProvider` (3 methods), `PermanentStorageClient` implements `PermanentStorageProvider` (5 methods). All delegate to existing adapter-based methods. Enables `dyn` dispatch and mock injection for production paths.
+- **Dead constant deprecation**: `READ_TIMEOUT` and `WRITE_TIMEOUT` in `ipc.rs` marked `#[deprecated]` — unused by any adapter; will be removed in 0.14.18.
+- **`TransportHint` deprecation**: Legacy `TransportHint` enum and `preferred_transport()` function deprecated in favor of `TransportEndpoint` + `AdapterFactory::from_transport()`.
+- **Visibility narrowing**: Vendor HTTP wire types (`beardog_http.rs`, `nestgate_http.rs`, `toadstool_http.rs`, `loamspine_rpc.rs`) narrowed from `pub` to `pub(crate)` — all are internal DTOs, not part of the public API.
+
 #### Wave 142b: Transport Phase 2 + SessionTreeHash + Clone Optimization (Jul 16, 2026)
 
 - **`AdapterFactory::from_transport(TransportEndpoint)`**: New structured dispatch method eliminates the `Display` → re-parse round-trip in capability clients. All 5 discovery-based clients (signing, permanent, storage, compute, provenance) now create adapters directly from `TransportEndpoint` instead of string intermediaries.
