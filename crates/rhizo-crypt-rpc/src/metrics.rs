@@ -59,6 +59,8 @@ pub enum RpcMethod {
     GetChildren,
     /// Get merkle root.
     GetMerkleRoot,
+    /// Get session tree hash.
+    SessionTreeHash,
     /// Get merkle proof.
     GetMerkleProof,
     /// Verify proof.
@@ -100,6 +102,7 @@ impl RpcMethod {
             Self::QueryVertices => "query_vertices",
             Self::GetChildren => "get_children",
             Self::GetMerkleRoot => "get_merkle_root",
+            Self::SessionTreeHash => "session_tree_hash",
             Self::GetMerkleProof => "get_merkle_proof",
             Self::VerifyProof => "verify_proof",
             Self::CheckoutSlice => "checkout_slice",
@@ -148,7 +151,7 @@ impl ErrorType {
 }
 
 /// Number of distinct `RpcMethod` variants.
-const RPC_METHOD_COUNT: usize = 23;
+const RPC_METHOD_COUNT: usize = 24;
 
 /// Number of distinct `ErrorType` variants.
 const ERROR_TYPE_COUNT: usize = 6;

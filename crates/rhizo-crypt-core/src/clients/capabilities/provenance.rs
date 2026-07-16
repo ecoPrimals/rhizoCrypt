@@ -64,6 +64,11 @@ impl ProvenanceClient {
     /// # Errors
     ///
     /// Returns an error if [`AdapterFactory::create`] fails for the given endpoint.
+    #[deprecated(
+        since = "0.14.18",
+        note = "use discover() with TransportEndpoint instead of raw endpoint strings"
+    )]
+    #[allow(deprecated)]
     pub fn with_endpoint(endpoint: &str) -> Result<Self> {
         let adapter = AdapterFactory::create(endpoint)?;
 
@@ -186,6 +191,7 @@ struct SessionAttributionQuery {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;

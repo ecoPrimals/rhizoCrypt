@@ -158,6 +158,14 @@ async fn test_get_merkle_root_without_connection_errors_gracefully() {
 }
 
 #[tokio::test]
+async fn test_session_tree_hash_without_connection_errors_gracefully() {
+    let client = client_with_dropped_transport();
+    let result = client.session_tree_hash(SessionId::now()).await;
+    assert!(result.is_err());
+    assert!(matches!(result.unwrap_err(), RpcError::Transport(_)));
+}
+
+#[tokio::test]
 async fn test_checkout_slice_without_connection_errors_gracefully() {
     let client = client_with_dropped_transport();
     let request = CheckoutSliceRequest {

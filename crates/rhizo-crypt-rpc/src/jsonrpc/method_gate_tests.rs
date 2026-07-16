@@ -136,6 +136,7 @@ fn classify_dag_methods_as_protected() {
     assert_eq!(classify_method("dag.event.append"), MethodAccessLevel::Protected);
     assert_eq!(classify_method("dag.vertex.get"), MethodAccessLevel::Protected);
     assert_eq!(classify_method("dag.merkle.root"), MethodAccessLevel::Protected);
+    assert_eq!(classify_method("dag.session.tree_hash"), MethodAccessLevel::Protected);
     assert_eq!(classify_method("dag.slice.checkout"), MethodAccessLevel::Protected);
     assert_eq!(classify_method("dag.dehydration.trigger"), MethodAccessLevel::Protected);
 }

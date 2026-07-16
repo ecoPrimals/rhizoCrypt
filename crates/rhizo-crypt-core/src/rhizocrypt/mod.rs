@@ -18,6 +18,7 @@ use crate::config::RhizoCryptConfig;
 use crate::dehydration;
 use crate::discovery::DiscoveryRegistry;
 use crate::error::{Result, RhizoCryptError};
+use crate::merkle::SessionTreeHash;
 use crate::metrics::PrimalMetrics;
 use crate::primal::PrimalState;
 #[cfg(test)]
@@ -65,6 +66,7 @@ pub struct RhizoCrypt {
     dehydration_status: Arc<DashMap<SessionId, dehydration::DehydrationStatus>>,
     // O(1) vertex → session lookup (populated on append, cleaned on discard)
     vertex_session_index: Arc<DashMap<VertexId, SessionId>>,
+    tree_hash_cache: DashMap<SessionId, SessionTreeHash>,
     // Atomic metrics (lock-free)
     metrics: Arc<PrimalMetrics>,
     // Capability-based discovery registry shared across dehydration & integration
@@ -96,6 +98,7 @@ impl RhizoCrypt {
             slices: Arc::new(DashMap::new()),
             dehydration_status: Arc::new(DashMap::new()),
             vertex_session_index: Arc::new(DashMap::new()),
+            tree_hash_cache: DashMap::new(),
             metrics: Arc::new(PrimalMetrics::new()),
             discovery_registry: Arc::clone(&registry),
             signing_client: OnceCell::new(),
@@ -279,6 +282,7 @@ impl RhizoCrypt {
         self.slices.retain(|_, v| v.session_id != session_id);
         self.dehydration_status.remove(&session_id);
         self.vertex_session_index.retain(|_, sid| *sid != session_id);
+        self.tree_hash_cache.remove(&session_id);
     }
 
     /// Get session count (lock-free).

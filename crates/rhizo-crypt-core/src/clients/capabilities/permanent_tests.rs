@@ -3,6 +3,7 @@
 
 //! Tests for the permanent storage capability client.
 
+#![allow(deprecated)]
 #![expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 
 use super::*;

@@ -9,5 +9,4 @@ mod connect;
 mod endpoint;
 mod errors;
 mod family_btsp;
-mod platform_hints;
 mod socket_paths;

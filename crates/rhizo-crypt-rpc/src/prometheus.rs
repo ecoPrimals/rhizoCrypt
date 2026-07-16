@@ -25,6 +25,7 @@ const ALL_METHODS: [RpcMethod; RPC_METHOD_COUNT] = [
     RpcMethod::QueryVertices,
     RpcMethod::GetChildren,
     RpcMethod::GetMerkleRoot,
+    RpcMethod::SessionTreeHash,
     RpcMethod::GetMerkleProof,
     RpcMethod::VerifyProof,
     RpcMethod::CheckoutSlice,

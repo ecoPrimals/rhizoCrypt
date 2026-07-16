@@ -9,35 +9,12 @@
 //!   `sourDough`/`songBird`/`cellMembrane` canonical format.
 //! - [`connect_transport`] — connect to a service via its resolved endpoint.
 //! - [`TransportStream`] — transport-agnostic connected stream.
-//! - [`TransportHint`] — legacy platform detection (ecoBin v2.0).
 //! - BTSP helpers (family-scoped socket paths, insecure mode guard).
 
 use std::path::{Path, PathBuf};
 
-use crate::constants::{
-    BIOMEOS_SOCKET_SUBDIR, DEFAULT_RPC_HOST, DEFAULT_SOCKET_DIR, SOCKET_FILE_EXTENSION,
-};
+use crate::constants::{BIOMEOS_SOCKET_SUBDIR, DEFAULT_SOCKET_DIR, SOCKET_FILE_EXTENSION};
 use crate::safe_env::SafeEnv;
-
-/// Platform bucket for transport selection (used to keep negotiation logic testable on any host).
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum PlatformKind {
-    Android,
-    Windows,
-    Unix,
-}
-
-impl PlatformKind {
-    const fn current() -> Self {
-        if cfg!(target_os = "android") {
-            Self::Android
-        } else if cfg!(target_os = "windows") {
-            Self::Windows
-        } else {
-            Self::Unix
-        }
-    }
-}
 
 /// Fallback directory when `XDG_RUNTIME_DIR` is unset (Unix-like, non-Android).
 fn unix_socket_dir_fallback() -> PathBuf {
@@ -45,38 +22,6 @@ fn unix_socket_dir_fallback() -> PathBuf {
         PathBuf::from(DEFAULT_SOCKET_DIR)
     } else {
         std::env::temp_dir().join(BIOMEOS_SOCKET_SUBDIR)
-    }
-}
-
-/// Unix-like transport from an optional socket path (TCP when no path is available).
-#[allow(deprecated, reason = "legacy TransportHint helpers until removal")]
-fn unix_transport_from_socket_path(socket_path: Option<PathBuf>, port: u16) -> TransportHint {
-    socket_path.map_or_else(
-        || TransportHint::Tcp {
-            host: DEFAULT_RPC_HOST.to_string(),
-            port,
-        },
-        TransportHint::UnixSocket,
-    )
-}
-
-#[allow(deprecated, reason = "legacy TransportHint helpers until removal")]
-fn preferred_transport_with_platform(
-    primal_name: &str,
-    port: u16,
-    platform: PlatformKind,
-) -> TransportHint {
-    match platform {
-        PlatformKind::Android => {
-            TransportHint::AbstractSocket(format!("{BIOMEOS_SOCKET_SUBDIR}.{primal_name}"))
-        }
-        PlatformKind::Windows => TransportHint::Tcp {
-            host: DEFAULT_RPC_HOST.to_string(),
-            port,
-        },
-        PlatformKind::Unix => {
-            unix_transport_from_socket_path(socket_path_for_primal(primal_name), port)
-        }
     }
 }
 
@@ -434,44 +379,6 @@ pub async fn connect_transport(endpoint: &TransportEndpoint) -> std::io::Result<
             format!("mesh relay ({peer_id}/{capability}) requires discovery routing"),
         )),
     }
-}
-
-// ============================================================================
-// TransportHint — legacy platform detection
-// ============================================================================
-
-/// Transport hint for primal IPC, selected per-platform per ecoBin v2.0.
-#[deprecated(
-    since = "0.14.18",
-    note = "use TransportEndpoint instead — structured dispatch via AdapterFactory::from_transport"
-)]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum TransportHint {
-    /// Path-based Unix domain socket.
-    UnixSocket(PathBuf),
-    /// TCP connection (fallback or Windows).
-    Tcp {
-        /// Host to connect to.
-        host: String,
-        /// Port number.
-        port: u16,
-    },
-    /// Abstract namespace socket (Android, Linux abstract).
-    AbstractSocket(String),
-}
-
-/// Returns the preferred transport for the current platform.
-///
-/// Platform selection:
-/// - **Linux/macOS/BSD**: Unix socket when path-based sockets are available;
-///   otherwise TCP with localhost.
-/// - **Android**: Abstract socket.
-/// - **Windows**: TCP with localhost.
-#[deprecated(since = "0.14.18", note = "use TransportEndpoint::try_parse_address instead")]
-#[allow(deprecated, reason = "deprecated API surface until removal")]
-#[must_use]
-pub fn preferred_transport(primal_name: &str, port: u16) -> TransportHint {
-    preferred_transport_with_platform(primal_name, port, PlatformKind::current())
 }
 
 /// Structured error for JSON-RPC transport operations.

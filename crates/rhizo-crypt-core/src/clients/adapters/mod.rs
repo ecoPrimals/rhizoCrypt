@@ -193,6 +193,10 @@ impl AdapterFactory {
     /// - Protocol is unsupported
     /// - Endpoint format is invalid
     /// - Adapter creation fails
+    #[deprecated(
+        since = "0.14.18",
+        note = "use from_transport(&TransportEndpoint) for structured dispatch"
+    )]
     pub fn create(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
         // Bare path → Unix socket (Unix) or error (non-Unix)
         if endpoint.starts_with('/') || endpoint.starts_with('.') {
@@ -333,6 +337,7 @@ impl AdapterFactory {
 // ============================================================================
 
 #[cfg(test)]
+#[allow(deprecated)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;

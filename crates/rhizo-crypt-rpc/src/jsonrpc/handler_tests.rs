@@ -722,3 +722,31 @@ async fn test_handler_rpc_error_session_not_found() {
     let err = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap_err();
     assert!(matches!(err, HandlerError::Rpc(_)));
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_session_tree_hash() {
+    let server = create_test_server().await;
+
+    let req = make_request(
+        "dag.session.create",
+        Some(json!({"session_type": "General", "name": "tree-hash-test"})),
+    );
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let session_id = result.as_str().unwrap();
+
+    let req = make_request(
+        "dag.event.append",
+        Some(json!({"session_id": session_id, "event_type": {"DataCreate": {"schema": null}}})),
+    );
+    handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+
+    let req = make_request("dag.session.tree_hash", Some(json!({"session_id": session_id})));
+    let result = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    let hash_hex = result.as_str().unwrap();
+    assert_eq!(hash_hex.len(), 64, "SessionTreeHash should be 64-char hex");
+
+    // Verify it matches merkle root
+    let req = make_request("dag.merkle.root", Some(json!({"session_id": session_id})));
+    let root_hex = handle_request(&server, req, &test_gate(), &test_caller()).await.unwrap();
+    assert_eq!(hash_hex, root_hex.as_str().unwrap(), "tree hash should equal merkle root");
+}

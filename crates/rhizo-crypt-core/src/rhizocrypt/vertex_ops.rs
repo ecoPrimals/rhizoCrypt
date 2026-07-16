@@ -60,6 +60,7 @@ impl RhizoCrypt {
         dag_store.put_vertex(session_id, vertex).await?;
         self.vertex_session_index.insert(vertex_id, session_id);
         self.metrics.inc_vertices_appended();
+        self.tree_hash_cache.remove(&session_id);
 
         Ok(vertex_id)
     }
@@ -150,8 +151,13 @@ impl RhizoCrypt {
     ///
     /// Returns an error if the session is not found or primal not running.
     pub async fn session_tree_hash(&self, session_id: SessionId) -> Result<SessionTreeHash> {
+        if let Some(cached) = self.tree_hash_cache.get(&session_id) {
+            return Ok(*cached);
+        }
         let root = self.compute_merkle_root(session_id).await?;
-        Ok(SessionTreeHash::from_root(root))
+        let hash = SessionTreeHash::from_root(root);
+        self.tree_hash_cache.insert(session_id, hash);
+        Ok(hash)
     }
 
     /// Generate Merkle proof for a vertex.

@@ -163,6 +163,11 @@ impl SigningClient {
     /// # Errors
     ///
     /// Returns error if endpoint is invalid or connection fails.
+    #[deprecated(
+        since = "0.14.18",
+        note = "use discover() with TransportEndpoint instead of raw endpoint strings"
+    )]
+    #[allow(deprecated)]
     pub fn with_endpoint(endpoint: &str) -> Result<Self> {
         let adapter = AdapterFactory::create(endpoint)?;
 

@@ -10,7 +10,8 @@ use crate::service_types::{
     ServiceMetrics, SessionInfo,
 };
 use rhizo_crypt_core::{
-    DehydrationStatus, MerkleProof, MerkleRoot, SessionId, Slice, SliceId, Vertex, VertexId,
+    DehydrationStatus, MerkleProof, MerkleRoot, SessionId, SessionTreeHash, Slice, SliceId, Vertex,
+    VertexId,
 };
 use std::net::SocketAddr;
 use tarpc::tokio_serde::formats::Bincode;
@@ -213,6 +214,18 @@ impl RpcClient {
     pub async fn get_merkle_root(&self, session_id: SessionId) -> RpcResult<MerkleRoot> {
         self.inner
             .get_merkle_root(context::current(), session_id)
+            .await
+            .map_err(|e| RpcError::Transport(e.to_string()))?
+    }
+
+    /// Get the session tree hash (CAC L5 content-addressable cache key).
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
+    pub async fn session_tree_hash(&self, session_id: SessionId) -> RpcResult<SessionTreeHash> {
+        self.inner
+            .session_tree_hash(context::current(), session_id)
             .await
             .map_err(|e| RpcError::Transport(e.to_string()))?
     }

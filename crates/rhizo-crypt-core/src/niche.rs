@@ -218,6 +218,15 @@ pub const METHOD_CATALOG: &[MethodSpec] = &[
         external: false,
         deps: &[],
     },
+    MethodSpec {
+        fqn: "dag.session.tree_hash",
+        domain: "dag",
+        short_name: "session.tree_hash",
+        estimated_ms: 5,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.event.append"],
+    },
     // Slice operations — may involve permanent storage I/O
     MethodSpec {
         fqn: "dag.slice.checkout",

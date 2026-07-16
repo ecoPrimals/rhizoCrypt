@@ -38,6 +38,7 @@ pub async fn dispatch_tools_call(
         "dag.session.create" => session::dispatch_session_create(server, arguments).await,
         "dag.event.append" => events::dispatch_event_append(server, arguments).await,
         "dag.merkle.root" => merkle::dispatch_merkle_root(server, arguments).await,
+        "dag.session.tree_hash" => merkle::dispatch_session_tree_hash(server, arguments).await,
         "dag.dehydration.trigger" | "dag.dehydrate" => {
             dehydration::dispatch_dehydrate(server, arguments).await
         }

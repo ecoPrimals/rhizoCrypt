@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## Wave 143b — SessionTreeHash L5 Full Wire + Transport Cleanup (Jul 16, 2026)
+- Wire `SessionTreeHash` through full RPC stack (tarpc + JSON-RPC + DashMap cache)
+- Register `dag.session.tree_hash` in METHOD_CATALOG, MCP tools, method gate
+- Delete deprecated `TransportHint` + `preferred_transport` (dead code removal)
+- Deprecate `AdapterFactory::create(&str)` and `with_endpoint(&str)` on 5 capability clients
+- Add 3 new tests (RPC handler, client transport, method classification)
+- Coverage: 93.86% (+0.16%)
+
 #### Wave 142b-2: Integration Trait Wiring + Legacy Deprecation (Jul 16, 2026)
 
 - **Integration trait wiring (P0 architectural debt)**: `SigningClient` now implements `SigningProvider` (6 methods), `StorageClient` implements `PayloadStorageProvider` (3 methods), `PermanentStorageClient` implements `PermanentStorageProvider` (5 methods). All delegate to existing adapter-based methods. Enables `dyn` dispatch and mock injection for production paths.

@@ -50,3 +50,13 @@ pub async fn dispatch_merkle_verify(
     let ok = server.clone().verify_proof(tarpc::context::current(), root, proof).await?;
     Ok(json!(ok))
 }
+
+pub async fn dispatch_session_tree_hash(
+    server: &RhizoCryptRpcServer,
+    params: Value,
+) -> Result<Value, HandlerError> {
+    let obj = get_obj(&params)?;
+    let session_id = parse_session_id(get_str(obj, "session_id")?)?;
+    let hash = server.clone().session_tree_hash(tarpc::context::current(), session_id).await?;
+    Ok(json!(hex::encode(hash.as_bytes())))
+}

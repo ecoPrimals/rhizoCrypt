@@ -103,6 +103,7 @@ pub async fn handle_request(
         "dag.vertex.query" => vertex::dispatch_vertex_query(server, params).await,
         "dag.vertex.children" => vertex::dispatch_vertex_children(server, params).await,
         "dag.merkle.root" => merkle::dispatch_merkle_root(server, params).await,
+        "dag.session.tree_hash" => merkle::dispatch_session_tree_hash(server, params).await,
         "dag.merkle.proof" => merkle::dispatch_merkle_proof(server, params).await,
         "dag.merkle.verify" => merkle::dispatch_merkle_verify(server, params).await,
         "dag.slice.checkout" => slice::dispatch_slice_checkout(server, params).await,

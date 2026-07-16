@@ -10,7 +10,7 @@ use crate::error::RpcError;
 use crate::service::{RhizoCryptRpcServer, parse_payload_ref, sign_vertex_if_available};
 use crate::service_types::{AppendEventRequest, QueryRequest};
 use rhizo_crypt_core::{
-    DagStore, MerkleProof, MerkleRoot, SessionId, Vertex, VertexBuilder, VertexId,
+    DagStore, MerkleProof, MerkleRoot, SessionId, SessionTreeHash, Vertex, VertexBuilder, VertexId,
 };
 
 impl RhizoCryptRpcServer {
@@ -127,6 +127,13 @@ impl RhizoCryptRpcServer {
         session_id: SessionId,
     ) -> Result<MerkleRoot, RpcError> {
         self.primal.compute_merkle_root(session_id).await.map_err(RpcError::from)
+    }
+
+    pub(crate) async fn impl_session_tree_hash(
+        &self,
+        session_id: SessionId,
+    ) -> Result<SessionTreeHash, RpcError> {
+        self.primal.session_tree_hash(session_id).await.map_err(RpcError::from)
     }
 
     pub(crate) async fn impl_get_merkle_proof(

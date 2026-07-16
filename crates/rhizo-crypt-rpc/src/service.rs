@@ -15,8 +15,8 @@ use crate::service_types::{
     SessionInfo, cached_capability_descriptors,
 };
 use rhizo_crypt_core::{
-    MerkleProof, MerkleRoot, PayloadRef, Session, SessionBuilder, SessionId, SliceId, Vertex,
-    VertexId,
+    MerkleProof, MerkleRoot, PayloadRef, Session, SessionBuilder, SessionId, SessionTreeHash,
+    SliceId, Vertex, VertexId,
 };
 use std::sync::Arc;
 
@@ -88,6 +88,9 @@ pub trait RhizoCryptRpc {
 
     /// Get the Merkle root for a session.
     async fn get_merkle_root(session_id: SessionId) -> Result<MerkleRoot, RpcError>;
+
+    /// Get the content-addressable tree hash for a session (CAC L5).
+    async fn session_tree_hash(session_id: SessionId) -> Result<SessionTreeHash, RpcError>;
 
     /// Generate inclusion proof for a vertex.
     async fn get_merkle_proof(
@@ -388,6 +391,14 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         session_id: SessionId,
     ) -> Result<MerkleRoot, RpcError> {
         self.impl_get_merkle_root(session_id).await
+    }
+
+    async fn session_tree_hash(
+        self,
+        _: tarpc::context::Context,
+        session_id: SessionId,
+    ) -> Result<SessionTreeHash, RpcError> {
+        self.impl_session_tree_hash(session_id).await
     }
 
     async fn get_merkle_proof(
