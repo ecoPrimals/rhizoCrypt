@@ -1204,7 +1204,7 @@ paths:
 - [x] proptest for IPC protocol invariants
 - [x] `#[forbid(unsafe_code)]` (non-test), `#[deny(unwrap_used, expect_used)]`
 - [x] `cargo-deny` supply chain audit
-- [x] Achieve 90%+ line coverage (CI gated) — 93.37%
+- [x] Achieve 90%+ line coverage (CI gated) — 93.70%
 - [x] Streaming/NDJSON for long-running operations (`StreamItem`, `event.append_batch`)
 - [ ] `Arc<str>` for hot-path identifiers (zero-copy evolution)
 

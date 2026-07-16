@@ -1,6 +1,6 @@
 # 🔐 rhizoCrypt — Environment Variables
 
-**Last Updated**: Jul 15, 2026  
+**Last Updated**: Jul 16, 2026  
 **Version**: 0.14.17  
 **Philosophy**: Capability-based, not primal-based
 

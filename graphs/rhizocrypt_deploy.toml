@@ -9,7 +9,7 @@
 # Provenance trio nodes are optional — rhizoCrypt degrades gracefully to
 # standalone mode when dependencies are unavailable.
 #
-# STATUS: Production-ready (Jul 15, 2026)
+# STATUS: Production-ready (Jul 16, 2026)
 #
 # Usage:
 #   biomeos deploy --graph graphs/rhizocrypt_deploy.toml
