@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Wave 142b: Transport Phase 2 + SessionTreeHash + Clone Optimization (Jul 16, 2026)
+
+- **`AdapterFactory::from_transport(TransportEndpoint)`**: New structured dispatch method eliminates the `Display` → re-parse round-trip in capability clients. All 5 discovery-based clients (signing, permanent, storage, compute, provenance) now create adapters directly from `TransportEndpoint` instead of string intermediaries.
+- **`SessionTreeHash` newtype (CAC primitive)**: Content-addressable cache key wrapping `MerkleRoot` for entire session DAG state. `RhizoCrypt::session_tree_hash()` computes the fingerprint. Enables duplicate detection and cache keying without full vertex comparison.
+- **Clone optimization**: `service_branch_ops.rs` destructures `MergeRequest` to iterate metadata by value, eliminating unnecessary `String` clones on the merge hot path.
+- **Test count 1,911 → 1,919 (+8)**: 4 adapter `from_transport` tests + 4 `SessionTreeHash` tests.
+
 #### Wave 141b: Architecture Split + Magic Numbers + Branch/Vertex Coverage (Jul 15, 2026)
 
 - **method_gate.rs split (790L → 468L + 334L)**: Extracted `CapabilityVerifier`, `TokenVerifier` trait, `PresenceVerifier`, `NoopVerifier`, and supporting types/functions into `method_gate_verifier.rs`. Public API unchanged via `pub use verifier::*`.

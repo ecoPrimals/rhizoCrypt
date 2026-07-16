@@ -7,7 +7,7 @@
 
 use crate::error::{Result, RhizoCryptError};
 use crate::event::EventType;
-use crate::merkle::{MerkleProof, MerkleRoot};
+use crate::merkle::{MerkleProof, MerkleRoot, SessionTreeHash};
 use crate::store::DagStore;
 use crate::types::{Did, SessionId, VertexId};
 use crate::vertex::Vertex;
@@ -138,6 +138,20 @@ impl RhizoCrypt {
         let dag_store = self.dag_store().await?;
         let vertices = dag_store.get_all_vertices(session_id).await?;
         MerkleRoot::compute(&vertices)
+    }
+
+    /// Compute the content-addressable tree hash for a session.
+    ///
+    /// This is a CAC-compatible fingerprint: sessions with identical vertex
+    /// content produce the same hash, enabling duplicate detection and cache
+    /// keying without full vertex comparison.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the session is not found or primal not running.
+    pub async fn session_tree_hash(&self, session_id: SessionId) -> Result<SessionTreeHash> {
+        let root = self.compute_merkle_root(session_id).await?;
+        Ok(SessionTreeHash::from_root(root))
     }
 
     /// Generate Merkle proof for a vertex.

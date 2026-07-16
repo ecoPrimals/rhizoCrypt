@@ -85,6 +85,67 @@ impl std::fmt::Display for MerkleRoot {
     }
 }
 
+/// Content-addressable cache key for an entire session's DAG state.
+///
+/// Wraps the session's [`MerkleRoot`] to serve as a unique fingerprint:
+/// if two sessions produce the same `SessionTreeHash`, they contain the
+/// same vertices in the same topological order.
+///
+/// Used by the CAC (Content-Addressable Cache) subsystem to detect
+/// duplicate or unchanged session state without full vertex comparison.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SessionTreeHash(pub MerkleRoot);
+
+impl SessionTreeHash {
+    /// The zero tree hash (empty session).
+    pub const ZERO: Self = Self(MerkleRoot::ZERO);
+
+    /// Create from a precomputed Merkle root.
+    #[must_use]
+    pub const fn from_root(root: MerkleRoot) -> Self {
+        Self(root)
+    }
+
+    /// Compute the session tree hash from vertices.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any vertex fails to compute its ID.
+    pub fn compute(vertices: &[Vertex]) -> Result<Self> {
+        MerkleRoot::compute(vertices).map(Self)
+    }
+
+    /// Get the underlying Merkle root.
+    #[must_use]
+    pub const fn root(&self) -> MerkleRoot {
+        self.0
+    }
+
+    /// Get the raw hash bytes.
+    #[must_use]
+    pub const fn as_bytes(&self) -> &ContentHash {
+        self.0.as_bytes()
+    }
+}
+
+impl std::fmt::Debug for SessionTreeHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SessionTreeHash({})", &self.0.to_hex()[..16])
+    }
+}
+
+impl std::fmt::Display for SessionTreeHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self.0.to_hex()[..16])
+    }
+}
+
+impl From<MerkleRoot> for SessionTreeHash {
+    fn from(root: MerkleRoot) -> Self {
+        Self(root)
+    }
+}
+
 /// Direction in Merkle tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Direction {

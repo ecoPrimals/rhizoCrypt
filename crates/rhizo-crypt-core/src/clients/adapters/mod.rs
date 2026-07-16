@@ -28,8 +28,22 @@
 //! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
 //! # });
 //! ```
+//!
+//! With a structured endpoint:
+//!
+//! ```no_run
+//! # use rhizo_crypt_core::clients::adapters::{ProtocolAdapter, AdapterFactory};
+//! # use rhizo_crypt_core::transport::TransportEndpoint;
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
+//! let endpoint = TransportEndpoint::tcp("127.0.0.1", 9500);
+//! let adapter = AdapterFactory::from_transport(&endpoint)?;
+//! let _result = adapter.call_json("sign", r#"{"data":[]}"#).await?;
+//! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())
+//! # });
+//! ```
 
 use crate::error::{Result, RhizoCryptError};
+use crate::transport::TransportEndpoint;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::future::Future;
@@ -241,6 +255,46 @@ impl AdapterFactory {
         }
     }
 
+    /// Create an adapter from a structured [`TransportEndpoint`].
+    ///
+    /// Preferred over [`Self::create`] when the endpoint is already structured
+    /// (e.g., from discovery). Avoids the `Display` → re-parse round-trip.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Transport type is unavailable on this platform (e.g., UDS on Windows)
+    /// - Protocol is unsupported (`MeshRelay` — not yet implemented)
+    pub fn from_transport(endpoint: &TransportEndpoint) -> Result<Box<dyn ProtocolAdapter>> {
+        match endpoint {
+            #[cfg(unix)]
+            TransportEndpoint::Uds {
+                path,
+            } => Ok(Box::new(UnixSocketAdapter::new(path)?)),
+            #[cfg(not(unix))]
+            TransportEndpoint::Uds {
+                path,
+            } => Err(RhizoCryptError::integration(format!(
+                "Unix socket transport not available on this platform: {path}. \
+                 Use TCP or HTTP instead."
+            ))),
+            TransportEndpoint::Tcp {
+                host,
+                port,
+            } => {
+                let addr = format!("{host}:{port}");
+                Ok(Box::new(TarpcAdapter::new(&addr)?))
+            }
+            TransportEndpoint::MeshRelay {
+                peer_id,
+                capability,
+            } => Err(RhizoCryptError::integration(format!(
+                "Mesh relay transport not yet implemented (peer: {peer_id}, cap: {capability}). \
+                     Direct transport required."
+            ))),
+        }
+    }
+
     /// Create an HTTP adapter (requires `http-clients` feature).
     ///
     /// # Errors
@@ -404,5 +458,43 @@ mod tests {
     fn test_factory_unsupported_protocol_ftps() {
         let result = AdapterFactory::create("ftps://localhost:21");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_factory_from_transport_tcp() {
+        use crate::transport::TransportEndpoint;
+        let endpoint = TransportEndpoint::tcp("127.0.0.1", 9600);
+        let adapter = AdapterFactory::from_transport(&endpoint).unwrap();
+        assert_eq!(adapter.protocol(), "tarpc");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_factory_from_transport_uds() {
+        use crate::transport::TransportEndpoint;
+        let endpoint = TransportEndpoint::uds("/tmp/test.sock");
+        let adapter = AdapterFactory::from_transport(&endpoint).unwrap();
+        assert_eq!(adapter.protocol(), "unix");
+    }
+
+    #[cfg(not(unix))]
+    #[test]
+    fn test_factory_from_transport_uds_unavailable() {
+        use crate::transport::TransportEndpoint;
+        let endpoint = TransportEndpoint::uds("/tmp/test.sock");
+        let result = AdapterFactory::from_transport(&endpoint);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_factory_from_transport_mesh_relay_unsupported() {
+        use crate::transport::TransportEndpoint;
+        let endpoint = TransportEndpoint::MeshRelay {
+            peer_id: "strand-gate".to_string(),
+            capability: "security".to_string(),
+        };
+        let result = AdapterFactory::from_transport(&endpoint);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Mesh relay"));
     }
 }

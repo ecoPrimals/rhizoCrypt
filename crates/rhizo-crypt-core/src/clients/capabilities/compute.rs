@@ -46,7 +46,7 @@ impl ComputeClient {
             "✅ Discovered compute provider"
         );
 
-        let adapter = AdapterFactory::create(&endpoint_addr)?;
+        let adapter = AdapterFactory::from_transport(&endpoint.endpoint)?;
 
         Ok(Self {
             adapter: Arc::from(adapter),

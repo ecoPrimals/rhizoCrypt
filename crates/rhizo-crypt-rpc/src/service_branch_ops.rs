@@ -53,21 +53,25 @@ impl RhizoCryptRpcServer {
         &self,
         request: MergeRequest,
     ) -> Result<VertexId, RpcError> {
-        let mut builder =
-            VertexBuilder::new(request.event_type).with_parents(request.parents.clone());
-        if let Some(agent) = request.agent {
+        let MergeRequest {
+            session_id,
+            parents,
+            event_type,
+            agent,
+            metadata,
+        } = request;
+
+        let mut builder = VertexBuilder::new(event_type).with_parents(parents.clone());
+        if let Some(agent) = agent {
             builder = builder.with_agent(agent);
         }
-        for (k, v) in &request.metadata {
-            builder = builder.with_metadata(k.clone(), v.clone());
+        for (k, v) in metadata {
+            builder = builder.with_metadata(k, v);
         }
         let mut vertex = builder.build();
         sign_vertex_if_available(&self.primal, &mut vertex).await;
 
-        self.primal
-            .merge_branches(request.session_id, request.parents, vertex)
-            .await
-            .map_err(RpcError::from)
+        self.primal.merge_branches(session_id, parents, vertex).await.map_err(RpcError::from)
     }
 
     pub(crate) async fn impl_federate(

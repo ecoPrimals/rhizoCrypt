@@ -122,7 +122,7 @@ pub use event::{EventType, MeshLeaveReason};
 pub use integration::{ClientFactory, IntegrationStatus, ServiceStatus};
 
 // Merkle trees
-pub use merkle::{MerkleProof, MerkleRoot};
+pub use merkle::{MerkleProof, MerkleRoot, SessionTreeHash};
 
 // Metrics
 pub use metrics::PrimalMetrics;

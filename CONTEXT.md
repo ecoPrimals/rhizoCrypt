@@ -69,10 +69,10 @@ Three workspace crates:
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,911 passing (all features) |
+| Tests | 1,919 passing (all features) |
 | Coverage | 93.70% lines (llvm-cov, Jul 15 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
-| Source files | 217 `.rs`, ~61,860 lines |
+| Source files | 217 `.rs`, ~62,103 lines |
 | Max file size | ~468 lines production (`method_gate.rs`, limit: 800) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |

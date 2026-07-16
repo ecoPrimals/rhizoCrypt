@@ -7,6 +7,7 @@
 
 use super::*;
 use crate::event::EventType;
+use crate::merkle::SessionTreeHash;
 use crate::session::{SessionBuilder, SessionType};
 use crate::types::Did;
 use crate::vertex::VertexBuilder;
@@ -419,4 +420,75 @@ async fn test_generate_merkle_proof_not_found() {
     let fake = VertexId::from_bytes(b"nosuch vertex id 32 bytes!!!!!!");
     let err = primal.generate_merkle_proof(session_id, fake).await.unwrap_err();
     assert!(err.to_string().contains("not found") || err.to_string().contains("Vertex"));
+}
+
+// ============================================================================
+// SessionTreeHash tests
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_session_tree_hash_empty_session() {
+    let primal = running_primal().await;
+    let session = SessionBuilder::new(SessionType::General).build();
+    let sid = primal.create_session(session).unwrap();
+    let hash = primal.session_tree_hash(sid).await.unwrap();
+    assert_eq!(hash, SessionTreeHash::ZERO);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_session_tree_hash_deterministic() {
+    let primal = running_primal().await;
+    let session = SessionBuilder::new(SessionType::General).build();
+    let sid = primal.create_session(session).unwrap();
+
+    let v = VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .build();
+    primal.append_vertex(sid, v).await.unwrap();
+
+    let hash1 = primal.session_tree_hash(sid).await.unwrap();
+    let hash2 = primal.session_tree_hash(sid).await.unwrap();
+    assert_eq!(hash1, hash2);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_session_tree_hash_changes_on_append() {
+    let primal = running_primal().await;
+    let session = SessionBuilder::new(SessionType::General).build();
+    let sid = primal.create_session(session).unwrap();
+
+    let v1 = VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .build();
+    primal.append_vertex(sid, v1).await.unwrap();
+    let hash_before = primal.session_tree_hash(sid).await.unwrap();
+
+    let v2 = VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .build();
+    primal.append_vertex(sid, v2).await.unwrap();
+    let hash_after = primal.session_tree_hash(sid).await.unwrap();
+
+    assert_ne!(hash_before, hash_after);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_session_tree_hash_from_root_roundtrip() {
+    let primal = running_primal().await;
+    let session = SessionBuilder::new(SessionType::General).build();
+    let sid = primal.create_session(session).unwrap();
+
+    let v = VertexBuilder::new(EventType::DataCreate {
+        schema: None,
+    })
+    .build();
+    primal.append_vertex(sid, v).await.unwrap();
+
+    let root = primal.compute_merkle_root(sid).await.unwrap();
+    let hash = primal.session_tree_hash(sid).await.unwrap();
+    assert_eq!(hash.root(), root);
+    assert_eq!(SessionTreeHash::from_root(root), hash);
 }
