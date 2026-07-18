@@ -55,26 +55,6 @@ impl ComputeClient {
         })
     }
 
-    /// Create client with explicit endpoint.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if [`AdapterFactory::create`] fails for the given endpoint.
-    #[deprecated(
-        since = "0.14.18",
-        note = "use discover() with TransportEndpoint instead of raw endpoint strings"
-    )]
-    #[allow(deprecated)]
-    pub fn with_endpoint(endpoint: &str) -> Result<Self> {
-        let adapter = AdapterFactory::create(endpoint)?;
-
-        Ok(Self {
-            adapter: Arc::from(adapter),
-            endpoint: endpoint.to_string(),
-            service_name: None,
-        })
-    }
-
     /// Check if service is available.
     pub async fn is_available(&self) -> bool {
         self.adapter.is_healthy().await
@@ -94,29 +74,35 @@ impl ComputeClient {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
     use crate::discovery::{DiscoveryRegistry, ServiceEndpoint};
+    use crate::transport::TransportEndpoint;
     use std::net::SocketAddr;
 
-    #[test]
-    fn test_compute_client_with_endpoint() {
-        let client = ComputeClient::with_endpoint("127.0.0.1:9800").unwrap();
-        assert_eq!(client.endpoint(), "127.0.0.1:9800");
-        assert!(client.service_name().is_none());
+    async fn discover_compute_client(host: &str, port: u16, service: &str) -> ComputeClient {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+        registry
+            .register_endpoint(ServiceEndpoint::new(
+                service.to_string(),
+                TransportEndpoint::tcp(host, port),
+                vec![Capability::ComputeOrchestration],
+            ))
+            .await;
+        ComputeClient::discover(&registry).await.unwrap()
     }
 
-    #[test]
-    fn test_compute_client_invalid_endpoint() {
-        let result = ComputeClient::with_endpoint("not a url");
-        assert!(result.is_err());
+    #[tokio::test]
+    async fn test_compute_client_discover_tcp_endpoint() {
+        let client = discover_compute_client("127.0.0.1", 9800, "test-compute").await;
+        assert!(client.endpoint().contains("127.0.0.1:9800"));
+        assert_eq!(client.service_name(), Some("test-compute"));
     }
 
     #[tokio::test]
     async fn test_compute_client_availability() {
-        let client = ComputeClient::with_endpoint("127.0.0.1:9999").unwrap();
+        let client = discover_compute_client("127.0.0.1", 9999, "test-compute").await;
         let available = client.is_available().await;
         // Just testing that the method doesn't panic
         let _ = available;
@@ -151,17 +137,17 @@ mod tests {
         assert_eq!(client.service_name(), Some("test-compute"));
     }
 
-    #[test]
-    fn test_compute_client_clone() {
-        let client = ComputeClient::with_endpoint("127.0.0.1:9800").unwrap();
+    #[tokio::test]
+    async fn test_compute_client_clone() {
+        let client = discover_compute_client("127.0.0.1", 9800, "test-compute").await;
         let cloned = client.clone();
         assert_eq!(client.endpoint(), cloned.endpoint());
         assert_eq!(client.service_name(), cloned.service_name());
     }
 
-    #[test]
-    fn test_compute_client_debug() {
-        let client = ComputeClient::with_endpoint("127.0.0.1:9800").unwrap();
+    #[tokio::test]
+    async fn test_compute_client_debug() {
+        let client = discover_compute_client("127.0.0.1", 9800, "test-compute").await;
         let debug_str = format!("{client:?}");
         assert!(debug_str.contains("ComputeClient"));
     }
@@ -216,32 +202,6 @@ mod tests {
         assert!(client.endpoint().contains("127.0.0.1:9800"));
     }
 
-    #[cfg(feature = "http-clients")]
-    #[test]
-    fn test_compute_client_endpoint_formats() {
-        // Test various HTTP endpoint formats
-        let http_client = ComputeClient::with_endpoint("http://localhost:9800").unwrap();
-        assert_eq!(http_client.endpoint(), "http://localhost:9800");
-
-        let https_client = ComputeClient::with_endpoint("https://compute.example.com:443").unwrap();
-        assert_eq!(https_client.endpoint(), "https://compute.example.com:443");
-
-        // AdapterFactory auto-adds http:// for addresses without protocol
-        let auto_http = ComputeClient::with_endpoint("localhost:9800").unwrap();
-        assert!(auto_http.endpoint().contains("localhost:9800"));
-    }
-
-    #[cfg(not(feature = "http-clients"))]
-    #[test]
-    fn test_compute_client_endpoint_formats() {
-        // Test tarpc and unix formats (no http-clients)
-        let tarpc = ComputeClient::with_endpoint("127.0.0.1:9800").unwrap();
-        assert_eq!(tarpc.endpoint(), "127.0.0.1:9800");
-
-        let unix = ComputeClient::with_endpoint("unix:///run/rhizocrypt/compute.sock").unwrap();
-        assert_eq!(unix.endpoint(), "unix:///run/rhizocrypt/compute.sock");
-    }
-
     #[tokio::test]
     async fn test_compute_client_discovery_different_capabilities() {
         let registry = DiscoveryRegistry::new("test-rhizocrypt");
@@ -273,22 +233,6 @@ mod tests {
         // Should still find compute provider, not signing
         let client = ComputeClient::discover(&registry).await.unwrap();
         assert!(client.service_name().unwrap().contains("compute"));
-    }
-
-    #[cfg(feature = "http-clients")]
-    #[test]
-    fn test_compute_client_various_addresses() {
-        // IPv4
-        let ipv4 = ComputeClient::with_endpoint("http://192.0.2.1:9800").unwrap();
-        assert_eq!(ipv4.endpoint(), "http://192.0.2.1:9800");
-
-        // IPv6
-        let ipv6 = ComputeClient::with_endpoint("http://[::1]:9800").unwrap();
-        assert_eq!(ipv6.endpoint(), "http://[::1]:9800");
-
-        // Domain
-        let domain = ComputeClient::with_endpoint("http://compute.example.com:9800").unwrap();
-        assert_eq!(domain.endpoint(), "http://compute.example.com:9800");
     }
 
     #[tokio::test]

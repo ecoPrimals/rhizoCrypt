@@ -154,30 +154,6 @@ impl SigningClient {
         })
     }
 
-    /// Create client with explicit endpoint (for testing/override).
-    ///
-    /// # Arguments
-    ///
-    /// * `endpoint` - Service endpoint (e.g., "127.0.0.1:9500" for tarpc, or "http://..." when http-clients enabled)
-    ///
-    /// # Errors
-    ///
-    /// Returns error if endpoint is invalid or connection fails.
-    #[deprecated(
-        since = "0.14.18",
-        note = "use discover() with TransportEndpoint instead of raw endpoint strings"
-    )]
-    #[allow(deprecated)]
-    pub fn with_endpoint(endpoint: &str) -> Result<Self> {
-        let adapter = AdapterFactory::create(endpoint)?;
-
-        Ok(Self {
-            adapter: Arc::from(adapter),
-            endpoint: endpoint.to_string(),
-            service_name: None,
-        })
-    }
-
     /// Sign data with a DID.
     ///
     /// # Arguments

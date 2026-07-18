@@ -76,26 +76,6 @@ impl StorageClient {
         })
     }
 
-    /// Create client with explicit endpoint.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if [`AdapterFactory::create`] fails for the given endpoint.
-    #[deprecated(
-        since = "0.14.18",
-        note = "use discover() with TransportEndpoint instead of raw endpoint strings"
-    )]
-    #[allow(deprecated)]
-    pub fn with_endpoint(endpoint: &str) -> Result<Self> {
-        let adapter = AdapterFactory::create(endpoint)?;
-
-        Ok(Self {
-            adapter: Arc::from(adapter),
-            endpoint: endpoint.to_string(),
-            service_name: None,
-        })
-    }
-
     /// Store payload and get content-addressed reference.
     ///
     /// # Arguments
@@ -269,29 +249,35 @@ impl crate::integration::PayloadStorageProvider for StorageClient {
 // ============================================================================
 
 #[cfg(test)]
-#[allow(deprecated)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
     use crate::discovery::{DiscoveryRegistry, ServiceEndpoint};
+    use crate::transport::TransportEndpoint;
     use std::net::SocketAddr;
 
-    #[test]
-    fn test_storage_client_with_endpoint() {
-        let client = StorageClient::with_endpoint("127.0.0.1:9600").unwrap();
-        assert_eq!(client.endpoint(), "127.0.0.1:9600");
-        assert!(client.service_name().is_none());
+    async fn discover_storage_client(host: &str, port: u16, service: &str) -> StorageClient {
+        let registry = DiscoveryRegistry::new("test-rhizocrypt");
+        registry
+            .register_endpoint(ServiceEndpoint::new(
+                service.to_string(),
+                TransportEndpoint::tcp(host, port),
+                vec![Capability::PayloadStorage],
+            ))
+            .await;
+        StorageClient::discover(&registry).await.unwrap()
     }
 
-    #[test]
-    fn test_storage_client_invalid_endpoint() {
-        let result = StorageClient::with_endpoint("not a url");
-        assert!(result.is_err());
+    #[tokio::test]
+    async fn test_storage_client_discover_tcp_endpoint() {
+        let client = discover_storage_client("127.0.0.1", 9600, "test-storage").await;
+        assert!(client.endpoint().contains("127.0.0.1:9600"));
+        assert_eq!(client.service_name(), Some("test-storage"));
     }
 
     #[tokio::test]
     async fn test_storage_client_availability() {
-        let client = StorageClient::with_endpoint("127.0.0.1:9999").unwrap();
+        let client = discover_storage_client("127.0.0.1", 9999, "test-storage").await;
         let available = client.is_available().await;
         // Just testing that the method doesn't panic
         let _ = available;
@@ -430,17 +416,17 @@ mod tests {
         // Just verify it doesn't panic
     }
 
-    #[test]
-    fn test_storage_client_clone() {
-        let client = StorageClient::with_endpoint("127.0.0.1:9600").unwrap();
+    #[tokio::test]
+    async fn test_storage_client_clone() {
+        let client = discover_storage_client("127.0.0.1", 9600, "test-storage").await;
         let cloned = client.clone();
         assert_eq!(client.endpoint(), cloned.endpoint());
         assert_eq!(client.service_name(), cloned.service_name());
     }
 
-    #[test]
-    fn test_storage_client_debug() {
-        let client = StorageClient::with_endpoint("127.0.0.1:9600").unwrap();
+    #[tokio::test]
+    async fn test_storage_client_debug() {
+        let client = discover_storage_client("127.0.0.1", 9600, "test-storage").await;
         let debug_str = format!("{client:?}");
         assert!(debug_str.contains("StorageClient"));
     }
@@ -494,21 +480,6 @@ mod tests {
         let client = StorageClient::discover(&registry).await.unwrap();
         assert_eq!(client.service_name(), Some("storage-zfs"));
         assert!(client.endpoint().contains("127.0.0.1:9600"));
-    }
-
-    #[test]
-    #[cfg(feature = "http-clients")]
-    fn test_storage_client_endpoint_formats() {
-        // Test various endpoint formats (http/https only when http-clients is enabled)
-        let http_client = StorageClient::with_endpoint("http://localhost:9600").unwrap();
-        assert_eq!(http_client.endpoint(), "http://localhost:9600");
-
-        let https_client = StorageClient::with_endpoint("https://storage.example.com:443").unwrap();
-        assert_eq!(https_client.endpoint(), "https://storage.example.com:443");
-
-        // AdapterFactory auto-adds http:// for addresses without protocol
-        let auto_http = StorageClient::with_endpoint("localhost:9600").unwrap();
-        assert!(auto_http.endpoint().contains("localhost:9600"));
     }
 
     #[test]

@@ -2,6 +2,7 @@
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 use super::*;
+use std::net::SocketAddr;
 
 #[test]
 fn test_resolve_bind_addr_with_overrides() {

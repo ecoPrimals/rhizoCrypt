@@ -59,26 +59,6 @@ impl ProvenanceClient {
         })
     }
 
-    /// Create client with explicit endpoint.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if [`AdapterFactory::create`] fails for the given endpoint.
-    #[deprecated(
-        since = "0.14.18",
-        note = "use discover() with TransportEndpoint instead of raw endpoint strings"
-    )]
-    #[allow(deprecated)]
-    pub fn with_endpoint(endpoint: &str) -> Result<Self> {
-        let adapter = AdapterFactory::create(endpoint)?;
-
-        Ok(Self {
-            adapter: Arc::from(adapter),
-            endpoint: endpoint.to_string(),
-            service_name: None,
-        })
-    }
-
     /// Create client with a pre-built adapter (for testing).
     #[cfg(test)]
     pub(crate) fn with_adapter(adapter: Box<dyn ProtocolAdapter>, endpoint: &str) -> Self {
@@ -191,30 +171,44 @@ struct SessionAttributionQuery {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
     use crate::discovery::{Capability, DiscoveryRegistry};
+    use crate::transport::TransportEndpoint;
     use std::net::SocketAddr;
 
-    #[test]
-    fn test_provenance_client_with_endpoint() {
-        let client = ProvenanceClient::with_endpoint("127.0.0.1:9900").unwrap();
-        assert_eq!(client.endpoint(), "127.0.0.1:9900");
-        assert!(client.service_name().is_none());
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_provenance_client_discover_tcp_endpoint() {
+        let registry = DiscoveryRegistry::new("rhizoCrypt");
+        registry
+            .register_endpoint(crate::discovery::ServiceEndpoint::new(
+                "provenance-test",
+                TransportEndpoint::tcp("127.0.0.1", 9900),
+                vec![Capability::ProvenanceQuery],
+            ))
+            .await;
+
+        let client = ProvenanceClient::discover(&registry).await.unwrap();
+        assert_eq!(client.endpoint(), "tcp://127.0.0.1:9900");
+        assert_eq!(client.service_name(), Some("provenance-test"));
     }
 
-    #[test]
-    fn test_provenance_client_with_tarpc_endpoint() {
-        let client = ProvenanceClient::with_endpoint("tarpc://127.0.0.1:9901").unwrap();
-        assert_eq!(client.endpoint(), "tarpc://127.0.0.1:9901");
-    }
+    #[cfg(unix)]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_provenance_client_discover_uds_endpoint() {
+        let registry = DiscoveryRegistry::new("rhizoCrypt");
+        registry
+            .register_endpoint(crate::discovery::ServiceEndpoint::new(
+                "provenance-uds",
+                TransportEndpoint::uds("/tmp/provenance.sock"),
+                vec![Capability::ProvenanceQuery],
+            ))
+            .await;
 
-    #[test]
-    fn test_provenance_client_with_unix_endpoint() {
-        let client = ProvenanceClient::with_endpoint("/tmp/provenance.sock").unwrap();
-        assert_eq!(client.endpoint(), "/tmp/provenance.sock");
+        let client = ProvenanceClient::discover(&registry).await.unwrap();
+        assert_eq!(client.endpoint(), "unix:///tmp/provenance.sock");
+        assert_eq!(client.service_name(), Some("provenance-uds"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

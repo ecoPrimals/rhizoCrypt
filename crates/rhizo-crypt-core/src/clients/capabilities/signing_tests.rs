@@ -1,29 +1,33 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-#![allow(deprecated)]
-
 use super::*;
 use crate::discovery::{DiscoveryRegistry, ServiceEndpoint};
 use crate::transport::TransportEndpoint;
 use std::net::SocketAddr;
 
-#[test]
-fn test_signing_client_with_endpoint() {
-    let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
-    assert_eq!(client.endpoint(), "127.0.0.1:9500");
-    assert!(client.service_name().is_none());
+async fn discover_signing_client(host: &str, port: u16, service: &str) -> SigningClient {
+    let registry = DiscoveryRegistry::new("test-rhizocrypt");
+    registry
+        .register_endpoint(ServiceEndpoint::new(
+            service.to_string(),
+            TransportEndpoint::tcp(host, port),
+            vec![Capability::Signing],
+        ))
+        .await;
+    SigningClient::discover(&registry).await.unwrap()
 }
 
-#[test]
-fn test_signing_client_invalid_endpoint() {
-    let result = SigningClient::with_endpoint("not a url");
-    assert!(result.is_err());
+#[tokio::test]
+async fn test_signing_client_discover_tcp_endpoint() {
+    let client = discover_signing_client("127.0.0.1", 9500, "test-signer").await;
+    assert!(client.endpoint().contains("127.0.0.1:9500"));
+    assert_eq!(client.service_name(), Some("test-signer"));
 }
 
 #[tokio::test]
 async fn test_signing_client_availability() {
-    let client = SigningClient::with_endpoint("127.0.0.1:9999").unwrap();
+    let client = discover_signing_client("127.0.0.1", 9999, "test-signer").await;
     let available = client.is_available().await;
     let _ = available;
 }
@@ -221,17 +225,17 @@ fn test_base64_roundtrip_sign() {
 // Client unit tests
 // ============================================================================
 
-#[test]
-fn test_signing_client_clone() {
-    let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
+#[tokio::test]
+async fn test_signing_client_clone() {
+    let client = discover_signing_client("127.0.0.1", 9500, "test-signer").await;
     let cloned = client.clone();
     assert_eq!(client.endpoint(), cloned.endpoint());
     assert_eq!(client.service_name(), cloned.service_name());
 }
 
-#[test]
-fn test_signing_client_debug() {
-    let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
+#[tokio::test]
+async fn test_signing_client_debug() {
+    let client = discover_signing_client("127.0.0.1", 9500, "test-signer").await;
     let debug_str = format!("{client:?}");
     assert!(debug_str.contains("SigningClient"));
 }
@@ -293,7 +297,7 @@ async fn test_verify_vertex_no_signature_or_agent() {
     use crate::event::EventType;
     use crate::vertex::VertexBuilder;
 
-    let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
+    let client = mock_client();
     let vertex = VertexBuilder::new(EventType::SessionStart).build();
     assert!(vertex.signature.is_none());
     assert!(vertex.agent.is_none());
@@ -308,7 +312,7 @@ async fn test_verify_vertex_no_signature_with_agent() {
     use crate::event::EventType;
     use crate::vertex::VertexBuilder;
 
-    let client = SigningClient::with_endpoint("127.0.0.1:9500").unwrap();
+    let client = mock_client();
     let vertex =
         VertexBuilder::new(EventType::SessionStart).with_agent(Did::new("did:key:test")).build();
     assert!(vertex.signature.is_none());
@@ -331,19 +335,6 @@ async fn test_signing_client_discover_failed() {
         err_msg.contains("Discovery failed") || err_msg.contains("No signing provider"),
         "Expected discovery failure, got: {err_msg}"
     );
-}
-
-#[test]
-#[cfg(feature = "http-clients")]
-fn test_signing_client_endpoint_formats() {
-    let http_client = SigningClient::with_endpoint("http://localhost:9500").unwrap();
-    assert_eq!(http_client.endpoint(), "http://localhost:9500");
-
-    let https_client = SigningClient::with_endpoint("https://signing.example.com:443").unwrap();
-    assert_eq!(https_client.endpoint(), "https://signing.example.com:443");
-
-    let auto_http = SigningClient::with_endpoint("localhost:9500").unwrap();
-    assert!(auto_http.endpoint().contains("localhost:9500"));
 }
 
 // ============================================================================

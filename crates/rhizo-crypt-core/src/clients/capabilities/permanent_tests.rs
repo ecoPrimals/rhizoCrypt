@@ -3,7 +3,6 @@
 
 //! Tests for the permanent storage capability client.
 
-#![allow(deprecated)]
 #![expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 
 use super::*;
@@ -12,9 +11,22 @@ use crate::discovery::{DiscoveryRegistry, ServiceEndpoint};
 use crate::event::SessionOutcome;
 use crate::merkle::MerkleRoot;
 use crate::slice::{ResolutionOutcome, SliceOrigin};
+use crate::transport::TransportEndpoint;
 use crate::types::{ContentHash, Did, SessionId, Timestamp, VertexId};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+
+async fn discover_permanent_client(host: &str, port: u16, service: &str) -> PermanentStorageClient {
+    let registry = DiscoveryRegistry::new("test-primal");
+    registry
+        .register_endpoint(ServiceEndpoint::new(
+            service.to_owned(),
+            TransportEndpoint::tcp(host, port),
+            vec![Capability::PermanentCommit],
+        ))
+        .await;
+    PermanentStorageClient::discover(&registry).await.unwrap()
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CommitRequest {
@@ -214,26 +226,11 @@ fn test_resolve_slice_response_serialization() {
     let _deserialized: ResolveSliceResponse = serde_json::from_str(&serialized).unwrap();
 }
 
-#[test]
-fn test_permanent_storage_client_invalid_endpoint() {
-    let result = PermanentStorageClient::with_endpoint("not a valid endpoint");
-    assert!(result.is_err());
-}
-
-#[test]
-fn test_permanent_storage_client_with_endpoint() {
-    let client = PermanentStorageClient::with_endpoint("127.0.0.1:9700").unwrap();
-    assert_eq!(client.endpoint(), "127.0.0.1:9700");
-}
-
-#[cfg(feature = "http-clients")]
-#[test]
-fn test_permanent_storage_client_endpoint_formats() {
-    let http_client = PermanentStorageClient::with_endpoint("http://localhost:9700").unwrap();
-    assert_eq!(http_client.endpoint(), "http://localhost:9700");
-
-    let auto_http = PermanentStorageClient::with_endpoint("localhost:9700").unwrap();
-    assert!(auto_http.endpoint().contains("localhost:9700"));
+#[tokio::test]
+async fn test_permanent_storage_client_discover_tcp_endpoint() {
+    let client = discover_permanent_client("127.0.0.1", 9700, "test-loamspine").await;
+    assert!(client.endpoint().contains("127.0.0.1:9700"));
+    assert_eq!(client.service_name(), Some("test-loamspine"));
 }
 
 #[tokio::test]
@@ -294,17 +291,17 @@ async fn test_permanent_storage_client_multiple_providers() {
     );
 }
 
-#[test]
-fn test_permanent_storage_client_clone() {
-    let client1 = PermanentStorageClient::with_endpoint("127.0.0.1:9700").unwrap();
+#[tokio::test]
+async fn test_permanent_storage_client_clone() {
+    let client1 = discover_permanent_client("127.0.0.1", 9700, "test-loamspine").await;
     let client2 = client1.clone();
 
     assert_eq!(client1.endpoint(), client2.endpoint());
 }
 
-#[test]
-fn test_permanent_storage_client_debug() {
-    let client = PermanentStorageClient::with_endpoint("127.0.0.1:9700").unwrap();
+#[tokio::test]
+async fn test_permanent_storage_client_debug() {
+    let client = discover_permanent_client("127.0.0.1", 9700, "test-loamspine").await;
     let debug_str = format!("{client:?}");
     assert!(debug_str.contains("PermanentStorageClient"));
 }
@@ -352,33 +349,4 @@ async fn test_permanent_storage_client_discover_with_slice_capability() {
 
     let client = result.unwrap();
     assert_eq!(client.service_name(), Some("full-loamspine"));
-}
-
-#[test]
-fn test_permanent_storage_client_service_name_tracking() {
-    // Client with explicit endpoint has no service name
-    let client1 = PermanentStorageClient::with_endpoint("127.0.0.1:9700").unwrap();
-    assert_eq!(client1.service_name(), None);
-}
-
-#[test]
-fn test_permanent_storage_client_various_addresses() {
-    // Transport-agnostic formats (work with tarpc when http-clients is off)
-    let formats = vec!["localhost:9700", "127.0.0.1:9700"];
-
-    for format in formats {
-        let result = PermanentStorageClient::with_endpoint(format);
-        assert!(result.is_ok(), "Failed for format: {format}");
-    }
-}
-
-#[cfg(feature = "http-clients")]
-#[test]
-fn test_permanent_storage_client_http_endpoint_formats() {
-    let formats = vec!["http://localhost:9700", "http://127.0.0.1:9700"];
-
-    for format in formats {
-        let result = PermanentStorageClient::with_endpoint(format);
-        assert!(result.is_ok(), "Failed for format: {format}");
-    }
 }

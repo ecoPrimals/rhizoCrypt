@@ -15,25 +15,6 @@ use std::time::Duration;
 /// sub-millisecond locally; 30s accommodates socket directory scanning.
 pub const CONNECTION_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Default read timeout.
-///
-/// Derivation: 10s covers slow dehydration summaries with many vertices.
-/// Validated: session 3 load tests (1000 vertices → ~2s read).
-#[deprecated(
-    since = "0.14.18",
-    note = "unused — adapters use CONNECTION_TIMEOUT. Will be removed."
-)]
-pub const READ_TIMEOUT: Duration = Duration::from_secs(10);
-
-/// Default write timeout.
-///
-/// Derivation: mirrors read timeout — symmetric for request/response.
-#[deprecated(
-    since = "0.14.18",
-    note = "unused — adapters use CONNECTION_TIMEOUT. Will be removed."
-)]
-pub const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
-
 /// Default capability client timeout (milliseconds).
 ///
 /// Derivation: ecosystem type clients (compute, provenance) need more

@@ -14,11 +14,3 @@ mod discovery;
 
 pub use client::DiscoveryClient;
 pub use config::DiscoveryConfig;
-
-/// Deprecated alias — use [`DiscoveryClient`] instead.
-#[deprecated(since = "0.14.18", note = "use DiscoveryClient (capability-neutral)")]
-pub type SongbirdClient = DiscoveryClient;
-
-/// Deprecated alias — use [`DiscoveryConfig`] instead.
-#[deprecated(since = "0.14.18", note = "use DiscoveryConfig (capability-neutral)")]
-pub type SongbirdConfig = DiscoveryConfig;

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## Wave 149b — Deprecation Purge + Dead Code Removal + Architecture Splits (Jul 18, 2026)
+- Fix RUSTSEC-2026-0204: update crossbeam-epoch 0.9.18→0.9.20 (dev-only)
+- Delete deprecated API surface: `with_endpoint`, `AdapterFactory::create`, `SongbirdClient`/`SongbirdConfig` aliases, `READ_TIMEOUT`/`WRITE_TIMEOUT`
+- Delete unused `CircuitBreaker`/`RetryPolicy` (dead code since introduction)
+- Split `uds.rs` (623L) → `uds/` module (mod.rs 229L + connection.rs 361L + symlinks.rs 53L)
+- Split `lib.rs` (622L) → 7 modules (lib.rs 126L + startup.rs 290L + discovery.rs + client.rs + uds.rs + config.rs + shutdown.rs)
+- Migrate deprecated constructor tests to `discover()` pattern
+- Coverage: 93.83%
+
 ## Wave 143b — SessionTreeHash L5 Full Wire + Transport Cleanup (Jul 16, 2026)
 - Wire `SessionTreeHash` through full RPC stack (tarpc + JSON-RPC + DashMap cache)
 - Register `dag.session.tree_hash` in METHOD_CATALOG, MCP tools, method gate

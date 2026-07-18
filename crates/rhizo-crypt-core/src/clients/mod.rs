@@ -47,7 +47,6 @@
 pub mod adapters;
 pub mod capabilities;
 pub mod factory;
-pub mod resilience;
 
 // Protocol adapters — concrete implementations for specific service APIs.
 // Prefer capability-based clients (above) for new code — they discover
@@ -79,7 +78,6 @@ pub use capabilities::{
 #[cfg(unix)]
 pub use adapters::UnixSocketAdapter;
 pub use adapters::{AdapterFactory, ProtocolAdapter};
-pub use resilience::{BreakerState, CircuitBreaker, RetryPolicy};
 
 // Factory for creating and caching capability clients
 pub use factory::CapabilityClientFactory;

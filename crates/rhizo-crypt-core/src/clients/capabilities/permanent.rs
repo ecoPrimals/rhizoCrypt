@@ -79,26 +79,6 @@ impl PermanentStorageClient {
         })
     }
 
-    /// Create client with explicit endpoint.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the endpoint address is invalid or unsupported.
-    #[deprecated(
-        since = "0.14.18",
-        note = "use discover() with TransportEndpoint instead of raw endpoint strings"
-    )]
-    #[allow(deprecated)]
-    pub fn with_endpoint(endpoint: &str) -> Result<Self> {
-        let adapter = AdapterFactory::create(endpoint)?;
-
-        Ok(Self {
-            adapter: Arc::from(adapter),
-            endpoint: endpoint.to_string(),
-            service_name: None,
-        })
-    }
-
     /// Commit dehydration summary to permanent storage.
     ///
     /// # Errors

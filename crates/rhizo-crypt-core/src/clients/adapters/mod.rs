@@ -17,10 +17,11 @@
 //!
 //! ```no_run
 //! # use rhizo_crypt_core::clients::adapters::{ProtocolAdapter, AdapterFactory};
+//! # use rhizo_crypt_core::transport::TransportEndpoint;
 //! # use rhizo_crypt_core::types::Signature;
 //! # tokio::runtime::Runtime::new().unwrap().block_on(async {
-//! // Create adapter based on service endpoint
-//! let adapter = AdapterFactory::create("127.0.0.1:9500")?;
+//! let endpoint = TransportEndpoint::tcp("127.0.0.1", 9500);
+//! let adapter = AdapterFactory::from_transport(&endpoint)?;
 //!
 //! // Use adapter to make calls (protocol-independent)
 //! let args_json = r#"{"data":[],"signer":"did:key:test"}"#;
@@ -177,91 +178,9 @@ impl<T: ProtocolAdapter + ?Sized> ProtocolAdapterExt for T {}
 pub struct AdapterFactory;
 
 impl AdapterFactory {
-    /// Create an adapter based on protocol hint in endpoint.
-    ///
-    /// # Arguments
-    ///
-    /// * `endpoint` - Service endpoint:
-    ///   - `unix:///run/biomeos/{primal}.sock` — Unix socket IPC
-    ///   - `/run/biomeos/{primal}.sock` — bare path → Unix socket
-    ///   - `tarpc://{host}:{port}` — tarpc binary protocol
-    ///   - `http://{host}:{port}` — HTTP/REST (requires `http-clients` feature)
-    ///
-    /// # Errors
-    ///
-    /// Returns error if:
-    /// - Protocol is unsupported
-    /// - Endpoint format is invalid
-    /// - Adapter creation fails
-    #[deprecated(
-        since = "0.14.18",
-        note = "use from_transport(&TransportEndpoint) for structured dispatch"
-    )]
-    pub fn create(endpoint: &str) -> Result<Box<dyn ProtocolAdapter>> {
-        // Bare path → Unix socket (Unix) or error (non-Unix)
-        if endpoint.starts_with('/') || endpoint.starts_with('.') {
-            #[cfg(unix)]
-            return Ok(Box::new(UnixSocketAdapter::new(endpoint)?));
-            #[cfg(not(unix))]
-            return Err(RhizoCryptError::integration(format!(
-                "Unix socket paths not available on this platform: {endpoint}. \
-                 Use tarpc:// or http:// instead."
-            )));
-        }
-
-        if let Some((protocol, _)) = endpoint.split_once("://") {
-            match protocol {
-                #[cfg(unix)]
-                "unix" => Ok(Box::new(UnixSocketAdapter::from_endpoint(endpoint)?)),
-                #[cfg(not(unix))]
-                "unix" => Err(RhizoCryptError::integration(
-                    "Unix socket transport not available on this platform. \
-                     Use tarpc:// or http:// instead.",
-                )),
-                "tcp" | "tarpc" => Ok(Box::new(TarpcAdapter::new(endpoint)?)),
-                #[cfg(feature = "http-clients")]
-                "http" | "https" => Ok(Box::new(HttpAdapter::new(endpoint)?)),
-                #[cfg(not(feature = "http-clients"))]
-                "http" | "https" => Err(RhizoCryptError::integration(
-                    "HTTP transport requires 'http-clients' feature. \
-                     Use unix:// for local IPC (Tower Atomic pattern).",
-                )),
-                unsupported => Err(RhizoCryptError::integration(format!(
-                    "Unsupported protocol: {unsupported}. Supported: unix, tarpc{}",
-                    if cfg!(feature = "http-clients") {
-                        ", http, https"
-                    } else {
-                        ""
-                    }
-                ))),
-            }
-        } else {
-            // No protocol, no path → host:port assumed
-            #[cfg(feature = "http-clients")]
-            {
-                tracing::warn!(
-                    endpoint,
-                    "No protocol specified, defaulting to HTTP. \
-                     Consider: unix:// for local IPC or http://{endpoint}",
-                );
-                let http_endpoint = format!("http://{endpoint}");
-                Ok(Box::new(HttpAdapter::new(&http_endpoint)?))
-            }
-            #[cfg(not(feature = "http-clients"))]
-            {
-                tracing::info!(
-                    endpoint,
-                    "No protocol specified, defaulting to tarpc (pure Rust). \
-                     Consider: unix:// for local IPC or tarpc://{endpoint}",
-                );
-                Ok(Box::new(TarpcAdapter::new(endpoint)?))
-            }
-        }
-    }
-
     /// Create an adapter from a structured [`TransportEndpoint`].
     ///
-    /// Preferred over [`Self::create`] when the endpoint is already structured
+    /// Preferred entry point when the endpoint is already structured
     /// (e.g., from discovery). Avoids the `Display` → re-parse round-trip.
     ///
     /// # Errors
@@ -337,58 +256,28 @@ impl AdapterFactory {
 // ============================================================================
 
 #[cfg(test)]
-#[allow(deprecated)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {
     use super::*;
+    use crate::transport::TransportEndpoint;
 
     #[cfg(feature = "http-clients")]
     #[test]
     fn test_factory_http() {
-        let adapter = AdapterFactory::create("http://localhost:9500").unwrap();
+        let adapter = AdapterFactory::http("http://localhost:9500").unwrap();
         assert_eq!(adapter.protocol(), "http");
     }
 
     #[cfg(feature = "http-clients")]
     #[test]
     fn test_factory_https() {
-        let adapter = AdapterFactory::create("https://api.example.com:443").unwrap();
+        let adapter = AdapterFactory::http("https://api.example.com:443").unwrap();
         assert_eq!(adapter.protocol(), "http");
-    }
-
-    #[cfg(feature = "http-clients")]
-    #[test]
-    fn test_factory_no_protocol_defaults_to_http() {
-        let adapter = AdapterFactory::create("localhost:9500").unwrap();
-        assert_eq!(adapter.protocol(), "http");
-    }
-
-    #[cfg(not(feature = "http-clients"))]
-    #[test]
-    fn test_factory_http_disabled() {
-        let result = AdapterFactory::create("http://localhost:9500");
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("http-clients"));
-    }
-
-    #[cfg(not(feature = "http-clients"))]
-    #[test]
-    fn test_factory_no_protocol_defaults_to_tarpc() {
-        let adapter = AdapterFactory::create("localhost:9500").unwrap();
-        assert_eq!(adapter.protocol(), "tarpc");
-    }
-
-    #[test]
-    fn test_factory_unsupported_protocol() {
-        let result = AdapterFactory::create("grpc://localhost:9500");
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("Unsupported protocol"));
     }
 
     #[test]
     fn test_factory_tarpc() {
-        let adapter = AdapterFactory::create("tarpc://localhost:9600").unwrap();
+        let adapter = AdapterFactory::tarpc("localhost:9600").unwrap();
         assert_eq!(adapter.protocol(), "tarpc");
     }
 
@@ -402,7 +291,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn test_factory_unix_with_protocol() {
-        let adapter = AdapterFactory::create("unix:///run/biomeos/signing.sock").unwrap();
+        let adapter = AdapterFactory::unix("/run/biomeos/signing.sock").unwrap();
         assert_eq!(adapter.protocol(), "unix");
         assert_eq!(adapter.endpoint(), "/run/biomeos/signing.sock");
     }
@@ -410,14 +299,16 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn test_factory_unix_bare_path() {
-        let adapter = AdapterFactory::create("/run/biomeos/signing.sock").unwrap();
+        let endpoint = TransportEndpoint::uds("/run/biomeos/signing.sock");
+        let adapter = AdapterFactory::from_transport(&endpoint).unwrap();
         assert_eq!(adapter.protocol(), "unix");
     }
 
     #[cfg(unix)]
     #[test]
     fn test_factory_unix_relative_path() {
-        let adapter = AdapterFactory::create("./sockets/signing.sock").unwrap();
+        let endpoint = TransportEndpoint::uds("./sockets/signing.sock");
+        let adapter = AdapterFactory::from_transport(&endpoint).unwrap();
         assert_eq!(adapter.protocol(), "unix");
     }
 
@@ -431,8 +322,9 @@ mod tests {
 
     #[cfg(not(unix))]
     #[test]
-    fn test_factory_unix_unavailable_on_non_unix() {
-        let result = AdapterFactory::create("unix:///run/biomeos/signing.sock");
+    fn test_factory_from_transport_uds_unavailable() {
+        let endpoint = TransportEndpoint::uds("/run/biomeos/signing.sock");
+        let result = AdapterFactory::from_transport(&endpoint);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not available"));
     }
@@ -440,7 +332,8 @@ mod tests {
     #[cfg(not(unix))]
     #[test]
     fn test_factory_bare_path_unavailable_on_non_unix() {
-        let result = AdapterFactory::create("/run/biomeos/signing.sock");
+        let endpoint = TransportEndpoint::uds("/run/biomeos/signing.sock");
+        let result = AdapterFactory::from_transport(&endpoint);
         assert!(result.is_err());
     }
 
@@ -453,21 +346,7 @@ mod tests {
     }
 
     #[test]
-    fn test_factory_unsupported_protocol_ws() {
-        let result = AdapterFactory::create("ws://localhost:9500");
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Unsupported protocol"));
-    }
-
-    #[test]
-    fn test_factory_unsupported_protocol_ftps() {
-        let result = AdapterFactory::create("ftps://localhost:21");
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn test_factory_from_transport_tcp() {
-        use crate::transport::TransportEndpoint;
         let endpoint = TransportEndpoint::tcp("127.0.0.1", 9600);
         let adapter = AdapterFactory::from_transport(&endpoint).unwrap();
         assert_eq!(adapter.protocol(), "tarpc");
@@ -476,24 +355,13 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn test_factory_from_transport_uds() {
-        use crate::transport::TransportEndpoint;
         let endpoint = TransportEndpoint::uds("/tmp/test.sock");
         let adapter = AdapterFactory::from_transport(&endpoint).unwrap();
         assert_eq!(adapter.protocol(), "unix");
     }
 
-    #[cfg(not(unix))]
-    #[test]
-    fn test_factory_from_transport_uds_unavailable() {
-        use crate::transport::TransportEndpoint;
-        let endpoint = TransportEndpoint::uds("/tmp/test.sock");
-        let result = AdapterFactory::from_transport(&endpoint);
-        assert!(result.is_err());
-    }
-
     #[test]
     fn test_factory_from_transport_mesh_relay_unsupported() {
-        use crate::transport::TransportEndpoint;
         let endpoint = TransportEndpoint::MeshRelay {
             peer_id: "strand-gate".to_string(),
             capability: "security".to_string(),
