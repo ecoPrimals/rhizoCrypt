@@ -281,8 +281,6 @@ Callers pass `_bearer_token` inside the JSON-RPC `params` object (ecoPrimals con
 |----------|------|---------|-------------|
 | `RHIZOCRYPT_MESH_POLL_INTERVAL_SECS` | u64 | `30` | Mesh event poller interval (seconds). How often rhizoCrypt polls the signing provider for cross-gate trust events. |
 | `RHIZOCRYPT_HEARTBEAT_INTERVAL_SECS` | u64 | `45` | Discovery registration heartbeat interval (seconds). Must be less than the registration TTL (60s). |
-| `RHIZOCRYPT_CB_FAILURE_THRESHOLD` | u8 | `5` | Circuit breaker failure threshold. Consecutive IPC failures before tripping. |
-| `RHIZOCRYPT_CB_COOLDOWN_SECS` | u64 | `30` | Circuit breaker cooldown (seconds). Time before retrying after a trip. |
 
 All values fall back to compiled-in defaults when unset. Invalid values log a warning and use the default.
 

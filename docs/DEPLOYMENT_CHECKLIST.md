@@ -10,7 +10,7 @@
 
 ### Code Quality
 - [x] **1,878 tests passing** (all features), 0 failures
-- [x] **93.70% line coverage** (llvm-cov, Jul 18 2026)
+- [x] **93.83% line coverage** (llvm-cov, Jul 18 2026)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all production files under 800 lines)
@@ -19,7 +19,7 @@
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
-- [x] **Lock-free concurrency** (DashMap, atomics, lock-free CircuitBreaker)
+- [x] **Lock-free concurrency** (DashMap, atomics, SessionTreeHash DashMap cache)
 - [x] **Dehydration protocol** (complete 7-step workflow)
 - [x] **UniBin binary** (`rhizocrypt server`, `doctor`, `status`, `version`)
 - [x] **JSON-RPC 2.0 + tarpc** — dual-transport, semantic method names
@@ -31,7 +31,7 @@
 
 ### Documentation
 - [x] **README.md** (current metrics — 1,878 tests)
-- [x] **CHANGELOG.md** (version history through Wave 142b-2)
+- [x] **CHANGELOG.md** (version history through Wave 149b)
 - [x] **specs/** (10 specification documents + 2 archived)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
 

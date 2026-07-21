@@ -128,12 +128,6 @@ impl SafeEnv {
     pub const RHIZOCRYPT_HEARTBEAT_INTERVAL_SECS: &'static str =
         "RHIZOCRYPT_HEARTBEAT_INTERVAL_SECS";
 
-    /// Circuit breaker failure threshold override.
-    pub const RHIZOCRYPT_CB_FAILURE_THRESHOLD: &'static str = "RHIZOCRYPT_CB_FAILURE_THRESHOLD";
-
-    /// Circuit breaker cooldown override (seconds).
-    pub const RHIZOCRYPT_CB_COOLDOWN_SECS: &'static str = "RHIZOCRYPT_CB_COOLDOWN_SECS";
-
     /// Compute provider connection timeout in milliseconds.
     pub const COMPUTE_TIMEOUT_MS: &'static str = "COMPUTE_TIMEOUT_MS";
 

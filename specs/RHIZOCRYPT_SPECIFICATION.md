@@ -1194,7 +1194,7 @@ paths:
 - [x] tarpc binary RPC service
 - [x] `normalize_method()` for backward-compatible routing
 - [x] 4-format capability response parsing
-- [x] `CircuitBreaker` and `RetryPolicy` for resilient IPC
+- [x] ~~`CircuitBreaker` and `RetryPolicy`~~ (removed Wave 149b — dead code, never wired into adapters)
 - [x] `DispatchOutcome<T>` for structured error handling
 
 ### Phase 7: Quality & Hardening — Active

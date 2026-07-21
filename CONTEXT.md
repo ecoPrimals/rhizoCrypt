@@ -70,7 +70,7 @@ Three workspace crates:
 | Metric | Value |
 |--------|-------|
 | Tests | 1,878 passing (all features) |
-| Coverage | 93.70% lines (llvm-cov, Jul 18 2026) |
+| Coverage | 93.83% lines (llvm-cov, Jul 18 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
 | Source files | 223 `.rs`, ~61,489 lines |
 | Max file size | ~624 lines production (`store.rs`, limit: 800) |

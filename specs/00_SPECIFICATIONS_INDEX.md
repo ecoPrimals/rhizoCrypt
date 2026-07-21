@@ -106,8 +106,8 @@ RhizoCrypt is named after the **rhizome**—the branching, underground fungal ne
 ### Gen 1 Dependencies
 - [BearDog Specification](../../bearDog/specs/)
 - [Songbird Specification](../../songBird/specs/)
-- [NestGate Specification](../../nestGate/specs/)
-- [ToadStool Specification](../../../toadstool/specs/)
+- [NestGate Specification](../../nestGate/docs/)
+- [ToadStool Specification](../../toadStool/specs/)
 
 ### Foundational
 - [sourDough Core](../../sourDough/)

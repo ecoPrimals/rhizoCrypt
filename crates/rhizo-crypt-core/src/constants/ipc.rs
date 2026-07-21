@@ -28,18 +28,6 @@ pub const DEFAULT_CAPABILITY_TIMEOUT_MS: u64 = 5000;
 /// giving enough breathing room for a transiently-overloaded peer.
 pub const DEFAULT_RETRY_MAX_BACKOFF: Duration = Duration::from_secs(2);
 
-/// Circuit breaker default failure threshold for IPC.
-///
-/// Derivation: 5 consecutive failures balances fast failure detection
-/// against transient network hiccups. Aligned with biomeOS resilience defaults.
-pub const CIRCUIT_BREAKER_FAILURE_THRESHOLD: u8 = 5;
-
-/// Circuit breaker default cooldown for IPC.
-///
-/// Derivation: 30s allows overloaded peers to recover without retrying
-/// too aggressively. Matches `CONNECTION_TIMEOUT`.
-pub const CIRCUIT_BREAKER_COOLDOWN: Duration = Duration::from_secs(30);
-
 // ============================================================================
 // HTTP / IPC BUFFER SIZES
 // ============================================================================

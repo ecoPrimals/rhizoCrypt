@@ -7,14 +7,14 @@
 | Version | 0.14.17 |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
 | Tests | 1,878 passing (`--all-features`, Jul 18, 2026) |
-| Coverage | 93.70% lines (llvm-cov, Jul 18, 2026) |
+| Coverage | 93.83% lines (llvm-cov, Jul 18, 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
 | Unsafe | `unsafe_code = "deny"` workspace-wide, `#![forbid(unsafe_code)]` in non-test, zero `unsafe` blocks |
 | Binary | `rhizocrypt` (UniBin, subcommands via clap) |
 | IPC | JSON-RPC 2.0 (HTTP + newline) + tarpc 0.37 (bincode) — UDS unconditional, TCP opt-in |
 | Streaming | NDJSON pipeline coordination for `event.append_batch` |
-| Resilience | Lock-free CircuitBreaker (atomics) + RetryPolicy for IPC clients |
+| Resilience | Capability-based discovery with runtime failover for IPC clients |
 | Error Model | Structured `IpcErrorPhase` + `DispatchOutcome` (protocol vs application) |
 | Discovery | Capability-based + manifest (PG-32) + Neural API `primal.announce` (Wave 43) |
 | Chaos | `ChaosEngine` framework with 7 fault classes |
