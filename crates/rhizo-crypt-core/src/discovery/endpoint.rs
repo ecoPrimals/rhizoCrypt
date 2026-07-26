@@ -62,7 +62,8 @@ impl ServiceEndpoint {
     #[inline]
     #[must_use]
     pub fn is_healthy(&self) -> bool {
-        self.last_healthy.elapsed() < self.health_interval * 2
+        self.last_healthy.elapsed()
+            < self.health_interval * crate::constants::HEALTH_STALE_MULTIPLIER
     }
 }
 

@@ -3,14 +3,16 @@
 
 //! Token verification for the JSON-RPC method gate.
 
-use rhizo_crypt_core::constants::{PROVENANCE_CONNECTION_TIMEOUT, PROVENANCE_RESPONSE_TIMEOUT};
+use rhizo_crypt_core::constants::{
+    PROVENANCE_CONNECTION_TIMEOUT, PROVENANCE_RESPONSE_TIMEOUT, SIGNING_PROVIDER_CACHE_TTL,
+};
 use rhizo_crypt_core::discovery::{Capability, DiscoveryRegistry, ServiceEndpoint};
 use rhizo_crypt_core::transport::{JsonRpcTransportError, send_jsonrpc_request};
 use serde_json::Value;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 // ============================================================================
 // TOKEN VERIFIER TRAIT
@@ -90,9 +92,6 @@ impl TokenVerifier for PresenceVerifier {
 // ============================================================================
 // CAPABILITY-BASED VERIFIER
 // ============================================================================
-
-/// TTL for cached `crypto:signing` provider endpoint lookups.
-const SIGNING_PROVIDER_CACHE_TTL: Duration = Duration::from_secs(30);
 
 /// JSON-RPC method invoked on discovered signing providers for ionic verification.
 const AUTH_VERIFY_IONIC_METHOD: &str = "auth.verify_ionic";

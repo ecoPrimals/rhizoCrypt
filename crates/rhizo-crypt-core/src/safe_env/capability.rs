@@ -35,6 +35,35 @@ use super::SafeEnv;
 pub struct CapabilityEnv;
 
 impl CapabilityEnv {
+    /// Env prefix for the signing capability (preferred form).
+    pub const SIGNING_PREFIX: &str = "CRYPTO_SIGNING";
+    /// Env prefix for the signing capability (short form).
+    pub const SIGNING_SHORT: &str = "SIGNING";
+    /// Env prefix for DID verification.
+    pub const DID_PREFIX: &str = "DID_VERIFICATION";
+    /// Env prefix for DID verification (short form).
+    pub const DID_SHORT: &str = "DID";
+    /// Env prefix for payload storage.
+    pub const PAYLOAD_PREFIX: &str = "PAYLOAD_STORAGE";
+    /// Env prefix for payload storage (short form).
+    pub const PAYLOAD_SHORT: &str = "PAYLOAD";
+    /// Env prefix for permanent commit.
+    pub const PERMANENT_PREFIX: &str = "STORAGE_PERMANENT_COMMIT";
+    /// Env prefix for permanent commit (short form).
+    pub const PERMANENT_SHORT: &str = "PERMANENT_STORAGE";
+    /// Env prefix for compute orchestration.
+    pub const COMPUTE_PREFIX: &str = "COMPUTE_ORCHESTRATION";
+    /// Env prefix for compute orchestration (short form).
+    pub const COMPUTE_SHORT: &str = "COMPUTE";
+    /// Env prefix for provenance query.
+    pub const PROVENANCE_PREFIX: &str = "PROVENANCE_QUERY";
+    /// Env prefix for provenance query (short form).
+    pub const PROVENANCE_SHORT: &str = "PROVENANCE";
+    /// Env prefix for discovery service.
+    pub const DISCOVERY_PREFIX: &str = "DISCOVERY_SERVICE";
+    /// Env prefix for discovery service (short form).
+    pub const DISCOVERY_SHORT: &str = "DISCOVERY";
+
     /// Get the endpoint for signing capability.
     ///
     /// Resolution order:
@@ -42,7 +71,8 @@ impl CapabilityEnv {
     /// 2. `SIGNING_ENDPOINT` (short form, capability-based)
     #[must_use]
     pub fn signing_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("CRYPTO_SIGNING").or_else(|| SafeEnv::get_endpoint("SIGNING"))
+        SafeEnv::get_endpoint(Self::SIGNING_PREFIX)
+            .or_else(|| SafeEnv::get_endpoint(Self::SIGNING_SHORT))
     }
 
     /// Get the endpoint for DID verification capability.
@@ -52,7 +82,7 @@ impl CapabilityEnv {
     /// 2. `DID_ENDPOINT` (short form, capability-based)
     #[must_use]
     pub fn did_verification_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("DID_VERIFICATION").or_else(|| SafeEnv::get_endpoint("DID"))
+        SafeEnv::get_endpoint(Self::DID_PREFIX).or_else(|| SafeEnv::get_endpoint(Self::DID_SHORT))
     }
 
     /// Get the endpoint for payload storage capability.
@@ -62,7 +92,8 @@ impl CapabilityEnv {
     /// 2. `PAYLOAD_ENDPOINT` (short form, capability-based)
     #[must_use]
     pub fn payload_storage_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("PAYLOAD_STORAGE").or_else(|| SafeEnv::get_endpoint("PAYLOAD"))
+        SafeEnv::get_endpoint(Self::PAYLOAD_PREFIX)
+            .or_else(|| SafeEnv::get_endpoint(Self::PAYLOAD_SHORT))
     }
 
     /// Get the endpoint for permanent commit capability.
@@ -72,8 +103,8 @@ impl CapabilityEnv {
     /// 2. `PERMANENT_STORAGE_ENDPOINT` (short form, capability-based)
     #[must_use]
     pub fn permanent_commit_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("STORAGE_PERMANENT_COMMIT")
-            .or_else(|| SafeEnv::get_endpoint("PERMANENT_STORAGE"))
+        SafeEnv::get_endpoint(Self::PERMANENT_PREFIX)
+            .or_else(|| SafeEnv::get_endpoint(Self::PERMANENT_SHORT))
     }
 
     /// Get the endpoint for compute orchestration capability.
@@ -83,7 +114,8 @@ impl CapabilityEnv {
     /// - `COMPUTE_ENDPOINT` (short form)
     #[must_use]
     pub fn compute_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("COMPUTE_ORCHESTRATION").or_else(|| SafeEnv::get_endpoint("COMPUTE"))
+        SafeEnv::get_endpoint(Self::COMPUTE_PREFIX)
+            .or_else(|| SafeEnv::get_endpoint(Self::COMPUTE_SHORT))
     }
 
     /// Get the endpoint for provenance query capability.
@@ -93,7 +125,8 @@ impl CapabilityEnv {
     /// - `PROVENANCE_ENDPOINT` (short form)
     #[must_use]
     pub fn provenance_endpoint() -> Option<String> {
-        SafeEnv::get_endpoint("PROVENANCE_QUERY").or_else(|| SafeEnv::get_endpoint("PROVENANCE"))
+        SafeEnv::get_endpoint(Self::PROVENANCE_PREFIX)
+            .or_else(|| SafeEnv::get_endpoint(Self::PROVENANCE_SHORT))
     }
 
     /// Get the endpoint for service discovery capability.
@@ -115,8 +148,8 @@ impl CapabilityEnv {
     #[must_use]
     pub fn discovery_endpoint() -> Option<String> {
         SafeEnv::get_optional(SafeEnv::RHIZOCRYPT_DISCOVERY_ADAPTER)
-            .or_else(|| SafeEnv::get_endpoint("DISCOVERY_SERVICE"))
-            .or_else(|| SafeEnv::get_endpoint("DISCOVERY"))
+            .or_else(|| SafeEnv::get_endpoint(Self::DISCOVERY_PREFIX))
+            .or_else(|| SafeEnv::get_endpoint(Self::DISCOVERY_SHORT))
             .or_else(|| {
                 SafeEnv::get_optional(SafeEnv::SONGBIRD_ADDRESS).inspect(|_| {
                     tracing::warn!(

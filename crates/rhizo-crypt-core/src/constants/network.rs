@@ -92,6 +92,9 @@ pub const HEALTH_CHECK_TIMEOUT: Duration = Duration::from_secs(5);
 /// 10s covers 4-tier fallback (env → XDG → /run → /tmp).
 pub const DISCOVERY_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// TTL for cached signing-provider endpoint lookups during method-gate verification.
+pub const SIGNING_PROVIDER_CACHE_TTL: Duration = Duration::from_secs(30);
+
 // ============================================================================
 // RESOURCE LIMITS
 // ============================================================================
@@ -231,6 +234,12 @@ pub const DEFAULT_RETRY_BACKOFF_MS: u64 = 100;
 // ============================================================================
 // DISCOVERY CONSTANTS
 // ============================================================================
+
+/// Multiplier for health check interval to determine staleness.
+///
+/// An endpoint is considered stale if no health check has succeeded within
+/// `health_interval * HEALTH_STALE_MULTIPLIER`.
+pub const HEALTH_STALE_MULTIPLIER: u32 = 2;
 
 /// Discovery source connection/query timeout.
 pub const DISCOVERY_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
