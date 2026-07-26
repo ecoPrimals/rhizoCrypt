@@ -156,12 +156,6 @@ impl UnixSocketAdapter {
                 )
             })?;
 
-        if crate::btsp_client::btsp_strict_mode_expected()
-            && let Err(e) = crate::btsp_client::perform_client_handshake(&mut stream).await
-        {
-            tracing::warn!("BTSP client handshake failed: {e} — proceeding with plain JSON-RPC");
-        }
-
         let header = Self::build_http_request(path, body.len());
 
         stream.write_all(header.as_bytes()).await.map_err(|e| {

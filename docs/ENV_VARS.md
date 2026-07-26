@@ -32,6 +32,9 @@ rhizoCrypt follows the **infant discovery** pattern: it starts with **zero knowl
 | `FAMILY_SEED` | string | (unset) | **Required when `FAMILY_ID` is set.** BTSP Phase 2 handshake key material. Used to derive HKDF-SHA256 handshake keys for HMAC verification. Accepts hex-encoded strings (>= 32 chars), base64, or plain UTF-8. Without this, BTSP will **reject all connections** with "no family seed." |
 | `RHIZOCRYPT_FAMILY_SEED` | string | (unset) | Primal-specific override for `FAMILY_SEED`. Takes precedence over the ecosystem-wide variable. |
 | `BIOMEOS_INSECURE` | boolean | (unset) | Development mode flag (`1`, `true`, `yes`). Disables BTSP handshake enforcement. **Cannot be set when `FAMILY_ID` is set** — primal refuses to start on conflict. |
+| `BEARDOG_UDS_REQUIRE_BTSP` | boolean | (unset) | Client-side BTSP strict mode. When `1`, outbound UDS connections to bearDog (and other peers) use the `BtspUnixAdapter` with NDJSON BTSP `ClientHello` handshake instead of HTTP-framed `UnixSocketAdapter`. |
+| `BTSP_STRICT_MODE` | boolean | (unset) | Alias for `BEARDOG_UDS_REQUIRE_BTSP`. Either variable being `1` activates BTSP client-side handshake. |
+| `BEARDOG_FAMILY_SEED` | string | (unset) | Fallback family seed for BTSP client handshake (after `RHIZOCRYPT_FAMILY_SEED` and `FAMILY_SEED`). |
 | `TRANSPORT_ENDPOINT` | JSON | (unset) | Transport injection from biomeOS launcher. JSON-encoded `TransportEndpoint` (e.g. `{"transport":"uds","path":"/run/biomeos/rhizocrypt.sock"}` or `{"transport":"tcp","host":"0.0.0.0","port":9400}`). Logged at startup. Used by outbound `connect_transport()` for transport-agnostic IPC. |
 
 ### Unix Domain Socket (UDS)

@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## Wave 151b — BTSP Client-Side Handshake (Jul 26, 2026)
+- Implement BTSP `ClientHello` 4-step handshake for outbound bearDog UDS connections
+- New `btsp_client` module: `perform_client_handshake()`, `BtspClientSession`, `BtspClientError`
+- New `BtspUnixAdapter`: NDJSON JSON-RPC over BTSP-authenticated UDS connections
+- `AdapterFactory::from_transport()` auto-selects BTSP adapter when `BEARDOG_UDS_REQUIRE_BTSP=1`
+- Strict-mode detection: `btsp_strict_mode_expected()` checks `BEARDOG_UDS_REQUIRE_BTSP` / `BTSP_STRICT_MODE`
+- Family seed resolution: `RHIZOCRYPT_FAMILY_SEED` → `FAMILY_SEED` → `BEARDOG_FAMILY_SEED`
+- Fix BTSP in `send_jsonrpc_request` to fail-closed (error, not warn+proceed)
+- Add `hmac`, `sha2`, `getrandom` to `rhizo-crypt-core` dependencies
+- 6 new tests (handshake wire types, HMAC, strict-mode env, adapter lifecycle)
+- Tests: 1,886 (+8), 225 `.rs` files, ~61,967 lines
+
 ## Wave 149b — Deprecation Purge + Dead Code Removal + Architecture Splits (Jul 18, 2026)
 - Fix RUSTSEC-2026-0204: update crossbeam-epoch 0.9.18→0.9.20 (dev-only)
 - Delete deprecated API surface: `with_endpoint`, `AdapterFactory::create`, `SongbirdClient`/`SongbirdConfig` aliases, `READ_TIMEOUT`/`WRITE_TIMEOUT`

@@ -58,6 +58,8 @@ use std::pin::Pin;
 /// replaces the `async-trait` proc macro with explicit desugaring.
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
+#[cfg(unix)]
+pub mod btsp_uds;
 #[cfg(feature = "http-clients")]
 pub mod http;
 pub mod tarpc;
@@ -65,6 +67,8 @@ pub mod tarpc;
 pub mod unix_socket;
 
 // Re-exports
+#[cfg(unix)]
+pub use btsp_uds::BtspUnixAdapter;
 #[cfg(feature = "http-clients")]
 pub use http::HttpAdapter;
 pub use tarpc::TarpcAdapter;
@@ -193,7 +197,13 @@ impl AdapterFactory {
             #[cfg(unix)]
             TransportEndpoint::Uds {
                 path,
-            } => Ok(Box::new(UnixSocketAdapter::new(path)?)),
+            } => {
+                if crate::btsp_client::btsp_strict_mode_expected() {
+                    Ok(Box::new(BtspUnixAdapter::new(path)?))
+                } else {
+                    Ok(Box::new(UnixSocketAdapter::new(path)?))
+                }
+            }
             #[cfg(not(unix))]
             TransportEndpoint::Uds {
                 path,
@@ -248,6 +258,19 @@ impl AdapterFactory {
     #[cfg(unix)]
     pub fn unix(socket_path: &str) -> Result<Box<dyn ProtocolAdapter>> {
         Ok(Box::new(UnixSocketAdapter::new(socket_path)?))
+    }
+
+    /// Create a BTSP-aware Unix socket adapter.
+    ///
+    /// Performs the 4-step BTSP handshake on each connection before
+    /// exchanging NDJSON JSON-RPC. Use for BTSP strict-mode peers.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the socket path is invalid.
+    #[cfg(unix)]
+    pub fn btsp_unix(socket_path: &str) -> Result<Box<dyn ProtocolAdapter>> {
+        Ok(Box::new(BtspUnixAdapter::new(socket_path)?))
     }
 }
 

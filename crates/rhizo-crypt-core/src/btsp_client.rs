@@ -1,11 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
-//! BTSP consumer-side `ClientHello` handshake for connecting to bearDog in strict mode.
+
+//! BTSP client-side handshake for connecting to bearDog in strict mode.
 //!
-//! When `BEARDOG_UDS_REQUIRE_BTSP=1` is set, bearDog rejects plain JSON-RPC.
-//! Authenticates rhizoCrypt before JSON-RPC traffic using LOCAL HMAC-SHA256.
+//! When `BEARDOG_UDS_REQUIRE_BTSP=1` is set, bearDog rejects plain JSON-RPC
+//! with `-32600`. This module implements the consumer-side of the 4-step BTSP
+//! handshake so rhizoCrypt can authenticate before sending requests.
 //!
-//! Reference: `primals/songBird/crates/songbird-crypto-provider/src/btsp_client.rs`
+//! The challenge response uses LOCAL HMAC-SHA256 with the family seed — this
+//! avoids the chicken-and-egg of needing bearDog to compute HMAC for the
+//! handshake that authenticates us TO bearDog.
+//!
+//! ## Wire Format (NDJSON — newline-delimited)
+//!
+//! ```text
+//! 1. Send  ClientHello       { protocol: "btsp", version: 1, client_ephemeral_pub }
+//! 2. Read  ServerHello       { version, server_ephemeral_pub, challenge, session_id }
+//! 3. Send  ChallengeResponse { response, preferred_cipher }
+//! 4. Read  HandshakeComplete { cipher, session_id }
+//! ```
+//!
+//! Reference: `songBird/crates/songbird-crypto-provider/src/btsp_client.rs`
 
 use base64::Engine as _;
 use base64::prelude::BASE64_STANDARD;
@@ -13,6 +28,7 @@ use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::UnixStream;
 use tracing::debug;
 
 type HmacSha256 = Hmac<Sha256>;
@@ -31,7 +47,7 @@ struct ClientHello {
 struct ServerHello {
     #[expect(dead_code, reason = "validated implicitly by successful parse")]
     version: u8,
-    #[expect(dead_code, reason = "reserved for Phase 3 session key derivation")]
+    #[expect(dead_code, reason = "used by session key derivation in Phase 3")]
     server_ephemeral_pub: String,
     challenge: String,
     session_id: String,
@@ -45,15 +61,24 @@ struct ChallengeResponse {
 
 #[derive(Debug, Deserialize)]
 struct HandshakeComplete {
-    cipher: String,
-    session_id: String,
+    pub cipher: String,
+    pub session_id: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct HandshakeError {
     #[expect(dead_code, reason = "logged but not matched on")]
-    error: String,
-    reason: String,
+    pub error: String,
+    pub reason: String,
+}
+
+/// Result of a successful client-side BTSP handshake.
+#[derive(Debug, Clone)]
+pub struct BtspClientSession {
+    /// Unique session identifier from the server.
+    pub session_id: String,
+    /// Negotiated cipher suite (e.g. `chacha20_poly1305` or `null`).
+    pub cipher: String,
 }
 
 /// Errors from the BTSP client handshake.
@@ -62,51 +87,47 @@ pub enum BtspClientError {
     /// Family seed not available in environment.
     #[error("FAMILY_SEED not available — cannot perform BTSP handshake")]
     NoFamilySeed,
-    /// I/O error on the stream during handshake.
+    /// I/O error on the UDS stream during handshake.
     #[error("I/O error during BTSP handshake: {0}")]
     Io(#[from] std::io::Error),
-    /// Server explicitly rejected the handshake.
+    /// Server explicitly rejected the handshake (bad family seed, etc.).
     #[error("Server rejected handshake: {0}")]
     Rejected(String),
     /// Malformed or unexpected response from server.
     #[error("Malformed server response: {0}")]
     Protocol(String),
-    /// HMAC computation failed.
+    /// HMAC computation failed (invalid key length).
     #[error("HMAC computation failed")]
     Hmac,
 }
 
-/// Resolve the raw family seed from environment.
-///
-/// Checks: `BTSP_FAMILY_SEED` → `FAMILY_SEED` → `BIOMEOS_FAMILY_SEED`.
-fn resolve_family_seed_raw() -> Option<String> {
-    std::env::var("BTSP_FAMILY_SEED")
-        .or_else(|_| std::env::var(crate::safe_env::SafeEnv::FAMILY_SEED))
-        .or_else(|_| std::env::var("BIOMEOS_FAMILY_SEED"))
-        .ok()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-}
-
-/// Check whether BTSP strict mode is expected (bearDog requires handshake).
+/// Check whether BTSP strict mode is expected.
 #[must_use]
 pub fn btsp_strict_mode_expected() -> bool {
-    std::env::var("BEARDOG_UDS_REQUIRE_BTSP")
-        .or_else(|_| std::env::var("BTSP_STRICT_MODE"))
-        .is_ok_and(|v| v.trim() == "1")
+    crate::SafeEnv::get_optional("BEARDOG_UDS_REQUIRE_BTSP")
+        .or_else(|| crate::SafeEnv::get_optional("BTSP_STRICT_MODE"))
+        .is_some_and(|v| v.trim() == "1")
 }
 
-/// Perform the client-side BTSP handshake over an NDJSON stream.
+/// Resolve family seed from environment (matches primalSpring convention).
+fn resolve_family_seed() -> Option<String> {
+    crate::SafeEnv::get_optional("RHIZOCRYPT_FAMILY_SEED")
+        .or_else(|| crate::SafeEnv::get_optional(crate::SafeEnv::FAMILY_SEED))
+        .or_else(|| crate::SafeEnv::get_optional("BEARDOG_FAMILY_SEED"))
+        .filter(|s| !s.trim().is_empty())
+}
+
+/// Perform BTSP client handshake over a tokio [`UnixStream`].
+/// After success, the stream is ready for NDJSON JSON-RPC.
 ///
 /// # Errors
 ///
 /// Returns [`BtspClientError`] if the family seed is unavailable, the server
 /// rejects the handshake, or I/O fails.
-pub async fn perform_client_handshake<S>(stream: &mut S) -> Result<(), BtspClientError>
-where
-    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
-{
-    let family_seed = resolve_family_seed_raw().ok_or(BtspClientError::NoFamilySeed)?;
+pub async fn perform_client_handshake(
+    stream: &mut UnixStream,
+) -> std::result::Result<BtspClientSession, BtspClientError> {
+    let family_seed = resolve_family_seed().ok_or(BtspClientError::NoFamilySeed)?;
 
     let mut ephemeral_key = [0u8; 32];
     getrandom::fill(&mut ephemeral_key).map_err(|_| BtspClientError::Hmac)?;
@@ -149,9 +170,8 @@ where
     let challenge_bytes = BASE64_STANDARD
         .decode(&server_hello.challenge)
         .map_err(|e| BtspClientError::Protocol(format!("decode challenge: {e}")))?;
-
-    let mut mac =
-        HmacSha256::new_from_slice(family_seed.as_bytes()).map_err(|_| BtspClientError::Hmac)?;
+    let mut mac = HmacSha256::new_from_slice(family_seed.trim().as_bytes())
+        .map_err(|_| BtspClientError::Hmac)?;
     mac.update(&challenge_bytes);
     let hmac_result = mac.finalize().into_bytes();
 
@@ -170,7 +190,7 @@ where
     debug!("BTSP client: sent ChallengeResponse");
 
     let mut buf_reader = BufReader::new(&mut *stream);
-    line.clear();
+    let mut line = String::new();
     buf_reader.read_line(&mut line).await.map_err(BtspClientError::Io)?;
 
     if line.contains("\"error\"") && line.contains("\"reason\"") {
@@ -188,22 +208,58 @@ where
         "BTSP client: handshake COMPLETE"
     );
 
-    Ok(())
+    Ok(BtspClientSession {
+        session_id: complete.session_id,
+        cipher: complete.cipher,
+    })
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test module")]
 mod tests {
     use super::*;
 
     #[test]
     fn btsp_strict_mode_default_off() {
-        assert!(!btsp_strict_mode_expected());
+        temp_env::with_vars(
+            [("BEARDOG_UDS_REQUIRE_BTSP", None::<&str>), ("BTSP_STRICT_MODE", None::<&str>)],
+            || assert!(!btsp_strict_mode_expected()),
+        );
+    }
+
+    #[test]
+    fn btsp_strict_mode_on() {
+        temp_env::with_vars([("BEARDOG_UDS_REQUIRE_BTSP", Some("1"))], || {
+            assert!(btsp_strict_mode_expected());
+        });
+    }
+
+    #[test]
+    fn resolve_family_seed_from_env() {
+        temp_env::with_vars(
+            [("RHIZOCRYPT_FAMILY_SEED", None::<&str>), ("FAMILY_SEED", Some("test-seed"))],
+            || assert_eq!(resolve_family_seed().unwrap(), "test-seed"),
+        );
     }
 
     #[test]
     fn hmac_produces_32_bytes() {
-        let mut mac = HmacSha256::new_from_slice(b"test-seed").unwrap();
-        mac.update(b"challenge-data");
+        let key = b"test-family-seed";
+        let challenge = b"random-challenge";
+        let mut mac = HmacSha256::new_from_slice(key).unwrap();
+        mac.update(challenge);
         assert_eq!(mac.finalize().into_bytes().len(), 32);
+    }
+
+    #[test]
+    fn client_hello_serializes() {
+        let hello = ClientHello {
+            protocol: "btsp",
+            version: 1,
+            client_ephemeral_pub: String::from("AAAA"),
+        };
+        let json = serde_json::to_string(&hello).unwrap();
+        assert!(json.contains("\"protocol\":\"btsp\""));
+        assert!(json.contains("\"version\":1"));
     }
 }

@@ -56,6 +56,7 @@
 // Module Declarations
 // ============================================================================
 
+#[cfg(unix)]
 pub mod btsp_client;
 pub mod clients;
 pub mod config;

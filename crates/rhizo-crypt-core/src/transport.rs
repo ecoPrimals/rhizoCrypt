@@ -453,24 +453,15 @@ pub async fn send_jsonrpc_request(
         TransportStream::Unix(_) => {}
     }
 
-    if crate::btsp_client::btsp_strict_mode_expected() {
-        match &mut stream {
-            #[cfg(unix)]
-            TransportStream::Unix(s) => {
-                if let Err(e) = crate::btsp_client::perform_client_handshake(s).await {
-                    tracing::warn!(
-                        "BTSP client handshake failed: {e} — proceeding with plain JSON-RPC"
-                    );
-                }
-            }
-            TransportStream::Tcp(s) => {
-                if let Err(e) = crate::btsp_client::perform_client_handshake(s).await {
-                    tracing::warn!(
-                        "BTSP client handshake failed: {e} — proceeding with plain JSON-RPC"
-                    );
-                }
-            }
-        }
+    #[cfg(unix)]
+    if crate::btsp_client::btsp_strict_mode_expected()
+        && let TransportStream::Unix(s) = &mut stream
+    {
+        crate::btsp_client::perform_client_handshake(s).await.map_err(|e| {
+            JsonRpcTransportError::ConnectFailed(std::io::Error::other(format!(
+                "BTSP handshake failed: {e}",
+            )))
+        })?;
     }
 
     let (reader, mut writer) = tokio::io::split(stream);
