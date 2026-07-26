@@ -546,6 +546,5 @@ mod tests;
 mod tests_extended;
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
 #[path = "../rhizocrypt_tests_branch_vertex.rs"]
 mod tests_branch_vertex;

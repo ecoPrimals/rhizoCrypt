@@ -3,7 +3,7 @@
 
 //! Unit tests for branch operations (branch, diff, merge, federate) and vertex operations (query, merkle).
 
-#![expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
+#![expect(clippy::unwrap_used, reason = "test code")]
 
 use super::*;
 use crate::event::EventType;

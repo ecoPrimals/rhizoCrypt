@@ -3,7 +3,7 @@
 
 //! Tests for the provenance notifier client.
 
-#![expect(clippy::unwrap_used, clippy::expect_used, reason = "test code")]
+#![expect(clippy::unwrap_used, reason = "test code")]
 
 use std::net::SocketAddr;
 
