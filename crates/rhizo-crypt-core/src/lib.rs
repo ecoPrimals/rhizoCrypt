@@ -56,6 +56,7 @@
 // Module Declarations
 // ============================================================================
 
+pub mod btsp_client;
 pub mod clients;
 pub mod config;
 pub mod constants;

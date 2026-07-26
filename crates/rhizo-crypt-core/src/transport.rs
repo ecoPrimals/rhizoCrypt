@@ -440,7 +440,7 @@ pub async fn send_jsonrpc_request(
 ) -> std::result::Result<String, JsonRpcTransportError> {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-    let stream = tokio::time::timeout(connect_timeout, connect_transport(endpoint))
+    let mut stream = tokio::time::timeout(connect_timeout, connect_transport(endpoint))
         .await
         .map_err(|_| JsonRpcTransportError::ConnectTimeout)?
         .map_err(JsonRpcTransportError::ConnectFailed)?;
@@ -451,6 +451,26 @@ pub async fn send_jsonrpc_request(
         }
         #[cfg(unix)]
         TransportStream::Unix(_) => {}
+    }
+
+    if crate::btsp_client::btsp_strict_mode_expected() {
+        match &mut stream {
+            #[cfg(unix)]
+            TransportStream::Unix(s) => {
+                if let Err(e) = crate::btsp_client::perform_client_handshake(s).await {
+                    tracing::warn!(
+                        "BTSP client handshake failed: {e} — proceeding with plain JSON-RPC"
+                    );
+                }
+            }
+            TransportStream::Tcp(s) => {
+                if let Err(e) = crate::btsp_client::perform_client_handshake(s).await {
+                    tracing::warn!(
+                        "BTSP client handshake failed: {e} — proceeding with plain JSON-RPC"
+                    );
+                }
+            }
+        }
     }
 
     let (reader, mut writer) = tokio::io::split(stream);
