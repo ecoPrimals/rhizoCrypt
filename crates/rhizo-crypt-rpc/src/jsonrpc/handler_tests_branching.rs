@@ -9,6 +9,7 @@
 
 use super::test_support::{create_test_server, make_request, test_caller, test_gate};
 use super::*;
+use rhizo_crypt_core::types_ecosystem::provenance::{ProvenanceChain, VertexRef};
 use serde_json::json;
 
 // ============================================================================
@@ -415,4 +416,59 @@ async fn test_dag_federate_verify_signatures_without_provider() {
     let resp = handle_request(&server, req, &gate, &caller).await.unwrap();
     let obj = resp.as_object().unwrap();
     assert_eq!(obj["imported"], 1, "unsigned vertices pass when no signing provider");
+}
+
+#[test]
+fn test_provenance_chain_from_federated_vertices() {
+    use rhizo_crypt_core::VertexBuilder;
+    use rhizo_crypt_core::event::EventType;
+    use rhizo_crypt_core::types::{Did, SessionId};
+
+    let session_id = SessionId::now();
+    let vertices = vec![
+        VertexBuilder::new(EventType::SessionStart)
+            .with_agent(Did::new("did:key:remote-agent"))
+            .build(),
+        VertexBuilder::new(EventType::DataCreate {
+            schema: Some("external-system".into()),
+        })
+        .build(),
+    ];
+
+    let mut chain = ProvenanceChain::new();
+    for v in &vertices {
+        if let Ok(vid) = v.compute_id() {
+            chain.add_vertex(VertexRef {
+                session_id,
+                vertex_id: vid,
+                event_type: v.event_type.name().to_string(),
+                agent: v.agent.clone(),
+                timestamp: v.timestamp,
+                payload_ref: v.payload,
+            });
+        }
+    }
+
+    assert_eq!(chain.len(), 2);
+    assert_eq!(chain.agents.len(), 1, "one agent across two vertices");
+    assert_eq!(chain.vertices[0].event_type, "session_start");
+    assert_eq!(chain.vertices[1].event_type, "data_create");
+}
+
+#[test]
+fn test_provenance_chain_empty_when_no_vertices() {
+    let chain = ProvenanceChain::new();
+    assert!(chain.is_empty());
+    assert_eq!(chain.agents.len(), 0);
+    assert_eq!(chain.data_hashes.len(), 0);
+}
+
+#[tokio::test]
+async fn test_dag_federate_provenance_notifier_accessible() {
+    let server = create_test_server().await;
+    let notifier = server.primal.provenance_notifier();
+    assert!(
+        std::sync::Arc::strong_count(notifier) >= 1,
+        "provenance_notifier must be accessible from RPC layer"
+    );
 }

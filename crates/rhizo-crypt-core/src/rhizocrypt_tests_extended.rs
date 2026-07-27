@@ -338,6 +338,77 @@ async fn test_dehydrate_with_registered_agents_no_vertices() {
     assert!(!root.as_bytes().iter().all(|&b| b == 0));
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_collect_gateway_witnesses_for_federated_content() {
+    let primal = running_primal().await;
+
+    let session = SessionBuilder::new(SessionType::General).build();
+    let session_id = primal.create_session(session).unwrap();
+
+    let v_local = VertexBuilder::new(EventType::SessionStart).build();
+    primal.append_vertex(session_id, v_local).await.unwrap();
+
+    let mut v_remote = VertexBuilder::new(EventType::DataCreate {
+        schema: Some("remote-schema".into()),
+    })
+    .build();
+    v_remote
+        .metadata
+        .insert("source_gate".into(), crate::vertex::MetadataValue::String("flockGate".into()));
+    primal.federate_vertices(session_id, vec![v_remote]).await.unwrap();
+
+    let witnesses = primal.collect_gateway_witnesses(session_id).await;
+    assert_eq!(witnesses.len(), 1);
+    assert_eq!(witnesses[0].agent, "flockGate");
+    assert_eq!(witnesses[0].tier, Some("gateway".to_string()));
+    assert_eq!(witnesses[0].kind, "federation");
+    assert!(witnesses[0].context.as_ref().unwrap().contains("federated:flockGate"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_collect_gateway_witnesses_no_federated_content() {
+    let primal = running_primal().await;
+
+    let session = SessionBuilder::new(SessionType::General).build();
+    let session_id = primal.create_session(session).unwrap();
+
+    let v = VertexBuilder::new(EventType::SessionStart).build();
+    primal.append_vertex(session_id, v).await.unwrap();
+
+    let witnesses = primal.collect_gateway_witnesses(session_id).await;
+    assert!(witnesses.is_empty(), "no gateway witnesses for local-only content");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_collect_gateway_witnesses_multiple_gates() {
+    let primal = running_primal().await;
+
+    let session = SessionBuilder::new(SessionType::General).build();
+    let session_id = primal.create_session(session).unwrap();
+
+    let v_local = VertexBuilder::new(EventType::SessionStart).build();
+    primal.append_vertex(session_id, v_local).await.unwrap();
+
+    for gate in ["flockGate", "northGate", "flockGate"] {
+        let mut v = VertexBuilder::new(EventType::DataCreate {
+            schema: Some("remote-schema".into()),
+        })
+        .build();
+        v.metadata.insert("source_gate".into(), crate::vertex::MetadataValue::String(gate.into()));
+        primal.federate_vertices(session_id, vec![v]).await.unwrap();
+    }
+
+    let witnesses = primal.collect_gateway_witnesses(session_id).await;
+    assert_eq!(witnesses.len(), 2, "two unique gates");
+    let gate_names: std::collections::HashSet<_> =
+        witnesses.iter().map(|w| w.agent.as_str()).collect();
+    assert!(gate_names.contains("flockGate"));
+    assert!(gate_names.contains("northGate"));
+
+    let flock = witnesses.iter().find(|w| w.agent == "flockGate").unwrap();
+    assert_eq!(flock.evidence, "2 vertices", "flockGate has 2 vertices");
+}
+
 #[cfg(feature = "redb")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_start_with_redb_backend() {

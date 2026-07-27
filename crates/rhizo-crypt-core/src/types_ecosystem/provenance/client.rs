@@ -185,6 +185,55 @@ impl ProvenanceNotifier {
         Ok(())
     }
 
+    /// Notify provenance provider of a dehydration with additional gateway-tier
+    /// witnesses from federated content.
+    ///
+    /// Behaves like [`notify_dehydration`](Self::notify_dehydration) but appends
+    /// gateway-tier `WireWitnessRef` entries for vertices imported from remote gates.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if notification fails.
+    pub async fn notify_dehydration_enriched(
+        &self,
+        summary: &DehydrationSummary,
+        gateway_witnesses: &[crate::dehydration_wire::WireWitnessRef],
+    ) -> Result<()> {
+        if *self.state.read().await != ClientState::Connected {
+            return Ok(());
+        }
+
+        let Some(endpoint) = self.endpoint.read().await.clone() else {
+            return Ok(());
+        };
+
+        debug!(
+            session_id = %summary.session_id,
+            agents = summary.agents.len(),
+            gateway_witnesses = gateway_witnesses.len(),
+            %endpoint,
+            "Notifying provenance provider of dehydration (enriched)"
+        );
+
+        let mut wire_summary: crate::dehydration_wire::DehydrationWireSummary = summary.into();
+        wire_summary.witnesses.extend_from_slice(gateway_witnesses);
+
+        let request = serde_json::json!({
+            "jsonrpc": crate::constants::JSONRPC_VERSION,
+            "method": crate::constants::PROVENANCE_RECORD_DEHYDRATION_METHOD,
+            "params": wire_summary,
+            "id": 1
+        });
+
+        Self::log_notify_result(
+            "dehydration (enriched)",
+            &format!("{}", summary.session_id),
+            Self::send_jsonrpc(&endpoint, &request).await,
+        );
+
+        Ok(())
+    }
+
     /// Notify provenance provider of a new provenance chain.
     ///
     /// Sends a `contribution.record_provenance` JSON-RPC call with the chain's

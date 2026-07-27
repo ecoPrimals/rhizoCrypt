@@ -316,6 +316,123 @@ async fn test_send_jsonrpc_dehydration_with_mock_server() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_notify_dehydration_enriched_with_gateway_witnesses() {
+    use crate::dehydration::{AgentSummary, DehydrationSummaryBuilder};
+    use crate::dehydration_wire::WireWitnessRef;
+    use crate::event::SessionOutcome;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    let server_handle = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let (reader, mut writer) = stream.into_split();
+        let mut buf_reader = BufReader::new(reader);
+        let mut request = String::new();
+        buf_reader.read_line(&mut request).await.unwrap();
+
+        let parsed: serde_json::Value = serde_json::from_str(&request).unwrap();
+        let params = &parsed["params"];
+        let witnesses = params["witnesses"].as_array().unwrap();
+        let gateway_witness = witnesses
+            .iter()
+            .find(|w| w["tier"].as_str() == Some("gateway"))
+            .expect("gateway witness must be present");
+        assert_eq!(gateway_witness["kind"], "federation");
+        assert_eq!(gateway_witness["agent"], "flockGate");
+        assert!(gateway_witness["context"].as_str().unwrap().contains("federated:"));
+
+        let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
+        writer.write_all(format!("{response}\n").as_bytes()).await.unwrap();
+    });
+
+    let config = ProvenanceProviderConfig::with_push_address(addr.to_string());
+    let notifier = ProvenanceNotifier::new(config);
+    notifier.connect().await.unwrap();
+
+    let summary = DehydrationSummaryBuilder::new(
+        SessionId::now(),
+        "test",
+        Timestamp::now(),
+        MerkleRoot::new([0u8; 32]),
+    )
+    .with_outcome(SessionOutcome::Success)
+    .with_vertex_count(5)
+    .with_agent(AgentSummary {
+        agent: Did::new("did:key:test"),
+        joined_at: Timestamp::now(),
+        left_at: None,
+        event_count: 3,
+        role: "author".to_string(),
+    })
+    .build();
+
+    let gateway_witnesses = vec![WireWitnessRef {
+        agent: "flockGate".to_string(),
+        kind: "federation".to_string(),
+        evidence: "3 vertices".to_string(),
+        witnessed_at: 1_000_000_000,
+        encoding: "utf8".to_string(),
+        algorithm: None,
+        tier: Some("gateway".to_string()),
+        context: Some("federated:flockGate".to_string()),
+    }];
+
+    let result = notifier.notify_dehydration_enriched(&summary, &gateway_witnesses).await;
+    assert!(result.is_ok());
+
+    server_handle.await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_notify_dehydration_enriched_empty_witnesses() {
+    use crate::dehydration::DehydrationSummaryBuilder;
+    use crate::event::SessionOutcome;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    let server_handle = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let (reader, mut writer) = stream.into_split();
+        let mut buf_reader = BufReader::new(reader);
+        let mut request = String::new();
+        buf_reader.read_line(&mut request).await.unwrap();
+
+        let parsed: serde_json::Value = serde_json::from_str(&request).unwrap();
+        let witnesses = parsed["params"]["witnesses"].as_array();
+        assert!(
+            witnesses.is_none_or(|ws| ws.iter().all(|w| w["tier"].as_str() != Some("gateway"))),
+            "no gateway witnesses when slice is empty"
+        );
+
+        let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
+        writer.write_all(format!("{response}\n").as_bytes()).await.unwrap();
+    });
+
+    let config = ProvenanceProviderConfig::with_push_address(addr.to_string());
+    let notifier = ProvenanceNotifier::new(config);
+    notifier.connect().await.unwrap();
+
+    let summary = DehydrationSummaryBuilder::new(
+        SessionId::now(),
+        "test",
+        Timestamp::now(),
+        MerkleRoot::new([0u8; 32]),
+    )
+    .with_outcome(SessionOutcome::Success)
+    .with_vertex_count(1)
+    .build();
+
+    let result = notifier.notify_dehydration_enriched(&summary, &[]).await;
+    assert!(result.is_ok());
+
+    server_handle.await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_send_jsonrpc_connection_refused() {
     let config = ProvenanceProviderConfig::with_push_address("127.0.0.1:19903");
     let notifier = ProvenanceNotifier::new(config);

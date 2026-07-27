@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## Wave 155b — Cross-Gate Provenance Chain (Jul 27, 2026)
+- Wire federate → sweetGrass provenance push: `notify_provenance()` now called after successful federation
+- Build `ProvenanceChain` from imported vertices with `VertexRef` entries for each federated vertex
+- Expose `provenance_notifier()` getter on `RhizoCrypt` — notifier now accessible from RPC layer
+- Enrich dehydration with gateway-tier witnesses: `collect_gateway_witnesses()` scans for `source_gate` metadata
+- New `notify_dehydration_enriched()` on `ProvenanceNotifier` — appends `tier: "gateway"` witnesses to wire summary
+- `WireWitnessRef` entries with `kind: "federation"`, `context: "federated:<gate>"` for cross-gate content
+- 8 new tests (provenance chain building, gateway witnesses, enriched dehydration, notifier accessibility)
+- Tests: 1,901 (+8), 225 `.rs` files, ~62,665 lines
+
 ## Wave 155b — BTSP-DAG Bridge + Federate Hardening (Jul 27, 2026)
 - Bridge BTSP transport auth into DAG authorization: new `ConnectionOrigin::BtspAuthenticated`
 - BTSP-authenticated callers auto-granted all method scopes (family membership = DAG access)

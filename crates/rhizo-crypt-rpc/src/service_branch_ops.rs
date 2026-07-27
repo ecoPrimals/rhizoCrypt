@@ -11,6 +11,7 @@ use crate::service_types::{
     BranchRequest, BranchResponse, DiffRequest, DiffResponse, FederateRequest, FederateResponse,
     MergeRequest,
 };
+use rhizo_crypt_core::types_ecosystem::provenance::{ProvenanceChain, VertexRef};
 use rhizo_crypt_core::{VertexBuilder, VertexId};
 
 impl RhizoCryptRpcServer {
@@ -120,11 +121,40 @@ impl RhizoCryptRpcServer {
             accepted.push(vertex);
         }
 
+        let provenance_refs: Vec<_> = accepted
+            .iter()
+            .filter_map(|v| {
+                let vid = v.compute_id().ok()?;
+                Some(VertexRef {
+                    session_id: request.session_id,
+                    vertex_id: vid,
+                    event_type: v.event_type.name().to_string(),
+                    agent: v.agent.clone(),
+                    timestamp: v.timestamp,
+                    payload_ref: v.payload,
+                })
+            })
+            .collect();
+
         let (imported, skipped, frontier) = self
             .primal
             .federate_vertices(request.session_id, accepted)
             .await
             .map_err(RpcError::from)?;
+
+        if imported > 0 && !provenance_refs.is_empty() {
+            let mut chain = ProvenanceChain::new();
+            for vref in provenance_refs {
+                chain.add_vertex(vref);
+            }
+            if let Err(e) = self.primal.provenance_notifier().notify_provenance(&chain).await {
+                tracing::debug!(
+                    error = %e,
+                    imported,
+                    "federate: provenance notification failed (non-fatal)"
+                );
+            }
+        }
 
         Ok(FederateResponse {
             imported,

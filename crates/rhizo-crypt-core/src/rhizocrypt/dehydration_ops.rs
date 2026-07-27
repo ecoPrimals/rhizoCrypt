@@ -70,7 +70,13 @@ impl RhizoCrypt {
 
         let commit_ref = self.commit_to_permanent_storage(&summary_with_attestations).await?;
 
-        self.provenance_notifier.notify_dehydration(&summary_with_attestations).await.ok();
+        self.provenance_notifier
+            .notify_dehydration_enriched(
+                &summary_with_attestations,
+                &self.collect_gateway_witnesses(session_id).await,
+            )
+            .await
+            .ok();
         self.provenance_notifier.notify_session_commit(session_id).await.ok();
 
         self.dehydration_status.insert(
@@ -205,6 +211,47 @@ impl RhizoCrypt {
                     event_count: acc.event_count,
                     role: role_str.to_string(),
                 }
+            })
+            .collect()
+    }
+
+    /// Scan session vertices for federated content and collect gateway-tier
+    /// witness references.
+    ///
+    /// Vertices imported via `dag.federate` carry `source_gate` metadata.
+    /// This method extracts unique gate names and builds `WireWitnessRef`
+    /// entries with `tier: "gateway"` for the dehydration wire summary.
+    pub(crate) async fn collect_gateway_witnesses(
+        &self,
+        session_id: SessionId,
+    ) -> Vec<crate::dehydration_wire::WireWitnessRef> {
+        let vertices = self.query_vertices(session_id, None, None, None).await.unwrap_or_default();
+        let mut gates: std::collections::HashMap<String, (u64, crate::types::Timestamp)> =
+            std::collections::HashMap::new();
+
+        for vertex in &vertices {
+            if let Some(crate::vertex::MetadataValue::String(gate)) =
+                vertex.metadata.get("source_gate")
+            {
+                let entry = gates.entry(gate.clone()).or_insert((0, vertex.timestamp));
+                entry.0 += 1;
+                if vertex.timestamp.as_nanos() < entry.1.as_nanos() {
+                    entry.1 = vertex.timestamp;
+                }
+            }
+        }
+
+        gates
+            .into_iter()
+            .map(|(gate, (count, earliest))| crate::dehydration_wire::WireWitnessRef {
+                agent: gate.clone(),
+                kind: "federation".to_string(),
+                evidence: format!("{count} vertices"),
+                witnessed_at: earliest.as_nanos(),
+                encoding: "utf8".to_string(),
+                algorithm: None,
+                tier: Some("gateway".to_string()),
+                context: Some(format!("federated:{gate}")),
             })
             .collect()
     }

@@ -140,6 +140,17 @@ impl RhizoCrypt {
         &self.mesh_listener
     }
 
+    /// Get the provenance notifier for cross-gate provenance pushes.
+    ///
+    /// Used by the RPC layer to notify sweetGrass (or any provenance
+    /// provider) after federation or dehydration events.
+    #[must_use]
+    pub const fn provenance_notifier(
+        &self,
+    ) -> &Arc<crate::types_ecosystem::provenance::ProvenanceNotifier> {
+        &self.provenance_notifier
+    }
+
     /// Get the lazily-resolved signing client.
     ///
     /// On first call, attempts to discover a signing provider via the
