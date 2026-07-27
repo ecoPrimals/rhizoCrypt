@@ -215,6 +215,9 @@ async fn consume_mito_beacon_prefix(
 /// request, handles cipher negotiation and (on success) serves subsequent
 /// traffic through encrypted framing. If the first request is anything else,
 /// chains it back and falls through to the standard newline handler.
+///
+/// All post-handshake paths use `CallerContext::btsp_authenticated()` to
+/// propagate the BTSP family membership proof to the method gate.
 async fn serve_after_handshake<S>(
     mut stream: S,
     server: &crate::service::RhizoCryptRpcServer,
@@ -236,7 +239,7 @@ where
     let first_json: serde_json::Value = match serde_json::from_slice(&first_line) {
         Ok(v) => v,
         Err(_) => {
-            return chain_and_serve(first_line.to_vec(), stream, server).await;
+            return chain_and_serve_btsp(first_line.to_vec(), stream, server).await;
         }
     };
 
@@ -259,26 +262,27 @@ where
             Ok(None) => {
                 debug!("BTSP Phase 3 declined (null cipher), serving plaintext JSON-RPC");
                 let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
-                let caller = super::super::method_gate::CallerContext::unix();
+                let caller = super::super::method_gate::CallerContext::btsp_authenticated();
                 super::super::newline::handle_newline_connection(stream, server, &gate, &caller)
                     .await
             }
             Err(e) => {
                 warn!(error = %e, "BTSP Phase 3 negotiate failed");
                 let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
-                let caller = super::super::method_gate::CallerContext::unix();
+                let caller = super::super::method_gate::CallerContext::btsp_authenticated();
                 super::super::newline::handle_newline_connection(stream, server, &gate, &caller)
                     .await
             }
         }
     } else {
         debug!("no Phase 3 negotiate, serving plaintext JSON-RPC");
-        chain_and_serve(first_line.to_vec(), stream, server).await
+        chain_and_serve_btsp(first_line.to_vec(), stream, server).await
     }
 }
 
-/// Prepend a consumed first line back onto the stream and serve plaintext.
-async fn chain_and_serve<S>(
+/// Prepend a consumed first line back onto the stream and serve plaintext
+/// with BTSP-authenticated caller context.
+async fn chain_and_serve_btsp<S>(
     first_line: Vec<u8>,
     stream: S,
     server: &crate::service::RhizoCryptRpcServer,
@@ -287,7 +291,7 @@ where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
     let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
-    let caller = super::super::method_gate::CallerContext::unix();
+    let caller = super::super::method_gate::CallerContext::btsp_authenticated();
     let mut prepend = first_line;
     prepend.push(b'\n');
     let (reader, writer) = tokio::io::split(stream);
@@ -313,7 +317,7 @@ where
     use tokio::io::AsyncWriteExt;
 
     let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
-    let caller = super::super::method_gate::CallerContext::unix();
+    let caller = super::super::method_gate::CallerContext::btsp_authenticated();
 
     loop {
         let frame = match framing::read_frame(&mut stream).await {

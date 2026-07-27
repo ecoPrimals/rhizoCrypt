@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## Wave 155b — BTSP-DAG Bridge + Federate Hardening (Jul 27, 2026)
+- Bridge BTSP transport auth into DAG authorization: new `ConnectionOrigin::BtspAuthenticated`
+- BTSP-authenticated callers auto-granted all method scopes (family membership = DAG access)
+- `CallerContext::btsp_authenticated()` constructor; all post-handshake paths propagate identity
+- Mesh poller now signs trust event vertices via `SigningClient` when available
+- Federate hardening: `verify_signatures` flag for vertex signature verification on import
+- Cross-repo provenance: `source_gate` metadata stamped on federated vertices
+- `FederateResponse.rejected` field for invalid-signature vertex count
+- 10 new tests (BTSP bridge, federate source_gate, verify_signatures, rejected field)
+- Tests: 1,893 (+10), 225 `.rs` files, ~62,282 lines
+
 ## Wave 151b — BTSP Client-Side Handshake (Jul 26, 2026)
 - Implement BTSP `ClientHello` 4-step handshake for outbound bearDog UDS connections
 - New `btsp_client` module: `perform_client_handshake()`, `BtspClientSession`, `BtspClientError`

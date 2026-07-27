@@ -92,9 +92,14 @@ pub async fn dispatch_federate(
         vertices.push(vertex);
     }
 
+    let source_gate = obj.get("source_gate").and_then(Value::as_str).map(str::to_owned);
+    let verify_signatures = obj.get("verify_signatures").and_then(Value::as_bool).unwrap_or(false);
+
     let req = FederateRequest {
         session_id,
         vertices,
+        source_gate,
+        verify_signatures,
     };
     let resp = server.clone().federate(tarpc::context::current(), req).await?;
     serde_json::to_value(resp).map_err(|e| HandlerError::InvalidParams(Cow::Owned(e.to_string())))

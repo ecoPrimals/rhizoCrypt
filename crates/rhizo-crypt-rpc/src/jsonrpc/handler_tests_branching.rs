@@ -323,3 +323,96 @@ async fn test_provenance_aliases_for_wave60_methods() {
     let resp = handle_request(&server, req, &gate, &caller).await;
     assert!(resp.is_ok(), "provenance.branch should alias to dag.branch");
 }
+
+#[tokio::test]
+async fn test_dag_federate_with_source_gate() {
+    let server = create_test_server().await;
+    let gate = test_gate();
+    let caller = test_caller();
+
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let result = handle_request(&server, req, &gate, &caller).await.unwrap();
+    let session_id = result.as_str().unwrap().to_string();
+
+    let vertex_json = json!({
+        "parents": [],
+        "timestamp": 1_000_000_000_u64,
+        "event_type": {"SessionStart": null},
+        "metadata": {}
+    });
+
+    let req = make_request(
+        "dag.federate",
+        Some(json!({
+            "session_id": session_id,
+            "vertices": [vertex_json],
+            "source_gate": "ironGate"
+        })),
+    );
+    let resp = handle_request(&server, req, &gate, &caller).await.unwrap();
+    let obj = resp.as_object().unwrap();
+    assert_eq!(obj["imported"], 1);
+    assert_eq!(obj["skipped"], 0);
+}
+
+#[tokio::test]
+async fn test_dag_federate_rejected_field_absent_when_zero() {
+    let server = create_test_server().await;
+    let gate = test_gate();
+    let caller = test_caller();
+
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let result = handle_request(&server, req, &gate, &caller).await.unwrap();
+    let session_id = result.as_str().unwrap().to_string();
+
+    let vertex_json = json!({
+        "parents": [],
+        "timestamp": 1_000_000_000_u64,
+        "event_type": {"SessionStart": null},
+        "metadata": {}
+    });
+
+    let req = make_request(
+        "dag.federate",
+        Some(json!({
+            "session_id": session_id,
+            "vertices": [vertex_json]
+        })),
+    );
+    let resp = handle_request(&server, req, &gate, &caller).await.unwrap();
+    let obj = resp.as_object().unwrap();
+    assert!(
+        !obj.contains_key("rejected"),
+        "rejected should be absent when zero (skip_serializing_if)"
+    );
+}
+
+#[tokio::test]
+async fn test_dag_federate_verify_signatures_without_provider() {
+    let server = create_test_server().await;
+    let gate = test_gate();
+    let caller = test_caller();
+
+    let req = make_request("dag.session.create", Some(json!({"session_type": "General"})));
+    let result = handle_request(&server, req, &gate, &caller).await.unwrap();
+    let session_id = result.as_str().unwrap().to_string();
+
+    let vertex_json = json!({
+        "parents": [],
+        "timestamp": 1_000_000_000_u64,
+        "event_type": {"SessionStart": null},
+        "metadata": {}
+    });
+
+    let req = make_request(
+        "dag.federate",
+        Some(json!({
+            "session_id": session_id,
+            "vertices": [vertex_json],
+            "verify_signatures": true
+        })),
+    );
+    let resp = handle_request(&server, req, &gate, &caller).await.unwrap();
+    let obj = resp.as_object().unwrap();
+    assert_eq!(obj["imported"], 1, "unsigned vertices pass when no signing provider");
+}

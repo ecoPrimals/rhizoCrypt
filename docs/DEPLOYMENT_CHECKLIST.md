@@ -9,7 +9,7 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,883 tests passing** (all features), 0 failures
+- [x] **1,893 tests passing** (all features), 0 failures
 - [x] **93.83% line coverage** (llvm-cov, Jul 18 2026)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
@@ -30,7 +30,7 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,883 tests)
+- [x] **README.md** (current metrics — 1,893 tests)
 - [x] **CHANGELOG.md** (version history through Wave 151b)
 - [x] **specs/** (10 specification documents + 2 archived)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)

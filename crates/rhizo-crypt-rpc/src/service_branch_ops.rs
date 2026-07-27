@@ -78,15 +78,58 @@ impl RhizoCryptRpcServer {
         &self,
         request: FederateRequest,
     ) -> Result<FederateResponse, RpcError> {
+        let signing_client = if request.verify_signatures {
+            self.primal.signing_client().await
+        } else {
+            None
+        };
+
+        let mut accepted = Vec::with_capacity(request.vertices.len());
+        let mut rejected: u64 = 0;
+
+        for mut vertex in request.vertices {
+            if request.verify_signatures
+                && let Some(client) = &signing_client
+                && vertex.signature.is_some()
+            {
+                match client.verify_vertex(&vertex).await {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        tracing::warn!("federate: vertex signature invalid — rejecting");
+                        rejected += 1;
+                        continue;
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            "federate: signature verification failed — rejecting"
+                        );
+                        rejected += 1;
+                        continue;
+                    }
+                }
+            }
+
+            if let Some(gate) = &request.source_gate {
+                vertex.metadata.insert(
+                    "source_gate".into(),
+                    rhizo_crypt_core::vertex::MetadataValue::from(gate.as_str()),
+                );
+            }
+
+            accepted.push(vertex);
+        }
+
         let (imported, skipped, frontier) = self
             .primal
-            .federate_vertices(request.session_id, request.vertices)
+            .federate_vertices(request.session_id, accepted)
             .await
             .map_err(RpcError::from)?;
 
         Ok(FederateResponse {
             imported,
             skipped,
+            rejected,
             frontier,
         })
     }

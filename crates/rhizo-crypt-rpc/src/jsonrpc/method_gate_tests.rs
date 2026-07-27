@@ -745,3 +745,59 @@ fn capability_verifier_sync_verify_empty_token() {
     let verifier = CapabilityVerifier::new(registry, true);
     assert!(verifier.verify("").is_none());
 }
+
+// ============================================================================
+// BTSP → CallerContext bridge tests
+// ============================================================================
+
+#[test]
+fn btsp_authenticated_origin_identity() {
+    let caller = CallerContext::btsp_authenticated();
+    assert_eq!(caller.origin, ConnectionOrigin::BtspAuthenticated);
+    assert!(caller.origin.is_btsp_authenticated());
+    assert!(caller.bearer_token.is_none());
+    assert!(caller.verified_claims.is_none());
+}
+
+#[test]
+fn btsp_authenticated_origin_as_str() {
+    assert_eq!(ConnectionOrigin::BtspAuthenticated.as_str(), "BtspAuthenticated");
+}
+
+#[test]
+fn unix_origin_not_btsp_authenticated() {
+    assert!(!ConnectionOrigin::Unix.is_btsp_authenticated());
+    assert!(!ConnectionOrigin::Loopback.is_btsp_authenticated());
+    assert!(!ConnectionOrigin::Remote.is_btsp_authenticated());
+}
+
+#[test]
+fn btsp_authenticated_grants_protected_method_permissive() {
+    let gate = test_gate();
+    let caller = CallerContext::btsp_authenticated();
+    assert!(gate.check("dag.event.append", &caller).is_ok());
+}
+
+#[test]
+fn btsp_authenticated_grants_protected_method_enforced() {
+    let gate = enforced_gate();
+    let caller = CallerContext::btsp_authenticated();
+    assert!(gate.check("dag.event.append", &caller).is_ok());
+    assert!(gate.check("dag.federate", &caller).is_ok());
+    assert!(gate.check("dag.dehydrate", &caller).is_ok());
+}
+
+#[test]
+fn unauthenticated_unix_rejected_enforced() {
+    let gate = enforced_gate();
+    let caller = CallerContext::unix();
+    assert!(gate.check("dag.event.append", &caller).is_err());
+}
+
+#[test]
+fn btsp_authenticated_allows_all_public_methods() {
+    let gate = enforced_gate();
+    let caller = CallerContext::btsp_authenticated();
+    assert!(gate.check("health", &caller).is_ok());
+    assert!(gate.check("capability.list", &caller).is_ok());
+}

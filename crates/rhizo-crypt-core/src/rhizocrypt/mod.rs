@@ -493,9 +493,23 @@ impl RhizoCrypt {
                     continue;
                 };
 
+                let signing_client = primal.signing_client().await;
+
                 for event in events {
                     let event_type = event.into_event_type();
-                    let vertex = VertexBuilder::new(event_type).build();
+                    let mut vertex = VertexBuilder::new(event_type).build();
+
+                    if let Some(client) = &signing_client
+                        && let Some(agent) = &vertex.agent
+                    {
+                        match client.sign_vertex(&vertex, agent).await {
+                            Ok(sig) => vertex.signature = Some(sig),
+                            Err(e) => tracing::debug!(
+                                error = %e,
+                                "Mesh vertex signing unavailable (continuing unsigned)"
+                            ),
+                        }
+                    }
 
                     if let Err(e) = primal.append_vertex(session_id, vertex).await {
                         tracing::warn!(

@@ -142,8 +142,10 @@ pub fn extract_bearer_token(params: &mut Value) -> Option<String> {
 /// How the caller connected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionOrigin {
-    /// Local Unix domain socket.
+    /// Local Unix domain socket (no BTSP handshake).
     Unix,
+    /// Local Unix domain socket with successful BTSP Phase 2 handshake.
+    BtspAuthenticated,
     /// TCP loopback (127.0.0.1 / `::1`).
     Loopback,
     /// Remote TCP connection.
@@ -156,9 +158,16 @@ impl ConnectionOrigin {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Unix => "Unix",
+            Self::BtspAuthenticated => "BtspAuthenticated",
             Self::Loopback => "Loopback",
             Self::Remote => "Remote",
         }
+    }
+
+    /// Whether this origin was authenticated via BTSP family handshake.
+    #[must_use]
+    pub const fn is_btsp_authenticated(self) -> bool {
+        matches!(self, Self::BtspAuthenticated)
     }
 }
 
@@ -184,6 +193,19 @@ impl CallerContext {
             bearer_token: None,
             verified_claims: None,
             origin: ConnectionOrigin::Unix,
+        }
+    }
+
+    /// Caller context for a BTSP-authenticated Unix domain socket connection.
+    ///
+    /// BTSP Phase 2 handshake has completed, proving family membership.
+    /// The method gate may treat this as implicitly trusted for `dag.*` scopes.
+    #[must_use]
+    pub const fn btsp_authenticated() -> Self {
+        Self {
+            bearer_token: None,
+            verified_claims: None,
+            origin: ConnectionOrigin::BtspAuthenticated,
         }
     }
 
@@ -359,6 +381,14 @@ impl MethodGate {
         let level = classify_method(method);
 
         if level == MethodAccessLevel::Public {
+            return Ok(());
+        }
+
+        // BTSP-authenticated UDS callers are family members — grant all DAG
+        // operations without requiring a separate bearer token. This bridges
+        // transport-level BTSP auth with method-level authorization.
+        if caller.origin.is_btsp_authenticated() {
+            tracing::trace!(method, "method gate: BTSP-authenticated caller — family-trusted");
             return Ok(());
         }
 

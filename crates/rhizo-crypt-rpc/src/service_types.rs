@@ -163,6 +163,13 @@ pub struct FederateRequest {
     pub session_id: SessionId,
     /// Vertices from the remote peer.
     pub vertices: Vec<rhizo_crypt_core::Vertex>,
+    /// Gate that originated these vertices (cross-repo provenance).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_gate: Option<String>,
+    /// Whether to verify vertex signatures before importing.
+    /// Defaults to `false` for backward compatibility.
+    #[serde(default)]
+    pub verify_signatures: bool,
 }
 
 /// Federate response.
@@ -172,8 +179,16 @@ pub struct FederateResponse {
     pub imported: u64,
     /// Number of vertices skipped (already present).
     pub skipped: u64,
+    /// Number of vertices rejected due to invalid signatures.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub rejected: u64,
     /// Updated frontier of the local session after federation.
     pub frontier: Vec<VertexId>,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref, reason = "serde skip_serializing_if requires &T")]
+const fn is_zero(v: &u64) -> bool {
+    *v == 0
 }
 
 /// Query request for vertices.
