@@ -15,7 +15,9 @@ use tracing::{debug, error, info, warn};
 
 use crate::ServiceError;
 use crate::config::{has_explicit_tcp_config, resolve_bind_addr};
-use crate::discovery::{publish_capability_manifest, register_with_discovery};
+#[cfg(unix)]
+use crate::discovery::publish_capability_manifest;
+use crate::discovery::register_with_discovery;
 use crate::shutdown::shutdown_signal;
 #[cfg(unix)]
 use crate::uds::start_uds_listener;
