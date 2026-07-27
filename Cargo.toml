@@ -13,6 +13,8 @@ rust-version = "1.87"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/ecoPrimals/rhizoCrypt"
 authors = ["ecoPrimals Project"]
+homepage = "https://sporeprint.primals.eco"
+documentation = "https://sporeprint.primals.eco/lab/"
 
 [workspace.dependencies]
 # Async runtime — explicit features for compile efficiency (no "full")
