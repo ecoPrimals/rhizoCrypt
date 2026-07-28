@@ -760,12 +760,8 @@ fn btsp_authenticated_origin_identity() {
 }
 
 #[test]
-fn btsp_authenticated_origin_as_str() {
+fn btsp_authenticated_origin_identity_and_exclusivity() {
     assert_eq!(ConnectionOrigin::BtspAuthenticated.as_str(), "BtspAuthenticated");
-}
-
-#[test]
-fn unix_origin_not_btsp_authenticated() {
     assert!(!ConnectionOrigin::Unix.is_btsp_authenticated());
     assert!(!ConnectionOrigin::Loopback.is_btsp_authenticated());
     assert!(!ConnectionOrigin::Remote.is_btsp_authenticated());
