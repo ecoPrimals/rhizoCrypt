@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## Wave 155d — Dep Hygiene + Test Consolidation (Jul 28, 2026)
+- `cargo update`: all workspace deps to latest compatible patches (zeroize 1.9, zerocopy 0.8.55, hyper 1.11, axum 0.7.9)
+- `cargo deny`: CLEAN — no advisories, bans, or license violations
+- Consolidate BTSP origin identity tests → `method_gate_tests.rs` trimmed 803→799 lines (under 800L limit)
+- Tests: 1,900, 225 `.rs` files, ~62,665 lines
+
 ## Wave 155b — Cross-Gate Provenance Chain (Jul 27, 2026)
 - Wire federate → sweetGrass provenance push: `notify_provenance()` now called after successful federation
 - Build `ProvenanceChain` from imported vertices with `VertexRef` entries for each federated vertex
