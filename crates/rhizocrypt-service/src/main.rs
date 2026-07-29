@@ -75,7 +75,7 @@ enum Commands {
         port: Option<u16>,
 
         /// TCP bind address (only used when TCP is active).
-        #[arg(long)]
+        #[arg(long, visible_alias = "bind")]
         host: Option<String>,
 
         /// Override the UDS socket path.

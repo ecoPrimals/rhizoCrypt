@@ -5,6 +5,7 @@
 
 use rhizo_crypt_core::constants;
 use std::net::SocketAddr;
+#[cfg(unix)]
 use tracing::{info, warn};
 
 use crate::ServiceError;

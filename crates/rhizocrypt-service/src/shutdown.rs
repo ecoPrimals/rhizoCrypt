@@ -3,7 +3,9 @@
 
 //! Graceful shutdown signal handling.
 
-use tracing::{debug, warn};
+use tracing::debug;
+#[cfg(unix)]
+use tracing::warn;
 
 /// Wait for SIGTERM or SIGINT (Unix) or Ctrl+C (other platforms).
 pub async fn shutdown_signal() {

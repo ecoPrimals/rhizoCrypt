@@ -440,6 +440,7 @@ pub async fn send_jsonrpc_request(
 ) -> std::result::Result<String, JsonRpcTransportError> {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
+    #[cfg_attr(not(unix), allow(unused_mut))]
     let mut stream = tokio::time::timeout(connect_timeout, connect_transport(endpoint))
         .await
         .map_err(|_| JsonRpcTransportError::ConnectTimeout)?
