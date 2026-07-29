@@ -6,7 +6,7 @@
 |--------|-------|
 | Version | 0.14.17 |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,900 passing (`--all-features`, Jul 28, 2026) |
+| Tests | 1,900 passing (`--all-features`, Jul 29, 2026) |
 | Coverage | 93.83% lines (llvm-cov, Jul 18, 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
@@ -27,7 +27,7 @@
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
 | Registry | `config/capability_registry.toml` (37 methods, 7 domains, stability tiers, `provenance.*` → `dag.*` wire aliases) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
-| Cross-compile | plasmidBin: musl (x86_64, aarch64), RISC-V — ecoBin v3.0 |
+| Cross-compile | 4 targets: x86_64-linux, x86_64-windows-gnu, x86_64-linux-musl, aarch64-linux-musl — zero warnings |
 
 ---
 
