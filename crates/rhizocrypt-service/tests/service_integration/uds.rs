@@ -2,6 +2,11 @@
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 //! UDS transport integration tests.
+//!
+//! All tests that start a `UdsJsonRpcServer` listener must clear `FAMILY_ID`
+//! / `RHIZOCRYPT_FAMILY_ID` from the environment so the listener runs in
+//! development mode (no BTSP handshake). Gate-deployed environments set
+//! `FAMILY_ID`, which would otherwise reject plain JSON-RPC connections.
 
 use rhizo_crypt_core::discovery::PrimalManifest;
 use rhizo_crypt_core::{PrimalLifecycle, RhizoCrypt, RhizoCryptConfig};
@@ -9,43 +14,67 @@ use rhizo_crypt_rpc::jsonrpc::uds::UdsJsonRpcServer;
 use rhizocrypt_service::run_server_with_ready;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
-/// socat-style validation: raw newline JSON-RPC over UDS.
-#[tokio::test]
-async fn test_uds_socat_style_health_liveness() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let sock = dir.path().join("socat-test.sock");
-
+async fn new_started_primal() -> Arc<RhizoCrypt> {
     let config = RhizoCryptConfig::default();
     let mut primal = RhizoCrypt::new(config);
     primal.start().await.expect("primal should start");
-    let primal = Arc::new(primal);
+    Arc::new(primal)
+}
 
-    let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
-    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
-    let ready = Arc::new(tokio::sync::Notify::new());
-    let ready_rx = Arc::clone(&ready);
+/// Environment variables to clear for development-mode UDS tests.
+const BTSP_CLEAR_ENV: [(&str, Option<&str>); 2] =
+    [("FAMILY_ID", None), ("RHIZOCRYPT_FAMILY_ID", None)];
 
-    let handle = tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
-    ready.notified().await;
+/// socat-style validation: raw newline JSON-RPC over UDS.
+#[test]
+fn test_uds_socat_style_health_liveness() {
+    temp_env::with_vars(BTSP_CLEAR_ENV, || {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let sock = dir.path().join("socat-test.sock");
 
-    let stream = UnixStream::connect(&sock).await.expect("connect");
-    let (reader, mut writer) = stream.into_split();
+            let primal = new_started_primal().await;
+            let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
+            let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+            let ready = Arc::new(tokio::sync::Notify::new());
+            let ready_rx = Arc::clone(&ready);
 
-    let req = "{\"jsonrpc\":\"2.0\",\"method\":\"health.liveness\",\"params\":{},\"id\":1}\n";
-    writer.write_all(req.as_bytes()).await.unwrap();
-    writer.shutdown().await.unwrap();
+            let handle =
+                tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
+            ready.notified().await;
 
-    let mut lines = BufReader::new(reader).lines();
-    let line = lines.next_line().await.unwrap().expect("response");
-    let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
-    assert_eq!(resp["jsonrpc"], "2.0");
-    assert!(resp.get("result").is_some() || resp.get("error").is_some());
+            let mut stream = UnixStream::connect(&sock).await.expect("connect");
+            let req =
+                "{\"jsonrpc\":\"2.0\",\"method\":\"health.liveness\",\"params\":{},\"id\":1}\n";
+            stream.write_all(req.as_bytes()).await.unwrap();
+            stream.shutdown().await.unwrap();
 
-    let _ = shutdown_tx.send(true);
-    let _ = handle.await;
+            let mut buf = vec![0u8; 4096];
+            let mut total = 0;
+            loop {
+                let n = stream.read(&mut buf[total..]).await.unwrap();
+                total += n;
+                if n == 0 || buf[..total].contains(&b'\n') {
+                    break;
+                }
+            }
+            let resp: serde_json::Value =
+                serde_json::from_str(std::str::from_utf8(&buf[..total]).unwrap().trim()).unwrap();
+            assert_eq!(resp["jsonrpc"], "2.0");
+            assert!(resp.get("result").is_some() || resp.get("error").is_some());
+
+            let _ = shutdown_tx.send(true);
+            let _ = handle.await;
+        });
+    });
 }
 
 /// Server with --unix creates socket file and cleans up on shutdown.
@@ -54,10 +83,7 @@ async fn test_uds_server_lifecycle() {
     let dir = tempfile::tempdir().expect("tempdir");
     let sock = dir.path().join("lifecycle.sock");
 
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    primal.start().await.expect("primal should start");
-    let primal = Arc::new(primal);
+    let primal = new_started_primal().await;
 
     let uds = UdsJsonRpcServer::new(primal, sock.clone());
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
@@ -117,220 +143,262 @@ fn test_run_server_with_uds() {
 /// Simulates the composition load that downstream springs (wetSpring,
 /// ludoSpring, healthSpring) apply when trio IPC is active. Validates
 /// that UDS remains stable under parallel connection pressure.
-#[tokio::test]
-async fn test_uds_composition_load_concurrent_clients() {
-    const CONCURRENT_CLIENTS: usize = 50;
+#[test]
+fn test_uds_composition_load_concurrent_clients() {
+    temp_env::with_vars(BTSP_CLEAR_ENV, || {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            const CONCURRENT_CLIENTS: usize = 50;
 
-    let dir = tempfile::tempdir().expect("tempdir");
-    let sock = dir.path().join("comp-load.sock");
+            let dir = tempfile::tempdir().expect("tempdir");
+            let sock = dir.path().join("comp-load.sock");
 
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    primal.start().await.expect("primal should start");
-    let primal = Arc::new(primal);
+            let primal = new_started_primal().await;
+            let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
+            let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+            let ready = Arc::new(tokio::sync::Notify::new());
+            let ready_rx = Arc::clone(&ready);
 
-    let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
-    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
-    let ready = Arc::new(tokio::sync::Notify::new());
-    let ready_rx = Arc::clone(&ready);
+            let handle =
+                tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
+            ready.notified().await;
 
-    let handle = tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
-    ready.notified().await;
+            let mut tasks = Vec::with_capacity(CONCURRENT_CLIENTS);
+            for i in 0..CONCURRENT_CLIENTS {
+                let sock = sock.clone();
+                tasks.push(tokio::spawn(async move {
+                    let mut stream = UnixStream::connect(&sock).await.expect("connect");
+                    let req = format!(
+                        "{{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{{}},\"id\":{i}}}\n"
+                    );
+                    stream.write_all(req.as_bytes()).await.unwrap();
+                    stream.shutdown().await.unwrap();
 
-    let mut tasks = Vec::with_capacity(CONCURRENT_CLIENTS);
-    for i in 0..CONCURRENT_CLIENTS {
-        let sock = sock.clone();
-        tasks.push(tokio::spawn(async move {
-            let stream = UnixStream::connect(&sock).await.expect("connect");
-            let (reader, mut writer) = stream.into_split();
+                    let mut buf = vec![0u8; 4096];
+                    let mut total = 0;
+                    loop {
+                        let n = stream.read(&mut buf[total..]).await.unwrap();
+                        total += n;
+                        if n == 0 || buf[..total].contains(&b'\n') {
+                            break;
+                        }
+                    }
+                    let resp: serde_json::Value = serde_json::from_str(
+                        std::str::from_utf8(&buf[..total]).unwrap().trim(),
+                    )
+                    .unwrap();
+                    assert_eq!(resp["jsonrpc"], "2.0");
+                    assert!(resp.get("result").is_some(), "client {i} expected result, got: {resp}");
+                }));
+            }
 
-            let req = format!(
-                "{{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{{}},\"id\":{i}}}\n"
-            );
-            writer.write_all(req.as_bytes()).await.unwrap();
-            writer.shutdown().await.unwrap();
+            for task in tasks {
+                task.await.unwrap();
+            }
 
-            let mut lines = BufReader::new(reader).lines();
-            let line = lines.next_line().await.unwrap().expect("response");
-            let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
-            assert_eq!(resp["jsonrpc"], "2.0");
-            assert!(resp.get("result").is_some(), "client {i} expected result, got: {resp}");
-        }));
-    }
-
-    for task in tasks {
-        task.await.unwrap();
-    }
-
-    let _ = shutdown_tx.send(true);
-    let _ = handle.await;
+            let _ = shutdown_tx.send(true);
+            let _ = handle.await;
+        });
+    });
 }
 
 /// Composition-load: sustained sequential requests on a single UDS
 /// connection (simulates a long-lived spring client).
-#[tokio::test]
-async fn test_uds_sustained_sequential_requests() {
-    const REQUEST_COUNT: usize = 200;
+#[test]
+fn test_uds_sustained_sequential_requests() {
+    temp_env::with_vars(BTSP_CLEAR_ENV, || {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            const REQUEST_COUNT: usize = 200;
 
-    let dir = tempfile::tempdir().expect("tempdir");
-    let sock = dir.path().join("sustained.sock");
+            let dir = tempfile::tempdir().expect("tempdir");
+            let sock = dir.path().join("sustained.sock");
 
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    primal.start().await.expect("primal should start");
-    let primal = Arc::new(primal);
+            let primal = new_started_primal().await;
+            let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
+            let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+            let ready = Arc::new(tokio::sync::Notify::new());
+            let ready_rx = Arc::clone(&ready);
 
-    let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
-    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
-    let ready = Arc::new(tokio::sync::Notify::new());
-    let ready_rx = Arc::clone(&ready);
+            let handle =
+                tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
+            ready.notified().await;
 
-    let handle = tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
-    ready.notified().await;
+            let stream = UnixStream::connect(&sock).await.expect("connect");
+            let (reader, mut writer) = tokio::io::split(stream);
+            let mut lines = BufReader::new(reader).lines();
 
-    let stream = UnixStream::connect(&sock).await.expect("connect");
-    let (reader, mut writer) = tokio::io::split(stream);
-    let mut lines = BufReader::new(reader).lines();
+            for i in 0..REQUEST_COUNT {
+                let req = format!(
+                    "{{\"jsonrpc\":\"2.0\",\"method\":\"health.liveness\",\"params\":{{}},\"id\":{i}}}\n"
+                );
+                writer.write_all(req.as_bytes()).await.unwrap();
+                writer.flush().await.unwrap();
 
-    for i in 0..REQUEST_COUNT {
-        let req = format!(
-            "{{\"jsonrpc\":\"2.0\",\"method\":\"health.liveness\",\"params\":{{}},\"id\":{i}}}\n"
-        );
-        writer.write_all(req.as_bytes()).await.unwrap();
-        writer.flush().await.unwrap();
+                let line = lines.next_line().await.unwrap().expect("response");
+                let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+                assert_eq!(resp["jsonrpc"], "2.0", "request {i} bad jsonrpc");
+            }
 
-        let line = lines.next_line().await.unwrap().expect("response");
-        let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
-        assert_eq!(resp["jsonrpc"], "2.0", "request {i} bad jsonrpc");
-    }
-
-    drop(writer);
-    let _ = shutdown_tx.send(true);
-    let _ = handle.await;
+            drop(writer);
+            let _ = shutdown_tx.send(true);
+            let _ = handle.await;
+        });
+    });
 }
 
 /// Graceful shutdown: server stops accepting new connections and cleans
 /// up the socket file after existing connections complete.
-#[tokio::test]
-async fn test_uds_graceful_shutdown_under_load() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let sock = dir.path().join("graceful.sock");
+#[test]
+fn test_uds_graceful_shutdown_under_load() {
+    temp_env::with_vars(BTSP_CLEAR_ENV, || {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let sock = dir.path().join("graceful.sock");
 
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    primal.start().await.expect("primal should start");
-    let primal = Arc::new(primal);
+            let primal = new_started_primal().await;
+            let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
+            let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+            let ready = Arc::new(tokio::sync::Notify::new());
+            let ready_rx = Arc::clone(&ready);
 
-    let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
-    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
-    let ready = Arc::new(tokio::sync::Notify::new());
-    let ready_rx = Arc::clone(&ready);
+            let handle =
+                tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
+            ready.notified().await;
 
-    let handle = tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
-    ready.notified().await;
+            let mut tasks = Vec::with_capacity(10);
+            for i in 0..10 {
+                let sock = sock.clone();
+                tasks.push(tokio::spawn(async move {
+                    let mut stream = UnixStream::connect(&sock).await.expect("connect");
+                    let req = format!(
+                        "{{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{{}},\"id\":{i}}}\n"
+                    );
+                    stream.write_all(req.as_bytes()).await.unwrap();
+                    stream.shutdown().await.unwrap();
+                    let mut buf = vec![0u8; 4096];
+                    let mut total = 0;
+                    loop {
+                        let n = stream.read(&mut buf[total..]).await.unwrap();
+                        total += n;
+                        if n == 0 || buf[..total].contains(&b'\n') {
+                            break;
+                        }
+                    }
+                    let resp: serde_json::Value = serde_json::from_str(
+                        std::str::from_utf8(&buf[..total]).unwrap().trim(),
+                    )
+                    .unwrap();
+                    assert_eq!(resp["jsonrpc"], "2.0");
+                }));
+            }
 
-    let mut tasks = Vec::with_capacity(10);
-    for i in 0..10 {
-        let sock = sock.clone();
-        tasks.push(tokio::spawn(async move {
-            let stream = UnixStream::connect(&sock).await.expect("connect");
-            let (reader, mut writer) = stream.into_split();
+            for task in tasks {
+                task.await.unwrap();
+            }
 
-            let req = format!(
-                "{{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"params\":{{}},\"id\":{i}}}\n"
-            );
-            writer.write_all(req.as_bytes()).await.unwrap();
-            writer.shutdown().await.unwrap();
+            let _ = shutdown_tx.send(true);
 
-            let mut lines = BufReader::new(reader).lines();
-            let line = lines.next_line().await.unwrap().expect("response");
-            let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
-            assert_eq!(resp["jsonrpc"], "2.0");
-        }));
-    }
-
-    for task in tasks {
-        task.await.unwrap();
-    }
-
-    let _ = shutdown_tx.send(true);
-
-    let result = tokio::time::timeout(std::time::Duration::from_secs(5), handle)
-        .await
-        .expect("server should shut down within 5s");
-    assert!(result.is_ok(), "server should shut down cleanly");
-    assert!(!sock.exists(), "socket should be cleaned up");
+            let result = tokio::time::timeout(std::time::Duration::from_secs(5), handle)
+                .await
+                .expect("server should shut down within 5s");
+            assert!(result.is_ok(), "server should shut down cleanly");
+            assert!(!sock.exists(), "socket should be cleaned up");
+        });
+    });
 }
 
 /// Provenance trio validation: `dag.session.create` + `dag.event.append`
 /// over UDS, confirming the workflow ludoSpring uses for game move DAG
 /// recording. This is the specific integration pattern that GAP-06 blocked.
-#[tokio::test]
-async fn test_uds_provenance_trio_dag_workflow() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let sock = dir.path().join("provenance-trio.sock");
+#[test]
+fn test_uds_provenance_trio_dag_workflow() {
+    temp_env::with_vars(BTSP_CLEAR_ENV, || {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let sock = dir.path().join("provenance-trio.sock");
 
-    let config = RhizoCryptConfig::default();
-    let mut primal = RhizoCrypt::new(config);
-    primal.start().await.expect("primal should start");
-    let primal = Arc::new(primal);
+            let primal = new_started_primal().await;
+            let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
+            let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+            let ready = Arc::new(tokio::sync::Notify::new());
+            let ready_rx = Arc::clone(&ready);
 
-    let uds = UdsJsonRpcServer::new(Arc::clone(&primal), sock.clone());
-    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
-    let ready = Arc::new(tokio::sync::Notify::new());
-    let ready_rx = Arc::clone(&ready);
+            let handle =
+                tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
+            ready.notified().await;
 
-    let handle = tokio::spawn(async move { uds.serve_with_ready(shutdown_rx, ready_rx).await });
-    ready.notified().await;
+            let stream = UnixStream::connect(&sock).await.expect("connect");
+            let (reader, mut writer) = tokio::io::split(stream);
+            let mut lines = BufReader::new(reader);
 
-    let stream = UnixStream::connect(&sock).await.expect("connect");
-    let (reader, mut writer) = stream.into_split();
-    let mut lines = BufReader::new(reader);
+            let create_req = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "dag.session.create",
+                "params": {"session_type": "General", "description": "provenance-trio-test"},
+                "id": 1
+            });
+            writer.write_all(format!("{}\n", create_req).as_bytes()).await.unwrap();
 
-    let create_req = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "dag.session.create",
-        "params": {"session_type": "General", "description": "provenance-trio-test"},
-        "id": 1
+            let mut line = String::new();
+            lines.read_line(&mut line).await.unwrap();
+            let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(resp["jsonrpc"], "2.0");
+            let session_id = resp["result"].as_str().expect("session_id");
+
+            let append_req = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "dag.event.append",
+                "params": {
+                    "session_id": session_id,
+                    "event_type": {"GameEvent": {"game_type": "chess", "event_name": "move"}},
+                    "data": {"move": "e2e4", "player": "white"}
+                },
+                "id": 2
+            });
+            line.clear();
+            writer.write_all(format!("{}\n", append_req).as_bytes()).await.unwrap();
+
+            lines.read_line(&mut line).await.unwrap();
+            let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(resp["jsonrpc"], "2.0");
+            assert!(
+                resp.get("result").is_some(),
+                "dag.event.append should return a result, got: {resp}"
+            );
+            let result = &resp["result"];
+            let vertex_id = result.as_str().unwrap_or_else(|| {
+                result
+                    .as_object()
+                    .and_then(|o| o.get("vertex_id"))
+                    .and_then(|v| v.as_str())
+                    .expect("result should contain vertex_id")
+            });
+            assert_eq!(vertex_id.len(), 64, "vertex_id should be 64-char hex");
+
+            drop(writer);
+            let _ = shutdown_tx.send(true);
+            let _ = handle.await;
+        });
     });
-    writer.write_all(format!("{}\n", create_req).as_bytes()).await.unwrap();
-
-    let mut line = String::new();
-    lines.read_line(&mut line).await.unwrap();
-    let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
-    assert_eq!(resp["jsonrpc"], "2.0");
-    let session_id = resp["result"].as_str().expect("session_id");
-
-    let append_req = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "dag.event.append",
-        "params": {
-            "session_id": session_id,
-            "event_type": {"GameEvent": {"game_type": "chess", "event_name": "move"}},
-            "data": {"move": "e2e4", "player": "white"}
-        },
-        "id": 2
-    });
-    line.clear();
-    writer.write_all(format!("{}\n", append_req).as_bytes()).await.unwrap();
-
-    lines.read_line(&mut line).await.unwrap();
-    let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
-    assert_eq!(resp["jsonrpc"], "2.0");
-    assert!(resp.get("result").is_some(), "dag.event.append should return a result, got: {resp}");
-    let result = &resp["result"];
-    let vertex_id = result.as_str().unwrap_or_else(|| {
-        result
-            .as_object()
-            .and_then(|o| o.get("vertex_id"))
-            .and_then(|v| v.as_str())
-            .expect("result should contain vertex_id")
-    });
-    assert_eq!(vertex_id.len(), 64, "vertex_id should be 64-char hex");
-
-    writer.shutdown().await.unwrap();
-    let _ = shutdown_tx.send(true);
-    let _ = handle.await;
 }
 
 /// Verify that `PrimalManifest` round-trips correctly with rhizoCrypt's

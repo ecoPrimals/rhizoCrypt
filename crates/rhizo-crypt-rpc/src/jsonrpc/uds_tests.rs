@@ -7,37 +7,44 @@
 
 use super::tests_support::test_primal;
 use super::*;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[tokio::test]
 async fn test_uds_roundtrip() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let sock = dir.path().join("rhizocrypt-test.sock");
     let primal = test_primal().await;
 
-    let server = UdsJsonRpcServer::new(primal, sock.clone());
-    let (shutdown_tx, shutdown_rx) = watch::channel(false);
-    let ready = Arc::new(tokio::sync::Notify::new());
-    let ready_rx = Arc::clone(&ready);
+    let server_rpc = crate::service::RhizoCryptRpcServer::new(primal);
+    let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
+    server_raw.set_nonblocking(true).unwrap();
+    client_raw.set_nonblocking(true).unwrap();
+    let server_stream = tokio::net::UnixStream::from_std(server_raw).unwrap();
+    let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
 
-    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
-    ready.notified().await;
-
-    let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
-    let (reader, mut writer) = stream.into_split();
+    let handle =
+        tokio::spawn(
+            async move { handle_uds_connection(server_stream, server_rpc, false, None).await },
+        );
 
     let req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
-    writer.write_all(format!("{req}\n").as_bytes()).await.unwrap();
-    writer.shutdown().await.unwrap();
+    client.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+    client.shutdown().await.unwrap();
 
-    let mut lines = BufReader::new(reader).lines();
-    let line = lines.next_line().await.unwrap().expect("response");
-    let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+    let mut buf = vec![0u8; 4096];
+    let mut total = 0;
+    loop {
+        let n = client.read(&mut buf[total..]).await.unwrap();
+        total += n;
+        if n == 0 || buf[..total].contains(&b'\n') {
+            break;
+        }
+    }
+    let resp: serde_json::Value =
+        serde_json::from_str(std::str::from_utf8(&buf[..total]).unwrap().trim()).unwrap();
     assert_eq!(resp["jsonrpc"], "2.0");
     assert!(resp["result"].is_object());
 
-    let _ = shutdown_tx.send(true);
-    let _ = handle.await;
+    let server_result = handle.await.unwrap();
+    assert!(server_result.is_ok(), "server handler should succeed");
 }
 
 #[tokio::test]
@@ -110,34 +117,40 @@ async fn test_uds_server_cleanup_idempotent() {
 
 #[tokio::test]
 async fn test_uds_multiple_sequential_requests() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let sock = dir.path().join("seq-test.sock");
     let primal = test_primal().await;
 
-    let server = UdsJsonRpcServer::new(primal, sock.clone());
-    let (shutdown_tx, shutdown_rx) = watch::channel(false);
-    let ready = Arc::new(tokio::sync::Notify::new());
-    let ready_rx = Arc::clone(&ready);
-
-    let handle = tokio::spawn(async move { server.serve_with_ready(shutdown_rx, ready_rx).await });
-    ready.notified().await;
-
     for i in 0..5_u32 {
-        let stream = tokio::net::UnixStream::connect(&sock).await.expect("connect");
-        let (reader, mut writer) = stream.into_split();
+        let server_rpc = crate::service::RhizoCryptRpcServer::new(primal.clone());
+        let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
+        server_raw.set_nonblocking(true).unwrap();
+        client_raw.set_nonblocking(true).unwrap();
+        let server_stream = tokio::net::UnixStream::from_std(server_raw).unwrap();
+        let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
+
+        let handle = tokio::spawn(async move {
+            handle_uds_connection(server_stream, server_rpc, false, None).await
+        });
 
         let req = format!(r#"{{"jsonrpc":"2.0","method":"health.check","params":{{}},"id":{i}}}"#);
-        writer.write_all(format!("{req}\n").as_bytes()).await.unwrap();
-        writer.shutdown().await.unwrap();
+        client.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+        client.shutdown().await.unwrap();
 
-        let mut lines = BufReader::new(reader).lines();
-        let line = lines.next_line().await.unwrap().expect("response");
-        let resp: serde_json::Value = serde_json::from_str(&line).unwrap();
+        let mut buf = vec![0u8; 4096];
+        let mut total = 0;
+        loop {
+            let n = client.read(&mut buf[total..]).await.unwrap();
+            total += n;
+            if n == 0 || buf[..total].contains(&b'\n') {
+                break;
+            }
+        }
+        let resp: serde_json::Value =
+            serde_json::from_str(std::str::from_utf8(&buf[..total]).unwrap().trim()).unwrap();
         assert_eq!(resp["id"], i);
-    }
 
-    let _ = shutdown_tx.send(true);
-    let _ = handle.await;
+        let server_result = handle.await.unwrap();
+        assert!(server_result.is_ok());
+    }
 }
 
 #[tokio::test]

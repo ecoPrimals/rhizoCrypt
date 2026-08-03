@@ -14,7 +14,9 @@ fn test_run_server_tcp_bind_conflict_returns_rpc_error() {
     temp_env::with_vars(
         [
             ("BIOMEOS_INSECURE", Some("1")),
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_JSONRPC_PORT", None),
             ("DISCOVERY_ENDPOINT", None),
@@ -46,6 +48,8 @@ fn test_run_server_discovery_register_failure_continues() {
     temp_env::with_vars(
         [
             ("BIOMEOS_INSECURE", Some("1")),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
             ("RHIZOCRYPT_PORT", Some("0")),
             ("RHIZOCRYPT_HOST", Some("127.0.0.1")),
             ("RHIZOCRYPT_DISCOVERY_ADAPTER", Some("127.0.0.1:59999")),
@@ -93,6 +97,8 @@ fn test_run_server_discovery_registration_success() {
     temp_env::with_vars(
         [
             ("BIOMEOS_INSECURE", Some("1")),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
             ("RHIZOCRYPT_PORT", Some("0")),
             ("RHIZOCRYPT_HOST", Some("127.0.0.1")),
             ("DISCOVERY_ENDPOINT", None),
@@ -168,7 +174,9 @@ fn test_run_server_uds_only_graceful_shutdown_on_sigint() {
     temp_env::with_vars(
         [
             ("BIOMEOS_INSECURE", Some("1")),
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_JSONRPC_PORT", None),
             ("DISCOVERY_ENDPOINT", None),
@@ -216,7 +224,9 @@ fn test_run_server_tcp_graceful_shutdown_on_sigterm() {
     temp_env::with_vars(
         [
             ("BIOMEOS_INSECURE", Some("1")),
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_JSONRPC_PORT", None),
             ("DISCOVERY_ENDPOINT", None),
@@ -348,7 +358,9 @@ fn test_run_server_manifest_publish_failure_is_non_fatal() {
         [
             ("XDG_RUNTIME_DIR", Some(blocked)),
             ("BIOMEOS_INSECURE", Some("1")),
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_JSONRPC_PORT", None),
             ("DISCOVERY_ENDPOINT", None),

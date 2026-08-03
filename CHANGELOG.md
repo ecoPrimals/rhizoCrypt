@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## Wave 155n — Deep Debt + BTSP Test Isolation (Aug 3, 2026)
+- Fix 12 pre-existing test failures: UDS and service lifecycle tests leaked `FAMILY_ID` from gate env
+- Root cause: production `FAMILY_ID=e8b62b6e` set on eastGate caused listener to enforce BTSP, rejecting plain JSON-RPC connections in tests
+- All `temp_env::with_vars` blocks in service lifecycle and startup tests now clear `FAMILY_ID` / `RHIZOCRYPT_FAMILY_ID`
+- UDS roundtrip tests converted to socket-pair pattern (env-independent, matching uds_tests_errors.rs pattern)
+- Integration tests converted to `#[test]` + manual runtime + `temp_env::with_vars(BTSP_CLEAR_ENV)` for listener-based tests
+- `cargo update`: 7 deps to latest patches (aho-corasick, clap, enum-ordinalize, http, tokio-macros)
+- `cargo clippy --pedantic`: zero warnings (full sweep including nursery lints)
+- `#[allow]` audit: 11 `#[allow]` + 7 prod `#[expect]` all verified with reason strings
+- Debt markers: zero TODO/FIXME/HACK/STUB/PLACEHOLDER in `.rs` files
+- Hardcoding: zero hardcoded IPs/ports/primal names in production code
+- Mocks: all mock impls gated behind `#[cfg(test)]` or `test-utils` feature
+- External deps: only C dep is `libc` (tokio/signal-hook-registry, unavoidable); crypto stack pure Rust; `cargo deny` CLEAN
+- Tests: 1,914, 225 `.rs` files, ~63,520 lines
+
 ## Wave 155n — G31 Batch Provenance Pipeline (Aug 3, 2026)
 - `append_vertices_batch()`: single-lock batch append for N vertices (10× less lock contention)
 - `dehydrate_batch()`: concurrent multi-session dehydration via JoinSet (per-session error isolation)

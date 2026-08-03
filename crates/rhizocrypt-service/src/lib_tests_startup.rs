@@ -266,7 +266,10 @@ fn test_run_server_uds_only_mode() {
 
     temp_env::with_vars(
         [
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("BIOMEOS_INSECURE", Some("1")),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_JSONRPC_PORT", None),
             ("RHIZOCRYPT_HOST", None),
@@ -303,8 +306,11 @@ fn test_run_server_uds_only_mode() {
 fn test_run_server_tcp_via_jsonrpc_port_env() {
     temp_env::with_vars(
         [
+            ("BIOMEOS_INSECURE", Some("1")),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
             ("RHIZOCRYPT_JSONRPC_PORT", Some("0")),
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_HOST", Some("127.0.0.1")),
             ("DISCOVERY_ENDPOINT", None),
@@ -341,7 +347,10 @@ fn test_run_server_tcp_via_jsonrpc_port_env() {
 fn test_run_server_no_uds_backward_compat() {
     temp_env::with_vars(
         [
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("BIOMEOS_INSECURE", Some("1")),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_JSONRPC_PORT", None),
             ("DISCOVERY_ENDPOINT", None),
@@ -443,7 +452,9 @@ fn test_run_server_invalid_host_returns_addr_parse() {
     temp_env::with_vars(
         [
             ("BIOMEOS_INSECURE", Some("1")),
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_JSONRPC_PORT", None),
             ("DISCOVERY_ENDPOINT", None),
@@ -468,7 +479,9 @@ fn test_run_server_host_override_enables_tcp() {
     temp_env::with_vars(
         [
             ("BIOMEOS_INSECURE", Some("1")),
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_JSONRPC_PORT", None),
             ("RHIZOCRYPT_HOST", None),
@@ -559,8 +572,10 @@ fn test_run_server_transport_endpoint_env() {
     temp_env::with_vars(
         [
             ("BIOMEOS_INSECURE", Some("1")),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
             ("TRANSPORT_ENDPOINT", Some(r#"{"transport":"uds","path":"/tmp/test.sock"}"#)),
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_JSONRPC_PORT", None),
             ("DISCOVERY_ENDPOINT", None),
@@ -601,7 +616,9 @@ fn test_run_server_default_uds_path() {
     temp_env::with_vars(
         [
             ("BIOMEOS_INSECURE", Some("1")),
-            ("RHIZOCRYPT_PORT", None::<&str>),
+            ("FAMILY_ID", None::<&str>),
+            ("RHIZOCRYPT_FAMILY_ID", None),
+            ("RHIZOCRYPT_PORT", None),
             ("RHIZOCRYPT_RPC_PORT", None),
             ("RHIZOCRYPT_JSONRPC_PORT", None),
             ("DISCOVERY_ENDPOINT", None),
