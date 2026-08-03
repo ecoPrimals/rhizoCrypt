@@ -12,7 +12,7 @@ springs = []
 
 - **1,914 tests** passing (unit + integration + property + doc, `--all-features`)
 - **225 `.rs` files**, ~63,520 lines
-- **37 registered methods** across 7 domains (31 stable, 6 evolving)
+- **39 registered methods** across 7 domains (31 stable, 8 evolving)
 - **93.83% line coverage** (CI gate: 90%)
 - **Zero `unsafe` blocks** — `unsafe_code = "deny"` workspace-wide
 - **Zero C dependencies** — ecoBin compliant, `cargo-deny` enforced
@@ -28,9 +28,10 @@ springs = []
 | `dag.vertex.*` | 3 | Stable | Vertex retrieval and query |
 | `dag.merkle.*` | 3 | Stable | Merkle root, proof, verify |
 | `dag.slice.*` | 4 | Stable | Immutable snapshot checkout/resolve |
-| `dag.dehydration.*` | 2 | Stable | Commit to permanent storage |
+| `dag.dehydration.*` | 3 | 2 Stable, 1 Evolving | Commit to permanent storage (incl. batch) |
 | `dag.partial_dehydrate` | 1 | Evolving | Partial Merkle root without closing session |
 | `dag.branch/diff/merge/federate` | 4 | Evolving | DAG evolution — branch, diff, merge, cross-gate federation (Wave 60) |
+| `dag.pipeline.ingest` | 1 | Evolving | Coordinated create + batch append + optional dehydrate (G31) |
 | `health.*` | 4 | Stable | Liveness, readiness, check, metrics |
 | `auth.*` | 3 | Stable | Method gate introspection (JH-0/JH-1) |
 | `identity/capabilities/tools` | 6 | Stable | Discovery, MCP tool exposure |
@@ -87,6 +88,6 @@ and sweetGrass braids.
 
 ## See Also
 
-- [Capability Registry](../config/capability_registry.toml) — 37 methods with stability tiers
+- [Capability Registry](../config/capability_registry.toml) — 39 methods with stability tiers
 - [API Specification](../specs/API_SPECIFICATION.md) — tarpc + JSON-RPC wire format
 - [CHANGELOG](../CHANGELOG.md) — full evolution history

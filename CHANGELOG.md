@@ -7,9 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
-### Changed
-
-## Wave 155n — Deep Debt + BTSP Test Isolation (Aug 3, 2026)
+### Wave 155n — Deep Debt + BTSP Test Isolation (Aug 3, 2026)
 - Fix 12 pre-existing test failures: UDS and service lifecycle tests leaked `FAMILY_ID` from gate env
 - Root cause: production `FAMILY_ID=e8b62b6e` set on eastGate caused listener to enforce BTSP, rejecting plain JSON-RPC connections in tests
 - All `temp_env::with_vars` blocks in service lifecycle and startup tests now clear `FAMILY_ID` / `RHIZOCRYPT_FAMILY_ID`
@@ -24,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - External deps: only C dep is `libc` (tokio/signal-hook-registry, unavoidable); crypto stack pure Rust; `cargo deny` CLEAN
 - Tests: 1,914, 225 `.rs` files, ~63,520 lines
 
-## Wave 155n — G31 Batch Provenance Pipeline (Aug 3, 2026)
+### Wave 155n — G31 Batch Provenance Pipeline (Aug 3, 2026)
 - `append_vertices_batch()`: single-lock batch append for N vertices (10× less lock contention)
 - `dehydrate_batch()`: concurrent multi-session dehydration via JoinSet (per-session error isolation)
 - `dag.dehydration.trigger_batch`: JSON-RPC + tarpc for multi-session batch dehydration
@@ -34,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 2 new methods in METHOD_CATALOG (39 total), 2 new capabilities, provenance wire aliases
 - Tests: 1,914 (+14), 225 `.rs` files, ~63,410 lines
 
-## Wave 155i — Cross-Compile Hygiene + NUCLEUS Readiness (Jul 29, 2026)
+### Wave 155i — Cross-Compile Hygiene + NUCLEUS Readiness (Jul 29, 2026)
 - Zero-warning cross-compile for all 4 genomeBin targets: x86_64-linux, x86_64-windows-gnu, x86_64-linux-musl, aarch64-linux-musl
 - Fix unused `tracing::{info, warn}` imports on Windows (discovery.rs, shutdown.rs — gated behind `#[cfg(unix)]`)
 - Fix unused_mut warning on Windows: `cfg_attr(not(unix), allow(unused_mut))` on transport.rs stream (mut needed for BTSP handshake on Unix)
@@ -42,13 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - NUCLEUS readiness verified: Neural API announce, capability manifest, biomeOS integration surface all clean
 - Tests: 1,900, 225 `.rs` files, ~62,665 lines
 
-## Wave 155d — Dep Hygiene + Test Consolidation (Jul 28, 2026)
+### Wave 155d — Dep Hygiene + Test Consolidation (Jul 28, 2026)
 - `cargo update`: all workspace deps to latest compatible patches (zeroize 1.9, zerocopy 0.8.55, hyper 1.11, axum 0.7.9)
 - `cargo deny`: CLEAN — no advisories, bans, or license violations
 - Consolidate BTSP origin identity tests → `method_gate_tests.rs` trimmed 803→799 lines (under 800L limit)
 - Tests: 1,900, 225 `.rs` files, ~62,665 lines
 
-## Wave 155b — Cross-Gate Provenance Chain (Jul 27, 2026)
+### Wave 155b — Cross-Gate Provenance Chain (Jul 27, 2026)
 - Wire federate → sweetGrass provenance push: `notify_provenance()` now called after successful federation
 - Build `ProvenanceChain` from imported vertices with `VertexRef` entries for each federated vertex
 - Expose `provenance_notifier()` getter on `RhizoCrypt` — notifier now accessible from RPC layer
@@ -58,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 8 new tests (provenance chain building, gateway witnesses, enriched dehydration, notifier accessibility)
 - Tests: 1,901 (+8), 225 `.rs` files, ~62,665 lines
 
-## Wave 155b — BTSP-DAG Bridge + Federate Hardening (Jul 27, 2026)
+### Wave 155b — BTSP-DAG Bridge + Federate Hardening (Jul 27, 2026)
 - Bridge BTSP transport auth into DAG authorization: new `ConnectionOrigin::BtspAuthenticated`
 - BTSP-authenticated callers auto-granted all method scopes (family membership = DAG access)
 - `CallerContext::btsp_authenticated()` constructor; all post-handshake paths propagate identity
@@ -69,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 10 new tests (BTSP bridge, federate source_gate, verify_signatures, rejected field)
 - Tests: 1,893 (+10), 225 `.rs` files, ~62,282 lines
 
-## Wave 151b — BTSP Client-Side Handshake (Jul 26, 2026)
+### Wave 151b — BTSP Client-Side Handshake (Jul 26, 2026)
 - Implement BTSP `ClientHello` 4-step handshake for outbound bearDog UDS connections
 - New `btsp_client` module: `perform_client_handshake()`, `BtspClientSession`, `BtspClientError`
 - New `BtspUnixAdapter`: NDJSON JSON-RPC over BTSP-authenticated UDS connections
@@ -81,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 6 new tests (handshake wire types, HMAC, strict-mode env, adapter lifecycle)
 - Tests: 1,886 (+8), 225 `.rs` files, ~61,967 lines
 
-## Wave 149b — Deprecation Purge + Dead Code Removal + Architecture Splits (Jul 18, 2026)
+### Wave 149b — Deprecation Purge + Dead Code Removal + Architecture Splits (Jul 18, 2026)
 - Fix RUSTSEC-2026-0204: update crossbeam-epoch 0.9.18→0.9.20 (dev-only)
 - Delete deprecated API surface: `with_endpoint`, `AdapterFactory::create`, `SongbirdClient`/`SongbirdConfig` aliases, `READ_TIMEOUT`/`WRITE_TIMEOUT`
 - Delete unused `CircuitBreaker`/`RetryPolicy` (dead code since introduction)
@@ -90,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate deprecated constructor tests to `discover()` pattern
 - Coverage: 93.83%
 
-## Wave 143b — SessionTreeHash L5 Full Wire + Transport Cleanup (Jul 16, 2026)
+### Wave 143b — SessionTreeHash L5 Full Wire + Transport Cleanup (Jul 16, 2026)
 - Wire `SessionTreeHash` through full RPC stack (tarpc + JSON-RPC + DashMap cache)
 - Register `dag.session.tree_hash` in METHOD_CATALOG, MCP tools, method gate
 - Delete deprecated `TransportHint` + `preferred_transport` (dead code removal)

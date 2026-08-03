@@ -25,7 +25,7 @@
 | SPDX | `AGPL-3.0-or-later` header on all 225 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
-| Registry | `config/capability_registry.toml` (37 methods, 7 domains, stability tiers, `provenance.*` → `dag.*` wire aliases) |
+| Registry | `config/capability_registry.toml` (39 methods, 7 domains, stability tiers, `provenance.*` → `dag.*` wire aliases) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
 | Cross-compile | 4 targets: x86_64-linux, x86_64-windows-gnu, x86_64-linux-musl, aarch64-linux-musl — zero warnings |
 
@@ -99,7 +99,7 @@ fallback) for forward/backward compatibility.
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | Core DAG engine: sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc 0.37 service (28 ops), JSON-RPC 2.0 handler (37 methods across 7 domains), NDJSON streaming, rate limiting, metrics |
+| `rhizo-crypt-rpc` | tarpc 0.37 service (28 ops), JSON-RPC 2.0 handler (39 methods across 7 domains), NDJSON streaming, rate limiting, metrics |
 | `rhizocrypt-service` | UniBin binary and library (`server`, `client`, `status`, `version`, `doctor`) |
 
 ---
@@ -198,9 +198,10 @@ lookup: `$NEURAL_API_SOCKET` → `$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.s
 
 ### Stability Tiers
 
-31 of 37 methods are **stable**. 6 are **evolving**:
+31 of 39 methods are **stable**. 8 are **evolving**:
 `dag.partial_dehydrate`, `dag.branch`, `dag.diff`, `dag.merge`, `dag.federate`
-(Wave 60), `mesh.events.record` (Wave 76c).
+(Wave 60), `mesh.events.record` (Wave 76c), `dag.dehydration.trigger_batch`,
+`dag.pipeline.ingest` (G31).
 
 ---
 

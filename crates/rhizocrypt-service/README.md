@@ -42,7 +42,7 @@ See [docs/ENV_VARS.md](../../docs/ENV_VARS.md) for the full reference.
 - **UDS**: Unconditional on Unix (`$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock`)
 - **TCP**: Opt-in via `--port` or env vars (tarpc + JSON-RPC dual-mode)
 - **BTSP Phase 3**: X25519 handshake + ChaCha20-Poly1305 encrypted channel
-- **JSON-RPC 2.0**: 37 methods across 7 domains, HTTP + newline-delimited
+- **JSON-RPC 2.0**: 39 methods across 7 domains, HTTP + newline-delimited
 
 ## Subcommands
 

@@ -40,7 +40,7 @@ Three workspace crates:
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | DAG engine, sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc service (28 ops), JSON-RPC 2.0 handler (37 methods, 7 domains), NDJSON streaming, rate limiting |
+| `rhizo-crypt-rpc` | tarpc service (28 ops), JSON-RPC 2.0 handler (39 methods, 7 domains), NDJSON streaming, rate limiting |
 | `rhizocrypt-service` | UniBin binary (`server`, `client`, `status`, `version`, `doctor`) |
 
 ## IPC
@@ -86,7 +86,7 @@ Three workspace crates:
 ## Key Files
 
 - `Cargo.toml` — Workspace config, lint policy, dependency pins
-- `config/capability_registry.toml` — Capability method registry (37 methods in `METHOD_CATALOG`, 7 domains)
+- `config/capability_registry.toml` — Capability method registry (39 methods in `METHOD_CATALOG`, 7 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
 - `specs/` — 10 specification documents + 2 archived (incl. `CRYPTO_MODEL.md` — signing provider crypto delegation)
 ## Part of ecoPrimals
