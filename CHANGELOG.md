@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## Wave 155n — G31 Batch Provenance Pipeline (Aug 3, 2026)
+- `append_vertices_batch()`: single-lock batch append for N vertices (10× less lock contention)
+- `dehydrate_batch()`: concurrent multi-session dehydration via JoinSet (per-session error isolation)
+- `dag.dehydration.trigger_batch`: JSON-RPC + tarpc for multi-session batch dehydration
+- `dag.pipeline.ingest`: coordinated create + batch append + optional dehydrate in one RPC call
+- `notify_dehydration_batch()`: single JSON-RPC with array of summaries to sweetGrass (N→1)
+- `append_batch` RPC auto-routes to `append_vertices_batch` when all events target same session
+- 2 new methods in METHOD_CATALOG (39 total), 2 new capabilities, provenance wire aliases
+- Tests: 1,914 (+14), 225 `.rs` files, ~63,410 lines
+
 ## Wave 155i — Cross-Compile Hygiene + NUCLEUS Readiness (Jul 29, 2026)
 - Zero-warning cross-compile for all 4 genomeBin targets: x86_64-linux, x86_64-windows-gnu, x86_64-linux-musl, aarch64-linux-musl
 - Fix unused `tracing::{info, warn}` imports on Windows (discovery.rs, shutdown.rs — gated behind `#[cfg(unix)]`)
