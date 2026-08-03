@@ -353,6 +353,37 @@ impl RhizoCrypt {
         }
     }
 
+    /// Dehydrate multiple sessions concurrently.
+    ///
+    /// Each session is dehydrated independently via `tokio::spawn` so they
+    /// run in parallel. Failures are collected per-session — one bad session
+    /// does not abort the batch. Successfully dehydrated sessions produce
+    /// provenance notifications just like the single-session path.
+    ///
+    /// Returns a vec of `(session_id, Result<MerkleRoot>)` so the caller
+    /// knows exactly which sessions succeeded and which failed.
+    pub async fn dehydrate_batch(
+        self: &std::sync::Arc<Self>,
+        session_ids: Vec<SessionId>,
+    ) -> Vec<(SessionId, Result<MerkleRoot>)> {
+        let mut set = tokio::task::JoinSet::new();
+        for sid in session_ids {
+            let primal = std::sync::Arc::clone(self);
+            set.spawn(async move { (sid, primal.dehydrate(sid).await) });
+        }
+
+        let mut results = Vec::with_capacity(set.len());
+        while let Some(join_result) = set.join_next().await {
+            match join_result {
+                Ok(pair) => results.push(pair),
+                Err(e) => {
+                    tracing::warn!(error = %e, "dehydrate_batch: task panicked (skipping)");
+                }
+            }
+        }
+        results
+    }
+
     /// Get dehydration status for a session (lock-free).
     #[must_use]
     pub fn get_dehydration_status(&self, session_id: SessionId) -> dehydration::DehydrationStatus {

@@ -348,6 +348,56 @@ pub fn cached_capability_descriptors() -> &'static [CapabilityDescriptor] {
     CACHE.get_or_init(build_capability_descriptors)
 }
 
+// ============================================================================
+// Batch / Pipeline Types (G31)
+// ============================================================================
+
+/// Per-session result from `dag.dehydration.trigger_batch`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchDehydrateResult {
+    /// Session that was dehydrated.
+    pub session_id: SessionId,
+    /// BLAKE3 Merkle root (hex) on success, error message on failure.
+    pub merkle_root: Option<String>,
+    /// Whether dehydration succeeded.
+    pub success: bool,
+    /// Human-readable error if dehydration failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Request for the coordinated `dag.pipeline.ingest` method.
+///
+/// Creates a session, appends a batch of vertices, and optionally dehydrates
+/// in a single coordinated call. Eliminates N round-trips for bulk ingestion.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelineIngestRequest {
+    /// Session type for the newly created session.
+    pub session_type: SessionType,
+    /// Optional session description.
+    #[serde(default)]
+    pub description: Option<String>,
+    /// Events to append after session creation.
+    pub events: Vec<AppendEventRequest>,
+    /// If true, dehydrate the session after all events are appended.
+    #[serde(default)]
+    pub dehydrate: bool,
+}
+
+/// Response from `dag.pipeline.ingest`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelineIngestResponse {
+    /// The created session ID.
+    pub session_id: SessionId,
+    /// Vertex IDs for each appended event.
+    pub vertex_ids: Vec<VertexId>,
+    /// Merkle root (hex) if dehydration was requested and succeeded.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub merkle_root: Option<String>,
+    /// Number of vertices appended.
+    pub appended: u64,
+}
+
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test code")]
 mod tests {

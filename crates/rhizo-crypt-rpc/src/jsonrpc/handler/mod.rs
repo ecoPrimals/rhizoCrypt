@@ -118,7 +118,11 @@ pub async fn handle_request(
         "dag.dehydration.trigger" | "dag.dehydrate" => {
             dehydration::dispatch_dehydrate(server, params).await
         }
+        "dag.dehydration.trigger_batch" => {
+            dehydration::dispatch_dehydrate_batch(server, params).await
+        }
         "dag.dehydration.status" => dehydration::dispatch_dehydrate_status(server, params).await,
+        "dag.pipeline.ingest" => dehydration::dispatch_pipeline_ingest(server, params).await,
         rhizo_crypt_core::constants::HEALTH_CHECK | "status" | "check" => {
             health::dispatch_health(server).await
         }

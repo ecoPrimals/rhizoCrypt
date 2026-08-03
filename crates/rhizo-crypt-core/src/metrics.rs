@@ -51,6 +51,12 @@ impl PrimalMetrics {
         self.vertices_appended.fetch_add(1, Ordering::Relaxed);
     }
 
+    /// Add `n` to vertices appended (batch operations).
+    #[inline]
+    pub fn add_vertices_appended(&self, n: u64) {
+        self.vertices_appended.fetch_add(n, Ordering::Relaxed);
+    }
+
     /// Increment queries executed.
     #[inline]
     pub fn inc_queries_executed(&self) {

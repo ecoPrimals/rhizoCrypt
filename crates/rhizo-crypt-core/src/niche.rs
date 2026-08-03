@@ -330,6 +330,26 @@ pub const METHOD_CATALOG: &[MethodSpec] = &[
         external: false,
         deps: &["dag.dehydration.trigger"],
     },
+    // Batch dehydration — concurrent multi-session dehydration (G31)
+    MethodSpec {
+        fqn: "dag.dehydration.trigger_batch",
+        domain: "dag",
+        short_name: "dehydration.trigger_batch",
+        estimated_ms: 100,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create", "dag.event.append"],
+    },
+    // Pipeline ingest — coordinated create + batch append + dehydrate (G31)
+    MethodSpec {
+        fqn: "dag.pipeline.ingest",
+        domain: "dag",
+        short_name: "pipeline.ingest",
+        estimated_ms: 60,
+        gpu_beneficial: false,
+        external: false,
+        deps: &[],
+    },
     // Health and introspection
     MethodSpec {
         fqn: "health.check",

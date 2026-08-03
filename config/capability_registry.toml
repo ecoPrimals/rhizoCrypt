@@ -177,6 +177,22 @@ domain = "dag.dehydration"
 stability = "stable"
 description = "Check the status of a dehydration operation"
 
+# ── Batch dehydration (G31 — concurrent multi-session) ────────────
+
+[capabilities.dehydration_trigger_batch]
+method = "dag.dehydration.trigger_batch"
+domain = "dag.dehydration"
+stability = "evolving"
+description = "Dehydrate multiple sessions concurrently for bulk ingestion pipelines"
+
+# ── Pipeline ingest (G31 — coordinated create+append+dehydrate) ──
+
+[capabilities.pipeline_ingest]
+method = "dag.pipeline.ingest"
+domain = "dag.pipeline"
+stability = "evolving"
+description = "Coordinated pipeline: create session + batch append + optional dehydrate in one call"
+
 # ── Health and introspection ──────────────────────────────────────
 
 [capabilities.health_check]

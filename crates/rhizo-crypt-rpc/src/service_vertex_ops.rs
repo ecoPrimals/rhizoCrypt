@@ -8,9 +8,13 @@
 
 use crate::error::RpcError;
 use crate::service::{RhizoCryptRpcServer, parse_payload_ref, sign_vertex_if_available};
-use crate::service_types::{AppendEventRequest, QueryRequest};
+use crate::service_types::{
+    AppendEventRequest, BatchDehydrateResult, PipelineIngestRequest, PipelineIngestResponse,
+    QueryRequest,
+};
 use rhizo_crypt_core::{
-    DagStore, MerkleProof, MerkleRoot, SessionId, SessionTreeHash, Vertex, VertexBuilder, VertexId,
+    DagStore, MerkleProof, MerkleRoot, SessionBuilder, SessionId, SessionTreeHash, Vertex,
+    VertexBuilder, VertexId,
 };
 
 impl RhizoCryptRpcServer {
@@ -45,6 +49,40 @@ impl RhizoCryptRpcServer {
         &self,
         requests: Vec<AppendEventRequest>,
     ) -> Result<Vec<VertexId>, RpcError> {
+        if requests.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let all_same_session = requests.windows(2).all(|w| w[0].session_id == w[1].session_id);
+
+        if all_same_session {
+            let session_id = requests[0].session_id;
+            let mut vertices = Vec::with_capacity(requests.len());
+            for request in requests {
+                let mut builder = VertexBuilder::new(request.event_type);
+                if let Some(agent) = request.agent {
+                    builder = builder.with_agent(agent);
+                }
+                for parent in request.parents {
+                    builder = builder.with_parent(parent);
+                }
+                for (key, value) in request.metadata {
+                    builder = builder.with_metadata(key, value);
+                }
+                if let Some(payload) = request.payload_ref.and_then(|r| parse_payload_ref(&r)) {
+                    builder = builder.with_payload(payload);
+                }
+                let mut vertex = builder.build();
+                sign_vertex_if_available(&self.primal, &mut vertex).await;
+                vertices.push(vertex);
+            }
+            return self
+                .primal
+                .append_vertices_batch(session_id, vertices)
+                .await
+                .map_err(RpcError::from);
+        }
+
         let mut results = Vec::with_capacity(requests.len());
         for request in requests {
             let mut builder = VertexBuilder::new(request.event_type);
@@ -154,5 +192,93 @@ impl RhizoCryptRpcServer {
             self.primal.get_vertex(session_id, proof.vertex_id).await.map_err(RpcError::from)?;
 
         Ok(proof.verify(&vertex))
+    }
+
+    pub(crate) async fn impl_dehydrate_batch(
+        &self,
+        session_ids: Vec<SessionId>,
+    ) -> Result<Vec<BatchDehydrateResult>, RpcError> {
+        let pairs = self.primal.dehydrate_batch(session_ids).await;
+
+        Ok(pairs
+            .into_iter()
+            .map(|(session_id, result)| match result {
+                Ok(root) => BatchDehydrateResult {
+                    session_id,
+                    merkle_root: Some(hex::encode(root.0)),
+                    success: true,
+                    error: None,
+                },
+                Err(e) => BatchDehydrateResult {
+                    session_id,
+                    merkle_root: None,
+                    success: false,
+                    error: Some(e.to_string()),
+                },
+            })
+            .collect())
+    }
+
+    pub(crate) async fn impl_pipeline_ingest(
+        &self,
+        request: PipelineIngestRequest,
+    ) -> Result<PipelineIngestResponse, RpcError> {
+        let mut builder = SessionBuilder::new(request.session_type);
+        if let Some(desc) = request.description {
+            builder = builder.with_name(desc);
+        }
+        let session = builder.build();
+        let session_id = self.primal.create_session(session).map_err(RpcError::from)?;
+
+        let mut vertices = Vec::with_capacity(request.events.len());
+        for event in request.events {
+            let mut vb = VertexBuilder::new(event.event_type);
+            if let Some(agent) = event.agent {
+                vb = vb.with_agent(agent);
+            }
+            for parent in event.parents {
+                vb = vb.with_parent(parent);
+            }
+            for (key, value) in event.metadata {
+                vb = vb.with_metadata(key, value);
+            }
+            if let Some(payload) = event.payload_ref.and_then(|r| parse_payload_ref(&r)) {
+                vb = vb.with_payload(payload);
+            }
+            let mut vertex = vb.build();
+            sign_vertex_if_available(&self.primal, &mut vertex).await;
+            vertices.push(vertex);
+        }
+
+        let vertex_ids = self
+            .primal
+            .append_vertices_batch(session_id, vertices)
+            .await
+            .map_err(RpcError::from)?;
+
+        let appended = vertex_ids.len() as u64;
+
+        let merkle_root = if request.dehydrate {
+            match self.primal.dehydrate(session_id).await {
+                Ok(root) => Some(hex::encode(root.0)),
+                Err(e) => {
+                    tracing::warn!(
+                        error = %e,
+                        %session_id,
+                        "pipeline_ingest: dehydration failed (vertices still committed)"
+                    );
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        Ok(PipelineIngestResponse {
+            session_id,
+            vertex_ids,
+            merkle_root,
+            appended,
+        })
     }
 }

@@ -65,6 +65,67 @@ impl RhizoCrypt {
         Ok(vertex_id)
     }
 
+    /// Append multiple vertices to a single session in one lock acquisition.
+    ///
+    /// Takes the session lock once, updates the frontier for all vertices,
+    /// then stores them all. Amortizes lock overhead across the batch for
+    /// significantly better throughput on bulk ingestion (G31).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the session is not found, not active, or any
+    /// vertex fails to compute its ID. On mid-batch failure the vertices
+    /// already stored remain committed (append-only DAG semantics).
+    pub async fn append_vertices_batch(
+        &self,
+        session_id: SessionId,
+        vertices: Vec<Vertex>,
+    ) -> Result<Vec<VertexId>> {
+        if !self.state.is_running() {
+            return Err(RhizoCryptError::internal("primal not running"));
+        }
+        if vertices.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut prepared: Vec<(VertexId, Vertex)> = Vec::with_capacity(vertices.len());
+
+        // Single lock acquisition for the entire batch.
+        let mut session_entry = self
+            .sessions
+            .get_mut(&session_id)
+            .ok_or_else(|| RhizoCryptError::session_not_found(session_id))?;
+
+        if !session_entry.is_active() {
+            return Err(RhizoCryptError::internal("session not active"));
+        }
+
+        for mut vertex in vertices {
+            if let Some(ref agent) = vertex.agent {
+                session_entry.add_agent(agent.clone());
+            }
+            let parents = vertex.parents.clone();
+            let vertex_id = vertex.id()?;
+            session_entry.update_frontier(vertex_id, &parents);
+            prepared.push((vertex_id, vertex));
+        }
+
+        // Release session lock before expensive store operations.
+        drop(session_entry);
+
+        let dag_store = self.dag_store().await?;
+        let mut ids = Vec::with_capacity(prepared.len());
+        for (vertex_id, vertex) in prepared {
+            dag_store.put_vertex(session_id, vertex).await?;
+            self.vertex_session_index.insert(vertex_id, session_id);
+            ids.push(vertex_id);
+        }
+        self.metrics.add_vertices_appended(ids.len() as u64);
+        self.tree_hash_cache.remove(&session_id);
+
+        Ok(ids)
+    }
+
     /// Get a vertex by ID.
     ///
     /// # Errors

@@ -9,10 +9,11 @@
 
 use crate::error::RpcError;
 use crate::service_types::{
-    AppendEventRequest, BranchRequest, BranchResponse, CapabilityDescriptor, CheckoutSliceRequest,
-    CreateSessionRequest, DiffRequest, DiffResponse, FederateRequest, FederateResponse,
-    HealthStatus, MergeRequest, PartialDehydrateResponse, QueryRequest, ServiceMetrics,
-    SessionInfo, cached_capability_descriptors,
+    AppendEventRequest, BatchDehydrateResult, BranchRequest, BranchResponse, CapabilityDescriptor,
+    CheckoutSliceRequest, CreateSessionRequest, DiffRequest, DiffResponse, FederateRequest,
+    FederateResponse, HealthStatus, MergeRequest, PartialDehydrateResponse, PipelineIngestRequest,
+    PipelineIngestResponse, QueryRequest, ServiceMetrics, SessionInfo,
+    cached_capability_descriptors,
 };
 use rhizo_crypt_core::{
     MerkleProof, MerkleRoot, PayloadRef, Session, SessionBuilder, SessionId, SessionTreeHash,
@@ -154,6 +155,16 @@ pub trait RhizoCryptRpc {
     async fn get_dehydration_status(
         session_id: SessionId,
     ) -> Result<rhizo_crypt_core::DehydrationStatus, RpcError>;
+
+    /// Dehydrate multiple sessions concurrently (G31 batch pipeline).
+    async fn dehydrate_batch(
+        session_ids: Vec<SessionId>,
+    ) -> Result<Vec<BatchDehydrateResult>, RpcError>;
+
+    /// Coordinated pipeline: create session + append batch + optional dehydrate.
+    async fn pipeline_ingest(
+        request: PipelineIngestRequest,
+    ) -> Result<PipelineIngestResponse, RpcError>;
 
     // ========================================================================
     // Health & Metrics
@@ -565,6 +576,22 @@ impl RhizoCryptRpc for RhizoCryptRpcServer {
         session_id: SessionId,
     ) -> Result<rhizo_crypt_core::DehydrationStatus, RpcError> {
         Ok(self.primal.get_dehydration_status(session_id))
+    }
+
+    async fn dehydrate_batch(
+        self,
+        _: tarpc::context::Context,
+        session_ids: Vec<SessionId>,
+    ) -> Result<Vec<BatchDehydrateResult>, RpcError> {
+        self.impl_dehydrate_batch(session_ids).await
+    }
+
+    async fn pipeline_ingest(
+        self,
+        _: tarpc::context::Context,
+        request: PipelineIngestRequest,
+    ) -> Result<PipelineIngestResponse, RpcError> {
+        self.impl_pipeline_ingest(request).await
     }
 
     // Health / metrics / capabilities (kept inline — small)

@@ -56,6 +56,8 @@ pub const PROVENANCE_ALIASES: &[(&str, &str)] = &[
     ("provenance.dehydration.trigger", "dag.dehydration.trigger"),
     ("provenance.dehydrate", "dag.dehydrate"),
     ("provenance.dehydration.status", "dag.dehydration.status"),
+    ("provenance.dehydration.trigger_batch", "dag.dehydration.trigger_batch"),
+    ("provenance.pipeline.ingest", "dag.pipeline.ingest"),
     ("provenance.partial_dehydrate", "dag.partial_dehydrate"),
     ("provenance.branch", "dag.branch"),
     ("provenance.diff", "dag.diff"),

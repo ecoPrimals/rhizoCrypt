@@ -278,6 +278,62 @@ impl ProvenanceNotifier {
         Ok(())
     }
 
+    /// Notify provenance provider of multiple dehydrations in a single call.
+    ///
+    /// Sends a `contribution.record_dehydration_batch` JSON-RPC call with an
+    /// array of wire summaries. Reduces N network round-trips to 1 for bulk
+    /// ingestion (G31). Falls back gracefully when the provider doesn't
+    /// support batch — the caller should degrade to per-session notify.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if notification fails.
+    pub async fn notify_dehydration_batch(
+        &self,
+        items: &[(DehydrationSummary, Vec<crate::dehydration_wire::WireWitnessRef>)],
+    ) -> Result<()> {
+        if items.is_empty() || *self.state.read().await != ClientState::Connected {
+            return Ok(());
+        }
+
+        let Some(endpoint) = self.endpoint.read().await.clone() else {
+            return Ok(());
+        };
+
+        debug!(
+            count = items.len(),
+            %endpoint,
+            "Notifying provenance provider of dehydration batch"
+        );
+
+        let wire_summaries: Vec<crate::dehydration_wire::DehydrationWireSummary> = items
+            .iter()
+            .map(|(summary, witnesses)| {
+                let mut ws: crate::dehydration_wire::DehydrationWireSummary = summary.into();
+                ws.witnesses.extend_from_slice(witnesses);
+                ws
+            })
+            .collect();
+
+        let request = serde_json::json!({
+            "jsonrpc": crate::constants::JSONRPC_VERSION,
+            "method": "contribution.record_dehydration_batch",
+            "params": {
+                "source_primal": crate::constants::PRIMAL_NAME,
+                "summaries": wire_summaries,
+            },
+            "id": 1
+        });
+
+        Self::log_notify_result(
+            "dehydration batch",
+            &format!("{} sessions", items.len()),
+            Self::send_jsonrpc(&endpoint, &request).await,
+        );
+
+        Ok(())
+    }
+
     fn log_notify_result(
         kind: &str,
         context: &str,

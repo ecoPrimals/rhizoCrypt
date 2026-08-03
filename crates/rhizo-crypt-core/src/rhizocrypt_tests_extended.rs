@@ -425,3 +425,112 @@ async fn test_start_with_redb_backend() {
     primal.dag_store().await.unwrap();
     primal.stop().await.unwrap();
 }
+
+// ============================================================================
+// G31 Batch Provenance Pipeline Tests
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_append_vertices_batch_single_lock() {
+    let primal = running_primal().await;
+
+    let session = SessionBuilder::new(SessionType::General).build();
+    let session_id = primal.create_session(session).unwrap();
+
+    let vertices: Vec<_> = (0..10)
+        .map(|i| {
+            VertexBuilder::new(EventType::DataCreate {
+                schema: Some(format!("batch-{i}")),
+            })
+            .with_agent(Did::new("did:key:z6MkBatch"))
+            .build()
+        })
+        .collect();
+
+    let ids = primal.append_vertices_batch(session_id, vertices).await.unwrap();
+    assert_eq!(ids.len(), 10, "should append all 10 vertices");
+
+    let session = primal.get_session(session_id).unwrap();
+    assert_eq!(session.vertex_count, 10);
+    assert!(session.agents.contains(&Did::new("did:key:z6MkBatch")));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_append_vertices_batch_empty() {
+    let primal = running_primal().await;
+
+    let session = SessionBuilder::new(SessionType::General).build();
+    let session_id = primal.create_session(session).unwrap();
+
+    let ids = primal.append_vertices_batch(session_id, vec![]).await.unwrap();
+    assert!(ids.is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_append_vertices_batch_session_not_found() {
+    let primal = running_primal().await;
+
+    let vertex = VertexBuilder::new(EventType::SessionStart).build();
+    let err = primal.append_vertices_batch(SessionId::now(), vec![vertex]).await.unwrap_err();
+    assert!(err.to_string().contains("not found"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_append_vertices_batch_metrics() {
+    let primal = running_primal().await;
+
+    let session = SessionBuilder::new(SessionType::General).build();
+    let session_id = primal.create_session(session).unwrap();
+
+    let before = primal.metrics().get_vertices_appended();
+
+    let vertices: Vec<_> =
+        (0..5).map(|_| VertexBuilder::new(EventType::SessionStart).build()).collect();
+    primal.append_vertices_batch(session_id, vertices).await.unwrap();
+
+    let after = primal.metrics().get_vertices_appended();
+    assert_eq!(after - before, 5, "metrics should reflect batch count");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_dehydrate_batch_concurrent() {
+    let primal = running_primal().await;
+    let primal = Arc::new(primal);
+
+    let mut session_ids = Vec::new();
+    for _ in 0..3 {
+        let session = SessionBuilder::new(SessionType::General).build();
+        let sid = primal.create_session(session).unwrap();
+        let vertex = VertexBuilder::new(EventType::DataCreate {
+            schema: Some("batch-dehydrate".into()),
+        })
+        .build();
+        primal.append_vertex(sid, vertex).await.unwrap();
+        session_ids.push(sid);
+    }
+
+    let results = primal.dehydrate_batch(session_ids.clone()).await;
+    assert_eq!(results.len(), 3);
+    assert_eq!(
+        results.iter().filter(|(_, r)| r.is_ok()).count(),
+        3,
+        "all sessions should dehydrate"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_dehydrate_batch_with_bad_session() {
+    let primal = running_primal().await;
+    let primal = Arc::new(primal);
+
+    let session = SessionBuilder::new(SessionType::General).build();
+    let good_sid = primal.create_session(session).unwrap();
+    let vertex = VertexBuilder::new(EventType::SessionStart).build();
+    primal.append_vertex(good_sid, vertex).await.unwrap();
+
+    let bad_sid = SessionId::now();
+    let results = primal.dehydrate_batch(vec![good_sid, bad_sid]).await;
+    assert_eq!(results.len(), 2);
+    assert_eq!(results.iter().filter(|(_, r)| r.is_ok()).count(), 1);
+    assert_eq!(results.iter().filter(|(_, r)| r.is_err()).count(), 1);
+}
