@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 156c — RPC Integration Port Isolation + Deep Debt Gate (Aug 4, 2026)
+- Fix RPC integration test port collision: live `rhizocrypt` on port 19501 caused `test_rpc_server_client_connection` to connect to wrong server (BTSP-enforcing gate instance)
+- Remap all 10 tarpc integration test ports from 195xx/196xx → 197xx range to avoid gate service port conflicts
+- Add `BTSP_CLEAR_ENV` + `temp_env::with_vars` isolation to all tarpc integration tests (same pattern as UDS/service tests)
+- Convert 10 tarpc tests from `#[tokio::test]` to `#[test]` + manual runtime for reliable environment isolation
+- `cargo update`: regex-automata 0.4.16 → 0.4.17
+- Full deep debt gate: zero clippy warnings, fmt clean, cargo deny clean, 0 unsafe blocks, 0 debt markers, 0 hardcoded values, all mocks test-gated, cross-compile clean (windows-gnu, musl)
+- Tests: 1,785, 214 `.rs` files, ~59,500 lines
+
 ### Wave 156b — Batch Notify Wire + Dead Code Purge (Aug 4, 2026)
 - **Wire `notify_dehydration_batch`** into `dehydrate_batch()`: N sessions → 1 sweetGrass RPC (was N per-session RPCs)
 - Extract `dehydrate_core()` private method: dehydration pipeline without notification, enables batch callers to collect summaries before batch-notifying

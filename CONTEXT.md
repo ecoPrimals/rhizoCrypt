@@ -69,7 +69,7 @@ Three workspace crates:
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,782 passing (all features, Aug 4 2026) |
+| Tests | 1,785 passing (all features, Aug 4 2026) |
 | Coverage | 93.83% lines (llvm-cov, Jul 18 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
 | Source files | 214 `.rs`, ~59,500 lines |

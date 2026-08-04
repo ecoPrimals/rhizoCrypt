@@ -10,7 +10,7 @@ springs = []
 
 ## Status
 
-- **1,782 tests** passing (unit + integration + property + doc, `--all-features`)
+- **1,785 tests** passing (unit + integration + property + doc, `--all-features`)
 - **214 `.rs` files**, ~59,500 lines
 - **39 registered methods** across 7 domains (31 stable, 8 evolving)
 - **93.83% line coverage** (CI gate: 90%)
