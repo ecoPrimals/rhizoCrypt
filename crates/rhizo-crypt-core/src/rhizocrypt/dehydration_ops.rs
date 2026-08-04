@@ -47,6 +47,25 @@ impl RhizoCrypt {
     ///
     /// Returns an error if session not found, dehydration fails, or commit fails.
     pub async fn dehydrate(&self, session_id: SessionId) -> Result<MerkleRoot> {
+        let (root, summary, witnesses) = self.dehydrate_core(session_id).await?;
+
+        self.provenance_notifier.notify_dehydration_enriched(&summary, &witnesses).await.ok();
+        self.provenance_notifier.notify_session_commit(session_id).await.ok();
+
+        Ok(root)
+    }
+
+    /// Core dehydration pipeline: Merkle root → summary → attestation → commit.
+    ///
+    /// Returns the root, finalized summary, and gateway witnesses without
+    /// sending provenance notifications. Callers choose between per-session
+    /// notify ([`dehydrate`](Self::dehydrate)) or batch notify
+    /// ([`dehydrate_batch`](Self::dehydrate_batch)).
+    async fn dehydrate_core(
+        &self,
+        session_id: SessionId,
+    ) -> Result<(MerkleRoot, DehydrationSummary, Vec<crate::dehydration_wire::WireWitnessRef>)>
+    {
         self.dehydration_status.insert(session_id, dehydration::DehydrationStatus::ComputingRoot);
 
         let root = self.compute_merkle_root(session_id).await?;
@@ -70,14 +89,7 @@ impl RhizoCrypt {
 
         let commit_ref = self.commit_to_permanent_storage(&summary_with_attestations).await?;
 
-        self.provenance_notifier
-            .notify_dehydration_enriched(
-                &summary_with_attestations,
-                &self.collect_gateway_witnesses(session_id).await,
-            )
-            .await
-            .ok();
-        self.provenance_notifier.notify_session_commit(session_id).await.ok();
+        let witnesses = self.collect_gateway_witnesses(session_id).await;
 
         self.dehydration_status.insert(
             session_id,
@@ -87,7 +99,7 @@ impl RhizoCrypt {
         );
 
         self.metrics.inc_dehydrations_completed();
-        Ok(root)
+        Ok((root, summary_with_attestations, witnesses))
     }
 
     /// Generate a dehydration summary for a session.
@@ -353,12 +365,16 @@ impl RhizoCrypt {
         }
     }
 
-    /// Dehydrate multiple sessions concurrently.
+    /// Dehydrate multiple sessions concurrently with batch provenance notify.
     ///
     /// Each session is dehydrated independently via `tokio::spawn` so they
     /// run in parallel. Failures are collected per-session — one bad session
-    /// does not abort the batch. Successfully dehydrated sessions produce
-    /// provenance notifications just like the single-session path.
+    /// does not abort the batch.
+    ///
+    /// Provenance notification is batched: all successful dehydrations are
+    /// collected into a single `contribution.record_dehydration_batch` RPC
+    /// to sweetGrass (N sessions → 1 round-trip), followed by per-session
+    /// commit notifications.
     ///
     /// Returns a vec of `(session_id, Result<MerkleRoot>)` so the caller
     /// knows exactly which sessions succeeded and which failed.
@@ -369,18 +385,40 @@ impl RhizoCrypt {
         let mut set = tokio::task::JoinSet::new();
         for sid in session_ids {
             let primal = std::sync::Arc::clone(self);
-            set.spawn(async move { (sid, primal.dehydrate(sid).await) });
+            set.spawn(async move { (sid, primal.dehydrate_core(sid).await) });
         }
 
         let mut results = Vec::with_capacity(set.len());
+        let mut batch_items: Vec<(
+            DehydrationSummary,
+            Vec<crate::dehydration_wire::WireWitnessRef>,
+        )> = Vec::new();
+        let mut committed_sessions: Vec<SessionId> = Vec::new();
+
         while let Some(join_result) = set.join_next().await {
             match join_result {
-                Ok(pair) => results.push(pair),
+                Ok((sid, Ok((root, summary, witnesses)))) => {
+                    batch_items.push((summary, witnesses));
+                    committed_sessions.push(sid);
+                    results.push((sid, Ok(root)));
+                }
+                Ok((sid, Err(e))) => {
+                    results.push((sid, Err(e)));
+                }
                 Err(e) => {
                     tracing::warn!(error = %e, "dehydrate_batch: task panicked (skipping)");
                 }
             }
         }
+
+        if !batch_items.is_empty() {
+            self.provenance_notifier.notify_dehydration_batch(&batch_items).await.ok();
+
+            for sid in &committed_sessions {
+                self.provenance_notifier.notify_session_commit(*sid).await.ok();
+            }
+        }
+
         results
     }
 

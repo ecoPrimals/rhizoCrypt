@@ -326,6 +326,36 @@ impl RpcClient {
             .map_err(|e| RpcError::Transport(e.to_string()))?
     }
 
+    /// Dehydrate multiple sessions concurrently in a single call.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
+    pub async fn dehydrate_batch(
+        &self,
+        session_ids: Vec<SessionId>,
+    ) -> RpcResult<Vec<crate::service_types::BatchDehydrateResult>> {
+        self.inner
+            .dehydrate_batch(context::current(), session_ids)
+            .await
+            .map_err(|e| RpcError::Transport(e.to_string()))?
+    }
+
+    /// Coordinated pipeline ingest: create session + batch append + optional dehydrate.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Transport` if the RPC call fails.
+    pub async fn pipeline_ingest(
+        &self,
+        request: crate::service_types::PipelineIngestRequest,
+    ) -> RpcResult<crate::service_types::PipelineIngestResponse> {
+        self.inner
+            .pipeline_ingest(context::current(), request)
+            .await
+            .map_err(|e| RpcError::Transport(e.to_string()))?
+    }
+
     /// Get dehydration status.
     ///
     /// # Errors

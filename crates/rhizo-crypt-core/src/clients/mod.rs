@@ -48,22 +48,10 @@ pub mod adapters;
 pub mod capabilities;
 pub mod factory;
 
-// Protocol adapters — concrete implementations for specific service APIs.
-// Prefer capability-based clients (above) for new code — they discover
-// providers at runtime and work with ANY service implementing the capability.
-#[cfg(feature = "live-clients")]
-pub mod beardog_http;
+// tarpc discovery adapter (used by songbird client + service startup tests)
 #[cfg(feature = "live-clients")]
 #[path = "songbird_rpc.rs"]
 pub mod discovery_rpc;
-#[cfg(feature = "http-clients")]
-pub mod loamspine_http;
-#[cfg(feature = "live-clients")]
-pub mod loamspine_rpc;
-#[cfg(feature = "live-clients")]
-pub mod nestgate_http;
-#[cfg(feature = "http-clients")]
-pub mod toadstool_http;
 
 // Universal discovery adapter (bootstrap only)
 #[path = "songbird_types.rs"]

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 156b — Batch Notify Wire + Dead Code Purge (Aug 4, 2026)
+- **Wire `notify_dehydration_batch`** into `dehydrate_batch()`: N sessions → 1 sweetGrass RPC (was N per-session RPCs)
+- Extract `dehydrate_core()` private method: dehydration pipeline without notification, enables batch callers to collect summaries before batch-notifying
+- Add `dehydrate_batch()` + `pipeline_ingest()` to high-level `RpcClient` (tarpc typed)
+- Deploy graph: add `dag.dehydration.trigger_batch`, `dag.pipeline.ingest`, `dag.partial_dehydrate` capabilities
+- MCP tools: add `dag.event.append_batch`, `dag.dehydration.trigger_batch`, `dag.pipeline.ingest` tool schemas
+- **Dead vendor HTTP purge**: remove 5 unused vendor-specific HTTP/RPC modules (beardog_http, nestgate_http, toadstool_http, loamspine_http, loamspine_rpc) — 11 files, ~4,100 lines, 132 tests that tested code with zero production callers
+- Tests: 1,782 (-132 dead vendor), 214 `.rs` files (-11), ~59,500 lines (-4,000)
+
 ### Wave 155n — Deep Debt + BTSP Test Isolation (Aug 3, 2026)
 - Fix 12 pre-existing test failures: UDS and service lifecycle tests leaked `FAMILY_ID` from gate env
 - Root cause: production `FAMILY_ID=e8b62b6e` set on eastGate caused listener to enforce BTSP, rejecting plain JSON-RPC connections in tests

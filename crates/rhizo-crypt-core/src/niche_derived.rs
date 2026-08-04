@@ -326,6 +326,10 @@ pub fn health_readiness(is_running: bool) -> serde_json::Value {
 
 /// MCP tool definitions for AI coordination layer.
 #[must_use]
+#[allow(
+    clippy::too_many_lines,
+    reason = "single JSON literal — splitting would fragment the MCP tool catalog"
+)]
 pub fn mcp_tools() -> serde_json::Value {
     serde_json::json!([
         {
@@ -375,6 +379,66 @@ pub fn mcp_tools() -> serde_json::Value {
                     "session_id": { "type": "string", "format": "uuid" }
                 },
                 "required": ["session_id"]
+            }
+        },
+        {
+            "name": "dag.event.append_batch",
+            "description": "Append multiple event vertices in a single batch call (amortized lock, 10× less contention)",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "events": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "session_id": { "type": "string", "format": "uuid" },
+                                "event_type": { "type": "string" },
+                                "agent": { "type": "string" },
+                                "parents": { "type": "array", "items": { "type": "string" } }
+                            },
+                            "required": ["session_id", "event_type"]
+                        }
+                    }
+                },
+                "required": ["events"]
+            }
+        },
+        {
+            "name": "dag.dehydration.trigger_batch",
+            "description": "Dehydrate multiple sessions concurrently (N sessions → 1 provenance RPC)",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "session_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+                },
+                "required": ["session_ids"]
+            }
+        },
+        {
+            "name": "dag.pipeline.ingest",
+            "description": "Coordinated bulk ingest: create session + batch append + optional dehydrate in one call",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "session_type": { "type": "string", "enum": ["General", "Ephemeral", "Persistent"], "default": "General" },
+                    "description": { "type": "string" },
+                    "events": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "session_id": { "type": "string" },
+                                "event_type": { "type": "string" },
+                                "agent": { "type": "string" },
+                                "parents": { "type": "array", "items": { "type": "string" } }
+                            },
+                            "required": ["session_id", "event_type"]
+                        }
+                    },
+                    "dehydrate": { "type": "boolean", "default": false }
+                },
+                "required": ["events"]
             }
         },
         {

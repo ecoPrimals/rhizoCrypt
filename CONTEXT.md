@@ -40,7 +40,7 @@ Three workspace crates:
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | DAG engine, sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc service (28 ops), JSON-RPC 2.0 handler (39 methods, 7 domains), NDJSON streaming, rate limiting |
+| `rhizo-crypt-rpc` | tarpc service (28 ops), JSON-RPC 2.0 handler (39 methods, 7 domains), NDJSON streaming, rate limiting, batch dehydrate/ingest |
 | `rhizocrypt-service` | UniBin binary (`server`, `client`, `status`, `version`, `doctor`) |
 
 ## IPC
@@ -63,16 +63,16 @@ Three workspace crates:
 | BTSP Phase 2+3 | Server-side auto-detect + client-side `ClientHello` handshake + ChaCha20-Poly1305 encrypted channel via `btsp.negotiate` |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 225 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 214 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,914 passing (all features, Aug 3 2026) |
+| Tests | 1,782 passing (all features, Aug 4 2026) |
 | Coverage | 93.83% lines (llvm-cov, Jul 18 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
-| Source files | 225 `.rs`, ~63,520 lines |
+| Source files | 214 `.rs`, ~59,500 lines |
 | Max file size | ~624 lines production (`store.rs`, limit: 800) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
