@@ -151,6 +151,55 @@ async fn test_no_mito_beacon_prefix_still_works() {
     assert!(server_result.is_ok());
 }
 
+/// G63: `auth.peer_info` over UDS returns kernel-verified peer credentials.
+#[tokio::test]
+async fn test_peer_info_returns_peer_credentials_g63() {
+    let primal = test_primal().await;
+    let server = crate::service::RhizoCryptRpcServer::new(primal);
+
+    let (server_raw, client_raw) = std::os::unix::net::UnixStream::pair().unwrap();
+    server_raw.set_nonblocking(true).unwrap();
+    client_raw.set_nonblocking(true).unwrap();
+    let server_stream = tokio::net::UnixStream::from_std(server_raw).unwrap();
+    let mut client = tokio::net::UnixStream::from_std(client_raw).unwrap();
+
+    let server_handle =
+        tokio::spawn(
+            async move { handle_uds_connection(server_stream, server, false, None).await },
+        );
+
+    let req = r#"{"jsonrpc":"2.0","method":"auth.peer_info","params":{},"id":63}"#;
+    client.write_all(format!("{req}\n").as_bytes()).await.unwrap();
+    client.shutdown().await.unwrap();
+
+    let mut buf = vec![0u8; 4096];
+    let mut total = 0;
+    loop {
+        let n = client.read(&mut buf[total..]).await.unwrap();
+        total += n;
+        if n == 0 || buf[..total].contains(&b'\n') {
+            break;
+        }
+    }
+    let resp_str = std::str::from_utf8(&buf[..total]).unwrap().trim();
+    let resp: serde_json::Value = serde_json::from_str(resp_str).unwrap();
+
+    assert_eq!(resp["id"], 63);
+    let result = &resp["result"];
+    assert_eq!(result["origin"], "Unix");
+
+    assert!(
+        result.get("peer_uid").is_some(),
+        "peer_uid should be present (G63), full response: {result}"
+    );
+    let peer_uid = result["peer_uid"].as_u64().unwrap();
+    assert!(peer_uid < 65535, "peer_uid should be a valid UID, got: {peer_uid}");
+    assert!(result["peer_gid"].is_u64(), "peer_gid should be present");
+
+    let server_result = server_handle.await.unwrap();
+    assert!(server_result.is_ok());
+}
+
 /// Verify batch JSON-RPC also works on BTSP-enforced UDS.
 #[tokio::test]
 async fn test_batch_jsonrpc_on_btsp_uds() {

@@ -494,6 +494,64 @@ fn auth_peer_info_response_remote() {
     assert_eq!(resp["has_token"], false);
 }
 
+// ── G63 peer credential tests ────────────────────────────────────
+
+#[test]
+fn auth_peer_info_response_with_peer_cred() {
+    let gate = test_gate();
+    let cred = PeerCredentials {
+        uid: 1000,
+        gid: 1000,
+        pid: Some(42),
+    };
+    let caller = CallerContext::unix_with_peer(cred);
+    let resp = gate.auth_peer_info_response(&caller);
+    assert_eq!(resp["origin"], "Unix");
+    assert_eq!(resp["peer_uid"], 1000);
+    assert_eq!(resp["peer_gid"], 1000);
+    assert_eq!(resp["peer_pid"], 42);
+    assert_eq!(resp["has_token"], false);
+}
+
+#[test]
+fn auth_peer_info_response_btsp_with_peer_cred() {
+    let gate = test_gate();
+    let cred = PeerCredentials {
+        uid: 0,
+        gid: 0,
+        pid: None,
+    };
+    let caller = CallerContext::btsp_authenticated_with_peer(cred);
+    let resp = gate.auth_peer_info_response(&caller);
+    assert_eq!(resp["origin"], "BtspAuthenticated");
+    assert_eq!(resp["peer_uid"], 0);
+    assert_eq!(resp["peer_gid"], 0);
+    assert!(resp.get("peer_pid").is_none());
+}
+
+#[test]
+fn auth_peer_info_response_no_peer_cred() {
+    let gate = test_gate();
+    let caller = CallerContext::unix();
+    let resp = gate.auth_peer_info_response(&caller);
+    assert!(resp.get("peer_uid").is_none());
+    assert!(resp.get("peer_gid").is_none());
+    assert!(resp.get("peer_pid").is_none());
+}
+
+#[test]
+fn peer_credentials_has_peer_cred() {
+    let cred = PeerCredentials {
+        uid: 1000,
+        gid: 1000,
+        pid: Some(123),
+    };
+    let with = CallerContext::unix_with_peer(cred);
+    assert!(with.has_peer_cred());
+    let without = CallerContext::unix();
+    assert!(!without.has_peer_cred());
+}
+
 // ── Parse verify_ionic error branches ────────────────────────────
 
 #[test]

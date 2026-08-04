@@ -173,6 +173,18 @@ async fn test_uds_serve_creates_parent_dirs() {
     let _ = handle.await;
 }
 
+/// G63: verify `peer_cred()` works on socket pairs.
+#[tokio::test]
+async fn test_peer_cred_on_socket_pair() {
+    let (a, _b) = std::os::unix::net::UnixStream::pair().unwrap();
+    a.set_nonblocking(true).unwrap();
+    let ta = tokio::net::UnixStream::from_std(a).unwrap();
+    let cred = ta.peer_cred();
+    eprintln!("peer_cred result: {cred:?}");
+    let cred = cred.expect("peer_cred should succeed on socket pair");
+    assert!(cred.uid() < 65535, "uid should be valid: {}", cred.uid());
+}
+
 fn capability_symlink_path(dir: &std::path::Path) -> std::path::PathBuf {
     dir.join(format!(
         "{}{}",

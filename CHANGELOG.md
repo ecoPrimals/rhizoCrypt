@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 156e — G63 BTSP Local-Trust via SO_PEERCRED (Aug 4, 2026)
+- **G63 SO_PEERCRED**: extract kernel-verified peer credentials (UID/GID/PID) from every UDS connection via `UnixStream::peer_cred()`
+- Add `PeerCredentials` struct to `CallerContext` — kernel-verified identity without BTSP key exchange
+- Add `CallerContext::unix_with_peer()` and `btsp_authenticated_with_peer()` constructors
+- Wire peer credential extraction at `handle_uds_connection` accept time, propagated through BTSP handshake paths
+- `auth.peer_info` response now includes `peer_uid`, `peer_gid`, `peer_pid` when available
+- Preserve `peer_cred` through `process_single_request` (was dropped during per-request `CallerContext` rebuild)
+- Add `btsp_caller_with_peer()` helper (const fn) for BTSP paths to carry peer creds
+- 6 new tests: `PeerCredentials` struct tests, `auth.peer_info` with/without peer creds, E2E UDS peer cred verification
+- Tests: 1,791, 214 `.rs` files, ~59,700 lines
+
 ### Wave 156c — RPC Integration Port Isolation + Deep Debt Gate (Aug 4, 2026)
 - Fix RPC integration test port collision: live `rhizocrypt` on port 19501 caused `test_rpc_server_client_connection` to connect to wrong server (BTSP-enforcing gate instance)
 - Remap all 10 tarpc integration test ports from 195xx/196xx → 197xx range to avoid gate service port conflicts

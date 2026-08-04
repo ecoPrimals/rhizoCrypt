@@ -298,6 +298,7 @@ async fn process_single_request(
     let token = request.params.as_mut().and_then(method_gate::extract_bearer_token);
 
     let mut caller = method_gate::CallerContext::with_bearer_token(token, connection_caller.origin);
+    caller.peer_cred = connection_caller.peer_cred;
     caller.verify_token_async(gate.verifier()).await;
 
     match handler::handle_request(server, request, gate, &caller).await {

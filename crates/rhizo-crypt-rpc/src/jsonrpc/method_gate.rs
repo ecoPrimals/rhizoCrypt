@@ -171,6 +171,22 @@ impl ConnectionOrigin {
     }
 }
 
+/// Kernel-verified peer credentials from a UDS connection (`SO_PEERCRED` / G63).
+///
+/// Populated via `UnixStream::peer_cred()` at connection accept time.
+/// Enables local-trust: same-machine peers identified by the kernel without
+/// requiring BTSP key exchange. The method gate can use these to grant
+/// elevated access to same-user processes on the same machine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PeerCredentials {
+    /// Unix user ID of the connecting process.
+    pub uid: u32,
+    /// Unix group ID of the connecting process.
+    pub gid: u32,
+    /// Process ID of the connecting process (not available on all platforms).
+    pub pid: Option<i32>,
+}
+
 /// Identity and authorization context for an incoming RPC call.
 ///
 /// Built per-connection with origin info, then enriched per-request
@@ -183,16 +199,34 @@ pub struct CallerContext {
     pub verified_claims: Option<VerifiedClaims>,
     /// Where the connection came from.
     pub origin: ConnectionOrigin,
+    /// Kernel-verified peer credentials (UDS only, G63 local-trust).
+    pub peer_cred: Option<PeerCredentials>,
 }
 
 impl CallerContext {
-    /// Default caller context for a Unix domain socket connection.
+    /// Default caller context for a Unix domain socket connection (no peer creds).
     #[must_use]
     pub const fn unix() -> Self {
         Self {
             bearer_token: None,
             verified_claims: None,
             origin: ConnectionOrigin::Unix,
+            peer_cred: None,
+        }
+    }
+
+    /// Unix domain socket connection with kernel-verified peer credentials (G63).
+    ///
+    /// The `peer_cred` field contains the UID/GID/PID of the connecting process,
+    /// verified by the kernel via `SO_PEERCRED`. This enables same-machine trust
+    /// without requiring BTSP key exchange.
+    #[must_use]
+    pub const fn unix_with_peer(cred: PeerCredentials) -> Self {
+        Self {
+            bearer_token: None,
+            verified_claims: None,
+            origin: ConnectionOrigin::Unix,
+            peer_cred: Some(cred),
         }
     }
 
@@ -206,6 +240,18 @@ impl CallerContext {
             bearer_token: None,
             verified_claims: None,
             origin: ConnectionOrigin::BtspAuthenticated,
+            peer_cred: None,
+        }
+    }
+
+    /// BTSP-authenticated with kernel-verified peer credentials (G63).
+    #[must_use]
+    pub const fn btsp_authenticated_with_peer(cred: PeerCredentials) -> Self {
+        Self {
+            bearer_token: None,
+            verified_claims: None,
+            origin: ConnectionOrigin::BtspAuthenticated,
+            peer_cred: Some(cred),
         }
     }
 
@@ -216,6 +262,7 @@ impl CallerContext {
             bearer_token: None,
             verified_claims: None,
             origin: ConnectionOrigin::Loopback,
+            peer_cred: None,
         }
     }
 
@@ -226,7 +273,14 @@ impl CallerContext {
             bearer_token: token,
             verified_claims: None,
             origin,
+            peer_cred: None,
         }
+    }
+
+    /// Whether this caller has kernel-verified peer credentials (G63).
+    #[must_use]
+    pub const fn has_peer_cred(&self) -> bool {
+        self.peer_cred.is_some()
     }
 
     /// Run token verification and populate `verified_claims` (sync).
@@ -475,10 +529,18 @@ impl MethodGate {
     /// Build the `auth.peer_info` response.
     #[must_use]
     pub fn auth_peer_info_response(&self, caller: &CallerContext) -> Value {
-        serde_json::json!({
+        let mut resp = serde_json::json!({
             "origin": caller.origin.as_str(),
             "has_token": caller.bearer_token.is_some(),
-        })
+        });
+        if let Some(cred) = &caller.peer_cred {
+            resp["peer_uid"] = serde_json::json!(cred.uid);
+            resp["peer_gid"] = serde_json::json!(cred.gid);
+            if let Some(pid) = cred.pid {
+                resp["peer_pid"] = serde_json::json!(pid);
+            }
+        }
+        resp
     }
 }
 

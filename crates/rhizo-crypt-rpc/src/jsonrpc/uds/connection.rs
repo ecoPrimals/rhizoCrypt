@@ -37,7 +37,22 @@ pub(crate) async fn handle_uds_connection(
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
-    let caller = super::super::method_gate::CallerContext::unix();
+
+    let caller = match stream.peer_cred() {
+        Ok(ucred) => {
+            let cred = super::super::method_gate::PeerCredentials {
+                uid: ucred.uid(),
+                gid: ucred.gid(),
+                pid: ucred.pid(),
+            };
+            tracing::debug!(uid = cred.uid, gid = cred.gid, pid = ?cred.pid, "UDS peer credentials (G63)");
+            super::super::method_gate::CallerContext::unix_with_peer(cred)
+        }
+        Err(e) => {
+            tracing::debug!(error = %e, "peer_cred unavailable, using anonymous UDS context");
+            super::super::method_gate::CallerContext::unix()
+        }
+    };
 
     let leftover = consume_mito_beacon_prefix(&mut stream).await?;
 
@@ -64,7 +79,8 @@ pub(crate) async fn handle_uds_connection(
         };
 
         if first_byte == b'{' {
-            detect_btsp_or_jsonrpc(stream, extra, seed, &server, &gate, &caller).await
+            detect_btsp_or_jsonrpc(stream, extra, seed, &server, &gate, &caller, caller.peer_cred)
+                .await
         } else if first_byte == b'[' {
             debug!("batch JSON-RPC on UDS (filesystem-authenticated, all methods)");
             let (reader, writer) = stream.into_split();
@@ -79,7 +95,7 @@ pub(crate) async fn handle_uds_connection(
             match BtspServer::accept_handshake(&mut rw, seed).await {
                 Ok(session) => {
                     debug!(cipher = session.cipher.as_str(), "BTSP handshake complete");
-                    serve_after_handshake(rw, &server, session).await
+                    serve_after_handshake(rw, &server, session, caller.peer_cred).await
                 }
                 Err(e) => {
                     warn!(error = %e, "BTSP handshake failed, dropping connection");
@@ -114,6 +130,7 @@ async fn detect_btsp_or_jsonrpc(
     server: &crate::service::RhizoCryptRpcServer,
     gate: &super::super::method_gate::MethodGate,
     caller: &super::super::method_gate::CallerContext,
+    peer_cred: Option<super::super::method_gate::PeerCredentials>,
 ) -> std::io::Result<()> {
     use crate::btsp::BtspServer;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -150,7 +167,7 @@ async fn detect_btsp_or_jsonrpc(
         match BtspServer::accept_handshake_jsonline(&mut rw, seed, json_bytes).await {
             Ok(session) => {
                 debug!(cipher = session.cipher.as_str(), "BTSP JSON-line handshake complete");
-                serve_after_handshake(rw, server, session).await
+                serve_after_handshake(rw, server, session, peer_cred).await
             }
             Err(e) => {
                 warn!(error = %e, "BTSP JSON-line handshake failed");
@@ -222,6 +239,7 @@ async fn serve_after_handshake<S>(
     mut stream: S,
     server: &crate::service::RhizoCryptRpcServer,
     session: crate::btsp::BtspSession,
+    peer_cred: Option<super::super::method_gate::PeerCredentials>,
 ) -> std::io::Result<()>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
@@ -239,7 +257,7 @@ where
     let first_json: serde_json::Value = match serde_json::from_slice(&first_line) {
         Ok(v) => v,
         Err(_) => {
-            return chain_and_serve_btsp(first_line.to_vec(), stream, server).await;
+            return chain_and_serve_btsp(first_line.to_vec(), stream, server, peer_cred).await;
         }
     };
 
@@ -257,26 +275,36 @@ where
         {
             Ok(Some(keys)) => {
                 debug!("BTSP Phase 3 active, serving encrypted JSON-RPC");
-                handle_encrypted_connection(stream, server, keys).await
+                handle_encrypted_connection(stream, server, keys, peer_cred).await
             }
             Ok(None) => {
                 debug!("BTSP Phase 3 declined (null cipher), serving plaintext JSON-RPC");
                 let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
-                let caller = super::super::method_gate::CallerContext::btsp_authenticated();
+                let caller = btsp_caller_with_peer(peer_cred);
                 super::super::newline::handle_newline_connection(stream, server, &gate, &caller)
                     .await
             }
             Err(e) => {
                 warn!(error = %e, "BTSP Phase 3 negotiate failed");
                 let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
-                let caller = super::super::method_gate::CallerContext::btsp_authenticated();
+                let caller = btsp_caller_with_peer(peer_cred);
                 super::super::newline::handle_newline_connection(stream, server, &gate, &caller)
                     .await
             }
         }
     } else {
         debug!("no Phase 3 negotiate, serving plaintext JSON-RPC");
-        chain_and_serve_btsp(first_line.to_vec(), stream, server).await
+        chain_and_serve_btsp(first_line.to_vec(), stream, server, peer_cred).await
+    }
+}
+
+/// Build a BTSP-authenticated caller context, preserving peer credentials if available.
+const fn btsp_caller_with_peer(
+    peer_cred: Option<super::super::method_gate::PeerCredentials>,
+) -> super::super::method_gate::CallerContext {
+    match peer_cred {
+        Some(cred) => super::super::method_gate::CallerContext::btsp_authenticated_with_peer(cred),
+        None => super::super::method_gate::CallerContext::btsp_authenticated(),
     }
 }
 
@@ -286,12 +314,13 @@ async fn chain_and_serve_btsp<S>(
     first_line: Vec<u8>,
     stream: S,
     server: &crate::service::RhizoCryptRpcServer,
+    peer_cred: Option<super::super::method_gate::PeerCredentials>,
 ) -> std::io::Result<()>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
     let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
-    let caller = super::super::method_gate::CallerContext::btsp_authenticated();
+    let caller = btsp_caller_with_peer(peer_cred);
     let mut prepend = first_line;
     prepend.push(b'\n');
     let (reader, writer) = tokio::io::split(stream);
@@ -309,6 +338,7 @@ async fn handle_encrypted_connection<S>(
     mut stream: S,
     server: &crate::service::RhizoCryptRpcServer,
     keys: crate::btsp::Phase3Keys,
+    peer_cred: Option<super::super::method_gate::PeerCredentials>,
 ) -> std::io::Result<()>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
@@ -317,7 +347,7 @@ where
     use tokio::io::AsyncWriteExt;
 
     let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
-    let caller = super::super::method_gate::CallerContext::btsp_authenticated();
+    let caller = btsp_caller_with_peer(peer_cred);
 
     loop {
         let frame = match framing::read_frame(&mut stream).await {
