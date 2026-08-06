@@ -26,19 +26,11 @@ use tracing::{debug, warn};
 ///
 /// When `btsp_required` is `false` (development mode), the connection serves
 /// raw newline-delimited JSON-RPC immediately with all methods.
-#[allow(clippy::redundant_pub_crate, reason = "re-exported for UDS integration tests")]
-pub(crate) async fn handle_uds_connection(
-    mut stream: tokio::net::UnixStream,
-    server: crate::service::RhizoCryptRpcServer,
-    btsp_required: bool,
-    family_seed: Option<&[u8]>,
-) -> std::io::Result<()> {
-    use crate::btsp::BtspServer;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-    let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
-
-    let caller = match stream.peer_cred() {
+/// Extract UDS peer credentials (G63 `SO_PEERCRED`).
+fn extract_peer_caller(
+    stream: &tokio::net::UnixStream,
+) -> super::super::method_gate::CallerContext {
+    match stream.peer_cred() {
         Ok(ucred) => {
             let cred = super::super::method_gate::PeerCredentials {
                 uid: ucred.uid(),
@@ -52,9 +44,28 @@ pub(crate) async fn handle_uds_connection(
             tracing::debug!(error = %e, "peer_cred unavailable, using anonymous UDS context");
             super::super::method_gate::CallerContext::unix()
         }
-    };
+    }
+}
 
+#[allow(clippy::redundant_pub_crate, reason = "re-exported for UDS integration tests")]
+pub(crate) async fn handle_uds_connection(
+    mut stream: tokio::net::UnixStream,
+    server: crate::service::RhizoCryptRpcServer,
+    btsp_required: bool,
+    family_seed: Option<&[u8]>,
+) -> std::io::Result<()> {
+    use crate::btsp::BtspServer;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let gate = super::super::method_gate::MethodGate::for_primal(server.primal());
+    let caller = extract_peer_caller(&stream);
     let leftover = consume_mito_beacon_prefix(&mut stream).await?;
+
+    // G65: Protocol negotiation — if first byte is `P` (start of `PROTOCOLS:`).
+    if leftover.first().copied() == Some(b'P') {
+        return dispatch_g65(stream, leftover, &server, &gate, &caller, btsp_required, family_seed)
+            .await;
+    }
 
     if btsp_required {
         let Some(seed) = family_seed else {
@@ -115,6 +126,33 @@ pub(crate) async fn handle_uds_connection(
         let chained = leftover.as_slice().chain(reader);
         let joined = tokio::io::join(chained, writer);
         super::super::newline::handle_newline_connection(joined, &server, &gate, &caller).await
+    }
+}
+
+/// Dispatch a potential G65 protocol negotiation attempt.
+async fn dispatch_g65(
+    stream: tokio::net::UnixStream,
+    leftover: Vec<u8>,
+    server: &crate::service::RhizoCryptRpcServer,
+    gate: &super::super::method_gate::MethodGate,
+    caller: &super::super::method_gate::CallerContext,
+    btsp_required: bool,
+    family_seed: Option<&[u8]>,
+) -> std::io::Result<()> {
+    let mut stream = stream;
+    match crate::protocol_negotiation::try_negotiate(&mut stream, leftover).await? {
+        crate::protocol_negotiation::NegotiationResult::Tarpc => {
+            tracing::info!("G65: serving tarpc binary on negotiated UDS connection");
+            serve_tarpc_on_stream(stream, server).await
+        }
+        crate::protocol_negotiation::NegotiationResult::JsonRpc => {
+            tracing::debug!("G65: JSON-RPC explicitly negotiated, proceeding");
+            super::super::newline::handle_newline_connection(stream, server, gate, caller).await
+        }
+        crate::protocol_negotiation::NegotiationResult::NotNegotiation(restored) => {
+            handle_with_leftover(stream, restored, server, gate, caller, btsp_required, family_seed)
+                .await
+        }
     }
 }
 
@@ -328,6 +366,114 @@ where
     let chained = tokio::io::AsyncReadExt::chain(cursor, reader);
     let joined = tokio::io::join(chained, writer);
     super::super::newline::handle_newline_connection(joined, server, &gate, &caller).await
+}
+
+/// Serve the tarpc binary protocol on an already-connected UDS stream (G65).
+///
+/// After protocol negotiation selects tarpc, the stream is wrapped in
+/// length-delimited + bincode framing and served via `BaseChannel`.
+async fn serve_tarpc_on_stream(
+    stream: tokio::net::UnixStream,
+    server: &crate::service::RhizoCryptRpcServer,
+) -> std::io::Result<()> {
+    use crate::service::RhizoCryptRpc;
+    use futures_util::StreamExt;
+    use tarpc::server::{self, Channel};
+    use tarpc::tokio_serde::formats::Bincode;
+
+    let length_delimited = tokio_util::codec::length_delimited::Builder::new().new_framed(stream);
+    let transport = tokio_serde::Framed::new(length_delimited, Bincode::default());
+
+    let server = server.clone();
+    server::BaseChannel::with_defaults(transport)
+        .execute(server.serve())
+        .for_each(|response| async move {
+            response.await;
+        })
+        .await;
+
+    Ok(())
+}
+
+/// Handle a connection where G65 negotiation returned `NotNegotiation`.
+///
+/// All consumed bytes are passed as `leftover` and chained back onto the
+/// stream before falling through to the BTSP or JSON-RPC handler.
+async fn handle_with_leftover(
+    mut stream: tokio::net::UnixStream,
+    leftover: Vec<u8>,
+    server: &crate::service::RhizoCryptRpcServer,
+    gate: &super::super::method_gate::MethodGate,
+    caller: &super::super::method_gate::CallerContext,
+    btsp_required: bool,
+    family_seed: Option<&[u8]>,
+) -> std::io::Result<()> {
+    use crate::btsp::BtspServer;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    if btsp_required {
+        let Some(seed) = family_seed else {
+            warn!("BTSP required but no FAMILY_SEED — rejecting connection");
+            return Err(std::io::Error::other("BTSP: no family seed"));
+        };
+
+        let first_byte = if let Some(&b) = leftover.first() {
+            b
+        } else {
+            let mut first = [0u8; 1];
+            let n = stream.read(&mut first).await?;
+            if n == 0 {
+                return Ok(());
+            }
+            first[0]
+        };
+        let extra = if leftover.len() > 1 {
+            &leftover[1..]
+        } else {
+            &[]
+        };
+
+        if first_byte == b'{' {
+            detect_btsp_or_jsonrpc(stream, extra, seed, server, gate, caller, caller.peer_cred)
+                .await
+        } else if first_byte == b'[' {
+            debug!("batch JSON-RPC on UDS (filesystem-authenticated, all methods)");
+            let (reader, writer) = stream.into_split();
+            let chained_reader = leftover.as_slice().chain(reader);
+            let joined = tokio::io::join(chained_reader, writer);
+            super::super::newline::handle_newline_connection(joined, server, gate, caller).await
+        } else {
+            let (reader, writer) = stream.into_split();
+            let chained_reader = leftover.as_slice().chain(reader);
+            let mut rw = tokio::io::join(chained_reader, writer);
+
+            match BtspServer::accept_handshake(&mut rw, seed).await {
+                Ok(session) => {
+                    debug!(cipher = session.cipher.as_str(), "BTSP handshake complete");
+                    serve_after_handshake(rw, server, session, caller.peer_cred).await
+                }
+                Err(e) => {
+                    warn!(error = %e, "BTSP handshake failed, dropping connection");
+                    let (_, mut writer) = rw.into_inner();
+                    if let Err(e2) = BtspServer::send_handshake_error(&mut writer).await {
+                        debug!(
+                            error = %e2,
+                            "failed to send BTSP handshake error to client"
+                        );
+                    }
+                    let _ = writer.shutdown().await;
+                    Err(std::io::Error::other(format!("BTSP handshake failed: {e}")))
+                }
+            }
+        }
+    } else if leftover.is_empty() {
+        super::super::newline::handle_newline_connection(stream, server, gate, caller).await
+    } else {
+        let (reader, writer) = stream.into_split();
+        let chained = leftover.as_slice().chain(reader);
+        let joined = tokio::io::join(chained, writer);
+        super::super::newline::handle_newline_connection(joined, server, gate, caller).await
+    }
 }
 
 /// Serve JSON-RPC over a BTSP Phase 3 encrypted channel.

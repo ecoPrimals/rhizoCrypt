@@ -1661,6 +1661,8 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
+ "tokio-serde",
+ "tokio-util",
  "tower",
  "tower-http",
  "tracing",

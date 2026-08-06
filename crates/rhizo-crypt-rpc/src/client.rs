@@ -73,6 +73,50 @@ impl RpcClient {
         })
     }
 
+    /// Connect via G65 protocol negotiation on a single socket.
+    ///
+    /// Sends `PROTOCOLS: tarpc,jsonrpc` and lets the server select the best
+    /// protocol. If tarpc is negotiated, serves binary framing on the same
+    /// socket. Falls back to JSON-RPC transparently.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Connection` if the connection or negotiation fails.
+    #[cfg(unix)]
+    pub async fn connect_negotiated(path: impl AsRef<Path>) -> RpcResult<Self> {
+        use crate::protocol_negotiation::{IpcProtocol, negotiate_client};
+
+        let path = path.as_ref();
+        let mut stream = tokio::net::UnixStream::connect(path)
+            .await
+            .map_err(|e| RpcError::Connection(e.to_string()))?;
+
+        let selected = negotiate_client(&mut stream, &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc])
+            .await
+            .map_err(|e| RpcError::Connection(format!("G65 negotiation failed: {e}")))?;
+
+        info!(
+            path = %path.display(),
+            protocol = selected.wire_name(),
+            "G65 negotiated connection"
+        );
+
+        match selected {
+            IpcProtocol::Tarpc => {
+                let length_delimited =
+                    tokio_util::codec::length_delimited::Builder::new().new_framed(stream);
+                let transport = tokio_serde::Framed::new(length_delimited, Bincode::default());
+                let inner = GeneratedClient::new(client::Config::default(), transport).spawn();
+                Ok(Self {
+                    inner,
+                })
+            }
+            IpcProtocol::JsonRpc => Err(RpcError::Connection(
+                "G65 negotiation selected JSON-RPC — use JSON-RPC client instead".into(),
+            )),
+        }
+    }
+
     // ========================================================================
     // Session Operations
     // ========================================================================

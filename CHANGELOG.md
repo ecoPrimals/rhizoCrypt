@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 156m — G65 Protocol Negotiation (Aug 6, 2026)
+- **G65 protocol negotiation**: single-socket protocol selection replaces C2 dual-socket (`PROTOCOLS: tarpc,jsonrpc\n` → `PROTOCOL: tarpc\n`)
+- Add `protocol_negotiation` module with `IpcProtocol` enum, wire format parser, and client/server negotiation functions
+- Integrate into `handle_uds_connection`: check for `PROTOCOLS:` before BTSP/mito-beacon detection
+- Add `serve_tarpc_on_stream()` — serves tarpc binary (bincode + length-delimited) on an already-connected UDS stream
+- Add `RpcClient::connect_negotiated()` — G65 client: negotiate protocol then upgrade to tarpc binary framing
+- Extract `extract_peer_caller()` and `dispatch_g65()` helpers to keep `handle_uds_connection` under 100-line clippy limit
+- Add `tokio-serde` + `tokio-util` workspace dependencies for direct transport framing
+- Backward-compatible: no negotiation = JSON-RPC (existing clients work unchanged)
+- 13 new tests: wire name roundtrip, protocol selection, parse/format, negotiation roundtrip (tarpc, jsonrpc, not-negotiation, with-leftover), 4 E2E (tarpc, jsonrpc, backward compat, tarpc+session ops)
+- Tests: 1,807, 217 `.rs` files, ~60,800 lines
+
 ### Wave 156j — G64 C2 Dual-Socket Pattern (Aug 6, 2026)
 - **G64 C2 dual-socket**: add tarpc binary UDS listener on `{primal}.tarpc.sock` alongside JSON-RPC on `{primal}.sock`
 - Add `TarpcUdsServer` in `rhizo-crypt-rpc` — mirrors `RpcServer` (TCP) but over `tarpc::serde_transport::unix`

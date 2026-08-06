@@ -20,6 +20,8 @@ futures-util.workspace = true
 
 # Pure Rust RPC - compile-time type safety
 tarpc.workspace = true
+tokio-serde.workspace = true
+tokio-util.workspace = true
 
 # Serialization (for tarpc transport)
 serde.workspace = true

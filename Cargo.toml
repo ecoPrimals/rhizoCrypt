@@ -54,6 +54,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Pure Rust RPC (tarpc) — explicit features, no "full" (drops json transport + unused codecs)
 tarpc = { version = "0.37", features = ["serde-transport-bincode", "tcp", "unix"] }
+tokio-serde = { version = "0.9", features = ["bincode"] }
+tokio-util = { version = "0.7", features = ["codec"] }
 
 # HTTP (axum for REST endpoints, hyper-util for outbound clients)
 axum = "0.7"

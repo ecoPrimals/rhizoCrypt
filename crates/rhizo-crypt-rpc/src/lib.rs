@@ -59,6 +59,7 @@ mod client;
 mod error;
 pub mod jsonrpc;
 mod metrics;
+pub mod protocol_negotiation;
 mod rate_limit;
 pub mod server;
 mod service;

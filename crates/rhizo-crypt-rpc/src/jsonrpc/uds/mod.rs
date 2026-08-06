@@ -227,3 +227,7 @@ mod tests_mito_beacon;
 #[cfg(test)]
 #[path = "../uds_tests_errors.rs"]
 mod tests_errors;
+
+#[cfg(test)]
+#[path = "../uds_tests_g65.rs"]
+mod tests_g65;
