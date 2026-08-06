@@ -64,7 +64,7 @@ Three workspace crates:
 | BTSP Phase 2+3 | Server-side auto-detect + client-side `ClientHello` handshake + ChaCha20-Poly1305 encrypted channel via `btsp.negotiate` |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 214 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 215 `.rs` files |
 
 ## Metrics
 
