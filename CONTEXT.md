@@ -45,10 +45,10 @@ Three workspace crates:
 
 ## IPC
 
-- **UDS unconditional** on Unix at `$XDG_RUNTIME_DIR/biomeos/rhizocrypt.sock` (Provenance Trio standard)
+- **UDS dual-socket (G64 C2)** — JSON-RPC on `rhizocrypt.sock`, tarpc binary on `rhizocrypt.tarpc.sock`
 - **TCP opt-in** via `--port` or `RHIZOCRYPT_PORT` env var (tarpc + JSON-RPC dual-mode)
 - **JSON-RPC 2.0** — dual-mode TCP (auto-detects HTTP POST vs newline-delimited) + UDS
-- **tarpc 0.37** with bincode — optional, high-performance typed RPC
+- **tarpc 0.37** with bincode — UDS (sub-ms) and TCP, high-performance typed RPC
 - **BTSP Phase 2+3** — X25519 + HMAC-SHA256 handshake + ChaCha20-Poly1305 encrypted channel on UDS; server-side auto-detect + client-side `BtspUnixAdapter` for outbound bearDog connections; `btsp.negotiate` upgrades to AEAD framing; dev mode (`BIOMEOS_INSECURE=1`) bypasses
 - **G63 Local-Trust** — `SO_PEERCRED` peer credential extraction on UDS connections; `CallerContext` carries kernel-verified UID/GID/PID; enables same-machine trust without BTSP key exchange
 - Method names follow `domain.verb` semantic naming (`dag.session.create`, `health.check`)
@@ -70,10 +70,10 @@ Three workspace crates:
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,791 passing (all features, Aug 4 2026) |
+| Tests | 1,794 passing (all features, Aug 6 2026) |
 | Coverage | 93.83% lines (llvm-cov, Jul 18 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
-| Source files | 214 `.rs`, ~59,700 lines |
+| Source files | 215 `.rs`, ~60,000 lines |
 | Max file size | ~624 lines production (`store.rs`, limit: 800) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |

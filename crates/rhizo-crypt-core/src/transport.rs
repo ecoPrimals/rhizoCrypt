@@ -13,7 +13,9 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::constants::{BIOMEOS_SOCKET_SUBDIR, DEFAULT_SOCKET_DIR, SOCKET_FILE_EXTENSION};
+use crate::constants::{
+    BIOMEOS_SOCKET_SUBDIR, DEFAULT_SOCKET_DIR, SOCKET_FILE_EXTENSION, TARPC_SOCKET_FILE_EXTENSION,
+};
 use crate::safe_env::SafeEnv;
 
 /// Fallback directory when `XDG_RUNTIME_DIR` is unset (Unix-like, non-Android).
@@ -74,6 +76,23 @@ pub fn family_scoped_socket_path(name: &str, primal_env_prefix: &str) -> Option<
     let filename = family_id.map_or_else(
         || format!("{name}{SOCKET_FILE_EXTENSION}"),
         |fid| format!("{name}-{fid}{SOCKET_FILE_EXTENSION}"),
+    );
+    Some(dir.join(filename))
+}
+
+/// Constructs a family-scoped tarpc UDS path (G64 C2 dual-socket pattern).
+///
+/// Returns `{socket_dir}/{name}[-{family_id}].tarpc.sock`. This socket
+/// carries tarpc binary framing alongside the JSON-RPC `.sock`.
+///
+/// Returns `None` on platforms without path-based sockets.
+#[must_use]
+pub fn family_scoped_tarpc_socket_path(name: &str, primal_env_prefix: &str) -> Option<PathBuf> {
+    let dir = socket_dir()?;
+    let family_id = read_family_id(primal_env_prefix);
+    let filename = family_id.map_or_else(
+        || format!("{name}{TARPC_SOCKET_FILE_EXTENSION}"),
+        |fid| format!("{name}-{fid}{TARPC_SOCKET_FILE_EXTENSION}"),
     );
     Some(dir.join(filename))
 }

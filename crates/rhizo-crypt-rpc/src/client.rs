@@ -14,6 +14,8 @@ use rhizo_crypt_core::{
     VertexId,
 };
 use std::net::SocketAddr;
+#[cfg(unix)]
+use std::path::Path;
 use tarpc::tokio_serde::formats::Bincode;
 use tarpc::{client, context};
 use tracing::info;
@@ -28,7 +30,7 @@ pub struct RpcClient {
 }
 
 impl RpcClient {
-    /// Connect to a rhizoCrypt RPC server.
+    /// Connect to a rhizoCrypt RPC server over TCP.
     ///
     /// # Errors
     ///
@@ -39,6 +41,30 @@ impl RpcClient {
             .map_err(|e| RpcError::Connection(e.to_string()))?;
 
         info!("connected to rhizoCrypt RPC at {}", addr);
+
+        let inner = GeneratedClient::new(client::Config::default(), transport).spawn();
+
+        Ok(Self {
+            inner,
+        })
+    }
+
+    /// Connect to a rhizoCrypt RPC server over a tarpc UDS (G64 C2 dual-socket).
+    ///
+    /// Uses the same bincode + length-delimited framing as TCP but over a
+    /// Unix domain socket for sub-ms intra-gate composition.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Connection` if the connection fails.
+    #[cfg(unix)]
+    pub async fn connect_uds(path: impl AsRef<Path>) -> RpcResult<Self> {
+        let path = path.as_ref();
+        let transport = tarpc::serde_transport::unix::connect(path, Bincode::default)
+            .await
+            .map_err(|e| RpcError::Connection(e.to_string()))?;
+
+        info!(path = %path.display(), "connected to rhizoCrypt tarpc UDS");
 
         let inner = GeneratedClient::new(client::Config::default(), transport).spawn();
 

@@ -52,8 +52,8 @@ thiserror = "2.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Pure Rust RPC (tarpc) — explicit features, no "full" (drops json transport + unix + unused codecs)
-tarpc = { version = "0.37", features = ["serde-transport-bincode", "tcp"] }
+# Pure Rust RPC (tarpc) — explicit features, no "full" (drops json transport + unused codecs)
+tarpc = { version = "0.37", features = ["serde-transport-bincode", "tcp", "unix"] }
 
 # HTTP (axum for REST endpoints, hyper-util for outbound clients)
 axum = "0.7"

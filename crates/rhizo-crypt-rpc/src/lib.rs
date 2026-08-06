@@ -66,6 +66,8 @@ mod service_branch_ops;
 pub(crate) mod service_types;
 mod service_vertex_ops;
 pub mod streaming;
+#[cfg(unix)]
+pub mod tarpc_uds;
 
 pub use client::RpcClient;
 pub use error::{RpcError, RpcResult};
@@ -81,6 +83,8 @@ pub use service_types::{
     build_capability_descriptors,
 };
 pub use streaming::{StreamItem, StreamingAppendResult, parse_ndjson_line};
+#[cfg(unix)]
+pub use tarpc_uds::TarpcUdsServer;
 
 // Re-export core types for convenience
 pub use rhizo_crypt_core::{

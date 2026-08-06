@@ -50,6 +50,7 @@ capabilities = [
 ]
 
 # ── Node 3: rhizoCrypt (ephemeral DAG sessions) ───────────────────
+# G64 C2: dual-socket UDS — JSON-RPC on .sock, tarpc binary on .tarpc.sock
 [[graph.node]]
 name = "rhizocrypt"
 binary = "rhizocrypt"
@@ -57,6 +58,7 @@ order = 3
 required = true
 health_method = "health.check"
 by_capability = "dag"
+transport = ["uds-jsonrpc", "uds-tarpc"]
 capabilities = [
     "dag.session.create",
     "dag.session.get",

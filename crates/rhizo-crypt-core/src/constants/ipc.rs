@@ -57,8 +57,11 @@ pub const BIOMEOS_SOCKET_SUBDIR: &str = "biomeos";
 /// Each primal creates a socket at `{SOCKET_DIR}/{primal_name}.sock`.
 pub const DEFAULT_SOCKET_DIR: &str = "/run/biomeos";
 
-/// File extension for Unix domain sockets.
+/// File extension for Unix domain sockets (JSON-RPC).
 pub const SOCKET_FILE_EXTENSION: &str = ".sock";
+
+/// File extension for tarpc binary Unix domain sockets (G64 C2 dual-socket).
+pub const TARPC_SOCKET_FILE_EXTENSION: &str = ".tarpc.sock";
 
 /// Fallback temporary directory for UDS discovery when `XDG_RUNTIME_DIR` is absent.
 pub const POSIX_FALLBACK_TMPDIR: &str = "/tmp";

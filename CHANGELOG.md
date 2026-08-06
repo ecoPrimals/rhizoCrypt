@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 156j — G64 C2 Dual-Socket Pattern (Aug 6, 2026)
+- **G64 C2 dual-socket**: add tarpc binary UDS listener on `{primal}.tarpc.sock` alongside JSON-RPC on `{primal}.sock`
+- Add `TarpcUdsServer` in `rhizo-crypt-rpc` — mirrors `RpcServer` (TCP) but over `tarpc::serde_transport::unix`
+- Enable tarpc `unix` feature in workspace `Cargo.toml`
+- Add `TARPC_SOCKET_FILE_EXTENSION` (`.tarpc.sock`) constant + `family_scoped_tarpc_socket_path()` helper
+- Add `default_tarpc_socket_path()` for ecosystem-standard path resolution
+- Add `RpcClient::connect_uds()` for sub-ms intra-gate tarpc binary composition over UDS
+- Wire both listeners into service startup: `start_uds_listener` now spawns JSON-RPC + tarpc UDS, returns dual shutdown senders
+- Add `resolve_tarpc_uds_path()` to derive tarpc socket path from JSON-RPC path
+- 3 new tests: socket path validation, tarpc UDS roundtrip, multi-operation tarpc UDS session
+- Tests: 1,794, 215 `.rs` files, ~60,000 lines
+
 ### Wave 156e — G63 BTSP Local-Trust via SO_PEERCRED (Aug 4, 2026)
 - **G63 SO_PEERCRED**: extract kernel-verified peer credentials (UID/GID/PID) from every UDS connection via `UnixStream::peer_cred()`
 - Add `PeerCredentials` struct to `CallerContext` — kernel-verified identity without BTSP key exchange

@@ -100,7 +100,8 @@ pub async fn run_server_with_ready(
     // UDS is unconditional on Unix (Provenance Trio standard — LD-06).
     // None = no UDS (test backward-compat), Some("") = default, Some(path) = custom.
     #[cfg(unix)]
-    let (uds_shutdown_tx, uds_socket_path) = start_uds_listener(unix_socket.as_deref(), &primal);
+    let (uds_shutdown_tx, tarpc_uds_shutdown_tx, uds_socket_path) =
+        start_uds_listener(unix_socket.as_deref(), &primal);
     #[cfg(not(unix))]
     let _ = unix_socket;
 
@@ -136,6 +137,8 @@ pub async fn run_server_with_ready(
             ready,
             #[cfg(unix)]
             uds_shutdown_tx,
+            #[cfg(unix)]
+            tarpc_uds_shutdown_tx,
         )
         .await
     } else {
@@ -158,7 +161,10 @@ pub async fn run_server_with_ready(
         #[cfg(unix)]
         {
             if uds_shutdown_tx.send(true).is_err() {
-                debug!("UDS shutdown channel already closed (UDS-only mode)");
+                debug!("UDS JSON-RPC shutdown channel already closed (UDS-only mode)");
+            }
+            if tarpc_uds_shutdown_tx.send(true).is_err() {
+                debug!("tarpc UDS shutdown channel already closed (UDS-only mode)");
             }
         }
         info!("rhizoCrypt service shutdown cleanly");
@@ -184,6 +190,7 @@ async fn serve_with_tcp(
     primal: &Arc<RhizoCrypt>,
     ready: Option<Arc<tokio::sync::Notify>>,
     #[cfg(unix)] uds_shutdown_tx: tokio::sync::watch::Sender<bool>,
+    #[cfg(unix)] tarpc_uds_shutdown_tx: tokio::sync::watch::Sender<bool>,
 ) -> Result<(), ServiceError> {
     info!(address = %addr, "Binding TCP servers (opt-in)");
 
@@ -275,7 +282,10 @@ async fn serve_with_tcp(
             #[cfg(unix)]
             {
                 if uds_shutdown_tx.send(true).is_err() {
-                    debug!("UDS shutdown channel already closed");
+                    debug!("UDS JSON-RPC shutdown channel already closed");
+                }
+                if tarpc_uds_shutdown_tx.send(true).is_err() {
+                    debug!("tarpc UDS shutdown channel already closed");
                 }
             }
             if let Ok(Err(e)) = serve_handle.await {
