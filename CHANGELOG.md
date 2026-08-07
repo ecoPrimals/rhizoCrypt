@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 157a — G68 Compliance + Transport Module Refactor (Aug 7, 2026)
+- **G68 Platform Substrate Audit**: rhizoCrypt passes all three layers — L1 (symlinks) properly `#[cfg(unix)]`-gated + intrinsically UDS-tied, L2 (permissions) test-only, L3 (device backends) zero production usage
+- **Transport module refactor**: split 697-line `transport.rs` monolith into `transport/` module directory — `mod.rs` (195), `endpoint.rs` (197), `connect.rs` (148), `listener.rs` (95), `stream.rs` (90)
+- **cargo fmt**: fix G66 formatting drift (re-ordered imports, match arm styling)
+- Zero debt markers, zero TODO/FIXME/HACK, zero `unwrap()` in production, zero ungated mocks
+- Tests: 1,825, 222 `.rs` files, ~61,300 lines
+
 ### Wave 156s — G66 Transport Abstraction (Aug 6, 2026)
 - **G66 transport abstraction**: eliminate silicon deism — all IPC operates on transport-agnostic streams
 - Add `TransportListener` (G66) — server-side transport abstraction with `bind()` and `accept()` for UDS/TCP

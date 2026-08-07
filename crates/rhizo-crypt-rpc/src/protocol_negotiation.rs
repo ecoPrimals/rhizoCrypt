@@ -108,7 +108,10 @@ pub enum NegotiationResult {
 /// # Errors
 ///
 /// Returns `std::io::Error` on read/write failures.
-pub async fn try_negotiate<S>(stream: &mut S, leftover: Vec<u8>) -> std::io::Result<NegotiationResult>
+pub async fn try_negotiate<S>(
+    stream: &mut S,
+    leftover: Vec<u8>,
+) -> std::io::Result<NegotiationResult>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
@@ -250,9 +253,8 @@ mod tests {
         async fn test_negotiate_roundtrip_tarpc() {
             let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
 
-            let server_handle = tokio::spawn(async move {
-                try_negotiate(&mut server, Vec::new()).await.unwrap()
-            });
+            let server_handle =
+                tokio::spawn(async move { try_negotiate(&mut server, Vec::new()).await.unwrap() });
 
             let selected =
                 negotiate_client(&mut client, &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc])
@@ -268,12 +270,10 @@ mod tests {
         async fn test_negotiate_roundtrip_jsonrpc_only() {
             let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
 
-            let server_handle = tokio::spawn(async move {
-                try_negotiate(&mut server, Vec::new()).await.unwrap()
-            });
+            let server_handle =
+                tokio::spawn(async move { try_negotiate(&mut server, Vec::new()).await.unwrap() });
 
-            let selected =
-                negotiate_client(&mut client, &[IpcProtocol::JsonRpc]).await.unwrap();
+            let selected = negotiate_client(&mut client, &[IpcProtocol::JsonRpc]).await.unwrap();
             assert_eq!(selected, IpcProtocol::JsonRpc);
 
             let result = server_handle.await.unwrap();
@@ -308,9 +308,8 @@ mod tests {
             client.write_all(line).await.unwrap();
 
             let leftover = b"PR".to_vec();
-            let server_handle = tokio::spawn(async move {
-                try_negotiate(&mut server, leftover).await.unwrap()
-            });
+            let server_handle =
+                tokio::spawn(async move { try_negotiate(&mut server, leftover).await.unwrap() });
 
             use tokio::io::{AsyncBufReadExt, BufReader};
             let mut reader = BufReader::new(&mut client);
@@ -335,10 +334,9 @@ mod tests {
         });
 
         let mut client = tokio::net::TcpStream::connect(addr).await.unwrap();
-        let selected =
-            negotiate_client(&mut client, &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc])
-                .await
-                .unwrap();
+        let selected = negotiate_client(&mut client, &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc])
+            .await
+            .unwrap();
         assert_eq!(selected, IpcProtocol::Tarpc);
 
         let result = server_handle.await.unwrap();

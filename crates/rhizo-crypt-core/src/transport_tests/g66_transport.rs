@@ -65,10 +65,7 @@ fn test_from_env_json_override() {
 #[test]
 fn test_from_env_address_override() {
     temp_env::with_vars(
-        [
-            ("TRANSPORT_ENDPOINT", None::<&str>),
-            ("RHIZOCRYPT_ADDRESS", Some("192.168.1.5:8800")),
-        ],
+        [("TRANSPORT_ENDPOINT", None::<&str>), ("RHIZOCRYPT_ADDRESS", Some("192.168.1.5:8800"))],
         || {
             let ep = TransportEndpoint::from_env_or_default("rhizocrypt", "RHIZOCRYPT", 7700);
             assert_eq!(ep.tcp_addr(), Some(("192.168.1.5", 8800)));
@@ -79,10 +76,7 @@ fn test_from_env_address_override() {
 #[test]
 fn test_from_env_falls_back_to_platform_default() {
     temp_env::with_vars(
-        [
-            ("TRANSPORT_ENDPOINT", None::<&str>),
-            ("RHIZOCRYPT_ADDRESS", None::<&str>),
-        ],
+        [("TRANSPORT_ENDPOINT", None::<&str>), ("RHIZOCRYPT_ADDRESS", None::<&str>)],
         || {
             let ep = TransportEndpoint::from_env_or_default("rhizocrypt", "RHIZOCRYPT", 7700);
             // On Unix: UDS; on non-Unix: TCP localhost:7700
@@ -101,9 +95,8 @@ async fn test_transport_stream_supports_peer_cred_uds() {
     let listener = tokio::net::UnixListener::bind(&sock).unwrap();
     let ep = TransportEndpoint::uds(sock.to_str().unwrap());
 
-    let (stream, _) = tokio::join!(connect_transport(&ep), async {
-        listener.accept().await.unwrap()
-    });
+    let (stream, _) =
+        tokio::join!(connect_transport(&ep), async { listener.accept().await.unwrap() });
     let stream = stream.unwrap();
     assert!(stream.supports_peer_cred());
     assert!(stream.is_local());
@@ -115,9 +108,8 @@ async fn test_transport_stream_tcp_no_peer_cred() {
     let addr = listener.local_addr().unwrap();
     let ep = TransportEndpoint::from(addr);
 
-    let (stream, _) = tokio::join!(connect_transport(&ep), async {
-        listener.accept().await.unwrap()
-    });
+    let (stream, _) =
+        tokio::join!(connect_transport(&ep), async { listener.accept().await.unwrap() });
     let stream = stream.unwrap();
     assert!(!stream.supports_peer_cred());
     assert!(stream.is_local());

@@ -129,7 +129,7 @@ impl RpcClient {
     pub async fn connect_negotiated_transport(
         endpoint: &rhizo_crypt_core::TransportEndpoint,
     ) -> RpcResult<Self> {
-        use crate::protocol_negotiation::{negotiate_client, IpcProtocol};
+        use crate::protocol_negotiation::{IpcProtocol, negotiate_client};
 
         let mut stream = rhizo_crypt_core::connect_transport(endpoint)
             .await
@@ -151,7 +151,9 @@ impl RpcClient {
                     tokio_util::codec::length_delimited::Builder::new().new_framed(stream);
                 let transport = tokio_serde::Framed::new(length_delimited, Bincode::default());
                 let inner = GeneratedClient::new(client::Config::default(), transport).spawn();
-                Ok(Self { inner })
+                Ok(Self {
+                    inner,
+                })
             }
             IpcProtocol::JsonRpc => Err(RpcError::Connection(
                 "G65 negotiation selected JSON-RPC — use JSON-RPC client instead".into(),
