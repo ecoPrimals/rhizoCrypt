@@ -24,16 +24,15 @@ fn test_open_with_non_database_file() {
 #[cfg(unix)]
 #[test]
 fn test_open_with_unwritable_directory() {
-    use std::os::unix::fs::PermissionsExt;
+    use crate::transport::platform::{PlatformAccess, set_platform_permissions};
     let dir = TempDir::new().expect("temp dir");
     let readonly_dir = dir.path().join("readonly");
     std::fs::create_dir(&readonly_dir).expect("create dir");
-    std::fs::set_permissions(&readonly_dir, std::fs::Permissions::from_mode(0o444))
-        .expect("set permissions");
+    set_platform_permissions(&readonly_dir, PlatformAccess::ReadOnly).expect("set permissions");
     let bad_path = readonly_dir.join("nested").join("db.redb");
     let result = RedbDagStore::open(&bad_path);
     assert!(result.is_err());
-    std::fs::set_permissions(&readonly_dir, std::fs::Permissions::from_mode(0o755))
+    set_platform_permissions(&readonly_dir, PlatformAccess::DirectoryDefault)
         .expect("restore permissions");
 }
 

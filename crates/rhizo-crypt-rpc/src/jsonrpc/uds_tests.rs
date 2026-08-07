@@ -224,7 +224,7 @@ async fn test_uds_capability_symlink_replaces_stale_existing() {
     let symlink = capability_symlink_path(dir.path());
     let other = dir.path().join("other.sock");
     std::fs::write(&other, "").unwrap();
-    std::os::unix::fs::symlink(&other, &symlink).unwrap();
+    rhizo_crypt_core::platform_link(&other, &symlink).unwrap();
     assert_eq!(std::fs::read_link(&symlink).unwrap(), other);
 
     let primal = test_primal().await;

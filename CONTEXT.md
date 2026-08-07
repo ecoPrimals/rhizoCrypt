@@ -66,8 +66,8 @@ Three workspace crates:
 | BTSP Phase 2+3 | Server-side auto-detect + client-side `ClientHello` handshake + ChaCha20-Poly1305 encrypted channel via `btsp.negotiate` |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| G68 Platform Substrate | L1/L2/L3 clean — symlinks `#[cfg(unix)]`-gated, perms test-only, zero device backends |
-| AGPL-3.0-or-later | SPDX headers on all 222 `.rs` files |
+| G68 Platform Substrate | **COMPLIANT** — `platform_link()`, `PlatformAccess`, `is_symlink_to()` in `transport/platform.rs`; zero raw platform APIs outside transport layer |
+| AGPL-3.0-or-later | SPDX headers on all 223 `.rs` files |
 
 ## Metrics
 
@@ -76,7 +76,7 @@ Three workspace crates:
 | Tests | 1,825 passing (all features, Aug 7 2026) |
 | Coverage | 93.83% lines (llvm-cov, Jul 18 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
-| Source files | 222 `.rs`, ~61,300 lines |
+| Source files | 223 `.rs`, ~61,400 lines |
 | Max file size | ~624 lines production (`store.rs`, limit: 800) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |

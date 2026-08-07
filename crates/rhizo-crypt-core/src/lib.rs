@@ -160,8 +160,9 @@ pub use store_redb::RedbDagStore;
 
 // Transport (ecosystem canonical wire format — local impl, no cross-primal dep)
 pub use transport::{
-    JsonRpcTransportError, TransportEndpoint, TransportListener, TransportStream,
-    connect_transport, send_jsonrpc_request,
+    JsonRpcTransportError, PlatformAccess, TransportEndpoint, TransportListener, TransportStream,
+    connect_transport, is_symlink_to, platform_link, send_jsonrpc_request,
+    set_platform_permissions,
 };
 
 // Types

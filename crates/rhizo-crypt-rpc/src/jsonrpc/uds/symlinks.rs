@@ -2,6 +2,8 @@
 // Copyright (C) 2024–2026 ecoPrimals Project
 
 //! Capability-domain symlink management for UDS discovery.
+//!
+//! Uses G68 `platform_link()` instead of raw `std::os::unix::fs::symlink`.
 
 use std::path::Path;
 use tracing::debug;
@@ -20,7 +22,7 @@ pub(super) fn create_capability_symlink(socket_path: &Path) {
         if symlink_path.exists() {
             let _ = std::fs::remove_file(&symlink_path);
         }
-        if let Err(e) = std::os::unix::fs::symlink(socket_path, &symlink_path) {
+        if let Err(e) = rhizo_crypt_core::platform_link(socket_path, &symlink_path) {
             debug!(
                 symlink = %symlink_path.display(),
                 target = %socket_path.display(),
@@ -43,9 +45,7 @@ pub(super) fn remove_capability_symlink(socket_path: &Path) {
         let domain = rhizo_crypt_core::niche::DOMAIN;
         let symlink_path =
             parent.join(format!("{domain}{}", rhizo_crypt_core::constants::SOCKET_FILE_EXTENSION));
-        if symlink_path.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink())
-            && std::fs::read_link(&symlink_path).is_ok_and(|t| t == socket_path)
-        {
+        if rhizo_crypt_core::is_symlink_to(&symlink_path, socket_path) {
             let _ = std::fs::remove_file(&symlink_path);
             debug!(symlink = %symlink_path.display(), "capability symlink removed");
         }

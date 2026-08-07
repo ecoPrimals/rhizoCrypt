@@ -15,11 +15,13 @@
 mod connect;
 mod endpoint;
 mod listener;
+pub mod platform;
 mod stream;
 
 pub use connect::{JsonRpcTransportError, connect_transport, send_jsonrpc_request};
 pub use endpoint::TransportEndpoint;
 pub use listener::TransportListener;
+pub use platform::{PlatformAccess, is_symlink_to, platform_link, set_platform_permissions};
 pub use stream::TransportStream;
 
 use std::path::{Path, PathBuf};

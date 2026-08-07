@@ -402,7 +402,7 @@ fn test_uds_remove_capability_symlink_skips_foreign_target() {
     let symlink = capability_symlink_path(dir.path());
     let other = dir.path().join("other.sock");
     std::fs::write(&other, "").unwrap();
-    std::os::unix::fs::symlink(&other, &symlink).unwrap();
+    rhizo_crypt_core::platform_link(&other, &symlink).unwrap();
 
     let rt = tokio::runtime::Runtime::new().unwrap();
     let primal = rt.block_on(test_primal());
