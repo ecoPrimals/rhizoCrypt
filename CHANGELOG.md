@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 156s — G66 Transport Abstraction (Aug 6, 2026)
+- **G66 transport abstraction**: eliminate silicon deism — all IPC operates on transport-agnostic streams
+- Add `TransportListener` (G66) — server-side transport abstraction with `bind()` and `accept()` for UDS/TCP
+- Add `TransportEndpoint::platform_default()` — UDS on Unix, TCP localhost on non-Unix
+- Add `TransportEndpoint::from_env_or_default()` — `TRANSPORT_ENDPOINT` JSON env injection (G66 transport injection)
+- Add `TransportEndpoint::is_local()` — G63 local-trust integration (UDS/localhost detection)
+- Add `TransportStream::is_local()` + `supports_peer_cred()` — runtime transport capability queries
+- Genericize G65 `try_negotiate()` + `negotiate_client()`: now `S: AsyncRead + AsyncWrite + Unpin` (was `UnixStream`)
+- Genericize `serve_tarpc_on_stream()`: `S: AsyncRead + AsyncWrite + Unpin + Send + 'static`
+- Add `RpcClient::connect_negotiated_transport()` — G65+G66 composed: negotiate protocol on any `TransportEndpoint`
+- Move UDS stream tests behind `#[cfg(unix)]`; add TCP-based negotiation test (platform-agnostic proof)
+- `cargo check --target x86_64-pc-windows-gnu` passes: zero silicon deism in protocol negotiation
+- 18 new tests: `is_local` (UDS, IPv4, IPv6, hostname, remote, mesh), `platform_default`, `from_env_or_default` (JSON, address, fallback), `TransportStream` capability queries, `TransportListener` (TCP accept, UDS bind+accept, TCP bind, mesh fail, debug)
+- Tests: 1,825, 218 `.rs` files, ~61,200 lines
+
 ### Wave 156m — G65 Protocol Negotiation (Aug 6, 2026)
 - **G65 protocol negotiation**: single-socket protocol selection replaces C2 dual-socket (`PROTOCOLS: tarpc,jsonrpc\n` → `PROTOCOL: tarpc\n`)
 - Add `protocol_negotiation` module with `IpcProtocol` enum, wire format parser, and client/server negotiation functions

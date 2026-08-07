@@ -368,14 +368,18 @@ where
     super::super::newline::handle_newline_connection(joined, server, &gate, &caller).await
 }
 
-/// Serve the tarpc binary protocol on an already-connected UDS stream (G65).
+/// Serve the tarpc binary protocol on any connected stream (G65 + G66).
 ///
 /// After protocol negotiation selects tarpc, the stream is wrapped in
 /// length-delimited + bincode framing and served via `BaseChannel`.
-async fn serve_tarpc_on_stream(
-    stream: tokio::net::UnixStream,
+/// Generic over transport: works on UDS, TCP, or any `AsyncRead + AsyncWrite`.
+async fn serve_tarpc_on_stream<S>(
+    stream: S,
     server: &crate::service::RhizoCryptRpcServer,
-) -> std::io::Result<()> {
+) -> std::io::Result<()>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
     use crate::service::RhizoCryptRpc;
     use futures_util::StreamExt;
     use tarpc::server::{self, Channel};

@@ -45,13 +45,14 @@ Three workspace crates:
 
 ## IPC
 
-- **G65 protocol negotiation** — single-socket (`rhizocrypt.sock`), client sends `PROTOCOLS: tarpc,jsonrpc\n`, server selects best match
+- **G66 transport abstraction** — `TransportEndpoint` (UDS/TCP/MeshRelay), `TransportStream` (AsyncRead+AsyncWrite), `TransportListener` (server-side); platform-neutral IPC, `#[cfg(unix)]` confined to transport layer; `platform_default()` + `from_env_or_default()` for transport injection
+- **G65 protocol negotiation** — single-socket (`rhizocrypt.sock`), client sends `PROTOCOLS: tarpc,jsonrpc\n`, server selects best match; generic over any `AsyncRead + AsyncWrite` stream (G66)
 - **UDS dual-socket (G64 C2)** — JSON-RPC on `rhizocrypt.sock`, tarpc binary on `rhizocrypt.tarpc.sock` (retained for backward compat)
 - **TCP opt-in** via `--port` or `RHIZOCRYPT_PORT` env var (tarpc + JSON-RPC dual-mode)
 - **JSON-RPC 2.0** — dual-mode TCP (auto-detects HTTP POST vs newline-delimited) + UDS
 - **tarpc 0.37** with bincode — UDS (sub-ms) and TCP, high-performance typed RPC
 - **BTSP Phase 2+3** — X25519 + HMAC-SHA256 handshake + ChaCha20-Poly1305 encrypted channel on UDS; server-side auto-detect + client-side `BtspUnixAdapter` for outbound bearDog connections; `btsp.negotiate` upgrades to AEAD framing; dev mode (`BIOMEOS_INSECURE=1`) bypasses
-- **G63 Local-Trust** — `SO_PEERCRED` peer credential extraction on UDS connections; `CallerContext` carries kernel-verified UID/GID/PID; enables same-machine trust without BTSP key exchange
+- **G63 Local-Trust** — `SO_PEERCRED` peer credential extraction on UDS connections; `CallerContext` carries kernel-verified UID/GID/PID; `TransportStream::supports_peer_cred()` + `TransportEndpoint::is_local()` for trust decisions
 - Method names follow `domain.verb` semantic naming (`dag.session.create`, `health.check`)
 
 ## Compliance
@@ -65,16 +66,16 @@ Three workspace crates:
 | BTSP Phase 2+3 | Server-side auto-detect + client-side `ClientHello` handshake + ChaCha20-Poly1305 encrypted channel via `btsp.negotiate` |
 | Capability Wire L3 | Composable: provided/consumed capabilities, cost estimates, dependencies |
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
-| AGPL-3.0-or-later | SPDX headers on all 217 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 218 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,807 passing (all features, Aug 6 2026) |
+| Tests | 1,825 passing (all features, Aug 6 2026) |
 | Coverage | 93.83% lines (llvm-cov, Jul 18 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
-| Source files | 217 `.rs`, ~60,800 lines |
+| Source files | 218 `.rs`, ~61,200 lines |
 | Max file size | ~624 lines production (`store.rs`, limit: 800) |
 | Binary size | 5.7 MB (musl-static, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |

@@ -59,7 +59,8 @@ order = 3
 required = true
 health_method = "health.check"
 by_capability = "dag"
-transport = ["uds-negotiated", "uds-jsonrpc", "uds-tarpc"]
+# G66: transport-abstract — UDS (Unix), TCP (all platforms), env-injected
+transport = ["uds-negotiated", "tcp-negotiated", "uds-jsonrpc", "uds-tarpc"]
 capabilities = [
     "dag.session.create",
     "dag.session.get",

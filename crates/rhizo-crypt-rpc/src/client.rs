@@ -117,6 +117,48 @@ impl RpcClient {
         }
     }
 
+    /// Connect via G65 protocol negotiation on any transport (G66).
+    ///
+    /// Uses [`TransportEndpoint`](rhizo_crypt_core::TransportEndpoint) to connect,
+    /// then negotiates protocol on the resulting stream. Platform-agnostic:
+    /// works on UDS (Unix), TCP (all platforms), or any future transport.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RpcError::Connection` if the connection or negotiation fails.
+    pub async fn connect_negotiated_transport(
+        endpoint: &rhizo_crypt_core::TransportEndpoint,
+    ) -> RpcResult<Self> {
+        use crate::protocol_negotiation::{negotiate_client, IpcProtocol};
+
+        let mut stream = rhizo_crypt_core::connect_transport(endpoint)
+            .await
+            .map_err(|e| RpcError::Connection(e.to_string()))?;
+
+        let selected = negotiate_client(&mut stream, &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc])
+            .await
+            .map_err(|e| RpcError::Connection(format!("G65 negotiation failed: {e}")))?;
+
+        info!(
+            endpoint = %endpoint,
+            protocol = selected.wire_name(),
+            "G65+G66 negotiated connection"
+        );
+
+        match selected {
+            IpcProtocol::Tarpc => {
+                let length_delimited =
+                    tokio_util::codec::length_delimited::Builder::new().new_framed(stream);
+                let transport = tokio_serde::Framed::new(length_delimited, Bincode::default());
+                let inner = GeneratedClient::new(client::Config::default(), transport).spawn();
+                Ok(Self { inner })
+            }
+            IpcProtocol::JsonRpc => Err(RpcError::Connection(
+                "G65 negotiation selected JSON-RPC — use JSON-RPC client instead".into(),
+            )),
+        }
+    }
+
     // ========================================================================
     // Session Operations
     // ========================================================================

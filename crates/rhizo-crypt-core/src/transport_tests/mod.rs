@@ -9,4 +9,5 @@ mod connect;
 mod endpoint;
 mod errors;
 mod family_btsp;
+mod g66_transport;
 mod socket_paths;

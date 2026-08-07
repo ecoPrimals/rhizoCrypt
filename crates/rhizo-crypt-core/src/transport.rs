@@ -223,6 +223,55 @@ impl TransportEndpoint {
         }
     }
 
+    /// Platform-default endpoint for a primal (G66).
+    ///
+    /// On Unix, returns UDS at the ecosystem socket path.
+    /// On non-Unix, returns TCP localhost on `default_port`.
+    #[must_use]
+    pub fn platform_default(primal_name: &str, default_port: u16) -> Self {
+        socket_path_for_primal(primal_name).map_or_else(
+            || Self::tcp("127.0.0.1", default_port),
+            |path| Self::Uds {
+                path: path.to_string_lossy().into_owned(),
+            },
+        )
+    }
+
+    /// Read the transport endpoint from the environment, falling back to
+    /// [`platform_default`](Self::platform_default) (G66).
+    ///
+    /// Checks `TRANSPORT_ENDPOINT` (JSON) and `{primal_env_prefix}_ADDRESS`
+    /// (address string) before falling back.
+    #[must_use]
+    pub fn from_env_or_default(primal_name: &str, primal_env_prefix: &str, default_port: u16) -> Self {
+        if let Some(json) = SafeEnv::get_optional("TRANSPORT_ENDPOINT")
+            && let Ok(ep) = serde_json::from_str::<Self>(&json)
+        {
+            return ep;
+        }
+
+        let addr_key = format!("{primal_env_prefix}_ADDRESS");
+        if let Some(addr) = SafeEnv::get_optional(&addr_key) {
+            return Self::parse_address(&addr);
+        }
+
+        Self::platform_default(primal_name, default_port)
+    }
+
+    /// Returns `true` if this endpoint is local (UDS or TCP localhost).
+    ///
+    /// Used by G63 local-trust to decide whether `SO_PEERCRED` is available.
+    #[must_use]
+    pub fn is_local(&self) -> bool {
+        match self {
+            Self::Uds { .. } => true,
+            Self::Tcp { host, .. } => {
+                host == "127.0.0.1" || host == "::1" || host == "localhost"
+            }
+            Self::MeshRelay { .. } => false,
+        }
+    }
+
     /// Try to parse an address string into a `TransportEndpoint`.
     ///
     /// Returns `None` for strings that don't look like valid addresses.
@@ -500,6 +549,114 @@ pub async fn send_jsonrpc_request(
         .map_err(JsonRpcTransportError::Read)?;
 
     Ok(response)
+}
+
+impl TransportStream {
+    /// Returns `true` if this stream is over a local transport (UDS or localhost TCP).
+    ///
+    /// G63 local-trust: `SO_PEERCRED` is only available on UDS.
+    #[must_use]
+    pub const fn is_local(&self) -> bool {
+        match self {
+            #[cfg(unix)]
+            Self::Unix(_) => true,
+            Self::Tcp(_) => true,
+        }
+    }
+
+    /// Returns `true` if this stream supports peer credential extraction (UDS only).
+    #[must_use]
+    pub const fn supports_peer_cred(&self) -> bool {
+        match self {
+            #[cfg(unix)]
+            Self::Unix(_) => true,
+            Self::Tcp(_) => false,
+        }
+    }
+}
+
+// ============================================================================
+// TransportListener — server-side transport abstraction (G66)
+// ============================================================================
+
+/// Transport-agnostic server listener (G66).
+///
+/// Accepts incoming connections and yields [`TransportStream`] values,
+/// abstracting over Unix domain sockets and TCP listeners.
+pub enum TransportListener {
+    /// Unix domain socket listener.
+    #[cfg(unix)]
+    Unix(tokio::net::UnixListener),
+    /// TCP listener.
+    Tcp(tokio::net::TcpListener),
+}
+
+impl TransportListener {
+    /// Accept the next incoming connection.
+    ///
+    /// # Errors
+    ///
+    /// Returns `std::io::Error` on accept failure.
+    pub async fn accept(&self) -> std::io::Result<TransportStream> {
+        match self {
+            #[cfg(unix)]
+            Self::Unix(l) => {
+                let (stream, _) = l.accept().await?;
+                Ok(TransportStream::Unix(stream))
+            }
+            Self::Tcp(l) => {
+                let (stream, _) = l.accept().await?;
+                Ok(TransportStream::Tcp(stream))
+            }
+        }
+    }
+
+    /// Bind a listener for the given endpoint.
+    ///
+    /// # Errors
+    ///
+    /// Returns `std::io::Error` on bind failure.
+    pub async fn bind(endpoint: &TransportEndpoint) -> std::io::Result<Self> {
+        match endpoint {
+            #[cfg(unix)]
+            TransportEndpoint::Uds { path } => {
+                if let Some(parent) = std::path::Path::new(path).parent()
+                    && !parent.exists()
+                {
+                    std::fs::create_dir_all(parent)?;
+                }
+                if std::path::Path::new(path).exists() {
+                    std::fs::remove_file(path)?;
+                }
+                let listener = tokio::net::UnixListener::bind(path)?;
+                Ok(Self::Unix(listener))
+            }
+            #[cfg(not(unix))]
+            TransportEndpoint::Uds { path } => Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                format!("UDS not available on this platform for {path}"),
+            )),
+            TransportEndpoint::Tcp { host, port } => {
+                let addr = format!("{host}:{port}");
+                let listener = tokio::net::TcpListener::bind(&addr).await?;
+                Ok(Self::Tcp(listener))
+            }
+            TransportEndpoint::MeshRelay { .. } => Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "cannot bind a listener for mesh relay endpoints",
+            )),
+        }
+    }
+}
+
+impl std::fmt::Debug for TransportListener {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            #[cfg(unix)]
+            Self::Unix(_) => f.debug_struct("TransportListener::Unix").finish(),
+            Self::Tcp(_) => f.debug_struct("TransportListener::Tcp").finish(),
+        }
+    }
 }
 
 /// Probe whether a Unix domain socket is alive by attempting a connection.

@@ -3,13 +3,16 @@
 
 //! G65 Protocol Negotiation — single-socket protocol selection.
 //!
-//! Enables a primal to serve multiple RPC protocols on a single UDS socket.
+//! Enables a primal to serve multiple RPC protocols on a single socket.
 //! The client sends `PROTOCOLS: tarpc,jsonrpc\n`, the server selects the best
 //! mutual match and responds `PROTOCOL: tarpc\n`. No negotiation = JSON-RPC
 //! (full backward compatibility).
 //!
-//! Replaces C2 dual-socket (`.sock` + `.tarpc.sock`) as Phase 3 of G64
-//! cephalization. See `specs/PROTOCOL_NEGOTIATION_SPEC.md` in wateringHole.
+//! G66: All negotiation functions are generic over `AsyncRead + AsyncWrite`,
+//! operating on any [`TransportStream`](rhizo_crypt_core::TransportStream)
+//! — UDS on Unix, TCP on Windows, any future transport.
+//!
+//! See `specs/PROTOCOL_NEGOTIATION_SPEC.md` in wateringHole.
 
 use std::fmt;
 
@@ -95,7 +98,7 @@ pub enum NegotiationResult {
     NotNegotiation(Vec<u8>),
 }
 
-/// Attempt G65 protocol negotiation on a UDS connection.
+/// Attempt G65 protocol negotiation on any connected stream (G66 transport-agnostic).
 ///
 /// Reads the first line from the stream (combining any `leftover` bytes from
 /// prior mito-beacon detection). If the line starts with `PROTOCOLS:`,
@@ -105,10 +108,10 @@ pub enum NegotiationResult {
 /// # Errors
 ///
 /// Returns `std::io::Error` on read/write failures.
-pub async fn try_negotiate(
-    stream: &mut tokio::net::UnixStream,
-    leftover: Vec<u8>,
-) -> std::io::Result<NegotiationResult> {
+pub async fn try_negotiate<S>(stream: &mut S, leftover: Vec<u8>) -> std::io::Result<NegotiationResult>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     let mut line_buf = leftover;
@@ -155,17 +158,20 @@ pub async fn try_negotiate(
     }
 }
 
-/// Client-side protocol negotiation: send PROTOCOLS line, read response.
+/// Client-side protocol negotiation on any connected stream (G66 transport-agnostic).
 ///
-/// Returns the server-selected protocol.
+/// Sends `PROTOCOLS:` line, reads server response, returns selected protocol.
 ///
 /// # Errors
 ///
 /// Returns `std::io::Error` on I/O or protocol errors.
-pub async fn negotiate_client(
-    stream: &mut tokio::net::UnixStream,
+pub async fn negotiate_client<S>(
+    stream: &mut S,
     preferred: &[IpcProtocol],
-) -> std::io::Result<IpcProtocol> {
+) -> std::io::Result<IpcProtocol>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
     let protocols_str: Vec<&str> = preferred.iter().map(|p| p.wire_name()).collect();
@@ -235,72 +241,105 @@ mod tests {
         assert_eq!(format_protocol_response(IpcProtocol::JsonRpc), "PROTOCOL: jsonrpc\n");
     }
 
-    #[tokio::test]
-    async fn test_negotiate_roundtrip_tarpc() {
-        let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
+    // Stream-based tests use UnixStream::pair() — Unix-only
+    #[cfg(unix)]
+    mod stream_tests {
+        use super::*;
 
-        let server_handle =
-            tokio::spawn(async move { try_negotiate(&mut server, Vec::new()).await.unwrap() });
+        #[tokio::test]
+        async fn test_negotiate_roundtrip_tarpc() {
+            let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
 
-        let selected = negotiate_client(&mut client, &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc])
-            .await
-            .unwrap();
-        assert_eq!(selected, IpcProtocol::Tarpc);
+            let server_handle = tokio::spawn(async move {
+                try_negotiate(&mut server, Vec::new()).await.unwrap()
+            });
 
-        let result = server_handle.await.unwrap();
-        assert!(matches!(result, NegotiationResult::Tarpc));
-    }
+            let selected =
+                negotiate_client(&mut client, &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc])
+                    .await
+                    .unwrap();
+            assert_eq!(selected, IpcProtocol::Tarpc);
 
-    #[tokio::test]
-    async fn test_negotiate_roundtrip_jsonrpc_only() {
-        let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
+            let result = server_handle.await.unwrap();
+            assert!(matches!(result, NegotiationResult::Tarpc));
+        }
 
-        let server_handle =
-            tokio::spawn(async move { try_negotiate(&mut server, Vec::new()).await.unwrap() });
+        #[tokio::test]
+        async fn test_negotiate_roundtrip_jsonrpc_only() {
+            let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
 
-        let selected = negotiate_client(&mut client, &[IpcProtocol::JsonRpc]).await.unwrap();
-        assert_eq!(selected, IpcProtocol::JsonRpc);
+            let server_handle = tokio::spawn(async move {
+                try_negotiate(&mut server, Vec::new()).await.unwrap()
+            });
 
-        let result = server_handle.await.unwrap();
-        assert!(matches!(result, NegotiationResult::JsonRpc));
-    }
+            let selected =
+                negotiate_client(&mut client, &[IpcProtocol::JsonRpc]).await.unwrap();
+            assert_eq!(selected, IpcProtocol::JsonRpc);
 
-    #[tokio::test]
-    async fn test_not_negotiation_jsonrpc_passthrough() {
-        let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
+            let result = server_handle.await.unwrap();
+            assert!(matches!(result, NegotiationResult::JsonRpc));
+        }
 
-        use tokio::io::AsyncWriteExt;
-        let msg = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\"}\n";
-        client.write_all(msg).await.unwrap();
-        drop(client);
+        #[tokio::test]
+        async fn test_not_negotiation_jsonrpc_passthrough() {
+            let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
 
-        let leftover = b"{\"".to_vec();
-        let result = try_negotiate(&mut server, leftover).await.unwrap();
-        match result {
-            NegotiationResult::NotNegotiation(bytes) => {
-                assert!(bytes.starts_with(b"{\""));
+            use tokio::io::AsyncWriteExt;
+            let msg = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\"}\n";
+            client.write_all(msg).await.unwrap();
+            drop(client);
+
+            let leftover = b"{\"".to_vec();
+            let result = try_negotiate(&mut server, leftover).await.unwrap();
+            match result {
+                NegotiationResult::NotNegotiation(bytes) => {
+                    assert!(bytes.starts_with(b"{\""));
+                }
+                _ => panic!("expected NotNegotiation"),
             }
-            _ => panic!("expected NotNegotiation"),
+        }
+
+        #[tokio::test]
+        async fn test_negotiate_with_leftover_from_mito_beacon() {
+            let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
+
+            use tokio::io::AsyncWriteExt;
+            let line = b"OTOCOLS: tarpc,jsonrpc\n";
+            client.write_all(line).await.unwrap();
+
+            let leftover = b"PR".to_vec();
+            let server_handle = tokio::spawn(async move {
+                try_negotiate(&mut server, leftover).await.unwrap()
+            });
+
+            use tokio::io::{AsyncBufReadExt, BufReader};
+            let mut reader = BufReader::new(&mut client);
+            let mut response = String::new();
+            reader.read_line(&mut response).await.unwrap();
+            assert_eq!(response.trim(), "PROTOCOL: tarpc");
+
+            let result = server_handle.await.unwrap();
+            assert!(matches!(result, NegotiationResult::Tarpc));
         }
     }
 
+    /// TCP-based negotiation test — proves G66 transport-agnostic (works on all platforms).
     #[tokio::test]
-    async fn test_negotiate_with_leftover_from_mito_beacon() {
-        let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
+    async fn test_negotiate_over_tcp_transport() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
 
-        use tokio::io::AsyncWriteExt;
-        let line = b"OTOCOLS: tarpc,jsonrpc\n";
-        client.write_all(line).await.unwrap();
+        let server_handle = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            try_negotiate(&mut stream, Vec::new()).await.unwrap()
+        });
 
-        let leftover = b"PR".to_vec();
-        let server_handle =
-            tokio::spawn(async move { try_negotiate(&mut server, leftover).await.unwrap() });
-
-        use tokio::io::{AsyncBufReadExt, BufReader};
-        let mut reader = BufReader::new(&mut client);
-        let mut response = String::new();
-        reader.read_line(&mut response).await.unwrap();
-        assert_eq!(response.trim(), "PROTOCOL: tarpc");
+        let mut client = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let selected =
+            negotiate_client(&mut client, &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc])
+                .await
+                .unwrap();
+        assert_eq!(selected, IpcProtocol::Tarpc);
 
         let result = server_handle.await.unwrap();
         assert!(matches!(result, NegotiationResult::Tarpc));
