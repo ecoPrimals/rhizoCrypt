@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 157a — Vertebrate Self-Audit (Aug 9, 2026)
+- **RPC surface self-audit**: 3-way comparison — capability_registry.toml vs METHOD_CATALOG vs handler dispatch
+- **Fix**: add missing `dag.session.tree_hash` to capability_registry.toml — was implemented (handler + tarpc + METHOD_CATALOG) but undeclared in registry
+- **Fix**: remove phantom `lifecycle.status` from method_gate PUBLIC_METHODS and BTSP-exempt allowlist — had no handler dispatch (returned `-32601 Method not found`), classic phantom API (exactly the pattern westGate flagged)
+- Registry now declares **40 methods** = METHOD_CATALOG (40) = handler dispatch (40). Zero phantoms, zero gaps.
+- Tests: 1,825, 223 `.rs` files, ~61,400 lines
+
 ### Wave 157a — G68 Platform Substrate Convergence (Aug 7, 2026)
 - **G68 L1 fix**: add `platform_link()` + `is_symlink_to()` to `transport/platform.rs` — replace all raw `std::os::unix::fs::symlink` calls in production (`uds/symlinks.rs`) and tests (`uds_tests.rs`, `uds_tests_errors.rs`)
 - **G68 L2 fix**: add `PlatformAccess` enum + `set_platform_permissions()` — replace raw `PermissionsExt`/`from_mode()` in `store_redb_tests_error_paths.rs`

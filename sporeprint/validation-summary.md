@@ -1,7 +1,7 @@
 +++
 title = "rhizoCrypt Validation Summary"
-description = "Ephemeral DAG engine — 1,825 tests, 39 methods, pure Rust, G68-compliant transport, content-addressed working memory for the ecoPrimals ecosystem"
-date = 2026-08-06
+description = "Ephemeral DAG engine — 1,825 tests, 40 methods, pure Rust, G68-compliant transport, content-addressed working memory for the ecoPrimals ecosystem"
+date = 2026-08-09
 
 [taxonomies]
 primals = ["rhizocrypt"]
@@ -12,7 +12,7 @@ springs = []
 
 - **1,825 tests** passing (unit + integration + property + doc, `--all-features`)
 - **223 `.rs` files**, ~61,400 lines
-- **39 registered methods** across 7 domains (31 stable, 8 evolving)
+- **40 registered methods** across 7 domains (32 stable, 8 evolving)
 - **93.83% line coverage** (CI gate: 90%)
 - **Zero `unsafe` blocks** — `unsafe_code = "deny"` workspace-wide
 - **Zero C dependencies** — ecoBin compliant, `cargo-deny` enforced
@@ -27,6 +27,7 @@ springs = []
 | `dag.event.*` | 2 | Stable | Vertex append (single + batch) |
 | `dag.vertex.*` | 3 | Stable | Vertex retrieval and query |
 | `dag.merkle.*` | 3 | Stable | Merkle root, proof, verify |
+| `dag.session.tree_hash` | 1 | Stable | Cached session tree hash (DashMap Merkle root) |
 | `dag.slice.*` | 4 | Stable | Immutable snapshot checkout/resolve |
 | `dag.dehydration.*` | 3 | 2 Stable, 1 Evolving | Commit to permanent storage (incl. batch) |
 | `dag.partial_dehydrate` | 1 | Evolving | Partial Merkle root without closing session |

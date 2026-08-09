@@ -118,7 +118,6 @@ fn classify_introspection_methods_as_public() {
     assert_eq!(classify_method("identity.get"), MethodAccessLevel::Public);
     assert_eq!(classify_method("capabilities.list"), MethodAccessLevel::Public);
     assert_eq!(classify_method("capability.list"), MethodAccessLevel::Public);
-    assert_eq!(classify_method("lifecycle.status"), MethodAccessLevel::Public);
     assert_eq!(classify_method("ping"), MethodAccessLevel::Public);
     assert_eq!(classify_method("tools.list"), MethodAccessLevel::Public);
 }

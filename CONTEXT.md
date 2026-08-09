@@ -90,7 +90,7 @@ Three workspace crates:
 ## Key Files
 
 - `Cargo.toml` — Workspace config, lint policy, dependency pins
-- `config/capability_registry.toml` — Capability method registry (39 methods in `METHOD_CATALOG`, 7 domains)
+- `config/capability_registry.toml` — Capability method registry (40 methods in `METHOD_CATALOG`, 7 domains)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
 - `specs/` — 10 specification documents + 2 archived (incl. `CRYPTO_MODEL.md` — signing provider crypto delegation)
 ## Part of ecoPrimals

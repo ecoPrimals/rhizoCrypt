@@ -42,7 +42,6 @@ const UNAUTHENTICATED_METHODS: &[&str] = &[
     "capabilities.list",
     "capability.list",
     "primal.capabilities",
-    "lifecycle.status",
 ];
 
 /// Handle a newline-delimited JSON-RPC connection over any async stream.

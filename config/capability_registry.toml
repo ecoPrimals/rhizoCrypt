@@ -85,6 +85,12 @@ description = "Get the genesis (root) vertices of a session DAG"
 
 # ── Merkle integrity ──────────────────────────────────────────────
 
+[capabilities.session_tree_hash]
+method = "dag.session.tree_hash"
+domain = "dag.merkle"
+stability = "stable"
+description = "Compute the cached session tree hash (DashMap-cached Merkle root)"
+
 [capabilities.merkle_root]
 method = "dag.merkle.root"
 domain = "dag.merkle"
