@@ -67,12 +67,13 @@ impl TokenVerifier for NoopVerifier {
     }
 }
 
-/// Presence-only token verifier (pre-JH-11 placeholder).
+/// Presence-only token verifier — permissive-mode degradation path.
 ///
-/// Accepts any non-empty token and grants `scopes: ["*"]`. When ecosystem
-/// key distribution (JH-11) ships, this will be replaced by a verifier
-/// that performs Ed25519 signature verification and scope extraction
-/// via `auth.verify_ionic` IPC (capability-discovered, not primal-named).
+/// Accepts any non-empty token and grants `scopes: ["*"]`, subject
+/// `"unverified"`. Used as the fallback inside [`CapabilityVerifier`]
+/// when no `crypto:signing` provider is discoverable and `fail_open`
+/// is `true` (permissive enforcement mode). Not a placeholder — the
+/// real `auth.verify_ionic` path lives in [`CapabilityVerifier`].
 #[derive(Debug)]
 pub struct PresenceVerifier;
 

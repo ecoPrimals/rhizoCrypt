@@ -8,7 +8,7 @@ use super::params::{
     get_obj, get_opt_str, get_str, parse_session_id, parse_vertex_id_array, parse_vertex_id_value,
     vertex_id_to_value,
 };
-use crate::service::{RhizoCryptRpc, RhizoCryptRpcServer};
+use crate::service::RhizoCryptRpcServer;
 use crate::service_types::{BranchRequest, DiffRequest, FederateRequest, MergeRequest};
 use serde_json::Value;
 use std::borrow::Cow;
@@ -32,7 +32,7 @@ pub async fn dispatch_branch(
         name,
         description,
     };
-    let resp = server.clone().branch_session(tarpc::context::current(), req).await?;
+    let resp = server.impl_branch_session(req).await?;
     serde_json::to_value(resp).map_err(|e| HandlerError::InvalidParams(Cow::Owned(e.to_string())))
 }
 
@@ -48,7 +48,7 @@ pub async fn dispatch_diff(
         base_session_id,
         other_session_id,
     };
-    let resp = server.clone().diff_sessions(tarpc::context::current(), req).await?;
+    let resp = server.impl_diff_sessions(req).await?;
     serde_json::to_value(resp).map_err(|e| HandlerError::InvalidParams(Cow::Owned(e.to_string())))
 }
 
@@ -70,27 +70,31 @@ pub async fn dispatch_merge(
         agent,
         metadata,
     };
-    let id = server.clone().merge_branches(tarpc::context::current(), req).await?;
+    let id = server.impl_merge_branches(req).await?;
     Ok(vertex_id_to_value(id))
 }
 
 pub async fn dispatch_federate(
     server: &RhizoCryptRpcServer,
-    params: Value,
+    mut params: Value,
 ) -> Result<Value, HandlerError> {
-    let obj = get_obj(&params)?;
+    let obj = params
+        .as_object_mut()
+        .ok_or(HandlerError::InvalidParams(Cow::Borrowed("params must be an object")))?;
     let session_id = parse_session_id(get_str(obj, "session_id")?)?;
-    let vertices_arr = obj
-        .get("vertices")
-        .and_then(Value::as_array)
-        .ok_or(HandlerError::InvalidParams(Cow::Borrowed("missing 'vertices' array")))?;
 
-    let mut vertices = Vec::with_capacity(vertices_arr.len());
-    for v in vertices_arr {
-        let vertex: rhizo_crypt_core::Vertex = serde_json::from_value(v.clone())
-            .map_err(|e| HandlerError::InvalidParams(Cow::Owned(format!("invalid vertex: {e}"))))?;
-        vertices.push(vertex);
-    }
+    let Some(Value::Array(vertices_arr)) = obj.remove("vertices") else {
+        return Err(HandlerError::InvalidParams(Cow::Borrowed("missing 'vertices' array")));
+    };
+
+    let vertices: Vec<rhizo_crypt_core::Vertex> = vertices_arr
+        .into_iter()
+        .map(|v| {
+            serde_json::from_value(v).map_err(|e| {
+                HandlerError::InvalidParams(Cow::Owned(format!("invalid vertex: {e}")))
+            })
+        })
+        .collect::<Result<_, _>>()?;
 
     let source_gate = obj.get("source_gate").and_then(Value::as_str).map(str::to_owned);
     let verify_signatures = obj.get("verify_signatures").and_then(Value::as_bool).unwrap_or(false);
@@ -101,6 +105,6 @@ pub async fn dispatch_federate(
         source_gate,
         verify_signatures,
     };
-    let resp = server.clone().federate(tarpc::context::current(), req).await?;
+    let resp = server.impl_federate(req).await?;
     serde_json::to_value(resp).map_err(|e| HandlerError::InvalidParams(Cow::Owned(e.to_string())))
 }

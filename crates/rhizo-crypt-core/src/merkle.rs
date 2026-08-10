@@ -31,6 +31,7 @@ impl MerkleRoot {
     /// # Errors
     ///
     /// Returns an error if any vertex fails to compute its ID.
+    #[inline]
     pub fn compute(vertices: &[Vertex]) -> Result<Self> {
         if vertices.is_empty() {
             return Ok(Self::ZERO);
@@ -179,6 +180,7 @@ impl MerkleProof {
     ///
     /// Returns true if the proof is valid.
     #[must_use]
+    #[inline]
     pub fn verify(&self, vertex: &Vertex) -> bool {
         let Ok(vertex_hash) = vertex.compute_id() else {
             return false;

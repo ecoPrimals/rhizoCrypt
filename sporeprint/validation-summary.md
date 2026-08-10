@@ -1,6 +1,6 @@
 +++
 title = "rhizoCrypt Validation Summary"
-description = "Ephemeral DAG engine — 1,835 tests, 40 methods, pure Rust, G68-compliant transport, gossip-ready, content-addressed working memory for the ecoPrimals ecosystem"
+description = "Ephemeral DAG engine — 1,832 tests, 40 methods, pure Rust, G68-compliant transport, gossip-ready, content-addressed working memory for the ecoPrimals ecosystem"
 date = 2026-08-10
 
 [taxonomies]
@@ -10,8 +10,8 @@ springs = []
 
 ## Status
 
-- **1,835 tests** passing (unit + integration + property + doc, `--all-features`)
-- **226 `.rs` files**, ~61,800 lines
+- **1,832 tests** passing (unit + integration + property + doc, `--all-features`)
+- **229 `.rs` files**, ~61,850 lines
 - **40 registered methods** across 7 domains (32 stable, 8 evolving)
 - **93.83% line coverage** (CI gate: 90%)
 - **Zero `unsafe` blocks** — `unsafe_code = "deny"` workspace-wide

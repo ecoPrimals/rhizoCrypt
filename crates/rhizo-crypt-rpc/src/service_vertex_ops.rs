@@ -17,32 +17,38 @@ use rhizo_crypt_core::{
     VertexBuilder, VertexId,
 };
 
+async fn build_signed_vertex(server: &RhizoCryptRpcServer, request: AppendEventRequest) -> Vertex {
+    let mut builder = VertexBuilder::new(request.event_type);
+
+    if let Some(agent) = request.agent {
+        builder = builder.with_agent(agent);
+    }
+
+    for parent in request.parents {
+        builder = builder.with_parent(parent);
+    }
+
+    for (key, value) in request.metadata {
+        builder = builder.with_metadata(key, value);
+    }
+
+    if let Some(payload) = request.payload_ref.and_then(|r| parse_payload_ref(&r)) {
+        builder = builder.with_payload(payload);
+    }
+
+    let mut vertex = builder.build();
+    sign_vertex_if_available(&server.primal, &mut vertex).await;
+    vertex
+}
+
 impl RhizoCryptRpcServer {
     pub(crate) async fn impl_append_event(
         &self,
         request: AppendEventRequest,
     ) -> Result<VertexId, RpcError> {
-        let mut builder = VertexBuilder::new(request.event_type);
-
-        if let Some(agent) = request.agent {
-            builder = builder.with_agent(agent);
-        }
-
-        for parent in request.parents {
-            builder = builder.with_parent(parent);
-        }
-
-        for (key, value) in request.metadata {
-            builder = builder.with_metadata(key, value);
-        }
-
-        if let Some(payload) = request.payload_ref.and_then(|r| parse_payload_ref(&r)) {
-            builder = builder.with_payload(payload);
-        }
-
-        let mut vertex = builder.build();
-        sign_vertex_if_available(&self.primal, &mut vertex).await;
-        self.primal.append_vertex(request.session_id, vertex).await.map_err(RpcError::from)
+        let session_id = request.session_id;
+        let vertex = build_signed_vertex(self, request).await;
+        self.primal.append_vertex(session_id, vertex).await.map_err(RpcError::from)
     }
 
     pub(crate) async fn impl_append_batch(
@@ -59,22 +65,7 @@ impl RhizoCryptRpcServer {
             let session_id = requests[0].session_id;
             let mut vertices = Vec::with_capacity(requests.len());
             for request in requests {
-                let mut builder = VertexBuilder::new(request.event_type);
-                if let Some(agent) = request.agent {
-                    builder = builder.with_agent(agent);
-                }
-                for parent in request.parents {
-                    builder = builder.with_parent(parent);
-                }
-                for (key, value) in request.metadata {
-                    builder = builder.with_metadata(key, value);
-                }
-                if let Some(payload) = request.payload_ref.and_then(|r| parse_payload_ref(&r)) {
-                    builder = builder.with_payload(payload);
-                }
-                let mut vertex = builder.build();
-                sign_vertex_if_available(&self.primal, &mut vertex).await;
-                vertices.push(vertex);
+                vertices.push(build_signed_vertex(self, request).await);
             }
             return self
                 .primal
@@ -85,26 +76,9 @@ impl RhizoCryptRpcServer {
 
         let mut results = Vec::with_capacity(requests.len());
         for request in requests {
-            let mut builder = VertexBuilder::new(request.event_type);
-            if let Some(agent) = request.agent {
-                builder = builder.with_agent(agent);
-            }
-            for parent in request.parents {
-                builder = builder.with_parent(parent);
-            }
-            for (key, value) in request.metadata {
-                builder = builder.with_metadata(key, value);
-            }
-            if let Some(payload) = request.payload_ref.and_then(|r| parse_payload_ref(&r)) {
-                builder = builder.with_payload(payload);
-            }
-            let mut vertex = builder.build();
-            sign_vertex_if_available(&self.primal, &mut vertex).await;
-            let id = self
-                .primal
-                .append_vertex(request.session_id, vertex)
-                .await
-                .map_err(RpcError::from)?;
+            let session_id = request.session_id;
+            let vertex = build_signed_vertex(self, request).await;
+            let id = self.primal.append_vertex(session_id, vertex).await.map_err(RpcError::from)?;
             results.push(id);
         }
         Ok(results)
@@ -232,22 +206,7 @@ impl RhizoCryptRpcServer {
 
         let mut vertices = Vec::with_capacity(request.events.len());
         for event in request.events {
-            let mut vb = VertexBuilder::new(event.event_type);
-            if let Some(agent) = event.agent {
-                vb = vb.with_agent(agent);
-            }
-            for parent in event.parents {
-                vb = vb.with_parent(parent);
-            }
-            for (key, value) in event.metadata {
-                vb = vb.with_metadata(key, value);
-            }
-            if let Some(payload) = event.payload_ref.and_then(|r| parse_payload_ref(&r)) {
-                vb = vb.with_payload(payload);
-            }
-            let mut vertex = vb.build();
-            sign_vertex_if_available(&self.primal, &mut vertex).await;
-            vertices.push(vertex);
+            vertices.push(build_signed_vertex(self, event).await);
         }
 
         let vertex_ids = self

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Deep Debt Sweep — Code Evolution (Aug 10, 2026)
+- **P0 — Extract `build_signed_vertex()`**: eliminate 4× duplicated vertex builder in `service_vertex_ops.rs` (~60 lines removed)
+- **P0 — Standardize handlers on `impl_*`**: branch handlers (`dispatch_branch`, `dispatch_diff`, `dispatch_merge`, `dispatch_federate`) now call `impl_*` directly, bypassing tarpc self-clone + context overhead
+- **P1 — Zero-copy federate**: `dispatch_federate` consumes `Value::Array` via `into_iter()` instead of cloning each vertex `Value`
+- **P1 — PresenceVerifier doc**: update stale "pre-JH-11 placeholder" doc → accurate description as permissive-mode degradation fallback
+- **P2 — `#[inline]` hot paths**: add `#[inline]` to `MerkleRoot::compute`, `MerkleProof::verify` (dehydration/verification hot paths)
+- **P2 — Test split**: split `method_gate_tests.rs` (856L) into 3 focused modules: `classification`, `verifier_tests`, `gate` + shared helpers. No file >800L.
+- **Survey results**: zero `unsafe` in production, zero mocks outside `cfg(test|test-utils)`, zero hardcoded IPs in production, zero stubs/placeholders
+- Tests: 1,832, 229 `.rs` files, ~61,850 lines
+
 ### Wave 157g — G72 Dependency Pandemic Tier 1 (Aug 10, 2026)
 - **G72 dep audit**: systematic dependency review — tokio features already explicit (no `"full"`), tarpc features already explicit
 - **Dead dep removal**: remove `wiremock` (dev-dep, 0 usage) — cascades to **46 crates removed** (14.6% reduction: 316 → 270 unique deps)
