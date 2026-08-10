@@ -77,12 +77,15 @@ pub struct RhizoCrypt {
     provenance_notifier: Arc<crate::types_ecosystem::provenance::ProvenanceNotifier>,
     // Cross-gate mesh event listener (optional, non-fatal)
     mesh_listener: Arc<crate::types_ecosystem::mesh::MeshEventListener>,
+    // Gossip emitter for swarmVine mesh injection (optional, non-fatal)
+    gossip_emitter: Arc<crate::types_ecosystem::gossip::GossipEmitter>,
 }
 
 impl RhizoCrypt {
     /// Create a new `RhizoCrypt` instance.
     #[must_use]
     pub fn new(config: RhizoCryptConfig) -> Self {
+        use crate::types_ecosystem::gossip::GossipEmitter;
         use crate::types_ecosystem::mesh::MeshEventListener;
         use crate::types_ecosystem::provenance::ProvenanceNotifier;
 
@@ -105,7 +108,8 @@ impl RhizoCrypt {
             provenance_notifier: Arc::new(ProvenanceNotifier::with_discovery(Arc::clone(
                 &registry,
             ))),
-            mesh_listener: Arc::new(MeshEventListener::new(registry)),
+            mesh_listener: Arc::new(MeshEventListener::new(Arc::clone(&registry))),
+            gossip_emitter: Arc::new(GossipEmitter::with_discovery(registry)),
         }
     }
 
@@ -149,6 +153,15 @@ impl RhizoCrypt {
         &self,
     ) -> &Arc<crate::types_ecosystem::provenance::ProvenanceNotifier> {
         &self.provenance_notifier
+    }
+
+    /// Get the gossip emitter for swarmVine mesh injection.
+    ///
+    /// Used by dehydration and federation paths to announce lifecycle
+    /// events to the gossip mesh. Non-fatal if no relay is available.
+    #[must_use]
+    pub const fn gossip_emitter(&self) -> &Arc<crate::types_ecosystem::gossip::GossipEmitter> {
+        &self.gossip_emitter
     }
 
     /// Get the lazily-resolved signing client.

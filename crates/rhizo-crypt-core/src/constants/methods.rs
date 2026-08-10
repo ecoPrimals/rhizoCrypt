@@ -19,6 +19,9 @@ pub const PROVENANCE_RECORD_DEHYDRATION_METHOD: &str = "contribution.record_dehy
 /// Provenance RPC method: record a provenance event.
 pub const PROVENANCE_RECORD_PROVENANCE_METHOD: &str = "contribution.record_provenance";
 
+/// Gossip RPC method: spread an event via the gossip mesh.
+pub const GOSSIP_SPREAD_METHOD: &str = "gossip.spread";
+
 /// JSON-RPC method for polling cross-gate trust events from the signing provider.
 ///
 /// Called by `MeshEventListener::poll_events()` against whatever primal

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 157e — Gossip Injection Points (Aug 10, 2026)
+- **Gossip mesh integration**: implement swarmVine gossip emission at 3 DAG lifecycle injection points
+- Add `GossipEmitter` + `GossipEvent` types in `types_ecosystem/gossip/` — follows `ProvenanceNotifier` pattern
+- Add `Capability::GossipRelay` variant for runtime discovery of any `gossip:relay` provider
+- **Injection point 1**: `dehydrate()` → `SessionDehydrated` (session_id, merkle_root, vertex_count)
+- **Injection point 2**: `dehydrate_batch()` → `BatchDehydrated` (session_count, session_ids)
+- **Injection point 3**: `impl_federate()` → `Federated` (session_id, imported_count, source_gate)
+- Wire `GossipEmitter` into `RhizoCrypt` struct + `PrimalLifecycle::start()` connect (non-fatal)
+- `GOSSIP_RELAY_ENDPOINT` env var for direct endpoint configuration
+- `gossip.spread` JSON-RPC wire method with `{ source_primal, domain, event }` payload
+- 10 new tests: event serialization roundtrips, emitter lifecycle, env-based connect, no-server resilience
+- Tests: 1,835, 226 `.rs` files, ~61,800 lines
+
 ### Wave 157a — Vertebrate Self-Audit (Aug 9, 2026)
 - **RPC surface self-audit**: 3-way comparison — capability_registry.toml vs METHOD_CATALOG vs handler dispatch
 - **Fix**: add missing `dag.session.tree_hash` to capability_registry.toml — was implemented (handler + tarpc + METHOD_CATALOG) but undeclared in registry

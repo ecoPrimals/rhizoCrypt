@@ -257,6 +257,12 @@ pub const PROVENANCE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 /// Provenance provider response timeout.
 pub const PROVENANCE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// Gossip relay connection timeout.
+pub const GOSSIP_CONNECTION_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Gossip relay response timeout.
+pub const GOSSIP_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
+
 /// Default maximum results per provenance query.
 pub const PROVENANCE_DEFAULT_MAX_RESULTS: usize = 1000;
 

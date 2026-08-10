@@ -52,6 +52,15 @@ impl RhizoCrypt {
         self.provenance_notifier.notify_dehydration_enriched(&summary, &witnesses).await.ok();
         self.provenance_notifier.notify_session_commit(session_id).await.ok();
 
+        self.gossip_emitter
+            .emit(&crate::types_ecosystem::gossip::GossipEvent::SessionDehydrated {
+                session_id: session_id.to_string(),
+                merkle_root: hex::encode(root.as_bytes()),
+                vertex_count: summary.vertex_count,
+            })
+            .await
+            .ok();
+
         Ok(root)
     }
 
@@ -417,6 +426,16 @@ impl RhizoCrypt {
             for sid in &committed_sessions {
                 self.provenance_notifier.notify_session_commit(*sid).await.ok();
             }
+
+            let session_ids: Vec<String> =
+                committed_sessions.iter().take(64).map(ToString::to_string).collect();
+            self.gossip_emitter
+                .emit(&crate::types_ecosystem::gossip::GossipEvent::BatchDehydrated {
+                    session_count: u32::try_from(committed_sessions.len()).unwrap_or(u32::MAX),
+                    session_ids,
+                })
+                .await
+                .ok();
         }
 
         results

@@ -234,6 +234,9 @@ pub use types_ecosystem::compute::{
     ComputeEvent, ComputeProviderClient, ComputeProviderConfig, TaskId,
 };
 
+// Gossip emitter types
+pub use types_ecosystem::gossip::{GossipEmitter, GossipEvent};
+
 // Mesh event listener types
 pub use types_ecosystem::mesh::{MeshEventListener, MeshTrustEvent, MeshTrustEventKind};
 

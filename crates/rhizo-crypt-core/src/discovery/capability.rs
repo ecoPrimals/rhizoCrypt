@@ -34,6 +34,8 @@ pub enum Capability {
     // === Discovery & Mesh ===
     /// Service discovery and registration.
     ServiceDiscovery,
+    /// Gossip relay (swarmVine or compatible).
+    GossipRelay,
 
     // === Payload Storage ===
     /// Content-addressed payload storage.
@@ -84,6 +86,7 @@ impl std::fmt::Display for Capability {
             Self::Attestation => write!(f, "attestation:request"),
             // Discovery & Mesh
             Self::ServiceDiscovery => write!(f, "discovery:service"),
+            Self::GossipRelay => write!(f, "gossip:relay"),
             // Payload Storage
             Self::PayloadStorage => write!(f, "payload:storage"),
             Self::PayloadRetrieval => write!(f, "payload:retrieval"),
@@ -121,6 +124,7 @@ mod tests {
         assert_eq!(Capability::SignatureVerification.to_string(), "crypto:verification");
         assert_eq!(Capability::Attestation.to_string(), "attestation:request");
         assert_eq!(Capability::ServiceDiscovery.to_string(), "discovery:service");
+        assert_eq!(Capability::GossipRelay.to_string(), "gossip:relay");
         assert_eq!(Capability::PayloadStorage.to_string(), "payload:storage");
         assert_eq!(Capability::PayloadRetrieval.to_string(), "payload:retrieval");
         assert_eq!(Capability::PermanentCommit.to_string(), "storage:permanent:commit");

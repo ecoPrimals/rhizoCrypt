@@ -93,6 +93,12 @@ capabilities = [
     "health.metrics",
     "capability.list",
 ]
+# Gossip injection: events emitted to gossip:relay when available
+gossip_events = [
+    "session.dehydrated",
+    "batch.dehydrated",
+    "federated",
+]
 
 # ── Node 4: loamSpine (immutable linear ledger) ───────────────────
 [[graph.node]]

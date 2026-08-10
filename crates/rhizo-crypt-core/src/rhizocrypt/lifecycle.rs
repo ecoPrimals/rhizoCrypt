@@ -86,6 +86,11 @@ impl PrimalLifecycle for RhizoCrypt {
             tracing::warn!(error = %e, "Mesh event listener connect failed (non-fatal)");
         }
 
+        // Attempt gossip relay connection (non-fatal: swarmVine is optional)
+        if let Err(e) = self.gossip_emitter.connect().await {
+            tracing::warn!(error = %e, "Gossip emitter connect failed (non-fatal)");
+        }
+
         Ok(())
     }
 

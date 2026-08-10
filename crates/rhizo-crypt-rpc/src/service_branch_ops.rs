@@ -156,6 +156,18 @@ impl RhizoCryptRpcServer {
             }
         }
 
+        if imported > 0 {
+            self.primal
+                .gossip_emitter()
+                .emit(&rhizo_crypt_core::types_ecosystem::gossip::GossipEvent::Federated {
+                    session_id: request.session_id.to_string(),
+                    imported_count: u32::try_from(imported).unwrap_or(u32::MAX),
+                    source_gate: request.source_gate.clone(),
+                })
+                .await
+                .ok();
+        }
+
         Ok(FederateResponse {
             imported,
             skipped,
