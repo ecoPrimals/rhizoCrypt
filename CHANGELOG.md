@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 157g — G72 Dependency Pandemic Tier 1 (Aug 10, 2026)
+- **G72 dep audit**: systematic dependency review — tokio features already explicit (no `"full"`), tarpc features already explicit
+- **Dead dep removal**: remove `wiremock` (dev-dep, 0 usage) — cascades to **46 crates removed** (14.6% reduction: 316 → 270 unique deps)
+- Removed transitive chain: wiremock → url → idna → icu_* → deadpool → indexmap → h2 → hashbrown duplicate
+- **Patch alignment**: `cargo update` bumps 6 crates to latest patch (async-trait, cc, thiserror, wasm-bindgen, etc.)
+- **hashbrown duplicate resolved**: was 0.14.5 (dashmap) + 0.17.1 (indexmap→h2→wiremock). Now only 0.14.5.
+- Remaining duplicates all transitive: cpufeatures (crypto), getrandom/rand (0.8→0.9 Tier 2), syn (proc-macro)
+- `cargo deny check` clean: advisories ok, bans ok, licenses ok, sources ok
+- Tests: 1,835, 226 `.rs` files, ~61,800 lines
+
 ### Wave 157e — Gossip Injection Points (Aug 10, 2026)
 - **Gossip mesh integration**: implement swarmVine gossip emission at 3 DAG lifecycle injection points
 - Add `GossipEmitter` + `GossipEvent` types in `types_ecosystem/gossip/` — follows `ProvenanceNotifier` pattern

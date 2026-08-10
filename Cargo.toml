@@ -84,7 +84,6 @@ clap = { version = "4.6", features = ["derive"] }
 temp-env = "0.3"
 tempfile = "3.27"
 proptest = "1.5"
-wiremock = "0.6"
 
 [workspace.lints.rust]
 # deny (not forbid) so test modules can #[allow(unsafe_code)] for env var
