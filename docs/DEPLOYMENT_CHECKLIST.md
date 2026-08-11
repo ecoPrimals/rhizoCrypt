@@ -1,6 +1,6 @@
 # DEPLOYMENT CHECKLIST — rhizoCrypt v0.14.17
 
-**Date**: Aug 6, 2026
+**Date**: Aug 10, 2026
 **Version**: 0.14.17
 **Status**: PRODUCTION READY
 
@@ -9,13 +9,13 @@
 ## PRE-DEPLOYMENT VERIFICATION
 
 ### Code Quality
-- [x] **1,825 tests passing** (all features), 0 failures
+- [x] **1,832 tests passing** (all features), 0 failures
 - [x] **93.83% line coverage** (llvm-cov, Jul 18 2026)
 - [x] **Zero unsafe code** (workspace `unsafe_code = "deny"`, zero `unsafe` in tests via temp-env)
 - [x] **Zero clippy warnings** (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`)
 - [x] **100% file size compliance** (all production files under 800 lines)
 - [x] **Formatted** (`cargo fmt --check` clean)
-- [x] **AGPL-3.0-or-later** SPDX header on all 223 `.rs` files
+- [x] **AGPL-3.0-or-later** SPDX header on all 229 `.rs` files
 
 ### Architecture
 - [x] **Capability-based** (zero hardcoded primal names in production)
@@ -30,8 +30,8 @@
 - [x] **Memory** (testing) — ephemeral in-memory store
 
 ### Documentation
-- [x] **README.md** (current metrics — 1,825 tests)
-- [x] **CHANGELOG.md** (version history through Wave 157a)
+- [x] **README.md** (current metrics — 1,832 tests)
+- [x] **CHANGELOG.md** (version history through Wave 157g + deep debt sweep)
 - [x] **specs/** (10 specification documents + 2 archived)
 - [x] **docs/ENV_VARS.md** (capability-based configuration reference)
 

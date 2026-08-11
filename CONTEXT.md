@@ -40,7 +40,7 @@ Three workspace crates:
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | DAG engine, sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc service (28 ops), JSON-RPC 2.0 handler (39 methods, 7 domains), NDJSON streaming, rate limiting, batch dehydrate/ingest |
+| `rhizo-crypt-rpc` | tarpc service (28 ops), JSON-RPC 2.0 handler (40 methods, 7 domains), NDJSON streaming, rate limiting, batch dehydrate/ingest |
 | `rhizocrypt-service` | UniBin binary (`server`, `client`, `status`, `version`, `doctor`) |
 
 ## IPC
