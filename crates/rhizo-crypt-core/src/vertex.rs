@@ -6,7 +6,7 @@
 //! A vertex is a single event in the `RhizoCrypt` DAG. Each vertex is
 //! content-addressed by its Blake3 hash and linked to parent vertices.
 
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::event::EventType;
 use crate::types::{Did, PayloadRef, Signature, Timestamp, VertexId};
@@ -19,6 +19,10 @@ pub struct Vertex {
     /// Content-addressed identifier (computed from content).
     #[serde(skip)]
     id: Option<VertexId>,
+
+    /// Cached canonical CBOR bytes (excluded from wire/storage; repopulated on demand).
+    #[serde(skip)]
+    canonical_bytes: Option<Bytes>,
 
     /// References to parent vertices (empty for genesis).
     pub parents: Vec<VertexId>,
@@ -56,7 +60,22 @@ impl Vertex {
         Ok(VertexId::from_bytes(&bytes))
     }
 
+    /// Return the cached vertex ID, or compute it from canonical CBOR.
+    ///
+    /// Prefer this on read-heavy paths (Merkle aggregation, diff) when the ID
+    /// was already established during append or loaded from storage.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if serialization fails.
+    pub fn resolved_id(&self) -> crate::error::Result<VertexId> {
+        self.id.map_or_else(|| self.compute_id(), Ok)
+    }
+
     /// Get or compute the vertex ID.
+    ///
+    /// Caches both the ID and canonical CBOR bytes for subsequent hot-path use
+    /// (storage write, signing verification, Merkle proofs).
     ///
     /// # Errors
     ///
@@ -65,10 +84,21 @@ impl Vertex {
         if let Some(id) = self.id {
             Ok(id)
         } else {
-            let id = self.compute_id()?;
+            let bytes = self.ensure_canonical_bytes()?;
+            let id = VertexId::from_bytes(&bytes);
             self.id = Some(id);
             Ok(id)
         }
+    }
+
+    /// Attach a known vertex ID after loading from content-addressed storage.
+    ///
+    /// Avoids re-serializing and re-hashing on Merkle and query paths when the
+    /// store key already identifies the vertex.
+    #[must_use]
+    pub const fn with_known_id(mut self, id: VertexId) -> Self {
+        self.id = Some(id);
+        self
     }
 
     /// Clone this vertex for use in a branched session.
@@ -78,6 +108,7 @@ impl Vertex {
     pub fn clone_for_branch(&self) -> Self {
         let mut v = self.clone();
         v.id = None;
+        v.canonical_bytes = None;
         v
     }
 
@@ -94,21 +125,48 @@ impl Vertex {
     /// # Errors
     ///
     /// Returns an error if CBOR serialization fails.
-    pub fn to_canonical_bytes(&self) -> crate::error::Result<bytes::Bytes> {
+    pub fn to_canonical_bytes(&self) -> crate::error::Result<Bytes> {
+        if let Some(ref bytes) = self.canonical_bytes {
+            return Ok(bytes.clone());
+        }
+        Self::encode_canonical(self)
+    }
+
+    /// Ensure canonical CBOR bytes are cached; returns a cheap `Bytes` clone.
+    ///
+    /// Call before signing or ID computation on a mutable vertex to avoid
+    /// duplicate CBOR encoding on the append hot path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if CBOR serialization fails.
+    pub fn ensure_canonical_bytes(&mut self) -> crate::error::Result<Bytes> {
+        if let Some(ref bytes) = self.canonical_bytes {
+            return Ok(bytes.clone());
+        }
+        let bytes = Self::encode_canonical(self)?;
+        self.canonical_bytes = Some(bytes.clone());
+        Ok(bytes)
+    }
+
+    fn encode_canonical(vertex: &Self) -> crate::error::Result<Bytes> {
         let serializable = SerializableVertex {
-            parents: &self.parents,
-            timestamp: self.timestamp,
-            agent: self.agent.as_ref(),
-            event_type: &self.event_type,
-            payload: self.payload.as_ref(),
-            metadata: &self.metadata,
+            parents: &vertex.parents,
+            timestamp: vertex.timestamp,
+            agent: vertex.agent.as_ref(),
+            event_type: &vertex.event_type,
+            payload: vertex.payload.as_ref(),
+            metadata: &vertex.metadata,
         };
 
-        let mut buf = Vec::new();
-        ciborium::into_writer(&serializable, &mut buf).map_err(|e| {
-            crate::error::RhizoCryptError::internal(format!("vertex CBOR serialization: {e}"))
-        })?;
-        Ok(bytes::Bytes::from(buf))
+        let mut buf = BytesMut::new();
+        {
+            let mut writer = (&mut buf).writer();
+            ciborium::into_writer(&serializable, &mut writer).map_err(|e| {
+                crate::error::RhizoCryptError::internal(format!("vertex CBOR serialization: {e}"))
+            })?;
+        }
+        Ok(buf.freeze())
     }
 
     /// Deserialize from CBOR bytes.
@@ -282,6 +340,7 @@ impl VertexBuilder {
     pub fn build(self) -> Vertex {
         Vertex {
             id: None,
+            canonical_bytes: None,
             parents: self.parents,
             timestamp: self.timestamp.unwrap_or_else(Timestamp::now),
             agent: self.agent,
@@ -337,6 +396,31 @@ mod tests {
         // IDs should be cached
         assert_eq!(vertex1.cached_id(), Some(id1));
         assert_eq!(vertex2.cached_id(), Some(id2));
+    }
+
+    #[test]
+    fn test_vertex_canonical_bytes_cached() {
+        let mut vertex = VertexBuilder::new(EventType::SessionStart)
+            .with_timestamp(Timestamp::from_nanos(12345))
+            .build();
+
+        let first = vertex.ensure_canonical_bytes().unwrap();
+        let second = vertex.to_canonical_bytes().unwrap();
+        assert_eq!(first, second);
+        assert_eq!(first.as_ptr(), second.as_ptr());
+
+        let id = vertex.id().unwrap();
+        let third = vertex.to_canonical_bytes().unwrap();
+        assert_eq!(first, third);
+        assert_eq!(Some(id), vertex.cached_id());
+    }
+
+    #[test]
+    fn test_vertex_with_known_id() {
+        let vertex = VertexBuilder::new(EventType::SessionStart).build();
+        let expected = vertex.compute_id().unwrap();
+        let loaded = VertexBuilder::new(EventType::SessionStart).build().with_known_id(expected);
+        assert_eq!(loaded.resolved_id().unwrap(), expected);
     }
 
     #[test]

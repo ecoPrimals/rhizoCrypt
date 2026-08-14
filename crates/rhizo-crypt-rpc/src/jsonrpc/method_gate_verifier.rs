@@ -144,7 +144,7 @@ impl CapabilityVerifier {
     /// discovered: `true` falls back to presence-only verification (permissive),
     /// `false` treats the token as unverified (enforced / fail-closed).
     #[must_use]
-    #[allow(clippy::missing_const_for_fn, reason = "Arc parameter is not const-constructible")]
+    #[expect(clippy::missing_const_for_fn, reason = "Arc parameter is not const-constructible")]
     pub fn new(registry: Arc<DiscoveryRegistry>, fail_open: bool) -> Self {
         Self {
             registry,

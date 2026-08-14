@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! BTSP client-side handshake for connecting to bearDog in strict mode.
+//! BTSP client-side handshake for connecting to the family auth provider in strict mode.
 //!
-//! When `BEARDOG_UDS_REQUIRE_BTSP=1` is set, bearDog rejects plain JSON-RPC
+//! When `BEARDOG_UDS_REQUIRE_BTSP=1` is set, the auth provider rejects plain JSON-RPC
 //! with `-32600`. This module implements the consumer-side of the 4-step BTSP
 //! handshake so rhizoCrypt can authenticate before sending requests.
+//! (Env var names retain the `BEARDOG_` prefix for backward compatibility.)
 //!
 //! The challenge response uses LOCAL HMAC-SHA256 with the family seed — this
-//! avoids the chicken-and-egg of needing bearDog to compute HMAC for the
-//! handshake that authenticates us TO bearDog.
+//! avoids the chicken-and-egg of needing the auth provider to compute HMAC for the
+//! handshake that authenticates us to it.
 //!
 //! ## Wire Format (NDJSON — newline-delimited)
 //!
@@ -29,7 +30,7 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
-use tracing::debug;
+use tracing::{debug, warn};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -45,9 +46,7 @@ struct ClientHello {
 
 #[derive(Debug, Deserialize)]
 struct ServerHello {
-    #[expect(dead_code, reason = "validated implicitly by successful parse")]
     version: u8,
-    #[expect(dead_code, reason = "used by session key derivation in Phase 3")]
     server_ephemeral_pub: String,
     challenge: String,
     session_id: String,
@@ -67,7 +66,6 @@ struct HandshakeComplete {
 
 #[derive(Debug, Deserialize)]
 struct HandshakeError {
-    #[expect(dead_code, reason = "logged but not matched on")]
     pub error: String,
     pub reason: String,
 }
@@ -79,6 +77,8 @@ pub struct BtspClientSession {
     pub session_id: String,
     /// Negotiated cipher suite (e.g. `chacha20_poly1305` or `null`).
     pub cipher: String,
+    /// Server ephemeral public key (base64) from `ServerHello` — used for Phase 3 session key derivation.
+    pub server_ephemeral_pub: String,
 }
 
 /// Errors from the BTSP client handshake.
@@ -156,11 +156,23 @@ pub async fn perform_client_handshake(
     if line.contains("\"error\"") && line.contains("\"reason\"") {
         let err: HandshakeError = serde_json::from_str(line.trim())
             .map_err(|e| BtspClientError::Protocol(format!("parse error response: {e}")))?;
+        warn!(
+            error = %err.error,
+            reason = %err.reason,
+            "BTSP client: server rejected handshake"
+        );
         return Err(BtspClientError::Rejected(err.reason));
     }
 
     let server_hello: ServerHello = serde_json::from_str(line.trim())
         .map_err(|e| BtspClientError::Protocol(format!("parse ServerHello: {e}")))?;
+
+    if server_hello.version != BTSP_VERSION {
+        return Err(BtspClientError::Protocol(format!(
+            "unsupported BTSP version: expected {BTSP_VERSION}, got {}",
+            server_hello.version
+        )));
+    }
 
     debug!(
         session_id = %server_hello.session_id,
@@ -196,6 +208,11 @@ pub async fn perform_client_handshake(
     if line.contains("\"error\"") && line.contains("\"reason\"") {
         let err: HandshakeError = serde_json::from_str(line.trim())
             .map_err(|e| BtspClientError::Protocol(format!("parse error response: {e}")))?;
+        warn!(
+            error = %err.error,
+            reason = %err.reason,
+            "BTSP client: server rejected handshake"
+        );
         return Err(BtspClientError::Rejected(err.reason));
     }
 
@@ -211,6 +228,7 @@ pub async fn perform_client_handshake(
     Ok(BtspClientSession {
         session_id: complete.session_id,
         cipher: complete.cipher,
+        server_ephemeral_pub: server_hello.server_ephemeral_pub,
     })
 }
 

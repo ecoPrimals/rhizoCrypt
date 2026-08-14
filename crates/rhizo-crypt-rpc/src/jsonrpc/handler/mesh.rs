@@ -4,7 +4,7 @@
 //! JSON-RPC dispatch for cross-gate mesh trust event recording.
 //!
 //! Handles `mesh.events.record` — accepts a trust event payload from
-//! bearDog (or any cross-gate auth provider) and records it via the
+//! the signing/family auth provider (discoverable at runtime) and records it via the
 //! `MeshEventListener`. The event is mapped to an `EventType` mesh
 //! variant suitable for DAG append.
 

@@ -81,7 +81,7 @@ impl PrimalLifecycle for RhizoCrypt {
             tracing::warn!(error = %e, "Provenance notifier connect failed (non-fatal)");
         }
 
-        // Attempt mesh event listener connection (non-fatal: bearDog is optional)
+        // Attempt mesh event listener connection (non-fatal: signing provider is optional)
         if let Err(e) = self.mesh_listener.connect().await {
             tracing::warn!(error = %e, "Mesh event listener connect failed (non-fatal)");
         }

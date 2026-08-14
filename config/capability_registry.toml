@@ -263,6 +263,20 @@ domain = "mesh"
 stability = "evolving"
 description = "Record a cross-gate trust event from bearDog into the DAG"
 
+# ── rootPulse trio graph steps (commit + harvest pipelines) ──────
+
+[capabilities.rootpulse_record_build]
+method = "rootpulse.record_build"
+domain = "rootpulse"
+stability = "evolving"
+description = "Record build provenance in a DAG session (rootPulse harvest step)"
+
+[capabilities.rootpulse_dehydrate_state]
+method = "rootpulse.dehydrate_state"
+domain = "rootpulse"
+stability = "evolving"
+description = "Dehydrate session state for rootPulse commit pipeline"
+
 # ── Auth introspection (JH-0 method gate) ────────────────────────
 
 [capabilities.auth_check]

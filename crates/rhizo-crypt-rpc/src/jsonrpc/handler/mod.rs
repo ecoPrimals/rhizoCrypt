@@ -13,6 +13,7 @@ mod health;
 mod merkle;
 mod mesh;
 mod params;
+mod rootpulse;
 mod session;
 mod slice;
 mod tools;
@@ -136,6 +137,8 @@ pub async fn handle_request(
             capabilities::dispatch_capability_list(server).await
         }
         "mesh.events.record" => mesh::dispatch_mesh_events_record(server, params).await,
+        "rootpulse.record_build" => rootpulse::dispatch_record_build(server, params).await,
+        "rootpulse.dehydrate_state" => rootpulse::dispatch_dehydrate_state(server, params).await,
         "tools.list" | "mcp.tools.list" => Ok(tools::dispatch_tools_list()),
         "tools.call" | "mcp.tools.call" => tools::dispatch_tools_call(server, params).await,
         _ => Err(HandlerError::MethodNotFound(request.method.into())),
@@ -177,6 +180,10 @@ mod tests_dehydrate;
 #[cfg(test)]
 #[path = "../handler_tests_mesh.rs"]
 mod tests_mesh;
+
+#[cfg(test)]
+#[path = "../handler_tests_rootpulse.rs"]
+mod tests_rootpulse;
 
 #[cfg(test)]
 #[path = "../handler_proptests.rs"]

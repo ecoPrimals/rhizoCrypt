@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 /// Wire method names for permanent storage JSON-RPC calls.
 ///
-/// Aligned with `LoamSpine`'s native method negotiation:
+/// Aligned with the permanent storage provider's native method negotiation:
 /// `commit.session`, `commit.verify`, `commit.get`, `slice.checkout`, `slice.resolve`.
 mod wire {
     pub const COMMIT_SESSION: &str = "commit.session";

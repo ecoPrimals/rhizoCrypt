@@ -6,8 +6,8 @@
 |--------|-------|
 | Version | 0.14.17 |
 | License | AGPL-3.0-or-later / ORC / CC-BY-SA 4.0 ([scyBorg Triple-Copyleft](LICENSE)) |
-| Tests | 1,832 passing (`--all-features`, Aug 10, 2026) |
-| Coverage | 93.83% lines (llvm-cov, Jul 18, 2026) |
+| Tests | 1,858 passing (`--all-features`, Aug 14, 2026) |
+| Coverage | 92.69% lines, 91.16% functions (llvm-cov, Aug 14, 2026) |
 | Clippy | 0 warnings (pedantic + nursery + cargo + cast lints, `unwrap_used`/`expect_used = "deny"`, `missing_errors_doc = "warn"`) |
 | Edition | 2024 (rust-version 1.87) |
 | Unsafe | `unsafe_code = "deny"` workspace-wide, `#![forbid(unsafe_code)]` in non-test, zero `unsafe` blocks |
@@ -22,10 +22,10 @@
 | Storage | `DagBackend` enum: redb (Pure Rust, ACID, default) / in-memory |
 | Deps | ecoBin compliant — zero application C deps, zero cross-primal compile deps, zero reqwest |
 | Audit | `cargo-deny` enforced (18-crate ecoBin ban list incl. reqwest + ring, advisories, licenses, sources) |
-| SPDX | `AGPL-3.0-or-later` header on all 229 `.rs` files |
+| SPDX | `AGPL-3.0-or-later` header on all 231 `.rs` files |
 | Niche | `niche.rs` `METHOD_CATALOG` — single source of truth (identity, capabilities, costs, deps, domains, MCP tools) |
 | Validation | `validation.rs` composable harness + pluggable sinks (ludoSpring V22) |
-| Registry | `config/capability_registry.toml` (40 methods, 7 domains, stability tiers, `provenance.*` → `dag.*` wire aliases) |
+| Registry | `config/capability_registry.toml` (42 methods, 8 domains, stability tiers, `provenance.*` → `dag.*` wire aliases, rootPulse step handlers) |
 | Deploy | `graphs/rhizocrypt_deploy.toml` (biomeOS niche, `fallback = "skip"`) |
 | Cross-compile | 4 targets: x86_64-linux, x86_64-windows-gnu, x86_64-linux-musl, aarch64-linux-musl — zero warnings |
 
@@ -190,18 +190,33 @@ When rhizoCrypt is **unavailable**, downstream consumers degrade as follows:
 ### Neural API Registration (Wave 43)
 
 On startup after UDS bind, rhizoCrypt sends `primal.announce` to biomeOS's
-Neural API socket. This registers `dag`, `integrity`, `merkle` capabilities
-with cost hints and latency estimates so the Neural API can route
+Neural API socket. This registers `dag`, `integrity`, `merkle`, `rootpulse`
+capabilities with cost hints and latency estimates so the Neural API can route
 `capability.call` dispatches with informed affinity. Discovery uses tiered
 lookup: `$NEURAL_API_SOCKET` → `$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.sock`
 → `/tmp/biomeos/neural-api-{family}.sock`. Non-fatal if biomeOS is unavailable.
 
+### rootPulse Step Handlers (Wave 157k)
+
+rhizoCrypt implements two rootPulse graph step handlers for biomeOS trio
+graph activation:
+
+- `rootpulse.record_build` — records build provenance events into a
+  deterministic DAG session (BLAKE3-derived UUID v7), used by
+  `rootpulse_harvest` graph
+- `rootpulse.dehydrate_state` — dehydrates session state for commit
+  checkpointing, used by `rootpulse_commit` graph
+
+Semantic aliases: `dag.append` → `dag.event.append`,
+`dehydrate` / `dehydration.execute` → `dag.dehydration.trigger`.
+
 ### Stability Tiers
 
-32 of 40 methods are **stable**. 8 are **evolving**:
+32 of 42 methods are **stable**. 10 are **evolving**:
 `dag.partial_dehydrate`, `dag.branch`, `dag.diff`, `dag.merge`, `dag.federate`
 (Wave 60), `mesh.events.record` (Wave 76c), `dag.dehydration.trigger_batch`,
-`dag.pipeline.ingest` (G31).
+`dag.pipeline.ingest` (G31), `rootpulse.record_build`, `rootpulse.dehydrate_state`
+(Wave 157k).
 
 ---
 

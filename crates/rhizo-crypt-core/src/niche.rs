@@ -435,6 +435,25 @@ pub const METHOD_CATALOG: &[MethodSpec] = &[
         external: false,
         deps: &["dag.session.create", "dag.event.append"],
     },
+    // rootPulse trio graph steps (commit + harvest pipelines)
+    MethodSpec {
+        fqn: "rootpulse.record_build",
+        domain: "rootpulse",
+        short_name: "record_build",
+        estimated_ms: 10,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create", "dag.event.append"],
+    },
+    MethodSpec {
+        fqn: "rootpulse.dehydrate_state",
+        domain: "rootpulse",
+        short_name: "dehydrate_state",
+        estimated_ms: 50,
+        gpu_beneficial: false,
+        external: false,
+        deps: &["dag.session.create", "dag.dehydration.trigger"],
+    },
     // Auth introspection — JH-0 method gate (public, always allowed)
     MethodSpec {
         fqn: "auth.check",

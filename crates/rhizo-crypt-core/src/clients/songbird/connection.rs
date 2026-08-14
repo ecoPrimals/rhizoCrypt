@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Songbird connection management.
+//! Discovery adapter connection management.
 
 use std::net::SocketAddr;
 
@@ -16,12 +16,12 @@ use super::client::DiscoveryClient;
 use super::super::discovery_rpc::DiscoveryRpcClient;
 
 impl DiscoveryClient {
-    /// Connect to the Songbird orchestrator.
+    /// Connect to the discovery orchestrator (songBird is the canonical implementation).
     ///
     /// # Errors
     ///
     /// Returns `RhizoCryptError::Integration` if:
-    /// - No address is configured (`SONGBIRD_ADDRESS` not set)
+    /// - No address is configured (`SONGBIRD_ADDRESS` legacy env var not set)
     /// - The configured address is invalid
     /// - Connection times out
     /// - TCP connection fails
@@ -34,10 +34,9 @@ impl DiscoveryClient {
         // Check for unconfigured address
         if !self.config.is_configured() {
             return Err(RhizoCryptError::integration(
-                "Discovery address not configured. Set RHIZOCRYPT_DISCOVERY_ADAPTER \
-                 or DISCOVERY_ENDPOINT, or use explicit discovery config via \
-                 with_address(). For development, set RHIZOCRYPT_ENV=development \
-                 to use localhost fallback.",
+                "Discovery address not configured. Set DISCOVERY_ENDPOINT, \
+                 RHIZOCRYPT_DISCOVERY_ADAPTER, or SONGBIRD_ADDRESS, or use \
+                 explicit discovery config via with_address().",
             ));
         }
 

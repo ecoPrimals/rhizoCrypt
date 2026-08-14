@@ -40,7 +40,7 @@ Three workspace crates:
 | Crate | Purpose |
 |-------|---------|
 | `rhizo-crypt-core` | DAG engine, sessions, vertices, merkle, storage, capability clients, discovery |
-| `rhizo-crypt-rpc` | tarpc service (28 ops), JSON-RPC 2.0 handler (40 methods, 7 domains), NDJSON streaming, rate limiting, batch dehydrate/ingest |
+| `rhizo-crypt-rpc` | tarpc service (28 ops), JSON-RPC 2.0 handler (42 methods, 8 domains), NDJSON streaming, rate limiting, batch dehydrate/ingest, rootPulse step handlers |
 | `rhizocrypt-service` | UniBin binary (`server`, `client`, `status`, `version`, `doctor`) |
 
 ## IPC
@@ -51,7 +51,7 @@ Three workspace crates:
 - **TCP opt-in** via `--port` or `RHIZOCRYPT_PORT` env var (tarpc + JSON-RPC dual-mode)
 - **JSON-RPC 2.0** — dual-mode TCP (auto-detects HTTP POST vs newline-delimited) + UDS
 - **tarpc 0.37** with bincode — UDS (sub-ms) and TCP, high-performance typed RPC
-- **BTSP Phase 2+3** — X25519 + HMAC-SHA256 handshake + ChaCha20-Poly1305 encrypted channel on UDS; server-side auto-detect + client-side `BtspUnixAdapter` for outbound bearDog connections; `btsp.negotiate` upgrades to AEAD framing; dev mode (`BIOMEOS_INSECURE=1`) bypasses
+- **BTSP Phase 2+3** — X25519 + HMAC-SHA256 handshake + ChaCha20-Poly1305 encrypted channel on UDS; server-side auto-detect + client-side `BtspUnixAdapter` for outbound auth-provider connections; `btsp.negotiate` upgrades to AEAD framing; dev mode (`BIOMEOS_INSECURE=1`) bypasses
 - **G63 Local-Trust** — `SO_PEERCRED` peer credential extraction on UDS connections; `CallerContext` carries kernel-verified UID/GID/PID; `TransportStream::supports_peer_cred()` + `TransportEndpoint::is_local()` for trust decisions
 - Method names follow `domain.verb` semantic naming (`dag.session.create`, `health.check`)
 
@@ -68,18 +68,18 @@ Three workspace crates:
 | unsafe_code = "deny" | Workspace-wide, zero unsafe blocks |
 | G68 Platform Substrate | **COMPLIANT** — `platform_link()`, `PlatformAccess`, `is_symlink_to()` in `transport/platform.rs`; zero raw platform APIs outside transport layer |
 | Gossip injection | 3 injection points: `SessionDehydrated`, `BatchDehydrated`, `Federated` → `gossip.spread` via `GossipEmitter` |
-| AGPL-3.0-or-later | SPDX headers on all 226 `.rs` files |
+| AGPL-3.0-or-later | SPDX headers on all 231 `.rs` files |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,832 passing (all features, Aug 10 2026) |
-| Coverage | 93.83% lines (llvm-cov, Jul 18 2026) |
-| Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`, zero unfulfilled `--tests`) |
-| Source files | 229 `.rs`, ~61,850 lines |
-| Max file size | ~639 lines production (`service.rs`, limit: 800) |
-| Binary size | 5.7 MB (musl-static, stripped, PIE) |
+| Tests | 1,858 passing (all features, Aug 14 2026) |
+| Coverage | 92.69% lines, 91.16% functions (llvm-cov, Aug 14 2026) |
+| Clippy | 0 warnings (pedantic + nursery + cargo + cast lints enforced, `doc_markdown` enforced, `unwrap_used`/`expect_used = "deny"`) |
+| Source files | 231 `.rs`, ~62,620 lines |
+| Max file size | 752 lines (`handler_tests.rs`, limit: 800) |
+| Binary size | 5.7 MB musl-static (7.7 MB glibc, stripped, PIE) |
 | Fuzz targets | 3 (merkle, session builder, vertex CBOR) |
 | Chaos tests | 5 suites (discovery, stress, injection, partition, exhaustion) |
 
@@ -91,9 +91,18 @@ Three workspace crates:
 ## Key Files
 
 - `Cargo.toml` — Workspace config, lint policy, dependency pins
-- `config/capability_registry.toml` — Capability method registry (40 methods in `METHOD_CATALOG`, 7 domains)
+- `config/capability_registry.toml` — Capability method registry (42 methods in `METHOD_CATALOG`, 8 domains incl. rootPulse)
 - `deny.toml` — Supply chain audit (ecoBin ban list, advisories, licenses)
 - `specs/` — 10 specification documents + 2 archived (incl. `CRYPTO_MODEL.md` — signing provider crypto delegation)
+
+## rootPulse Integration (Wave 157k)
+
+rhizoCrypt implements two rootPulse graph step handlers for biomeOS trio activation:
+- `rootpulse.record_build` — build provenance into deterministic DAG session
+- `rootpulse.dehydrate_state` — dehydrate session state for commit checkpointing
+
+Semantic aliases added: `dag.append` → `dag.event.append`, `dehydrate` / `dehydration.execute` → `dag.dehydration.trigger`.
+
 ## Part of ecoPrimals
 
 Part of the [ecoPrimals](https://github.com/ecoPrimals) sovereign computing

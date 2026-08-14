@@ -79,6 +79,20 @@ fn resolve_neural_api_socket_skips_missing_env_override() {
 }
 
 #[test]
+fn resolve_neural_api_socket_env_missing_falls_through_to_xdg() {
+    let xdg_path = std::path::PathBuf::from("/run/user/1000/biomeos/neural-api-dev.sock");
+
+    let resolved = resolve_neural_api_socket(
+        Some("/missing/neural.sock"),
+        "dev",
+        Some("/run/user/1000"),
+        |path| path == xdg_path.as_path(),
+    );
+
+    assert_eq!(resolved, Some(xdg_path));
+}
+
+#[test]
 fn resolve_neural_api_socket_falls_back_to_xdg_tier() {
     let xdg_path = std::path::PathBuf::from("/run/user/1000/biomeos/neural-api-dev.sock");
 
@@ -177,6 +191,7 @@ mod announce_integration {
         AnnounceResponseOutcome, announce_to_biomeos, build_announce_request,
         parse_announce_response, send_jsonrpc_uds,
     };
+    use rhizo_crypt_core::constants;
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
     use tokio::net::UnixListener;
 
@@ -323,6 +338,159 @@ mod announce_integration {
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("neural-api connect"), "got: {err}");
+    }
+
+    #[tokio::test]
+    async fn announce_to_biomeos_discovers_socket_via_xdg_runtime_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let biomeos_dir = dir.path().join(constants::BIOMEOS_SOCKET_SUBDIR);
+        std::fs::create_dir_all(&biomeos_dir).unwrap();
+        let family = "rhizo-xdg-discover";
+        let neural_sock = biomeos_dir.join(format!("neural-api-{family}.sock"));
+        let rhizo_sock = dir.path().join("rhizocrypt.sock");
+        let xdg = dir.path().to_str().unwrap().to_owned();
+
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "result": { "capabilities_registered": 1, "methods_registered": 2 },
+            "id": 1
+        });
+
+        tokio::task::spawn_blocking(move || {
+            temp_env::with_vars(
+                [
+                    ("NEURAL_API_SOCKET", None::<&str>),
+                    ("ECOPRIMALS_FAMILY_ID", Some(family)),
+                    ("XDG_RUNTIME_DIR", Some(xdg.as_str())),
+                ],
+                || {
+                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    rt.block_on(async {
+                        let listener = UnixListener::bind(&neural_sock).unwrap();
+                        let mock = tokio::spawn(async move {
+                            if let Ok((stream, _)) = listener.accept().await {
+                                let (reader, mut writer) = tokio::io::split(stream);
+                                let mut lines = tokio::io::BufReader::new(reader).lines();
+                                let _ = lines.next_line().await;
+                                let body = format!("{response}\n");
+                                let _ = writer.write_all(body.as_bytes()).await;
+                            }
+                        });
+                        announce_to_biomeos(&rhizo_sock).await;
+                        mock.abort();
+                    });
+                },
+            );
+        })
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn announce_to_biomeos_discovers_socket_via_tmp_fallback() {
+        let family = "rhizo-tmp-discover";
+        let tmp_dir = std::path::PathBuf::from(constants::POSIX_FALLBACK_TMPDIR)
+            .join(constants::BIOMEOS_SOCKET_SUBDIR);
+        std::fs::create_dir_all(&tmp_dir).unwrap();
+        let neural_sock = tmp_dir.join(format!("neural-api-{family}.sock"));
+        let _ = std::fs::remove_file(&neural_sock);
+        let rhizo_sock = tmp_dir.join(format!("rhizocrypt-{family}.sock"));
+
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "result": { "capabilities_registered": 2, "methods_registered": 4 },
+            "id": 1
+        });
+
+        tokio::task::spawn_blocking(move || {
+            temp_env::with_vars(
+                [
+                    ("NEURAL_API_SOCKET", None::<&str>),
+                    ("XDG_RUNTIME_DIR", None::<&str>),
+                    ("ECOPRIMALS_FAMILY_ID", Some(family)),
+                ],
+                || {
+                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    rt.block_on(async {
+                        let listener = UnixListener::bind(&neural_sock).unwrap();
+                        let mock = tokio::spawn(async move {
+                            if let Ok((stream, _)) = listener.accept().await {
+                                let (reader, mut writer) = tokio::io::split(stream);
+                                let mut lines = tokio::io::BufReader::new(reader).lines();
+                                let _ = lines.next_line().await;
+                                let body = format!("{response}\n");
+                                let _ = writer.write_all(body.as_bytes()).await;
+                            }
+                        });
+                        announce_to_biomeos(&rhizo_sock).await;
+                        mock.abort();
+                        let _ = std::fs::remove_file(neural_sock);
+                    });
+                },
+            );
+        })
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn send_jsonrpc_uds_read_timeout() {
+        let dir = tempfile::tempdir().unwrap();
+        let neural_sock = dir.path().join("neural-read-timeout.sock");
+
+        let listener = UnixListener::bind(&neural_sock).unwrap();
+        let mock = tokio::spawn(async move {
+            if let Ok((stream, _)) = listener.accept().await {
+                let (reader, _writer) = tokio::io::split(stream);
+                let mut reader = tokio::io::BufReader::new(reader);
+                let mut line = String::new();
+                let _ = reader.read_line(&mut line).await;
+                tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+            }
+        });
+
+        let result = send_jsonrpc_uds(
+            &neural_sock,
+            &serde_json::json!({"jsonrpc": "2.0", "method": "test", "id": 1}),
+        )
+        .await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("read timeout"), "got: {err}");
+        mock.abort();
+    }
+
+    #[tokio::test]
+    async fn announce_to_biomeos_no_result_response_is_non_fatal() {
+        let dir = tempfile::tempdir().unwrap();
+        let neural_sock = dir.path().join("neural-no-result.sock");
+        let rhizo_sock = dir.path().join("rhizocrypt.sock");
+        let neural_path = neural_sock.to_str().unwrap().to_owned();
+
+        let response = serde_json::json!({ "jsonrpc": "2.0", "id": 1 });
+
+        tokio::task::spawn_blocking(move || {
+            temp_env::with_var("NEURAL_API_SOCKET", Some(neural_path.as_str()), || {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(async {
+                    let listener = UnixListener::bind(&neural_sock).unwrap();
+                    let mock = tokio::spawn(async move {
+                        if let Ok((stream, _)) = listener.accept().await {
+                            let (reader, mut writer) = tokio::io::split(stream);
+                            let mut lines = tokio::io::BufReader::new(reader).lines();
+                            let _ = lines.next_line().await;
+                            let body = format!("{response}\n");
+                            let _ = writer.write_all(body.as_bytes()).await;
+                        }
+                    });
+                    announce_to_biomeos(&rhizo_sock).await;
+                    mock.abort();
+                });
+            });
+        })
+        .await
+        .unwrap();
     }
 
     #[test]

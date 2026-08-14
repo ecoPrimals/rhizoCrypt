@@ -3,16 +3,16 @@
 
 //! Cross-gate mesh trust event listener.
 //!
-//! Records trust establishment and mesh lifecycle events from bearDog
-//! (or any `crypto:signing` provider) into rhizoCrypt's DAG. Mirrors
-//! the outbound [`ProvenanceNotifier`](super::provenance::ProvenanceNotifier)
-//! but in the inbound direction: bearDog fires auth events, rhizoCrypt
+//! Records trust establishment and mesh lifecycle events from the signing
+//! provider (discoverable at runtime via `crypto:signing`) into rhizoCrypt's DAG.
+//! Mirrors the outbound [`ProvenanceNotifier`](super::provenance::ProvenanceNotifier)
+//! but in the inbound direction: the auth provider fires auth events, rhizoCrypt
 //! records them as `EventType::TrustIssuerRegistered` etc.
 //!
 //! ## IPC Trigger Path
 //!
 //! ```text
-//! bearDog (auth.trust_issuer fires → AuthEventBus records)
+//! signing provider (auth.trust_issuer fires → AuthEventBus records)
 //!   → rhizoCrypt MeshEventListener polls auth.events.poll
 //!   → deserializes MeshTrustEvent from JSON-RPC response
 //!   → maps to EventType::TrustIssuerRegistered via into_event_type()

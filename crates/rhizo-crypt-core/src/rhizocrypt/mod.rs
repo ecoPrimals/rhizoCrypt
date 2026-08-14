@@ -137,8 +137,8 @@ impl RhizoCrypt {
 
     /// Get the cross-gate mesh event listener.
     ///
-    /// Used to record trust establishment events (from bearDog or any
-    /// signing provider) into the DAG.
+    /// Used to record trust establishment events (from the signing provider,
+    /// discoverable at runtime) into the DAG.
     #[must_use]
     pub const fn mesh_listener(&self) -> &Arc<crate::types_ecosystem::mesh::MeshEventListener> {
         &self.mesh_listener
@@ -146,8 +146,8 @@ impl RhizoCrypt {
 
     /// Get the provenance notifier for cross-gate provenance pushes.
     ///
-    /// Used by the RPC layer to notify sweetGrass (or any provenance
-    /// provider) after federation or dehydration events.
+    /// Used by the RPC layer to notify the attribution/provenance provider
+    /// (discoverable at runtime) after federation or dehydration events.
     #[must_use]
     pub const fn provenance_notifier(
         &self,
@@ -436,7 +436,7 @@ impl RhizoCrypt {
         count
     }
 
-    /// Spawn a background mesh event poller that polls bearDog's
+    /// Spawn a background mesh event poller that polls the signing provider's
     /// `auth.events.poll` and appends trust events to a dedicated
     /// mesh-trust DAG session.
     ///
@@ -524,13 +524,19 @@ impl RhizoCrypt {
                     let mut vertex = VertexBuilder::new(event_type).build();
 
                     if let Some(client) = &signing_client
-                        && let Some(agent) = &vertex.agent
+                        && let Some(agent) = vertex.agent.clone()
                     {
-                        match client.sign_vertex(&vertex, agent).await {
-                            Ok(sig) => vertex.signature = Some(sig),
+                        match vertex.ensure_canonical_bytes() {
+                            Ok(canonical) => match client.sign_owned(canonical, &agent).await {
+                                Ok(sig) => vertex.signature = Some(sig),
+                                Err(e) => tracing::debug!(
+                                    error = %e,
+                                    "Mesh vertex signing unavailable (continuing unsigned)"
+                                ),
+                            },
                             Err(e) => tracing::debug!(
                                 error = %e,
-                                "Mesh vertex signing unavailable (continuing unsigned)"
+                                "Mesh vertex canonicalization failed (continuing unsigned)"
                             ),
                         }
                     }

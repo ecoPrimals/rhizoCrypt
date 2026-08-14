@@ -186,7 +186,7 @@ pub struct FederateResponse {
     pub frontier: Vec<VertexId>,
 }
 
-#[allow(clippy::trivially_copy_pass_by_ref, reason = "serde skip_serializing_if requires &T")]
+#[expect(clippy::trivially_copy_pass_by_ref, reason = "serde skip_serializing_if requires &T")]
 const fn is_zero(v: &u64) -> bool {
     *v == 0
 }

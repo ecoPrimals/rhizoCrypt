@@ -237,7 +237,7 @@ impl RhizoCryptRpcServer {
 
 /// Attempt to cryptographically sign a vertex via the discovered signing provider.
 ///
-/// When a signing provider (e.g. `BearDog`) is available and the vertex carries an
+/// When a signing provider (discoverable at runtime) is available and the vertex carries an
 /// `agent` DID, the vertex's canonical bytes are signed with Ed25519 and the
 /// resulting signature is attached. This makes DAG integrity independently
 /// verifiable by any party holding the agent's public key.
@@ -263,7 +263,7 @@ pub fn parse_payload_ref(s: &str) -> Option<PayloadRef> {
 /// Gracefully degrades: if no provider is discovered or signing fails, the vertex
 /// remains unsigned (matching standalone / pre-composition behavior).
 pub async fn sign_vertex_if_available(primal: &rhizo_crypt_core::RhizoCrypt, vertex: &mut Vertex) {
-    let Some(ref agent) = vertex.agent else {
+    let Some(agent) = vertex.agent.clone() else {
         return;
     };
 
@@ -271,7 +271,15 @@ pub async fn sign_vertex_if_available(primal: &rhizo_crypt_core::RhizoCrypt, ver
         return;
     };
 
-    match client.sign_vertex(vertex, agent).await {
+    let Ok(canonical) = vertex.ensure_canonical_bytes() else {
+        tracing::warn!(
+            agent = %agent,
+            "Failed to canonicalize vertex for signing — continuing unsigned"
+        );
+        return;
+    };
+
+    match client.sign_owned(canonical, &agent).await {
         Ok(sig) => {
             tracing::trace!(agent = %agent, "Vertex signed via delegated crypto provider");
             vertex.signature = Some(sig);

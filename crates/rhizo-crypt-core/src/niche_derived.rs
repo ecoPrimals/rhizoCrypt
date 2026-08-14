@@ -22,6 +22,7 @@ pub const DOMAIN_DESCRIPTIONS: &[(&str, &str)] = &[
     ("identity", "Primal identity for biomeOS discovery"),
     ("tools", "MCP tool exposure for AI coordination"),
     ("mesh", "Cross-gate trust event recording"),
+    ("rootpulse", "rootPulse trio graph step handlers (commit + harvest)"),
     ("auth", "Method gate introspection and authorization (JH-0)"),
 ];
 
@@ -63,6 +64,9 @@ pub const PROVENANCE_ALIASES: &[(&str, &str)] = &[
     ("provenance.diff", "dag.diff"),
     ("provenance.merge", "dag.merge"),
     ("provenance.federate", "dag.federate"),
+    ("dag.append", "dag.event.append"),
+    ("dehydrate", "dag.dehydration.trigger"),
+    ("dehydration.execute", "dag.dehydration.trigger"),
 ];
 
 // ============================================================================
@@ -326,7 +330,7 @@ pub fn health_readiness(is_running: bool) -> serde_json::Value {
 
 /// MCP tool definitions for AI coordination layer.
 #[must_use]
-#[allow(
+#[expect(
     clippy::too_many_lines,
     reason = "single JSON literal — splitting would fragment the MCP tool catalog"
 )]

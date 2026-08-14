@@ -47,7 +47,7 @@ fn extract_peer_caller(
     }
 }
 
-#[allow(clippy::redundant_pub_crate, reason = "re-exported for UDS integration tests")]
+#[expect(clippy::redundant_pub_crate, reason = "re-exported for UDS integration tests")]
 pub(crate) async fn handle_uds_connection(
     mut stream: tokio::net::UnixStream,
     server: crate::service::RhizoCryptRpcServer,

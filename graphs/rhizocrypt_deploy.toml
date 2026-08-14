@@ -89,6 +89,8 @@ capabilities = [
     "dag.diff",
     "dag.merge",
     "dag.federate",
+    "rootpulse.record_build",
+    "rootpulse.dehydrate_state",
     "health.check",
     "health.metrics",
     "capability.list",

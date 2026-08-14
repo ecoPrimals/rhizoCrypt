@@ -3,9 +3,9 @@
 
 //! Manifest-based capability discovery.
 //!
-//! Absorbed from toadStool S156 and barraCuda v0.3.5 manifest discovery pattern.
+//! Absorbed from platform substrate manifest discovery (S156) and barraCuda v0.3.5 manifest discovery pattern.
 //! Scans the biomeOS socket directory for `*.json` primal capability manifests,
-//! providing a file-system-based discovery fallback when Songbird is unavailable.
+//! providing a file-system-based discovery fallback when the discovery adapter is unavailable.
 //!
 //! ## Manifest Format
 //!

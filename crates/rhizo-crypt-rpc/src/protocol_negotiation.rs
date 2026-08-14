@@ -248,6 +248,7 @@ mod tests {
     #[cfg(unix)]
     mod stream_tests {
         use super::*;
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
         #[tokio::test]
         async fn test_negotiate_roundtrip_tarpc() {
@@ -284,7 +285,6 @@ mod tests {
         async fn test_not_negotiation_jsonrpc_passthrough() {
             let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
 
-            use tokio::io::AsyncWriteExt;
             let msg = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\"}\n";
             client.write_all(msg).await.unwrap();
             drop(client);
@@ -303,7 +303,6 @@ mod tests {
         async fn test_negotiate_with_leftover_from_mito_beacon() {
             let (mut client, mut server) = tokio::net::UnixStream::pair().unwrap();
 
-            use tokio::io::AsyncWriteExt;
             let line = b"OTOCOLS: tarpc,jsonrpc\n";
             client.write_all(line).await.unwrap();
 
@@ -311,7 +310,6 @@ mod tests {
             let server_handle =
                 tokio::spawn(async move { try_negotiate(&mut server, leftover).await.unwrap() });
 
-            use tokio::io::{AsyncBufReadExt, BufReader};
             let mut reader = BufReader::new(&mut client);
             let mut response = String::new();
             reader.read_line(&mut response).await.unwrap();

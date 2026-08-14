@@ -131,6 +131,8 @@ fn test_service_error_exit_code_mapping() {
 #[tokio::test]
 async fn test_shutdown_signal_does_not_panic() {
     use tokio::time::{Duration, timeout};
+
+    let _guard = crate::shutdown::SIGNAL_TEST_MUTEX.lock().await;
     let result = timeout(Duration::from_millis(100), super::shutdown_signal()).await;
     assert!(result.is_err(), "shutdown_signal should block until signal (timeout expected)");
 }

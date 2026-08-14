@@ -307,7 +307,7 @@ impl DagStore for RedbDagStore {
         match value {
             Some(guard) => {
                 let data = guard.value();
-                let vertex = Vertex::from_cbor_bytes(data)?;
+                let vertex = Vertex::from_cbor_bytes(data)?.with_known_id(vertex_id);
                 Ok(Some(vertex))
             }
             None => Ok(None),
@@ -329,11 +329,9 @@ impl DagStore for RedbDagStore {
             .iter()
             .map(|id| {
                 let key = Self::vertex_key(session_id, *id);
-                vertices_table
-                    .get(key.as_slice())
-                    .ok()
-                    .flatten()
-                    .and_then(|g| Vertex::from_cbor_bytes(g.value()).ok())
+                vertices_table.get(key.as_slice()).ok().flatten().and_then(|g| {
+                    Vertex::from_cbor_bytes(g.value()).ok().map(|vertex| vertex.with_known_id(*id))
+                })
             })
             .collect();
 

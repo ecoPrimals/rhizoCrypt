@@ -25,7 +25,7 @@
 //! // Discover ANY signing provider at runtime
 //! let signer = SigningClient::discover(&registry).await?;
 //!
-//! // Works with BearDog, YubiKey, CloudKMS, HSM, etc.
+//! // Works with any signing provider: HSM, cloud KMS, software signer, etc.
 //! let did = Did::new("did:key:test");
 //! let signature = signer.sign(b"data", &did).await?;
 //! # Ok::<(), rhizo_crypt_core::error::RhizoCryptError>(())

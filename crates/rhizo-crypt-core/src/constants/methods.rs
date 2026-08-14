@@ -25,7 +25,7 @@ pub const GOSSIP_SPREAD_METHOD: &str = "gossip.spread";
 /// JSON-RPC method for polling cross-gate trust events from the signing provider.
 ///
 /// Called by `MeshEventListener::poll_events()` against whatever primal
-/// provides the `Signing` capability (currently bearDog).
+/// provides the `Signing` capability (discoverable at runtime).
 pub const MESH_AUTH_EVENTS_POLL_METHOD: &str = "auth.events.poll";
 
 // ============================================================================

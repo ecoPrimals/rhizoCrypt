@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Discovery Client — Service Discovery and Registration
+//! Discovery adapter client — service discovery and registration.
 //!
-//! Connects rhizoCrypt to the ecosystem discovery service for:
+//! songBird is the canonical discovery orchestrator; this client connects
+//! rhizoCrypt to the ecosystem discovery service for:
 //! - Primal registration (advertise our capabilities)
 //! - Service discovery (find sibling primals)
 //! - Federation status monitoring
@@ -21,7 +22,8 @@
 //! │         │                                                       │
 //! │         ▼                                                       │
 //! │    ┌─────────┐                                                  │
-//! │    │Songbird │◀──── Bootstrap connection (only configured addr) │
+//! │    │Discovery│◀──── Bootstrap connection (only configured addr) │
+//! │    │ adapter │   (songBird is the canonical orchestrator)      │
 //! │    └────┬────┘                                                  │
 //! │         │                                                       │
 //! │         ├──discover("signing")───────────▶ any signing provider │
@@ -48,7 +50,7 @@ use super::config::DiscoveryConfig;
 #[cfg(feature = "live-clients")]
 use super::super::discovery_rpc::{DiscoveryRpcClient, RpcServiceRegistration};
 
-/// Songbird client for service mesh integration.
+/// Discovery adapter client for service mesh integration.
 ///
 /// Provides capability-based discovery and service registration
 /// for the ecoPrimals mesh network.
@@ -74,13 +76,13 @@ use super::super::discovery_rpc::{DiscoveryRpcClient, RpcServiceRegistration};
 ///
 /// ## Heartbeat Mechanism
 ///
-/// Songbird registrations expire after 60 seconds. The heartbeat task
+/// Discovery adapter registrations expire after 60 seconds. The heartbeat task
 /// automatically refreshes the registration every 45 seconds to prevent expiry.
 ///
 /// ## Live Client Feature
 ///
 /// When compiled with `--features live-clients`, this client uses
-/// actual tarpc connections to the Songbird orchestrator.
+/// actual tarpc connections to the discovery orchestrator.
 pub struct DiscoveryClient {
     pub(crate) config: DiscoveryConfig,
     pub(crate) state: Arc<RwLock<ClientState>>,
@@ -98,7 +100,7 @@ pub struct DiscoveryClient {
 }
 
 impl DiscoveryClient {
-    /// Create a new Songbird client.
+    /// Create a new discovery adapter client.
     #[must_use]
     pub fn new(config: DiscoveryConfig) -> Self {
         Self {
@@ -116,8 +118,9 @@ impl DiscoveryClient {
 
     /// Create a client with default configuration from environment.
     ///
-    /// Note: This requires `SONGBIRD_ADDRESS` to be set, or `RHIZOCRYPT_ENV=development`
-    /// for the localhost fallback.
+    /// Requires a discovery endpoint to be configured via `DISCOVERY_ENDPOINT`,
+    /// `SONGBIRD_ADDRESS`, or `SONGBIRD_HOST`/`SONGBIRD_PORT`. If no endpoint
+    /// is set, `connect()` will fail with a descriptive error.
     #[must_use]
     pub fn with_defaults() -> Self {
         Self::new(DiscoveryConfig::from_env())
@@ -134,17 +137,17 @@ impl DiscoveryClient {
         *self.state.read().await
     }
 
-    /// Check if connected to Songbird.
+    /// Check if connected to the discovery adapter.
     pub async fn is_connected(&self) -> bool {
         matches!(*self.state.read().await, ClientState::Connected | ClientState::Registered)
     }
 
-    /// Register this service with Songbird.
+    /// Register this service with the discovery adapter.
     ///
     /// # Errors
     ///
     /// Returns `RhizoCryptError::Integration` if:
-    /// - Not connected to Songbird
+    /// - Not connected to the discovery adapter
     /// - Registration request fails
     pub async fn register(&self, our_endpoint: &str) -> Result<RegistrationResult> {
         if !self.is_connected().await {
@@ -225,13 +228,13 @@ impl DiscoveryClient {
 
     /// Start heartbeat task to maintain registration.
     ///
-    /// Songbird registrations expire after 60 seconds. This task refreshes
+    /// Discovery adapter registrations expire after 60 seconds. This task refreshes
     /// the registration every 45 seconds to prevent expiry.
     ///
     /// # Errors
     ///
     /// Returns `RhizoCryptError::Integration` if:
-    /// - Not registered with Songbird
+    /// - Not registered with the discovery adapter
     /// - Heartbeat task already running
     ///
     /// # Example
@@ -309,7 +312,7 @@ impl DiscoveryClient {
 
     /// Refresh the registration (called by heartbeat task).
     ///
-    /// Re-registers with Songbird to extend the TTL.
+    /// Re-registers with the discovery adapter to extend the TTL.
     ///
     /// # Errors
     ///
@@ -337,16 +340,16 @@ impl DiscoveryClient {
         }
     }
 
-    /// Get federation status from Songbird.
+    /// Get federation status from the discovery adapter.
     ///
     /// When the `live-clients` feature is enabled, this queries the real
-    /// Songbird orchestrator via tarpc. Otherwise it returns an integration
+    /// discovery orchestrator via tarpc. Otherwise it returns an integration
     /// error indicating the feature is required.
     ///
     /// # Errors
     ///
     /// Returns `RhizoCryptError::Integration` if:
-    /// - Not connected to Songbird
+    /// - Not connected to the discovery adapter
     /// - `live-clients` feature is not enabled
     /// - Status query fails (network / tarpc error)
     pub async fn federation_status(&self) -> Result<FederationStatus> {
@@ -388,7 +391,7 @@ impl DiscoveryClient {
     /// Unregister from the mesh.
     ///
     /// When the `live-clients` feature is enabled, this sends a real
-    /// unregistration request to Songbird. Otherwise it only clears
+    /// unregistration request to the discovery adapter. Otherwise it only clears
     /// local state.
     ///
     /// # Errors
@@ -416,7 +419,7 @@ impl DiscoveryClient {
         Ok(())
     }
 
-    /// Disconnect from Songbird.
+    /// Disconnect from the discovery adapter.
     pub async fn disconnect(&self) {
         if self.is_connected().await
             && let Err(e) = self.unregister().await

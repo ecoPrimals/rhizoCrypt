@@ -111,13 +111,13 @@ impl SafeEnv {
     /// Disable transport security checks (development only).
     pub const BIOMEOS_INSECURE: &'static str = "BIOMEOS_INSECURE";
 
-    /// Legacy Songbird orchestrator address.
+    /// Legacy discovery adapter orchestrator address.
     pub const SONGBIRD_ADDRESS: &'static str = "SONGBIRD_ADDRESS";
 
-    /// Legacy Songbird host (paired with [`Self::SONGBIRD_PORT`]).
+    /// Legacy discovery adapter host (paired with [`Self::SONGBIRD_PORT`]).
     pub const SONGBIRD_HOST: &'static str = "SONGBIRD_HOST";
 
-    /// Legacy Songbird port (paired with [`Self::SONGBIRD_HOST`]).
+    /// Legacy discovery adapter port (paired with [`Self::SONGBIRD_HOST`]).
     pub const SONGBIRD_PORT: &'static str = "SONGBIRD_PORT";
 
     /// Mesh event poller interval override (seconds).

@@ -92,8 +92,8 @@ pub async fn run_server_with_ready(
     let primal = Arc::new(primal);
     info!("DAG engine initialized and running");
 
-    // Background mesh event poller — polls bearDog auth.events.poll for
-    // cross-gate trust events and appends them to a mesh-trust DAG session.
+    // Background mesh event poller — polls the signing provider's auth.events.poll
+    // for cross-gate trust events and appends them to a mesh-trust DAG session.
     // Non-fatal: runs silently if no signing provider is available.
     let _mesh_poller = primal.spawn_mesh_poller();
 
@@ -228,7 +228,7 @@ async fn serve_with_tcp(
         }
 
         // Bootstrap the lazy-resolution fallback so capability clients can
-        // query Songbird on demand for peers not yet in the registry.
+        // query the discovery adapter on demand for peers not yet in the registry.
         if let Some(ep) =
             rhizo_crypt_core::transport::TransportEndpoint::try_parse_address(&discovery_addr)
         {

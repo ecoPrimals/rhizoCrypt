@@ -3,6 +3,10 @@
 
 //! Discovery adapter client — ecosystem service discovery and registration.
 //!
+//! songBird is the canonical discovery orchestrator; this module is the
+//! capability-neutral client for connecting to whichever discovery adapter
+//! is deployed at runtime.
+//!
 //! This module provides the universal discovery adapter used to bootstrap
 //! capability-based service resolution. The client sends generic `register`
 //! and `heartbeat` JSON-RPC calls to whichever discovery service is deployed.

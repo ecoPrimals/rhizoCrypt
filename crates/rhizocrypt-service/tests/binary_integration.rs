@@ -23,6 +23,15 @@ fn server_command(binary_path: &str) -> Command {
     cmd
 }
 
+/// Allocate an ephemeral TCP port via OS assignment.
+fn allocate_ephemeral_port() -> u16 {
+    std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("failed to allocate ephemeral port")
+        .local_addr()
+        .expect("failed to read ephemeral port")
+        .port()
+}
+
 /// Probe a TCP port until it accepts connections or the timeout expires.
 /// Returns `Ok(())` on successful connect, `Err` on timeout.
 async fn wait_for_tcp_ready(port: u16, timeout: Duration) -> Result<(), &'static str> {
@@ -135,16 +144,17 @@ async fn test_service_doctor_comprehensive_subcommand() {
 #[tokio::test]
 async fn test_service_starts_with_defaults() {
     let binary_path = service_binary_path();
+    let port = allocate_ephemeral_port();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19400")
+        .env("RHIZOCRYPT_PORT", port.to_string())
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service");
 
-    wait_for_tcp_ready(19400, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(port, Duration::from_secs(5)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => panic!("Service exited unexpectedly with status: {status}"),
@@ -181,9 +191,10 @@ async fn test_service_handles_invalid_port() {
 #[tokio::test]
 async fn test_service_custom_configuration() {
     let binary_path = service_binary_path();
+    let port = allocate_ephemeral_port();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19410")
+        .env("RHIZOCRYPT_PORT", port.to_string())
         .env("RHIZOCRYPT_HOST", "127.0.0.1")
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
@@ -191,7 +202,7 @@ async fn test_service_custom_configuration() {
         .spawn()
         .expect("Failed to start service");
 
-    wait_for_tcp_ready(19410, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(port, Duration::from_secs(5)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => panic!("Service exited unexpectedly: {status}"),
@@ -206,16 +217,17 @@ async fn test_service_custom_configuration() {
 #[tokio::test]
 async fn test_service_cli_port_override() {
     let binary_path = service_binary_path();
+    let port = allocate_ephemeral_port();
 
     let mut child = Command::new(&binary_path)
-        .args(["server", "--port", "19420"])
+        .args(["server", "--port", &port.to_string()])
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service");
 
-    wait_for_tcp_ready(19420, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(port, Duration::from_secs(5)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => panic!("Service exited unexpectedly: {status}"),
@@ -230,9 +242,10 @@ async fn test_service_cli_port_override() {
 #[tokio::test]
 async fn test_service_without_discovery() {
     let binary_path = service_binary_path();
+    let port = allocate_ephemeral_port();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19430")
+        .env("RHIZOCRYPT_PORT", port.to_string())
         .env("RUST_LOG", "info")
         .env_remove("SONGBIRD_ADDRESS")
         .env_remove("RHIZOCRYPT_DISCOVERY_ADAPTER")
@@ -243,7 +256,7 @@ async fn test_service_without_discovery() {
         .spawn()
         .expect("Failed to start service");
 
-    wait_for_tcp_ready(19430, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(port, Duration::from_secs(5)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => panic!("Service should run without discovery, exited: {status}"),
@@ -258,16 +271,17 @@ async fn test_service_without_discovery() {
 #[tokio::test]
 async fn test_service_graceful_shutdown_sigterm() {
     let binary_path = service_binary_path();
+    let port = allocate_ephemeral_port();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19440")
+        .env("RHIZOCRYPT_PORT", port.to_string())
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service");
 
-    wait_for_tcp_ready(19440, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(port, Duration::from_secs(5)).await.unwrap();
 
     #[cfg(unix)]
     {
@@ -291,20 +305,21 @@ async fn test_service_graceful_shutdown_sigterm() {
 #[tokio::test]
 async fn test_service_port_already_in_use() {
     let binary_path = service_binary_path();
-    let test_port = "19450";
+    let test_port = allocate_ephemeral_port();
+    let test_port_str = test_port.to_string();
 
     let mut child1 = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", test_port)
+        .env("RHIZOCRYPT_PORT", &test_port_str)
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start first service");
 
-    wait_for_tcp_ready(19450, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(test_port, Duration::from_secs(5)).await.unwrap();
 
     let mut child2 = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", test_port)
+        .env("RHIZOCRYPT_PORT", &test_port_str)
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -327,9 +342,10 @@ async fn test_service_port_already_in_use() {
 #[tokio::test]
 async fn test_service_environment_variable_parsing() {
     let binary_path = service_binary_path();
+    let port = allocate_ephemeral_port();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19460")
+        .env("RHIZOCRYPT_PORT", port.to_string())
         .env("RHIZOCRYPT_HOST", "0.0.0.0")
         .env("RHIZOCRYPT_ENV", "development")
         .env("RUST_LOG", "error")
@@ -338,7 +354,7 @@ async fn test_service_environment_variable_parsing() {
         .spawn()
         .expect("Failed to start service");
 
-    wait_for_tcp_ready(19460, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(port, Duration::from_secs(5)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => panic!("Service failed to parse env vars: {status}"),
@@ -353,9 +369,12 @@ async fn test_service_environment_variable_parsing() {
 #[tokio::test]
 async fn test_service_multiple_instances_different_ports() {
     let binary_path = service_binary_path();
+    let port1 = allocate_ephemeral_port();
+    let port2 = allocate_ephemeral_port();
+    let port3 = allocate_ephemeral_port();
 
     let mut child1 = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19470")
+        .env("RHIZOCRYPT_PORT", port1.to_string())
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -363,7 +382,7 @@ async fn test_service_multiple_instances_different_ports() {
         .expect("Failed to start service 1");
 
     let mut child2 = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19480")
+        .env("RHIZOCRYPT_PORT", port2.to_string())
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -371,16 +390,16 @@ async fn test_service_multiple_instances_different_ports() {
         .expect("Failed to start service 2");
 
     let mut child3 = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19490")
+        .env("RHIZOCRYPT_PORT", port3.to_string())
         .env("RUST_LOG", "error")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service 3");
 
-    wait_for_tcp_ready(19470, Duration::from_secs(5)).await.unwrap();
-    wait_for_tcp_ready(19480, Duration::from_secs(5)).await.unwrap();
-    wait_for_tcp_ready(19490, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(port1, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(port2, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(port3, Duration::from_secs(5)).await.unwrap();
 
     assert!(child1.try_wait().unwrap().is_none(), "Service 1 should be running");
     assert!(child2.try_wait().unwrap().is_none(), "Service 2 should be running");
@@ -401,16 +420,17 @@ async fn test_service_signal_handling() {
     use nix::unistd::Pid;
 
     let binary_path = service_binary_path();
+    let port = allocate_ephemeral_port();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19500")
+        .env("RHIZOCRYPT_PORT", port.to_string())
         .env("RUST_LOG", "info")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start service");
 
-    wait_for_tcp_ready(19500, Duration::from_secs(5)).await.unwrap();
+    wait_for_tcp_ready(port, Duration::from_secs(5)).await.unwrap();
 
     let raw_pid = i32::try_from(child.id()).expect("pid fits in i32");
     let pid = Pid::from_raw(raw_pid);
@@ -425,9 +445,10 @@ async fn test_service_signal_handling() {
 #[tokio::test]
 async fn test_service_with_discovery_fallback() {
     let binary_path = service_binary_path();
+    let port = allocate_ephemeral_port();
 
     let mut child = server_command(&binary_path)
-        .env("RHIZOCRYPT_PORT", "19510")
+        .env("RHIZOCRYPT_PORT", port.to_string())
         .env("SONGBIRD_ADDRESS", "invalid.nonexistent:9999")
         .env("RUST_LOG", "info")
         .stdout(Stdio::piped())
@@ -435,7 +456,7 @@ async fn test_service_with_discovery_fallback() {
         .spawn()
         .expect("Failed to start service");
 
-    wait_for_tcp_ready(19510, Duration::from_secs(10)).await.unwrap();
+    wait_for_tcp_ready(port, Duration::from_secs(10)).await.unwrap();
 
     match child.try_wait() {
         Ok(Some(status)) => {

@@ -392,7 +392,7 @@ fn parse_capability(name: &str) -> Option<Capability> {
 /// - **Format A** (flat): `["dag.session.create", "health.check"]`
 /// - **Format B** (nested objects): `[{"name": "dag.session.create", ...}]`
 /// - **Format C** (wrapper): `{"capabilities": ["dag.session.create"]}` — biomeOS/neuralSpring
-/// - **Format D** (double-nested): `{"capabilities": [{"name": "...", ...}]}` — toadStool S155+
+/// - **Format D** (double-nested): `{"capabilities": [{"name": "...", ...}]}` — platform substrate S155+
 ///
 /// Absorbed from airSpring v0.8.7 4-format parser. Any unknown shape is
 /// silently skipped (graceful degradation).

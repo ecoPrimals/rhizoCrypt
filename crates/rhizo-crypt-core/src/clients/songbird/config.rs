@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024–2026 ecoPrimals Project
 
-//! Songbird client configuration.
+//! Discovery adapter client configuration.
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -9,13 +9,14 @@ use std::time::Duration;
 
 use tracing::warn;
 
-/// Configuration for Songbird client.
+/// Configuration for the discovery adapter client.
 ///
-/// Songbird is special: it's the bootstrap for discovery, so its address
+/// The discovery adapter is the bootstrap for discovery, so its address
 /// is the only one that should be configured directly.
+/// (songBird is the canonical discovery orchestrator.)
 #[derive(Debug, Clone)]
 pub struct DiscoveryConfig {
-    /// Songbird orchestrator address.
+    /// Discovery orchestrator address.
     /// This is the bootstrap address - discovered from environment or config.
     pub address: Cow<'static, str>,
 
@@ -35,7 +36,7 @@ pub struct DiscoveryConfig {
     pub auto_reconnect: bool,
 
     /// Heartbeat interval for registration refresh.
-    /// Songbird registrations expire after 60s; default is 45s.
+    /// Discovery adapter registrations expire after 60s; default is 45s.
     pub heartbeat_interval: Duration,
 }
 
@@ -49,7 +50,7 @@ impl DiscoveryConfig {
     /// Create a new config with no address configured.
     ///
     /// This is the preferred constructor - requires explicit address configuration.
-    /// Songbird is the discovery bootstrap; its address is discovered from
+    /// The discovery adapter is the bootstrap; its address is discovered from
     /// environment, never hardcoded.
     #[must_use]
     pub fn new() -> Self {
@@ -82,7 +83,8 @@ impl DiscoveryConfig {
     ///
     /// Environment variables (checked in order):
     /// - `DISCOVERY_ENDPOINT` or `DISCOVERY_SERVICE_ENDPOINT`: Discovery capability endpoint (preferred)
-    /// - `SONGBIRD_ADDRESS`: Legacy orchestrator address (acceptable - Songbird is the universal adapter)
+    /// - `SONGBIRD_ADDRESS`: Legacy orchestrator address (env var name retained for compatibility;
+    ///   songBird is the canonical discovery orchestrator)
     /// - `SONGBIRD_HOST` + `SONGBIRD_PORT`: Alternative host/port specification
     /// - `RHIZOCRYPT_SERVICE_NAME`: Service name for registration
     ///

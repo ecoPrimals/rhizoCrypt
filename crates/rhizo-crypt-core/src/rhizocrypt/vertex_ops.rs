@@ -240,7 +240,7 @@ impl RhizoCrypt {
 
         let root = MerkleRoot::compute(&vertices)?;
         let ids: Vec<VertexId> =
-            vertices.iter().map(Vertex::compute_id).collect::<std::result::Result<Vec<_>, _>>()?;
+            vertices.iter().map(Vertex::resolved_id).collect::<std::result::Result<Vec<_>, _>>()?;
         let position = ids
             .iter()
             .position(|id| *id == vertex_id)

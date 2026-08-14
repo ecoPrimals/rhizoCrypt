@@ -27,16 +27,21 @@ fn build_runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().unwrap()
 }
 
+/// Bind to an ephemeral port and return the assigned address.
+fn ephemeral_tcp_addr() -> std::net::SocketAddr {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind ephemeral port");
+    listener.local_addr().expect("read ephemeral port")
+}
+
 /// Helper to create a test server and client pair.
 ///
 /// Uses retry logic instead of sleep to wait for server readiness.
-async fn setup_server_client(
-    port: u16,
-) -> (Arc<RhizoCrypt>, RpcClient, tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>)
-{
+async fn setup_server_client()
+-> (Arc<RhizoCrypt>, RpcClient, tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>) {
+    let addr = ephemeral_tcp_addr();
+
     let mut config = RhizoCryptConfig::default();
-    config.rpc.port = port;
-    let addr = config.rpc.parse_addr().expect("test config should have valid addr");
+    config.rpc.port = addr.port();
 
     let mut primal = RhizoCrypt::new(config);
     primal.start().await.expect("primal should start");
@@ -69,7 +74,7 @@ fn test_rpc_server_client_connection() {
     let rt = build_runtime();
     temp_env::with_vars(BTSP_CLEAR_ENV, || {
         rt.block_on(async {
-            let (_primal, client, server_handle) = setup_server_client(19701).await;
+            let (_primal, client, server_handle) = setup_server_client().await;
 
             let health = client.health().await.expect("should get health");
             assert!(health.healthy);
@@ -100,7 +105,7 @@ fn test_rpc_vertex_operations() {
     let rt = build_runtime();
     temp_env::with_vars(BTSP_CLEAR_ENV, || {
         rt.block_on(async {
-            let (_primal, client, server_handle) = setup_server_client(19702).await;
+            let (_primal, client, server_handle) = setup_server_client().await;
 
             let request = CreateSessionRequest {
                 session_type: SessionType::General,
@@ -139,7 +144,7 @@ fn test_rpc_health_metrics() {
     let rt = build_runtime();
     temp_env::with_vars(BTSP_CLEAR_ENV, || {
         rt.block_on(async {
-            let (_primal, client, server_handle) = setup_server_client(19703).await;
+            let (_primal, client, server_handle) = setup_server_client().await;
 
             let health = client.health().await.expect("should get health");
             assert!(health.healthy);
@@ -171,7 +176,7 @@ fn test_rpc_discard_session() {
     let rt = build_runtime();
     temp_env::with_vars(BTSP_CLEAR_ENV, || {
         rt.block_on(async {
-            let (_primal, client, server_handle) = setup_server_client(19704).await;
+            let (_primal, client, server_handle) = setup_server_client().await;
 
             let request = CreateSessionRequest {
                 session_type: SessionType::General,
@@ -201,7 +206,7 @@ fn test_rpc_batch_append() {
     let rt = build_runtime();
     temp_env::with_vars(BTSP_CLEAR_ENV, || {
         rt.block_on(async {
-            let (_primal, client, server_handle) = setup_server_client(19705).await;
+            let (_primal, client, server_handle) = setup_server_client().await;
 
             let request = CreateSessionRequest {
                 session_type: SessionType::General,
@@ -242,7 +247,7 @@ fn test_rpc_query_vertices() {
     let rt = build_runtime();
     temp_env::with_vars(BTSP_CLEAR_ENV, || {
         rt.block_on(async {
-            let (_primal, client, server_handle) = setup_server_client(19706).await;
+            let (_primal, client, server_handle) = setup_server_client().await;
 
             let request = CreateSessionRequest {
                 session_type: SessionType::General,
@@ -310,7 +315,7 @@ fn test_rpc_genesis_and_children() {
     let rt = build_runtime();
     temp_env::with_vars(BTSP_CLEAR_ENV, || {
         rt.block_on(async {
-            let (_primal, client, server_handle) = setup_server_client(19707).await;
+            let (_primal, client, server_handle) = setup_server_client().await;
 
             let request = CreateSessionRequest {
                 session_type: SessionType::General,
@@ -368,7 +373,7 @@ fn test_rpc_merkle_operations() {
     let rt = build_runtime();
     temp_env::with_vars(BTSP_CLEAR_ENV, || {
         rt.block_on(async {
-            let (_primal, client, server_handle) = setup_server_client(19708).await;
+            let (_primal, client, server_handle) = setup_server_client().await;
 
             let request = CreateSessionRequest {
                 session_type: SessionType::General,
@@ -417,7 +422,7 @@ fn test_rpc_slice_operations() {
     let rt = build_runtime();
     temp_env::with_vars(BTSP_CLEAR_ENV, || {
         rt.block_on(async {
-            let (_primal, client, server_handle) = setup_server_client(19709).await;
+            let (_primal, client, server_handle) = setup_server_client().await;
 
             let checkout_request = CheckoutSliceRequest {
                 spine_id: "spine-0".to_string(),
@@ -455,7 +460,7 @@ fn test_rpc_dehydration() {
     let rt = build_runtime();
     temp_env::with_vars(BTSP_CLEAR_ENV, || {
         rt.block_on(async {
-            let (_primal, client, server_handle) = setup_server_client(19710).await;
+            let (_primal, client, server_handle) = setup_server_client().await;
 
             let request = CreateSessionRequest {
                 session_type: SessionType::General,

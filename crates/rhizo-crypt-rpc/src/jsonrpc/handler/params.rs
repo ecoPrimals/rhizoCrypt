@@ -59,8 +59,8 @@ pub(super) fn parse_session_id(s: &str) -> Result<SessionId, HandlerError> {
 }
 
 /// Parse a 32-byte hash from either a hex string (`"a1b2..."`) or a JSON
-/// byte array (`[161, 178, ...]`).  Provenance trio interop: loamSpine and
-/// sweetGrass may send `[u8; 32]` arrays where rhizoCrypt historically
+/// byte array (`[161, 178, ...]`).  Provenance trio interop: permanent storage
+/// and attribution/provenance providers may send `[u8; 32]` arrays where rhizoCrypt historically
 /// expected hex strings.
 pub(super) fn parse_hash32(value: &Value, field: &str) -> Result<[u8; 32], HandlerError> {
     match value {

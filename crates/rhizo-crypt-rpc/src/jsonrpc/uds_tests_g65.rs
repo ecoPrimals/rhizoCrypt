@@ -14,7 +14,7 @@ use super::tests_support::{read_json_line_raw, test_primal};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-/// Spin up a UDS listener and return (socket_path, shutdown_sender).
+/// Spin up a UDS listener and return (`socket_path`, `shutdown_sender`).
 async fn start_uds_server(
     dir: &tempfile::TempDir,
 ) -> (std::path::PathBuf, tokio::sync::watch::Sender<bool>) {

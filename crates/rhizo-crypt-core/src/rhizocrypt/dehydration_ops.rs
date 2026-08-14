@@ -382,7 +382,8 @@ impl RhizoCrypt {
     ///
     /// Provenance notification is batched: all successful dehydrations are
     /// collected into a single `contribution.record_dehydration_batch` RPC
-    /// to sweetGrass (N sessions → 1 round-trip), followed by per-session
+    /// to the attribution/provenance provider (N sessions → 1 round-trip),
+    /// followed by per-session
     /// commit notifications.
     ///
     /// Returns a vec of `(session_id, Result<MerkleRoot>)` so the caller

@@ -1,7 +1,7 @@
 +++
 title = "rhizoCrypt Validation Summary"
-description = "Ephemeral DAG engine — 1,832 tests, 40 methods, pure Rust, G68-compliant transport, gossip-ready, content-addressed working memory for the ecoPrimals ecosystem"
-date = 2026-08-10
+description = "Ephemeral DAG engine — 1,858 tests, 42 methods (8 domains), pure Rust, G68-compliant transport, gossip-ready, rootPulse step handlers, content-addressed working memory for the ecoPrimals ecosystem"
+date = 2026-08-14
 
 [taxonomies]
 primals = ["rhizocrypt"]
@@ -10,13 +10,13 @@ springs = []
 
 ## Status
 
-- **1,832 tests** passing (unit + integration + property + doc, `--all-features`)
-- **229 `.rs` files**, ~61,850 lines
-- **40 registered methods** across 7 domains (32 stable, 8 evolving)
-- **93.83% line coverage** (CI gate: 90%)
+- **1,858 tests** passing (unit + integration + property + doc, `--all-features`)
+- **231 `.rs` files**, ~62,620 lines
+- **42 registered methods** across 8 domains (32 stable, 10 evolving)
+- **92.69% line coverage**, 91.16% function coverage (llvm-cov, CI gate: 90%)
 - **Zero `unsafe` blocks** — `unsafe_code = "deny"` workspace-wide
 - **Zero C dependencies** — ecoBin compliant, `cargo-deny` enforced
-- **Edition 2024**, Rust 1.94 MSRV
+- **Edition 2024**, Rust 1.87 MSRV
 - **BTSP Phase 3** — ChaCha20-Poly1305 encrypted channels on UDS
 
 ## Capability Domains
@@ -33,6 +33,7 @@ springs = []
 | `dag.partial_dehydrate` | 1 | Evolving | Partial Merkle root without closing session |
 | `dag.branch/diff/merge/federate` | 4 | Evolving | DAG evolution — branch, diff, merge, cross-gate federation (Wave 60) |
 | `dag.pipeline.ingest` | 1 | Evolving | Coordinated create + batch append + optional dehydrate (G31) |
+| `rootpulse.*` | 2 | Evolving | biomeOS trio graph step handlers: `record_build`, `dehydrate_state` (Wave 157k) |
 | `health.*` | 4 | Stable | Liveness, readiness, check, metrics |
 | `auth.*` | 3 | Stable | Method gate introspection (JH-0/JH-1) |
 | `identity/capabilities/tools` | 6 | Stable | Discovery, MCP tool exposure |
@@ -41,7 +42,8 @@ springs = []
 
 `provenance.*` methods (e.g. `provenance.session.create`) are normalized
 to `dag.*` at dispatch time. Both naming conventions are valid on the wire
-(GAP-36 resolution, S68).
+(GAP-36 resolution, S68). Additional aliases: `dag.append` → `dag.event.append`,
+`dehydrate` / `dehydration.execute` → `dag.dehydration.trigger`.
 
 ## Composition Role
 
@@ -86,6 +88,8 @@ and sweetGrass braids.
 | `&Vec<`/`&String` params | Zero |
 | Production mocks | Zero (all `cfg`-gated) |
 | C dependencies | Zero (ecoBin) |
+| `#[allow]` in production | Zero (all evolved to `#[expect]`) |
+| Dead code (`dead_code`) | Zero (BTSP wire types resolved) |
 
 ## See Also
 

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.17] - 2026-06-16
 
+### Wave 157k — Deep Interstadial: rootPulse Activation + Deep Debt (Aug 14, 2026)
+- **rootPulse step handlers**: implement `rootpulse.record_build` (harvest graph) and `rootpulse.dehydrate_state` (commit graph) — biomeOS trio graph activation for rhizoCrypt
+- **Semantic aliases**: `dag.append` → `dag.event.append`, `dehydrate` / `dehydration.execute` → `dag.dehydration.trigger` — registered in handler dispatch + `PROVENANCE_ALIASES` + `primal.announce`
+- **Zero-copy vertex hot path**: `canonical_bytes` cache on `Vertex`, `BytesMut::freeze()` for CBOR encoding, `resolved_id()` + `with_known_id()` to skip re-hashing on store reads
+- **BTSP wire types activated**: `ServerHello.version` validated, `server_ephemeral_pub` stored on session, `HandshakeError.error` logged — zero dead code
+- **Hardcoded port elimination**: RPC integration tests + binary integration tests evolved to port-0 (OS-assigned) — zero CI collision risk
+- **Capability-based comments**: ~30 hardcoded primal name references in production comments → capability-based language
+- **Clippy suppressions evolved**: all `#[allow]` → `#[expect]` in production code, zero production `#[allow]` remaining
+- **Coverage improvement**: new tests for `shutdown.rs` (SIGTERM/SIGINT), `client.rs` (error paths), `neural_api.rs` (announce lifecycle)
+- **Songbird docs fix**: removed contradictory "localhost fallback" references in client + connection
+- **Metrics removed**: `LATENCY_BUCKETS` re-export eliminated (unused downstream)
+- Registry: 42 methods across 8 domains (was 40/7). Deploy graph updated. `CONTRIBUTING.md` added.
+- Tests: 1,858, 231 `.rs` files, ~62,620 lines, 92.69% line coverage
+
 ### Deep Debt Sweep — Code Evolution (Aug 10, 2026)
 - **P0 — Extract `build_signed_vertex()`**: eliminate 4× duplicated vertex builder in `service_vertex_ops.rs` (~60 lines removed)
 - **P0 — Standardize handlers on `impl_*`**: branch handlers (`dispatch_branch`, `dispatch_diff`, `dispatch_merge`, `dispatch_federate`) now call `impl_*` directly, bypassing tarpc self-clone + context overhead

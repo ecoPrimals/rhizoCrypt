@@ -37,10 +37,10 @@ impl MerkleRoot {
             return Ok(Self::ZERO);
         }
 
-        // Compute leaf hashes
+        // Compute leaf hashes (use cached IDs from append/load when available).
         let mut hashes: Vec<ContentHash> = vertices
             .iter()
-            .map(|v| v.compute_id().map(|id| id.0))
+            .map(|v| v.resolved_id().map(|id| id.0))
             .collect::<std::result::Result<Vec<_>, _>>()?;
 
         // Pad to power of 2 if needed
@@ -182,7 +182,7 @@ impl MerkleProof {
     #[must_use]
     #[inline]
     pub fn verify(&self, vertex: &Vertex) -> bool {
-        let Ok(vertex_hash) = vertex.compute_id() else {
+        let Ok(vertex_hash) = vertex.resolved_id() else {
             return false;
         };
         if vertex_hash != self.vertex_id {
@@ -215,12 +215,12 @@ impl MerkleProof {
         }
 
         let vertex = &vertices[position];
-        let vertex_id = vertex.compute_id()?;
+        let vertex_id = vertex.resolved_id()?;
 
         // Compute leaf hashes
         let mut hashes: Vec<ContentHash> = vertices
             .iter()
-            .map(|v| v.compute_id().map(|id| id.0))
+            .map(|v| v.resolved_id().map(|id| id.0))
             .collect::<std::result::Result<Vec<_>, _>>()?;
 
         let original_len = hashes.len();
