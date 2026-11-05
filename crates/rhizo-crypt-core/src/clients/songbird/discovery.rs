@@ -53,12 +53,11 @@ impl DiscoveryClient {
                         let status = match s.status.as_str() {
                             "running" | "healthy" | "active" => ServiceStatus::Running,
                             "starting" => ServiceStatus::Starting,
-                            "stopped" => ServiceStatus::Stopped,
-                            "degraded" => ServiceStatus::Degraded,
-                            "error" => ServiceStatus::Error,
+                            "stopped" | "stopping" => ServiceStatus::Stopped,
+                            "degraded" | "error" => ServiceStatus::Error,
                             _ => ServiceStatus::Unknown,
                         };
-                        let mut info = ServiceInfo::new(s.id, s.capability.clone())
+                        let mut info = ServiceInfo::new(&s.id, &s.capability)
                             .with_endpoint(s.endpoint)
                             .with_capability(s.capability);
                         info.status = status;

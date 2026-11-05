@@ -10,8 +10,9 @@
 
 use serde::{Deserialize, Serialize};
 
-// ── Canonical re-export ──
-pub use cellmembrane_types::ecosystem::{ServiceInfo, ServiceStatus};
+// ── Canonical re-exports ──
+pub use cellmembrane_types::ecosystem::ServiceInfo;
+pub use cellmembrane_types::ecosystem::EcosystemServiceStatus as ServiceStatus;
 
 /// Extension trait for `ServiceInfo` — rhizoCrypt convenience helpers.
 pub trait ServiceInfoExt {
